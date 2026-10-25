@@ -203,4 +203,5 @@ originals. With that caveat:
 - **The CPU here is much faster per thread** (libaom speed 6: 1.8 MP/s per vCPU, against 1.27 on the
   Xeon Silver 4110; speed 9: 11.7 against 8.45). Against the whole 16-vCPU machine, av1gpu is 4.0× libaom
   speed 6 at the same file size, while libaom speed 9 is 1.6× faster than av1gpu with files 15 % larger.
-- **Cost of the run:** about 1.5 hours on a g6.4xlarge spot instance at about $0.80/hour, roughly $1.30.
+- **Cost of the run:** 1 h 39 min on a g6.4xlarge spot instance at about $0.80/hour, plus about 2 minutes
+  on demand, roughly $1.40.
