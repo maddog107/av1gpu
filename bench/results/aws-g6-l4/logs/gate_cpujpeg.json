@@ -1,0 +1,39 @@
+{
+ "bin": "build/av1gpu",
+ "images": "bench/images",
+ "opts": [],
+ "n_inputs": 100,
+ "runs": [
+  {
+   "q": 60,
+   "rc": 0,
+   "wall_s": 4.8,
+   "batch": "[av1gpu] 100 images (78.7 MP) in 3297.0 ms: 30.33 img/s, 23.88 MP/s; 2 batches; out 10.52 MB (1.069 bpp); CPU 954 ms = 0.29 cores; skipped (unsupported): 0; WebP/PNG via CPU decode: 0; write failures 0",
+   "n_encoded": 100,
+   "n_pass": 100,
+   "n_not_encoded": 0,
+   "failures": []
+  },
+  {
+   "q": 120,
+   "rc": 0,
+   "wall_s": 4.2,
+   "batch": "[av1gpu] 100 images (78.7 MP) in 2868.5 ms: 34.86 img/s, 27.45 MP/s; 2 batches; out 5.49 MB (0.558 bpp); CPU 935 ms = 0.33 cores; skipped (unsupported): 0; WebP/PNG via CPU decode: 0; write failures 0",
+   "n_encoded": 100,
+   "n_pass": 100,
+   "n_not_encoded": 0,
+   "failures": []
+  },
+  {
+   "q": 180,
+   "rc": 0,
+   "wall_s": 3.7,
+   "batch": "[av1gpu] 100 images (78.7 MP) in 2410.8 ms: 41.48 img/s, 32.66 MP/s; 2 batches; out 2.07 MB (0.210 bpp); CPU 925 ms = 0.38 cores; skipped (unsupported): 0; WebP/PNG via CPU decode: 0; write failures 0",
+   "n_encoded": 100,
+   "n_pass": 100,
+   "n_not_encoded": 0,
+   "failures": []
+  }
+ ],
+ "pass": true
+}

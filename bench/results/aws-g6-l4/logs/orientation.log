@@ -1,0 +1,9 @@
+1 OK  {'ispe': (320, 200)} {'ispe': (320, 200)} {'ispe': (320, 200)}
+2 OK  {'ispe': (320, 200), 'imir': (1, True)} {'ispe': (320, 200), 'imir': (1, True)} {'ispe': (320, 200), 'imir': (1, True)}
+3 OK  {'ispe': (320, 200), 'irot': (2, True)} {'ispe': (320, 200), 'irot': (2, True)} {'ispe': (320, 200), 'irot': (2, True)}
+4 OK  {'ispe': (320, 200), 'imir': (0, True)} {'ispe': (320, 200), 'imir': (0, True)} {'ispe': (320, 200), 'imir': (0, True)}
+5 OK  {'ispe': (320, 200), 'irot': (1, True), 'imir': (0, True)} {'ispe': (320, 200), 'irot': (1, True), 'imir': (0, True)} {'ispe': (320, 200), 'irot': (1, True), 'imir': (0, True)}
+6 OK  {'ispe': (320, 200), 'irot': (3, True)} {'ispe': (320, 200), 'irot': (3, True)} {'ispe': (320, 200), 'irot': (3, True)}
+7 OK  {'ispe': (320, 200), 'irot': (3, True), 'imir': (0, True)} {'ispe': (320, 200), 'irot': (3, True), 'imir': (0, True)} {'ispe': (320, 200), 'irot': (3, True), 'imir': (0, True)}
+8 OK  {'ispe': (320, 200), 'irot': (1, True)} {'ispe': (320, 200), 'irot': (1, True)} {'ispe': (320, 200), 'irot': (1, True)}
+PASS

@@ -79,10 +79,13 @@ int main(int argc, char **argv) {
             av1g_block *dB; uint32_t *dBT; av1g_txb *dT; int16_t *dC;
             cudaMalloc(&dB, hb.size() * sizeof(av1g_block)); cudaMalloc(&dBT, hbt.size() * 4);
             cudaMalloc(&dT, ht.size() * sizeof(av1g_txb)); cudaMalloc(&dC, hc.size() * 2);
-            cudaMemcpy(dB, hb.data(), hb.size() * sizeof(av1g_block), cudaMemcpyHostToDevice);
-            cudaMemcpy(dBT, hbt.data(), hbt.size() * 4, cudaMemcpyHostToDevice);
-            cudaMemcpy(dT, ht.data(), ht.size() * sizeof(av1g_txb), cudaMemcpyHostToDevice);
-            cudaMemcpy(dC, hc.data(), hc.size() * 2, cudaMemcpyHostToDevice);
+            // on `stream`: a pageable cudaMemcpy runs on the legacy stream and may return before its DMA
+            // lands, and the non-blocking stream does not wait for it
+            cudaMemcpyAsync(dB, hb.data(), hb.size() * sizeof(av1g_block), cudaMemcpyHostToDevice, stream);
+            cudaMemcpyAsync(dBT, hbt.data(), hbt.size() * 4, cudaMemcpyHostToDevice, stream);
+            cudaMemcpyAsync(dT, ht.data(), ht.size() * sizeof(av1g_txb), cudaMemcpyHostToDevice, stream);
+            cudaMemcpyAsync(dC, hc.data(), hc.size() * 2, cudaMemcpyHostToDevice, stream);
+            cudaStreamSynchronize(stream);
             av1g_gpu::DevBatch b;
             b.frames = df.data(); b.nFrames = (uint32_t)n;
             b.blocks = dB; b.blockTxb = dBT; b.txb = dT; b.coeffs = dC;
@@ -136,7 +139,8 @@ int main(int argc, char **argv) {
             if (c0 == 0 && n > 0 && cases[0].rec.n_blocks > 2) {
                 std::vector<av1g_block> sw(cases[0].rec.blocks, cases[0].rec.blocks + cases[0].rec.n_blocks);
                 std::swap(sw[0], sw.back());
-                cudaMemcpy(dB + df[0].blockBase, sw.data(), sw.size() * sizeof(av1g_block), cudaMemcpyHostToDevice);
+                cudaMemcpyAsync(dB + df[0].blockBase, sw.data(), sw.size() * sizeof(av1g_block), cudaMemcpyHostToDevice, stream);
+                cudaStreamSynchronize(stream);
                 b.symbolCapacity = 0;
                 const size_t need = av1g_gpu::run_batch_device_scratch_bytes(b);
                 if (need > scratchBytes) { cudaFree(scratch); cudaMalloc(&scratch, need); scratchBytes = need; scratchAllocs++; }

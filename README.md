@@ -31,9 +31,10 @@ all 1,475 held-out encodes (295 images × 5 quality points), and the test suite 
 av1gpu is a working encoder that runs in production on one site. It is also a young, single-developer
 project. Before you rely on it, note:
 
-- **It has been tested on one GPU model** (RTX PRO 2000 Blackwell, compute capability 12.0). The code
-  uses only standard CUDA features, with no tensor cores, no architecture-specific intrinsics and no
-  large shared-memory carve-outs. It builds for compute capability 7.5 through 12.0. Other GPUs should
+- **It has been tested on two GPU models:** the RTX PRO 2000 Blackwell it was developed on (compute
+  capability 12.0) and an NVIDIA L4 (8.9, on AWS; see [docs/RESULTS.md](docs/RESULTS.md#nvidia-l4-aws-g64xlarge)).
+  The code uses only standard CUDA features, with no tensor cores, no architecture-specific intrinsics and
+  no large shared-memory carve-outs. It builds for compute capability 7.5 through 12.0. Other GPUs should
   work but have not been run yet. Reports are welcome, especially `tests/decoder_gate.py` results.
 - The output format is fixed: 8-bit 4:2:0 (or monochrome) AV1, intra only. 4:4:4 and 4:2:2 JPEGs are
   downsampled to 4:2:0. There is no alpha, 10-bit, animation or lossless mode.
@@ -148,7 +149,18 @@ libaom s9 and WebP, scores them with SSIMULACRA2 and reports per-image BD-rates.
 from other GPUs are very welcome.
 
 These images are small (about 1 MP), where the speed preset matters most. On the held-out set, small
-images were where av1gpu compared worst against libaom and large images where it compared best.
+images were where av1gpu compared worst against libaom and large images where it compared best. For a
+spread of sizes there is a second set of 100 images from 0.18 to 24 MP (478 MP; the summary also breaks
+the BD-rates down by size):
+
+```bash
+bench/fetch_images.py --manifest bench/openimages_v4_gamut.csv --out bench/images_gamut
+bench/bench.py --images bench/images_gamut --out bench/results/$(hostname)-gamut
+```
+
+Speed runs repeat the set up to 1,000 MP (`--min-mp`), so that CUDA start-up does not dominate. Other
+av1gpu settings can be timed through a wrapper script (`--av1gpu`, `--gpu-label`), and `--aom-speeds`
+picks the libaom speeds to compare.
 
 ## How it works
 

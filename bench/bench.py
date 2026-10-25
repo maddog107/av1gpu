@@ -6,12 +6,15 @@
 
 Speed: `av1gpu --batch` over the whole set at the default settings (one warm-up run, then the median of
 --repeats runs, from av1gpu's own --stats line), and the whole machine running one single-threaded avifenc
-per CPU (the fastest way to use libaom on many images) at speed 6 and 9.
+per CPU (the fastest way to use libaom on many images) at speed 6 and 9 (--aom-speeds).  Both run the set
+repeated up to --min-mp megapixels, so that short sets measure steady-state throughput.
 
 Quality: every codec encodes every image at several quality points; outputs are decoded to PNG (avifdec,
 dwebp) and scored against the source JPEG with SSIMULACRA2 (libjxl's `ssimulacra2` tool).  For each image
 the BD-rate (bytes at equal SSIMULACRA2, Bjontegaard with monotone cubic interpolation of log-size) is
 computed against libaom speed 6; the table reports the median and mean over images.  Negative = smaller.
+
+To time other av1gpu settings, pass a wrapper script as --av1gpu that adds the options, and --gpu-label.
 
 Requires: avifenc, avifdec, cwebp, dwebp, ssimulacra2 on PATH (or the --avifenc, ... options), numpy, Pillow.
   Ubuntu:      apt install libavif-bin webp python3-numpy python3-pil
@@ -211,6 +214,27 @@ def encode_gpu_set(a, files, qualities, outdir):
 
 
 # ------------------------------------------------------------------------------------------- speed
+SIZE_CLASSES = [("< 1 MP", 0, 1), ("1-5 MP", 1, 5), ("5-10 MP", 5, 10), (">= 10 MP", 10, float("inf"))]
+
+
+def speed_set(files, sizes, min_mp, work):
+    """the image list repeated (as uniquely named symlinks) until it holds at least min_mp megapixels: a short
+    run is dominated by CUDA start-up and by filling the encoder pipeline (the speed table in docs/RESULTS.md
+    comes from 1,240 MP runs)"""
+    d = os.path.join(work, "speedset")
+    shutil.rmtree(d, ignore_errors=True)
+    os.makedirs(d)
+    out, mp, rep = [], 0.0, 0
+    while not out or mp < min_mp:
+        for f in files:
+            link = os.path.join(d, f"r{rep}_{os.path.basename(f)}")
+            os.symlink(os.path.abspath(f), link)
+            out.append(link)
+            mp += sizes[os.path.basename(f)]
+        rep += 1
+    return d, out, mp, rep
+
+
 def gpu_speed(a, image_dir, work):
     runs = []
     for i in range(a.repeats + 1):
@@ -223,7 +247,7 @@ def gpu_speed(a, image_dir, work):
         if i:  # run 0 is the warm-up (driver JIT caches, file cache)
             runs.append(st)
     med = lambda k: statistics.median(r[k] for r in runs)
-    return dict(codec="av1gpu (default settings)", images=runs[0]["images"], mp=runs[0]["mp"], mp_s=med("mp_s"),
+    return dict(codec=f"av1gpu ({a.gpu_label})", images=runs[0]["images"], mp=runs[0]["mp"], mp_s=med("mp_s"),
                 img_s=med("img_s"), cpu_cores=med("cpu_cores"), wall_s=med("wall_ms") / 1e3, bytes=runs[0]["bytes"],
                 runs=runs)
 
@@ -248,6 +272,7 @@ def main():
     ap.add_argument("--images", default=os.path.join(HERE, "images"))
     ap.add_argument("--out", required=True)
     ap.add_argument("--av1gpu", default=os.path.join(ROOT, "build", "av1gpu"))
+    ap.add_argument("--gpu-label", default="default settings", help="av1gpu settings, for the summary")
     ap.add_argument("--avifenc", default="avifenc")
     ap.add_argument("--avifdec", default="avifdec")
     ap.add_argument("--cwebp", default="cwebp")
@@ -255,6 +280,8 @@ def main():
     ap.add_argument("--ssimulacra2", default="ssimulacra2")
     ap.add_argument("--quality", default="30,40,50,60,70,80", help="avifenc -q / av1gpu --quality points")
     ap.add_argument("--webp-quality", default="50,60,70,80,90,95")
+    ap.add_argument("--aom-speeds", default="6,9", help="libaom speeds to compare (6 is the BD-rate anchor and always runs)")
+    ap.add_argument("--min-mp", type=float, default=1000, help="speed runs repeat the set up to this many megapixels")
     ap.add_argument("--repeats", type=int, default=3, help="timed av1gpu runs (after one warm-up)")
     ap.add_argument("--jobs", type=int, default=os.cpu_count())
     ap.add_argument("--skip-gpu", action="store_true")
@@ -262,6 +289,7 @@ def main():
     ap.add_argument("--skip-quality", action="store_true")
     ap.add_argument("--keep", action="store_true", help="keep the encoded files under OUT/files")
     a = ap.parse_args()
+    a.aom_speeds = sorted({6} | {int(x) for x in a.aom_speeds.split(",")})
 
     files = sorted(f for f in glob.glob(os.path.join(a.images, "*")) if f.lower().endswith(EXTS))
     if not files:
@@ -273,18 +301,22 @@ def main():
     work = os.path.join(a.out, "files")
     os.makedirs(work, exist_ok=True)
     from PIL import Image
-    mp = sum(np.prod(Image.open(f).size) for f in files) / 1e6
+    sizes = {os.path.basename(f): float(np.prod(Image.open(f).size)) / 1e6 for f in files}
+    mp = sum(sizes.values())
     tune_iq = avifenc_supports_tune_iq(a, files[0], work)
     res = dict(environment=environment(a), images=len(files), megapixels=mp, avifenc_tune_iq=tune_iq,
                quality_points=a.quality, speed=[], quality={}, bd_rate={})
     print(f"{len(files)} images, {mp:.1f} MP; avifenc tune=iq: {'yes' if tune_iq else 'no (libaom too old)'}", flush=True)
 
     if not a.skip_speed:
+        sdir, sfiles, smp, reps = speed_set(files, sizes, a.min_mp, work)
+        res["speed_workload"] = dict(images=len(sfiles), megapixels=smp, repeats=reps)
+        print(f"speed workload: the set {reps}x, {len(sfiles)} images, {smp:.0f} MP", flush=True)
         if not a.skip_gpu:
-            res["speed"].append(gpu_speed(a, a.images, work))
+            res["speed"].append(gpu_speed(a, sdir, work))
             print("speed:", res["speed"][-1]["codec"], f"{res['speed'][-1]['mp_s']:.1f} MP/s", flush=True)
-        for s in (6, 9):
-            res["speed"].append(cpu_speed(a, files, s, tune_iq, mp, work))
+        for s in a.aom_speeds:
+            res["speed"].append(cpu_speed(a, sfiles, s, tune_iq, smp, work))
             print("speed:", res["speed"][-1]["codec"], f"{res['speed'][-1]['mp_s']:.1f} MP/s", flush=True)
 
     if not a.skip_quality:
@@ -293,7 +325,7 @@ def main():
         enc = {}
         if not a.skip_gpu:
             enc["av1gpu"] = encode_gpu_set(a, files, qs, os.path.join(work, "av1gpu"))
-        for codec in ("aom_s6", "aom_s9"):
+        for codec in [f"aom_s{s}" for s in a.aom_speeds]:
             enc[codec] = encode_cpu_set(a, codec, files, qs, os.path.join(work, codec), tune_iq)
         enc["webp"] = encode_cpu_set(a, "webp", files, wq, os.path.join(work, "webp"), False)
         for codec, outs in enc.items():
@@ -315,6 +347,15 @@ def main():
                 if vals:
                     res["bd_rate"][f"{codec}_vs_{anchor}"] = dict(n=len(vals), median=statistics.median(vals),
                                                                    mean=statistics.fmean(vals))
+                if anchor != "aom_s6":
+                    continue
+                for cls, lo, hi in SIZE_CLASSES:
+                    v = [bd_rate(per[codec][im], per[anchor][im]) for im in per[codec]
+                         if im in per[anchor] and lo <= sizes[im] < hi]
+                    v = [x for x in v if x is not None]
+                    if v:
+                        res.setdefault("bd_rate_by_size", {}).setdefault(f"{codec}_vs_{anchor}", {})[cls] = dict(
+                            n=len(v), median=statistics.median(v))
 
     json.dump(res, open(os.path.join(a.out, "results.json"), "w"), indent=1)
     write_summary(res, os.path.join(a.out, "summary.md"))
@@ -328,7 +369,11 @@ def write_summary(res, path):
     L = [f"# av1gpu benchmark", "",
          f"- GPU: {e['gpu']}", f"- CPU: {e['cpu']} ({e['cpus']} logical CPUs)",
          f"- {e['avifenc']}; tune=iq: {'yes' if res['avifenc_tune_iq'] else 'no'}", f"- cwebp {e['cwebp']}",
-         f"- {res['images']} images, {res['megapixels']:.1f} MP", ""]
+         f"- {res['images']} images, {res['megapixels']:.1f} MP"]
+    if res.get("speed_workload"):
+        w = res["speed_workload"]
+        L.append(f"- speed runs: the set repeated {w['repeats']}x ({w['images']} images, {w['megapixels']:.0f} MP)")
+    L.append("")
     if res["speed"]:
         L += ["## Throughput (quality 60)", "", "| Encoder | MP/s | images/s | CPU cores used | output MB |",
               "|---|---:|---:|---:|---:|"]
@@ -341,6 +386,13 @@ def write_summary(res, path):
         for k, v in res["bd_rate"].items():
             c, anchor = k.split("_vs_")
             L.append(f"| {c} | {anchor} | {v['n']} | {100 * v['median']:+.1f}% | {100 * v['mean']:+.1f}% |")
+        L.append("")
+    if res.get("bd_rate_by_size"):
+        L += ["## BD-rate vs libaom s6 by image size (median; images in brackets)", "",
+              "| Codec | " + " | ".join(c for c, _, _ in SIZE_CLASSES) + " |", "|---|" + "---:|" * len(SIZE_CLASSES)]
+        for k, by in res["bd_rate_by_size"].items():
+            cells = [f"{100 * by[c]['median']:+.1f}% ({by[c]['n']})" if c in by else "—" for c, _, _ in SIZE_CLASSES]
+            L.append(f"| {k.split('_vs_')[0]} | " + " | ".join(cells) + " |")
         L.append("")
     open(path, "w").write("\n".join(L))
 
