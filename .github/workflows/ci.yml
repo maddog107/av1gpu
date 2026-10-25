@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  # CPU parts + decoder fuzz test: random legal decision records must decode bit-exactly in dav1d and aomdec
+  cpu-fuzz:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y cmake ninja-build dav1d aom-tools
+      - run: cmake -S . -B build -G Ninja -DAV1GPU_CUDA=OFF
+      - run: cmake --build build
+      - run: build/av1g_fuzz --seed 1 --count 1000 --quiet
+
+  # the CUDA encoder must compile with the oldest and newest supported toolkits (no GPU on the runners)
+  cuda-build:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ["nvidia/cuda:12.8.1-devel-ubuntu24.04", "nvidia/cuda:13.0.0-devel-ubuntu24.04"]
+    container: ${{ matrix.image }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y cmake ninja-build pkg-config g++ \
+            libjpeg-turbo8-dev libpng-dev libwebp-dev
+      - run: cmake -S . -B build -G Ninja -DCMAKE_CUDA_ARCHITECTURES="75;120"
+      - run: cmake --build build -j 4
+      - run: build/av1gpu --help

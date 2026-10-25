@@ -1,0 +1,7 @@
+build*/
+bench/images/
+bench/results/*/files/
+__pycache__/
+*.avif
+*.obu
+*.recon.yuv

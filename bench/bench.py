@@ -1,0 +1,349 @@
+#!/usr/bin/env python3
+"""av1gpu benchmark: throughput and compression efficiency against libaom (avifenc) and WebP.
+
+  bench/fetch_images.py                       # 100 CC BY 2.0 JPEGs -> bench/images
+  bench/bench.py --images bench/images --out bench/results/my-gpu
+
+Speed: `av1gpu --batch` over the whole set at the default settings (one warm-up run, then the median of
+--repeats runs, from av1gpu's own --stats line), and the whole machine running one single-threaded avifenc
+per CPU (the fastest way to use libaom on many images) at speed 6 and 9.
+
+Quality: every codec encodes every image at several quality points; outputs are decoded to PNG (avifdec,
+dwebp) and scored against the source JPEG with SSIMULACRA2 (libjxl's `ssimulacra2` tool).  For each image
+the BD-rate (bytes at equal SSIMULACRA2, Bjontegaard with monotone cubic interpolation of log-size) is
+computed against libaom speed 6; the table reports the median and mean over images.  Negative = smaller.
+
+Requires: avifenc, avifdec, cwebp, dwebp, ssimulacra2 on PATH (or the --avifenc, ... options), numpy, Pillow.
+  Ubuntu:      apt install libavif-bin webp python3-numpy python3-pil
+  ssimulacra2: from libjxl's dev tools, e.g.
+                 git clone --depth 1 -b v0.11.1 https://github.com/libjxl/libjxl && cd libjxl
+                 apt install libhwy-dev libbrotli-dev liblcms2-dev
+                 cmake -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DJPEGXL_ENABLE_DEVTOOLS=ON \\
+                   -DJPEGXL_FORCE_SYSTEM_HWY=ON -DJPEGXL_FORCE_SYSTEM_BROTLI=ON -DJPEGXL_FORCE_SYSTEM_LCMS2=ON \\
+                   -DJPEGXL_ENABLE_SKCMS=OFF -DJPEGXL_ENABLE_JPEGLI=OFF -DJPEGXL_ENABLE_SJPEG=OFF
+                 cmake --build build --target ssimulacra2     # -> build/tools/ssimulacra2
+  avifenc's libaom must be 3.12 or newer for tune=iq (the comparison av1gpu was tuned against); with an
+  older libaom the script falls back to libaom's default tuning and says so in the summary.
+--skip-gpu runs only the CPU codecs (useful for checking the setup on a machine without a GPU).
+Writes OUT/results.json (every measurement) and OUT/summary.md.
+"""
+import argparse
+import concurrent.futures as cf
+import glob
+import json
+import os
+import platform
+import re
+import shutil
+import statistics
+import subprocess
+import sys
+import tempfile
+import time
+
+import numpy as np
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.dirname(HERE)
+EXTS = (".jpg", ".jpeg")
+
+# avifenc -q (tune=iq) -> qindex; the same table as av1f_qindex_for_quality() in av1f/include/av1f/tuneiq.h
+_QP = [63, 63, 63, 62, 62, 62, 61, 61, 60, 60, 59, 59, 58, 58, 57, 57, 56, 56, 55, 55, 54, 54, 53, 53, 52, 52,
+       51, 51, 50, 50, 49, 49, 48, 48, 47, 46, 46, 45, 45, 44, 43, 43, 42, 42, 41, 40, 40, 39, 39, 38, 37, 37,
+       36, 36, 35, 34, 33, 33, 32, 31, 30, 30, 29, 28, 27, 27, 26, 25, 24, 24, 23, 22, 21, 21, 20, 19, 18, 18,
+       17, 16, 15, 15, 14, 13, 12, 12, 11, 10, 9, 9, 8, 7, 6, 6, 5, 4, 3, 3, 2, 1, 0]
+
+
+def qindex_for_quality(q):
+    p = _QP[max(0, min(100, q))]
+    return 255 if p == 63 else 249 if p == 62 else max(1, 4 * p)
+
+
+def run(cmd, **kw):
+    return subprocess.run(cmd, capture_output=True, text=True, **kw)
+
+
+def tool_version(cmd):
+    try:
+        p = run(cmd)
+        return (p.stdout + p.stderr).strip().splitlines()[0][:200]
+    except (OSError, IndexError):
+        return "unavailable"
+
+
+def environment(a):
+    env = dict(platform=platform.platform(), python=platform.python_version(), cpus=os.cpu_count())
+    try:
+        env["cpu"] = next(l.split(":", 1)[1].strip() for l in open("/proc/cpuinfo") if l.startswith("model name"))
+    except (OSError, StopIteration):
+        env["cpu"] = platform.processor()
+    p = run(["nvidia-smi", "--query-gpu=name,driver_version,memory.total,power.limit", "--format=csv,noheader"]) \
+        if shutil.which("nvidia-smi") else None
+    env["gpu"] = p.stdout.strip() if p and p.returncode == 0 else "none"
+    env["avifenc"] = "avifenc " + tool_version([a.avifenc, "--version"]).removeprefix("Version: ")
+    env["cwebp"] = tool_version([a.cwebp, "-version"])
+    return env
+
+
+# ------------------------------------------------------------------------------------------- BD-rate
+def _pchip_slopes(x, y):
+    h = np.diff(x)
+    d = np.diff(y) / h
+    m = np.zeros_like(y)
+    if len(x) == 2:
+        m[:] = d[0]
+        return m
+    for k in range(1, len(x) - 1):
+        if d[k - 1] * d[k] > 0:
+            w1, w2 = 2 * h[k] + h[k - 1], h[k] + 2 * h[k - 1]
+            m[k] = (w1 + w2) / (w1 / d[k - 1] + w2 / d[k])
+    # end points: one-sided three-point estimate, shape preserving (as scipy's PchipInterpolator)
+    for k, h0, h1, d0, d1 in ((0, h[0], h[1], d[0], d[1]), (-1, h[-1], h[-2], d[-1], d[-2])):
+        e = ((2 * h0 + h1) * d0 - h0 * d1) / (h0 + h1)
+        if np.sign(e) != np.sign(d0):
+            e = 0.0
+        elif np.sign(d0) != np.sign(d1) and abs(e) > abs(3 * d0):
+            e = 3 * d0
+        m[k] = e
+    return m
+
+
+def _pchip_eval(x, y, xs):
+    m = _pchip_slopes(x, y)
+    i = np.clip(np.searchsorted(x, xs) - 1, 0, len(x) - 2)
+    h = x[i + 1] - x[i]
+    t = (xs - x[i]) / h
+    return ((2 * t**3 - 3 * t**2 + 1) * y[i] + (t**3 - 2 * t**2 + t) * h * m[i] +
+            (-2 * t**3 + 3 * t**2) * y[i + 1] + (t**3 - t**2) * h * m[i + 1])
+
+
+def _curve(points):
+    """(bytes, score) points -> quality-sorted arrays with strictly increasing quality"""
+    pts = sorted((s, np.log(b)) for b, s in points if b > 0 and s is not None and np.isfinite(s))
+    xs, ys = [], []
+    for s, lb in pts:
+        if xs and s <= xs[-1]:
+            continue
+        xs.append(s)
+        ys.append(lb)
+    return np.array(xs), np.array(ys)
+
+
+def bd_rate(test, anchor, min_overlap=2.0):
+    """Bjontegaard rate difference (fraction) of test vs anchor; None if the curves barely overlap"""
+    xt, yt = _curve(test)
+    xa, ya = _curve(anchor)
+    if len(xt) < 2 or len(xa) < 2:
+        return None
+    lo, hi = max(xt[0], xa[0]), min(xt[-1], xa[-1])
+    if hi - lo < min_overlap:
+        return None
+    xs = np.linspace(lo, hi, 256)
+    trapezoid = getattr(np, "trapezoid", None) or np.trapz
+    diff = trapezoid(_pchip_eval(xt, yt, xs) - _pchip_eval(xa, ya, xs), xs) / (hi - lo)
+    return float(np.expm1(diff))
+
+
+# ------------------------------------------------------------------------------------------- encoders
+def avifenc_cmd(a, src, dst, q, speed, tune_iq):
+    cmd = [a.avifenc, "-q", str(q), "-s", str(speed), "-y", "420", "-j", "1", "--ignore-exif", "--ignore-xmp"]
+    if tune_iq:
+        cmd += ["-a", "tune=iq"]
+    return cmd + [src, dst]
+
+
+def avifenc_supports_tune_iq(a, src, work):
+    p = run(avifenc_cmd(a, src, os.path.join(work, "probe.avif"), 60, 9, True))
+    return p.returncode == 0
+
+
+def decode_png(a, path, png):
+    if path.endswith(".webp"):
+        return run([a.dwebp, path, "-o", png]).returncode == 0
+    return run([a.avifdec, path, png]).returncode == 0
+
+
+def score(a, src, path, work):
+    with tempfile.TemporaryDirectory(dir=work) as td:
+        png = os.path.join(td, "d.png")
+        if not decode_png(a, path, png):
+            return None
+        p = run([a.ssimulacra2, src, png])
+        try:
+            return float(p.stdout.strip().split()[-1])
+        except (ValueError, IndexError):
+            return None
+
+
+def encode_cpu_set(a, codec, files, qualities, outdir, tune_iq):
+    os.makedirs(outdir, exist_ok=True)
+    jobs = []
+    for src in files:
+        base = os.path.basename(src)
+        for q in qualities:
+            if codec.startswith("aom_s"):
+                dst = os.path.join(outdir, f"{base}.q{q}.avif")
+                jobs.append((src, q, dst, avifenc_cmd(a, src, dst, q, int(codec[5:]), tune_iq)))
+            else:
+                dst = os.path.join(outdir, f"{base}.q{q}.webp")
+                jobs.append((src, q, dst, [a.cwebp, "-quiet", "-q", str(q), "-m", "4", "-metadata", "icc", src, "-o", dst]))
+    with cf.ThreadPoolExecutor(a.jobs) as ex:
+        res = list(ex.map(lambda j: (j, run(j[3]).returncode), jobs))
+    return [(src, q, dst) for (src, q, dst, _), rc in res if rc == 0 and os.path.exists(dst)]
+
+
+def encode_gpu_set(a, files, qualities, outdir):
+    os.makedirs(outdir, exist_ok=True)
+    lst = os.path.join(outdir, "inputs.txt")
+    open(lst, "w").write("\n".join(files) + "\n")
+    qi = {q: qindex_for_quality(q) for q in qualities}
+    p = run([a.av1gpu, "--batch", lst, "--outdir", outdir, "--qindex", ",".join(str(v) for v in qi.values()),
+             "--name-q"])
+    if p.returncode:
+        sys.exit(f"av1gpu failed:\n{p.stderr[-3000:]}")
+    out = []
+    for src in files:
+        for q, v in qi.items():
+            dst = os.path.join(outdir, f"{os.path.basename(src)}.q{v}.avif")
+            if os.path.exists(dst):
+                out.append((src, q, dst))
+    return out
+
+
+# ------------------------------------------------------------------------------------------- speed
+def gpu_speed(a, image_dir, work):
+    runs = []
+    for i in range(a.repeats + 1):
+        out = os.path.join(work, "speed_gpu")
+        shutil.rmtree(out, ignore_errors=True)
+        p = run([a.av1gpu, "--batch", image_dir, "--outdir", out, "--stats"])
+        if p.returncode:
+            sys.exit(f"av1gpu failed:\n{p.stderr[-3000:]}")
+        st = json.loads(p.stdout.strip().splitlines()[-1])
+        if i:  # run 0 is the warm-up (driver JIT caches, file cache)
+            runs.append(st)
+    med = lambda k: statistics.median(r[k] for r in runs)
+    return dict(codec="av1gpu (default settings)", images=runs[0]["images"], mp=runs[0]["mp"], mp_s=med("mp_s"),
+                img_s=med("img_s"), cpu_cores=med("cpu_cores"), wall_s=med("wall_ms") / 1e3, bytes=runs[0]["bytes"],
+                runs=runs)
+
+
+def cpu_speed(a, files, speed, tune_iq, mp, work):
+    out = os.path.join(work, f"speed_aom_s{speed}")
+    shutil.rmtree(out, ignore_errors=True)
+    os.makedirs(out)
+    jobs = [avifenc_cmd(a, f, os.path.join(out, os.path.basename(f) + ".avif"), 60, speed, tune_iq) for f in files]
+    t0 = time.time()
+    with cf.ThreadPoolExecutor(os.cpu_count()) as ex:
+        rcs = list(ex.map(lambda c: run(c).returncode, jobs))
+    wall = time.time() - t0
+    nbytes = sum(os.path.getsize(p) for p in glob.glob(os.path.join(out, "*.avif")))
+    return dict(codec=f"libaom speed {speed}, {os.cpu_count()} parallel avifenc -j 1", images=rcs.count(0), mp=mp,
+                mp_s=mp / wall, img_s=rcs.count(0) / wall, cpu_cores=float(os.cpu_count()), wall_s=wall, bytes=nbytes)
+
+
+# ------------------------------------------------------------------------------------------- main
+def main():
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--images", default=os.path.join(HERE, "images"))
+    ap.add_argument("--out", required=True)
+    ap.add_argument("--av1gpu", default=os.path.join(ROOT, "build", "av1gpu"))
+    ap.add_argument("--avifenc", default="avifenc")
+    ap.add_argument("--avifdec", default="avifdec")
+    ap.add_argument("--cwebp", default="cwebp")
+    ap.add_argument("--dwebp", default="dwebp")
+    ap.add_argument("--ssimulacra2", default="ssimulacra2")
+    ap.add_argument("--quality", default="30,40,50,60,70,80", help="avifenc -q / av1gpu --quality points")
+    ap.add_argument("--webp-quality", default="50,60,70,80,90,95")
+    ap.add_argument("--repeats", type=int, default=3, help="timed av1gpu runs (after one warm-up)")
+    ap.add_argument("--jobs", type=int, default=os.cpu_count())
+    ap.add_argument("--skip-gpu", action="store_true")
+    ap.add_argument("--skip-speed", action="store_true")
+    ap.add_argument("--skip-quality", action="store_true")
+    ap.add_argument("--keep", action="store_true", help="keep the encoded files under OUT/files")
+    a = ap.parse_args()
+
+    files = sorted(f for f in glob.glob(os.path.join(a.images, "*")) if f.lower().endswith(EXTS))
+    if not files:
+        sys.exit(f"no JPEGs in {a.images} (run bench/fetch_images.py first)")
+    for t in ("avifenc", "avifdec", "cwebp", "dwebp", "ssimulacra2") + (() if a.skip_gpu else ("av1gpu",)):
+        if not shutil.which(getattr(a, t)):
+            sys.exit(f"{t} not found ({getattr(a, t)}); install it or pass --{t}")
+    os.makedirs(a.out, exist_ok=True)
+    work = os.path.join(a.out, "files")
+    os.makedirs(work, exist_ok=True)
+    from PIL import Image
+    mp = sum(np.prod(Image.open(f).size) for f in files) / 1e6
+    tune_iq = avifenc_supports_tune_iq(a, files[0], work)
+    res = dict(environment=environment(a), images=len(files), megapixels=mp, avifenc_tune_iq=tune_iq,
+               quality_points=a.quality, speed=[], quality={}, bd_rate={})
+    print(f"{len(files)} images, {mp:.1f} MP; avifenc tune=iq: {'yes' if tune_iq else 'no (libaom too old)'}", flush=True)
+
+    if not a.skip_speed:
+        if not a.skip_gpu:
+            res["speed"].append(gpu_speed(a, a.images, work))
+            print("speed:", res["speed"][-1]["codec"], f"{res['speed'][-1]['mp_s']:.1f} MP/s", flush=True)
+        for s in (6, 9):
+            res["speed"].append(cpu_speed(a, files, s, tune_iq, mp, work))
+            print("speed:", res["speed"][-1]["codec"], f"{res['speed'][-1]['mp_s']:.1f} MP/s", flush=True)
+
+    if not a.skip_quality:
+        qs = [int(x) for x in a.quality.split(",")]
+        wq = [int(x) for x in a.webp_quality.split(",")]
+        enc = {}
+        if not a.skip_gpu:
+            enc["av1gpu"] = encode_gpu_set(a, files, qs, os.path.join(work, "av1gpu"))
+        for codec in ("aom_s6", "aom_s9"):
+            enc[codec] = encode_cpu_set(a, codec, files, qs, os.path.join(work, codec), tune_iq)
+        enc["webp"] = encode_cpu_set(a, "webp", files, wq, os.path.join(work, "webp"), False)
+        for codec, outs in enc.items():
+            print(f"scoring {codec}: {len(outs)} files", flush=True)
+            with cf.ThreadPoolExecutor(a.jobs) as ex:
+                scores = list(ex.map(lambda t: score(a, t[0], t[2], work), outs))
+            res["quality"][codec] = [dict(image=os.path.basename(src), q=q, bytes=os.path.getsize(dst), ssimulacra2=s)
+                                     for (src, q, dst), s in zip(outs, scores)]
+        per = {}
+        for codec, rows in res["quality"].items():
+            for r in rows:
+                per.setdefault(codec, {}).setdefault(r["image"], []).append((r["bytes"], r["ssimulacra2"]))
+        for anchor in ("aom_s6", "webp"):
+            for codec in per:
+                if codec == anchor:
+                    continue
+                vals = [bd_rate(per[codec][im], per[anchor][im]) for im in per[codec] if im in per[anchor]]
+                vals = [v for v in vals if v is not None]
+                if vals:
+                    res["bd_rate"][f"{codec}_vs_{anchor}"] = dict(n=len(vals), median=statistics.median(vals),
+                                                                   mean=statistics.fmean(vals))
+
+    json.dump(res, open(os.path.join(a.out, "results.json"), "w"), indent=1)
+    write_summary(res, os.path.join(a.out, "summary.md"))
+    if not a.keep:
+        shutil.rmtree(work, ignore_errors=True)
+    print(open(os.path.join(a.out, "summary.md")).read())
+
+
+def write_summary(res, path):
+    e = res["environment"]
+    L = [f"# av1gpu benchmark", "",
+         f"- GPU: {e['gpu']}", f"- CPU: {e['cpu']} ({e['cpus']} logical CPUs)",
+         f"- {e['avifenc']}; tune=iq: {'yes' if res['avifenc_tune_iq'] else 'no'}", f"- cwebp {e['cwebp']}",
+         f"- {res['images']} images, {res['megapixels']:.1f} MP", ""]
+    if res["speed"]:
+        L += ["## Throughput (quality 60)", "", "| Encoder | MP/s | images/s | CPU cores used | output MB |",
+              "|---|---:|---:|---:|---:|"]
+        for s in res["speed"]:
+            L.append(f"| {s['codec']} | {s['mp_s']:.1f} | {s['img_s']:.1f} | {s['cpu_cores']:.1f} | {s['bytes'] / 1e6:.2f} |")
+        L.append("")
+    if res["bd_rate"]:
+        L += ["## Compression (BD-rate on SSIMULACRA2, per image; negative = smaller files at equal quality)", "",
+              "| Codec | vs | images | median | mean |", "|---|---|---:|---:|---:|"]
+        for k, v in res["bd_rate"].items():
+            c, anchor = k.split("_vs_")
+            L.append(f"| {c} | {anchor} | {v['n']} | {100 * v['median']:+.1f}% | {100 * v['mean']:+.1f}% |")
+        L.append("")
+    open(path, "w").write("\n".join(L))
+
+
+if __name__ == "__main__":
+    main()

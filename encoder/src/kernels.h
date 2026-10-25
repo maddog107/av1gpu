@@ -1,0 +1,39 @@
+// host-callable kernel launchers (implemented in kernels.cu).
+#ifndef GP_KERNELS_H
+#define GP_KERNELS_H
+
+#include <cuda_runtime.h>
+#include <stdint.h>
+#include "gp.h"
+
+// Fill the device tables (forward transform matrices, distortion scales, symbol costs).  Call once
+// per process after the CUDA device is selected.
+int gp_init_tables(char *err, int errlen);
+
+// Pack offsets per SB (computed on the host in decode order).
+struct GpPackOff {
+    uint32_t gBlk;      // global block index of the SB's first block
+    uint32_t gTxb;      // global txb index of the SB's first txb
+    uint64_t gCoef;     // global coefficient index
+    uint32_t rTxb;      // image-relative txb index (block_txb values)
+    uint32_t rCoef;     // image-relative coefficient offset (txb.coeff_off)
+    uint32_t img, tile; // image index, global tile index (entropy auxiliaries)
+};
+// optional auxiliary outputs of k_pack for the device entropy path (entropy_dev.h)
+struct GpPackAux {
+    uint32_t *blockFrame, *blockTile, *blockTxbG, *txbBlock;
+    uint64_t *txbCoeff;
+};
+
+void gp_launch_analysis(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st);
+void gp_launch_ssim_map(const uint8_t *y, int pitch, int MiCols, int MiRows, float *out, double *sum, cudaStream_t st);
+void gp_launch_var16(const uint8_t *y, int pitch, int MiCols, int MiRows, float *out, cudaStream_t st);
+void gp_launch_dp(const GpBatch &B, const GpParams &P, cudaStream_t st);
+void gp_launch_recon(const GpBatch &B, const GpParams &P, const uint32_t *dSbList, uint32_t n, cudaStream_t st);
+void gp_launch_pack(const GpBatch &B, const GpPackOff *dOff, av1g_block *oB, uint32_t *oBT, av1g_txb *oT, int16_t *oC,
+                    const GpPackAux &aux, cudaStream_t st);
+// cdef_idx of every block from the per-SB map (av1f search); frames with cdefOn[f] == 0 keep 0
+void gp_launch_set_cdef(av1g_block *blocks, uint32_t nB, const uint32_t *blockFrame, const uint32_t *frameSbBase,
+                        const int *frameSbCols, const int *cdefOn, const int8_t *sbCdef, cudaStream_t st);
+
+#endif

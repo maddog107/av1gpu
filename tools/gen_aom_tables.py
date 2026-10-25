@@ -1,0 +1,142 @@
+#!/usr/bin/env python3
+"""Extract the libaom 3.13.1 quantizer tables av1f needs and emit them as
+(1) av1f/include/av1f/aom_tables_gen.h - host + device copies (av1core's AV1G_TABLE macro)
+(2) aom_tables.npz ($AOM_TABLES_NPZ) - the same arrays, for Python cross-checks.
+
+Tables (all 8-bit):
+  Aom_Dc_Qlookup[256], Aom_Ac_Qlookup[256]   dc/ac_qlookup_QTX (== spec Dc_Qlookup[0] / Ac_Qlookup[0])
+  Aom_Qm_Iwt[15][2][3344]                    iwt_matrix_ref: DECODER weights (== spec Quantizer_Matrix)
+  Aom_Qm_Wt[15][2][3344]                     wt_matrix_ref : ENCODER weights libaom quantizes with
+                                             (~1024/iwt; not part of the bitstream contract)
+Layout of the QM arrays = libaom av1_qm_init(): one matrix per "adjusted" tx size in TX_SIZE
+order (64-point sizes reuse their 32-point matrix) = spec Qm_Offset[txSz].
+
+The generator cross-checks Aom_Qm_Iwt against av1core's spec-generated Quantizer_Matrix and the
+q lookups against the spec tables, so libaom == spec is verified, not assumed.
+"""
+import os
+import re
+import sys
+
+import numpy as np
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+# libaom v3.13.1 source tree: git clone -b v3.13.1 https://aomedia.googlesource.com/aom
+AOM = os.environ.get("AOM_SRC_DIR", "aom")
+OUT_H = os.path.join(HERE, "..", "av1f", "include", "av1f", "aom_tables_gen.h")
+OUT_NPZ = os.environ.get("AOM_TABLES_NPZ", "aom_tables.npz")
+SPEC_H = os.path.join(HERE, "..", "av1core", "include", "av1g", "spec_tables.h")
+
+
+def strip_comments(s):
+    s = re.sub(r"/\*.*?\*/", " ", s, flags=re.S)
+    return re.sub(r"//[^\n]*", " ", s)
+
+
+def c_array(src, decl):
+    """integers of the initializer of the first array whose declaration matches `decl`"""
+    i = src.index(decl)
+    j = src.index("=", i)
+    k = src.index("{", j)
+    depth, e = 0, k
+    while True:
+        if src[e] == "{":
+            depth += 1
+        elif src[e] == "}":
+            depth -= 1
+            if depth == 0:
+                break
+        e += 1
+    return [int(x) for x in re.findall(r"-?\d+", strip_comments(src[k:e + 1]))]
+
+
+def spec_table(name):
+    s = open(SPEC_H).read()
+    m = re.search(r"AV1G_TABLE\([^,]+, %s, [^,]+, \{" % name, s)
+    if not m:
+        return None
+    e = s.index("})", m.end())
+    return [int(x) for x in s[m.end():e].split(",")]
+
+
+QM_OFFSET = [0, 16, 80, 336, 336, 1360, 1392, 1424, 1552, 1680, 2192, 336, 336, 2704, 2768, 2832, 3088, 1680, 2192]
+TX_W = [4, 8, 16, 32, 64, 4, 8, 8, 16, 16, 32, 32, 64, 4, 16, 8, 32, 16, 64]
+TX_H = [4, 8, 16, 32, 64, 8, 4, 16, 8, 32, 16, 64, 32, 16, 4, 32, 8, 64, 16]
+
+
+def to_spec_layout(a):
+    out = a.copy()
+    for t in range(19):
+        w, h, o = min(TX_W[t], 32), min(TX_H[t], 32), QM_OFFSET[t]
+        if w != h:
+            out[:, :, o:o + w * h] = a[:, :, o:o + w * h].reshape(15, 2, w, h).transpose(0, 1, 3, 2).reshape(15, 2, w * h)
+    return out
+
+
+def emit(f, ctype, name, dims, vals):
+    f.write("AV1G_TABLE(%s, %s, %s, {%s})\n" % (ctype, name, dims, ", ".join(map(str, vals))))
+
+
+def main():
+    qc = open(os.path.join(AOM, "av1/common/quant_common.c")).read()
+    dc = c_array(qc, "dc_qlookup_QTX[QINDEX_RANGE]")
+    ac = c_array(qc, "ac_qlookup_QTX[QINDEX_RANGE]")
+    # the definitions (with initializers) come after the forward declarations
+    iwt = c_array(qc, "iwt_matrix_ref[NUM_QM_LEVELS - 1][2][QM_TOTAL_SIZE] = {")
+    wt = c_array(qc, " wt_matrix_ref[NUM_QM_LEVELS - 1][2][QM_TOTAL_SIZE] = {")
+    assert len(dc) == 256 and len(ac) == 256, (len(dc), len(ac))
+    assert len(iwt) == 15 * 2 * 3344 and len(wt) == 15 * 2 * 3344, (len(iwt), len(wt))
+    # libaom stores rectangular matrices column-major (its coefficient buffers are transposed:
+    # index c * h + r); convert to the spec's row-major r * tw + c so both tables index like
+    # av1core's coefficient arrays (Quant[] natural order).
+    iwt_a = to_spec_layout(np.array(iwt, np.uint16).reshape(15, 2, 3344))
+    wt_a = to_spec_layout(np.array(wt, np.uint16).reshape(15, 2, 3344))
+    assert iwt_a.max() <= 255 and wt_a.max() <= 255
+
+    checks = ["rectangular matrices transposed from libaom's column-major layout"]
+    qm = spec_table("Quantizer_Matrix")
+    if qm is not None:
+        same = np.array_equal(np.array(qm, np.uint16).reshape(15, 2, 3344), iwt_a)
+        checks.append("iwt_matrix_ref == spec Quantizer_Matrix: %s" % same)
+        assert same
+    for nm, arr in (("Dc_Qlookup", dc), ("Ac_Qlookup", ac)):
+        t = spec_table(nm)
+        if t is not None:
+            same = t[:256] == arr
+            checks.append("%s_QTX == spec %s[0]: %s" % (nm.lower(), nm, same))
+            assert same
+    # wt is (close to) the reciprocal of iwt: wt * iwt ~= 1024
+    prod = wt_a.astype(np.int32) * iwt_a
+    checks.append("wt*iwt in [%d, %d] (1024 = exact reciprocal)" % (prod.min(), prod.max()))
+
+    os.makedirs(os.path.dirname(OUT_H), exist_ok=True)
+    with open(OUT_H, "w") as f:
+        f.write("// GENERATED by tools/gen_aom_tables.py from libaom v3.13.1 av1/common/quant_common.c. DO NOT EDIT.\n")
+        f.write("// " + "; ".join(checks) + "\n")
+        f.write("#ifndef AV1F_AOM_TABLES_GEN_H\n#define AV1F_AOM_TABLES_GEN_H\n#include <stdint.h>\n#include \"av1g/hd.h\"\n\n")
+        emit(f, "int16_t", "Aom_Dc_Qlookup", "[256]", dc)
+        emit(f, "int16_t", "Aom_Ac_Qlookup", "[256]", ac)
+        f.write("/* decoder weights (spec Quantizer_Matrix), index [level][plane > 0][Qm_Offset[txSz] + row * tw + col] */\n")
+        emit(f, "uint8_t", "Aom_Qm_Iwt", "[15][2][3344]", iwt_a.ravel().tolist())
+        f.write("/* libaom encoder weights (wt_matrix_ref), same indexing */\n")
+        emit(f, "uint8_t", "Aom_Qm_Wt", "[15][2][3344]", wt_a.ravel().tolist())
+        # inverse scans (natural position -> scan index) for every spec scan table: engines that
+        # quantize one thread per coefficient get eob = 1 + max(iscan[pos]) over nonzero levels
+        spec = open(SPEC_H).read()
+        names = sorted(set(re.findall(r"AV1G_TABLE\(uint16_t, ((?:Default|Mrow|Mcol)_Scan_\d+x\d+), ", spec)))
+        for nm in names:
+            sc = spec_table(nm)
+            inv = [0] * len(sc)
+            for i, pos in enumerate(sc):
+                inv[pos] = i
+            assert sorted(sc) == list(range(len(sc)))
+            emit(f, "uint16_t", "I" + nm, "[%d]" % len(sc), inv)
+        checks.append("%d inverse scans" % len(names))
+        f.write("\n#endif\n")
+    np.savez_compressed(OUT_NPZ, dc=np.array(dc, np.int32), ac=np.array(ac, np.int32), iwt=iwt_a, wt=wt_a)
+    print("\n".join(checks))
+    print("wrote", OUT_H, "and", OUT_NPZ)
+
+
+if __name__ == "__main__":
+    sys.exit(main())
