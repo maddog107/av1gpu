@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="334" viewBox="0 0 760 334" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" role="img" aria-label="Encoding speed on an NVIDIA L4, megapixels per second">
+<title>Encoding speed on an NVIDIA L4, megapixels per second</title>
+<rect x="0.5" y="0.5" width="759" height="333" rx="12" fill="#fcfcfb" stroke="rgba(11,11,11,0.10)"/>
+<text x="24.0" y="34.0" font-size="17" fill="#0b0b0b" text-anchor="start" font-weight="600">Encoding speed, megapixels per second</text>
+<text x="24.0" y="56.0" font-size="13" fill="#52514e" text-anchor="start" font-weight="400">100 photos of 0.18–24 MP on an AWS g6.4xlarge. libaom runs one avifenc per vCPU (16 at once);</text>
+<text x="24.0" y="74.0" font-size="13" fill="#52514e" text-anchor="start" font-weight="400">av1gpu uses one NVIDIA L4 and about 0.1 CPU core.</text>
+<line x1="250.0" y1="98.0" x2="250.0" y2="306.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="250.0" y="324.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">0</text>
+<line x1="357.5" y1="98.0" x2="357.5" y2="306.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="357.5" y="324.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">50</text>
+<line x1="465.0" y1="98.0" x2="465.0" y2="306.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="465.0" y="324.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">100</text>
+<line x1="572.5" y1="98.0" x2="572.5" y2="306.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="572.5" y="324.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">150</text>
+<line x1="680.0" y1="98.0" x2="680.0" y2="306.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="680.0" y="324.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">200</text>
+<text x="24.0" y="117.0" font-size="14" fill="#0b0b0b" text-anchor="start" font-weight="400">libaom speed 9</text>
+<text x="24.0" y="135.0" font-size="12" fill="#898781" text-anchor="start" font-weight="400">files +15.0 % vs speed 6</text>
+<path d="M250.0,108.0 H649.3 Q653.3,108.0 653.3,112.0 V128.0 Q653.3,132.0 649.3,132.0 H250.0 Z" fill="#1baf7a"/>
+<text x="661.3" y="125.0" font-size="14" fill="#0b0b0b" text-anchor="start" font-weight="600">188</text>
+<text x="24.0" y="171.0" font-size="14" fill="#0b0b0b" text-anchor="start" font-weight="600">av1gpu, small-image preset off</text>
+<text x="24.0" y="189.0" font-size="12" fill="#898781" text-anchor="start" font-weight="400">files +2.1 % vs speed 6</text>
+<path d="M250.0,162.0 H518.6 Q522.6,162.0 522.6,166.0 V182.0 Q522.6,186.0 518.6,186.0 H250.0 Z" fill="#2a78d6"/>
+<text x="530.6" y="179.0" font-size="14" fill="#0b0b0b" text-anchor="start" font-weight="600">127</text>
+<text x="24.0" y="225.0" font-size="14" fill="#0b0b0b" text-anchor="start" font-weight="600">av1gpu default (4 encoders)</text>
+<text x="24.0" y="243.0" font-size="12" fill="#898781" text-anchor="start" font-weight="400">files −0.1 % vs speed 6</text>
+<path d="M250.0,216.0 H495.4 Q499.4,216.0 499.4,220.0 V236.0 Q499.4,240.0 495.4,240.0 H250.0 Z" fill="#2a78d6"/>
+<text x="507.4" y="233.0" font-size="14" fill="#0b0b0b" text-anchor="start" font-weight="600">116</text>
+<text x="24.0" y="279.0" font-size="14" fill="#0b0b0b" text-anchor="start" font-weight="400">libaom speed 6</text>
+<text x="24.0" y="297.0" font-size="12" fill="#898781" text-anchor="start" font-weight="400">the reference for file size</text>
+<path d="M250.0,270.0 H307.8 Q311.8,270.0 311.8,274.0 V290.0 Q311.8,294.0 307.8,294.0 H250.0 Z" fill="#eb6834"/>
+<text x="319.8" y="287.0" font-size="14" fill="#0b0b0b" text-anchor="start" font-weight="600">29</text>
+<line x1="250.0" y1="98.0" x2="250.0" y2="306.0" stroke="#c3c2b7" stroke-width="1"/>
+</svg>

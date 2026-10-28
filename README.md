@@ -1,30 +1,92 @@
-# av1gpu
+<h1 align="center">av1gpu</h1>
+
+<p align="center">
+  <b>AVIF encoding on the GPU.</b> libaom-speed-6 file sizes, four times faster than libaom speed 6 on a 16-thread CPU,<br>
+  while using a tenth of one CPU core.
+</p>
+
+<p align="center">
+  <a href="LICENSE"><img alt="License: BSD 2-Clause" src="https://img.shields.io/badge/license-BSD--2--Clause-blue"></a>
+  <img alt="CUDA 12+" src="https://img.shields.io/badge/CUDA-12%2B-76b900">
+  <img alt="Output: AV1 / AVIF" src="https://img.shields.io/badge/output-AV1%20%2F%20AVIF-informational">
+  <a href="docs/RESULTS.md"><img alt="Tested GPUs: RTX PRO 2000, L4" src="https://img.shields.io/badge/tested%20on-RTX%20PRO%202000%20%C2%B7%20L4-lightgrey"></a>
+</p>
 
 A CUDA encoder for AV1 still images that writes AVIF. Mode search, partitioning, reconstruction,
 loop-filter decisions and entropy coding all run on the GPU's general-purpose CUDA cores. It does not
 use NVENC. JPEG input is decoded on the GPU too, so a whole batch of images stays in GPU memory from
-the JPEG bitstream to the finished AVIF bytes.
+the JPEG bitstream to the finished AVIF bytes. It was built to convert a large photo archive.
 
-It was built to convert a large photo archive. Measured on an NVIDIA RTX PRO 2000 Blackwell
-(a 70 W workstation card) with the default settings:
+| | |
+|---|---|
+| **116 MP/s** | on one NVIDIA L4, a 72 W data-centre card (with `GP_ENCODERS=4`); 111 MP/s on an RTX PRO 2000 |
+| **−0.1 %** | file size against libaom speed 6 at equal quality (median BD-rate, SSIMULACRA2) |
+| **−31 %** | file size against WebP at equal quality |
+| **0.1 cores** | of CPU while encoding, so the CPU stays free for other work |
+| **bit-exact** | every test encode decodes to the encoder's own reconstruction in dav1d and libaom |
 
-| | av1gpu (default) | libaom speed 6 | libaom speed 9 | WebP q82 |
+```bash
+build/av1gpu --batch photos/ --outdir avif/        # every JPEG in photos/ -> avif/<name>.jpg.avif
+```
+
+## Results
+
+Measured on an AWS g6.4xlarge (NVIDIA L4, AMD EPYC 7R13 with 16 vCPUs) with 100 public
+[Open Images](https://storage.googleapis.com/openimages/web/index.html) photos from 0.18 to 24 MP, against
+avifenc 1.4 / libaom 3.13.1 with `tune=iq`, one avifenc per vCPU. Full numbers, method and logs:
+[docs/RESULTS.md](docs/RESULTS.md#nvidia-l4-aws-g64xlarge); reproduce them with [Benchmarks](#benchmarks).
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/charts/speed-dark.svg">
+  <img alt="Bar chart of encoding speed in megapixels per second: libaom speed 9 188, av1gpu with the small-image preset off 127, av1gpu default 116, libaom speed 6 29." src="docs/charts/speed-light.svg" width="760">
+</picture>
+
+**At the same file size, av1gpu is 4× faster than the whole CPU.** libaom speed 9 is faster still
+(1.6× av1gpu), but its files are 15 % bigger. libaom speed 10 is no faster than 9 for still images.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/charts/quality-dark.svg">
+  <img alt="Line chart of mean SSIMULACRA2 against bits per pixel. The av1gpu and libaom speed 6 curves coincide; libaom speed 9 is below them and WebP well below." src="docs/charts/quality-light.svg" width="760">
+</picture>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/charts/by-size-dark.svg">
+  <img alt="Column chart of median BD-rate against libaom speed 6 by image size. av1gpu: +0.1, +1.1, −0.6 and −2.4 percent for under 1 MP, 1–5, 5–10 and 10 MP and over. libaom speed 9: +20.1, +18.5, +12.8 and +13.4 percent." src="docs/charts/by-size-light.svg" width="760">
+</picture>
+
+| Encoder | MP/s | Files vs libaom s6 | Files vs WebP | CPU cores |
 |---|---:|---:|---:|---:|
-| Throughput | **110.8 MP/s** (one GPU) | 1.27 MP/s per CPU thread | 8.45 MP/s per CPU thread | — |
-| File size at equal SSIMULACRA2, vs libaom s6 (median of 295 images) | **−0.6 %** | 0 | +14.0 % | — |
-| File size vs WebP q82 at the same quality | **−30.7 %** | | | 0 |
+| **av1gpu** default, `GP_ENCODERS=4` | **116** | **−0.1 %** | **−31.2 %** | 0.1 |
+| av1gpu `--small-preset none` | 127 | +2.1 % | | 0.1 |
+| libaom speed 6, 16 × avifenc | 29 | 0 | −31.1 % | 16 |
+| libaom speed 9, 16 × avifenc | 188 | +15.0 % | −19.3 % | 16 |
+| WebP (cwebp `-m 4`) | | +45.1 % | 0 | |
 
-That is libaom-speed-6 compression at the throughput of about 87 single-threaded libaom speed-6
-encoders on the same machine (dual Xeon Silver 4110), while the encoder itself uses less than one CPU
-core. The baselines are avifenc 1.4 / libaom 3.13.1 with `tune=iq` and 4:2:0. The test set was 300
-held-out JPEG uploads, from thumbnails to 35 MP. Details and caveats are in
-[docs/RESULTS.md](docs/RESULTS.md). To measure it yourself on public images, see
-[Benchmarks](#benchmarks).
+The same picture held on the RTX PRO 2000 it was developed on (a 70 W workstation card), with 300
+held-out uploads from thumbnails to 35 MP: 110.8 MP/s, −0.6 % against libaom speed 6, +14.0 % for speed 9
+and −30.7 % against WebP ([details](docs/RESULTS.md#rtx-pro-2000-blackwell-development)).
+
+### What the files look like
+
+The default quality (`--quality 60`, the avifenc scale) turned the 100 test JPEGs, 160.4 MB, into
+22.5 MB of AVIF, at a mean SSIMULACRA2 of 72 ("high quality"; 90 is visually lossless). `--quality 70`
+gave 33.4 MB at 78. Five of the photos, one from each size class:
+
+| Photo (CC BY 2.0) | Pixels | JPEG | AVIF, quality 60 | Smaller by | SSIMULACRA2 |
+|---|---:|---:|---:|---:|---:|
+| [DSC08815](https://www.flickr.com/photos/stupiddingo/4016599113) by Brent | 640 × 427 | 90.3 KB | 27.2 KB | 70 % | 67.9 |
+| [Fresh Red Peppers at La Boqueria](https://www.flickr.com/photos/oh-barcelona/4811363097) by Oh-Barcelona.com | 1024 × 768 | 177.1 KB | 59.9 KB | 66 % | 77.3 |
+| [Cock](https://www.flickr.com/photos/kallegustafsson/5866854319) by Kalle Gustafsson | 1920 × 1280 | 2.06 MB | 176.9 KB | 91 % | 73.7 |
+| [St.Armands Circle](https://www.flickr.com/photos/philliecasablanca/2037727892) by Phil Whitehouse | 2304 × 3072 | 1.88 MB | 212.3 KB | 89 % | 71.1 |
+| [DSC_2946](https://www.flickr.com/photos/hockeyholic/7881222604) by Andy Blackledge | 2848 × 4288 | 6.08 MB | 578.2 KB | 90 % | 69.0 |
+
+Camera originals shrink the most, because they are stored at high JPEG quality. SSIMULACRA2 here compares
+the AVIF with the decoded JPEG, not with the scene.
 
 **Every output is a standard AV1 bitstream, and the tests check that by decoding.** The encoder's
 own reconstruction must match what dav1d and libaom's decoder produce, byte for byte. That held for
-all 1,475 held-out encodes (295 images × 5 quality points), and the test suite keeps checking it (see
-[Correctness](#correctness)).
+all 1,475 held-out encodes on the development GPU and all 1,000 encodes of the L4 run, and the test
+suite keeps checking it (see [Correctness](#correctness)).
 
 ## Status
 

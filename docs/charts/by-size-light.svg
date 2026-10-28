@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="380" viewBox="0 0 760 380" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" role="img" aria-label="File size against libaom speed 6 by image size">
+<title>File size against libaom speed 6 by image size</title>
+<rect x="0.5" y="0.5" width="759" height="379" rx="12" fill="#fcfcfb" stroke="rgba(11,11,11,0.10)"/>
+<text x="24.0" y="34.0" font-size="17" fill="#0b0b0b" text-anchor="start" font-weight="600">File size against libaom speed 6, by image size</text>
+<text x="24.0" y="56.0" font-size="13" fill="#52514e" text-anchor="start" font-weight="400">Median BD-rate on SSIMULACRA2: how much bigger (+) or smaller (−) the files are at equal quality.</text>
+<text x="24.0" y="74.0" font-size="13" fill="#52514e" text-anchor="start" font-weight="400">av1gpu matches speed 6 and does better as images get larger.</text>
+<rect x="24" y="101" width="10" height="10" rx="2" fill="#2a78d6"/>
+<text x="40.0" y="110.0" font-size="13" fill="#52514e" text-anchor="start" font-weight="400">av1gpu default</text>
+<rect x="165.60000000000002" y="101" width="10" height="10" rx="2" fill="#1baf7a"/>
+<text x="181.6" y="110.0" font-size="13" fill="#52514e" text-anchor="start" font-weight="400">libaom speed 9</text>
+<line x1="64.0" y1="330.0" x2="730.0" y2="330.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="56.0" y="334.0" font-size="12" fill="#898781" text-anchor="end" font-weight="400">-5 %</text>
+<line x1="64.0" y1="297.7" x2="730.0" y2="297.7" stroke="#c3c2b7" stroke-width="1"/>
+<text x="56.0" y="301.7" font-size="12" fill="#898781" text-anchor="end" font-weight="400">0</text>
+<line x1="64.0" y1="265.3" x2="730.0" y2="265.3" stroke="#e1e0d9" stroke-width="1"/>
+<text x="56.0" y="269.3" font-size="12" fill="#898781" text-anchor="end" font-weight="400">+5 %</text>
+<line x1="64.0" y1="233.0" x2="730.0" y2="233.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="56.0" y="237.0" font-size="12" fill="#898781" text-anchor="end" font-weight="400">+10 %</text>
+<line x1="64.0" y1="200.7" x2="730.0" y2="200.7" stroke="#e1e0d9" stroke-width="1"/>
+<text x="56.0" y="204.7" font-size="12" fill="#898781" text-anchor="end" font-weight="400">+15 %</text>
+<line x1="64.0" y1="168.3" x2="730.0" y2="168.3" stroke="#e1e0d9" stroke-width="1"/>
+<text x="56.0" y="172.3" font-size="12" fill="#898781" text-anchor="end" font-weight="400">+20 %</text>
+<line x1="64.0" y1="136.0" x2="730.0" y2="136.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="56.0" y="140.0" font-size="12" fill="#898781" text-anchor="end" font-weight="400">+25 %</text>
+<text x="147.2" y="350.0" font-size="13" fill="#52514e" text-anchor="middle" font-weight="400">&lt; 1 MP</text>
+<text x="147.2" y="367.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">40 images</text>
+<path d="M121.2,297.7 V297.3 Q121.2,297.0 121.6,297.0 H144.9 Q145.2,297.0 145.2,297.3 V297.7 Z" fill="#2a78d6"/>
+<text x="133.2" y="291.0" font-size="12" fill="#0b0b0b" text-anchor="middle" font-weight="400">+0.1</text>
+<path d="M149.2,297.7 V171.9 Q149.2,167.9 153.2,167.9 H169.2 Q173.2,167.9 173.2,171.9 V297.7 Z" fill="#1baf7a"/>
+<text x="161.2" y="161.9" font-size="12" fill="#0b0b0b" text-anchor="middle" font-weight="400">+20.1</text>
+<text x="313.8" y="350.0" font-size="13" fill="#52514e" text-anchor="middle" font-weight="400">1–5 MP</text>
+<text x="313.8" y="367.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">20 images</text>
+<path d="M287.8,297.7 V294.0 Q287.8,290.3 291.4,290.3 H308.1 Q311.8,290.3 311.8,294.0 V297.7 Z" fill="#2a78d6"/>
+<text x="299.8" y="284.3" font-size="12" fill="#0b0b0b" text-anchor="middle" font-weight="400">+1.1</text>
+<path d="M315.8,297.7 V182.1 Q315.8,178.1 319.8,178.1 H335.8 Q339.8,178.1 339.8,182.1 V297.7 Z" fill="#1baf7a"/>
+<text x="327.8" y="172.1" font-size="12" fill="#0b0b0b" text-anchor="middle" font-weight="400">+18.5</text>
+<text x="480.2" y="350.0" font-size="13" fill="#52514e" text-anchor="middle" font-weight="400">5–10 MP</text>
+<text x="480.2" y="367.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">23 images</text>
+<path d="M454.2,297.7 V299.5 Q454.2,301.2 456.0,301.2 H476.5 Q478.2,301.2 478.2,299.5 V297.7 Z" fill="#2a78d6"/>
+<text x="466.2" y="317.2" font-size="12" fill="#0b0b0b" text-anchor="middle" font-weight="400">−0.6</text>
+<path d="M482.2,297.7 V218.8 Q482.2,214.8 486.2,214.8 H502.2 Q506.2,214.8 506.2,218.8 V297.7 Z" fill="#1baf7a"/>
+<text x="494.2" y="208.8" font-size="12" fill="#0b0b0b" text-anchor="middle" font-weight="400">+12.8</text>
+<text x="646.8" y="350.0" font-size="13" fill="#52514e" text-anchor="middle" font-weight="400">≥ 10 MP</text>
+<text x="646.8" y="367.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">17 images</text>
+<path d="M620.8,297.7 V309.2 Q620.8,313.2 624.8,313.2 H640.8 Q644.8,313.2 644.8,309.2 V297.7 Z" fill="#2a78d6"/>
+<text x="632.8" y="329.2" font-size="12" fill="#0b0b0b" text-anchor="middle" font-weight="400">−2.4</text>
+<path d="M648.8,297.7 V214.8 Q648.8,210.8 652.8,210.8 H668.8 Q672.8,210.8 672.8,214.8 V297.7 Z" fill="#1baf7a"/>
+<text x="660.8" y="204.8" font-size="12" fill="#0b0b0b" text-anchor="middle" font-weight="400">+13.4</text>
+</svg>
