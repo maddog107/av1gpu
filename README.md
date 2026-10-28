@@ -26,10 +26,17 @@
 A CUDA encoder for AV1 still images that writes AVIF. Mode search, partitioning, reconstruction,
 loop-filter decisions and entropy coding all run on the GPU's general-purpose CUDA cores. It does not
 use NVENC. JPEG input is decoded on the GPU too, so a whole batch of images stays in GPU memory from
-the JPEG bitstream to the finished AVIF bytes. It was built to convert a large photo archive.
+the JPEG bitstream to the finished AVIF bytes.
+
+It was built for [Bellazon](https://www.bellazon.com), a forum with more than **15 million photos**:
+32 million files with their thumbnails, 50 trillion pixels and 8.9 TB of originals. On one 70 W card
+the whole archive is about 7 days of GPU time, while the server's CPUs carry on serving the site. At
+the quality the forum chose, the AVIF files are 40 % smaller than the WebP it serves today, 1.5 TB less
+to store and send (at equal quality, av1gpu's files are 31 % smaller than WebP's).
 
 | | |
 |---|---|
+| **15 M+ photos** | Bellazon's archive (32 M files, 50 trillion pixels) in about 7 GPU-days on one card |
 | **116 MP/s** | on one NVIDIA L4, a 72 W data-centre card (with `GP_ENCODERS=4`); 111 MP/s on an RTX PRO 2000 |
 | **−0.1 %** | file size against libaom speed 6 at equal quality (median BD-rate, SSIMULACRA2) |
 | **−31 %** | file size against WebP at equal quality |
@@ -139,7 +146,7 @@ suite keeps checking it (see [Correctness](#-correctness)).
 
 ## 🚦 Status
 
-av1gpu is a working encoder that runs in production on one site. It is also a young, single-developer
+av1gpu is a working encoder that runs in production on Bellazon. It is also a young, single-developer
 project. Before you rely on it, note:
 
 - **It has been tested on two GPU models:** the RTX PRO 2000 Blackwell it was developed on (compute
