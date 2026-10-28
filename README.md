@@ -6,11 +6,22 @@
 </p>
 
 <p align="center">
-  <a href="LICENSE"><img alt="License: BSD 2-Clause" src="https://img.shields.io/badge/license-BSD--2--Clause-blue"></a>
-  <img alt="CUDA 12+" src="https://img.shields.io/badge/CUDA-12%2B-76b900">
-  <img alt="Output: AV1 / AVIF" src="https://img.shields.io/badge/output-AV1%20%2F%20AVIF-informational">
-  <a href="docs/RESULTS.md"><img alt="Tested GPUs: RTX PRO 2000, L4" src="https://img.shields.io/badge/tested%20on-RTX%20PRO%202000%20%C2%B7%20L4-lightgrey"></a>
+  <a href="https://github.com/maddog107/av1gpu/releases"><img alt="Latest release" src="https://img.shields.io/github/v/release/maddog107/av1gpu?include_prereleases&style=flat-square&color=2a78d6"></a>
+  <a href="https://github.com/maddog107/av1gpu/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/maddog107/av1gpu/ci.yml?style=flat-square&label=CI"></a>
+  <a href="LICENSE"><img alt="License: BSD 2-Clause" src="https://img.shields.io/badge/license-BSD--2--Clause-1baf7a?style=flat-square"></a>
+  <img alt="CUDA 12+" src="https://img.shields.io/badge/CUDA-12%2B-76b900?style=flat-square&logo=nvidia&logoColor=white">
+  <img alt="Output: AV1 / AVIF" src="https://img.shields.io/badge/output-AV1%20%2F%20AVIF-eb6834?style=flat-square">
+  <a href="docs/RESULTS.md"><img alt="Tested GPUs: RTX PRO 2000, L4" src="https://img.shields.io/badge/tested%20on-RTX%20PRO%202000%20%C2%B7%20L4-6250d6?style=flat-square"></a>
+  <a href="https://github.com/maddog107/av1gpu/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/maddog107/av1gpu?style=flat-square&color=eda100"></a>
 </p>
+
+<p align="center">
+  <img alt="A rooster photo split down the middle: the left half is the 2,060 KB original JPEG, the right half av1gpu's 177 KB AVIF. The seam is invisible." src="docs/img/hero-rooster.jpg" width="900"><br>
+  <sub>Left: the original JPEG, 2,060 KB. Right: av1gpu's AVIF at the default quality, 177 KB.
+  Photo: <a href="https://www.flickr.com/photos/kallegustafsson/5866854319">Cock</a> by Kalle Gustafsson, CC BY 2.0.</sub>
+</p>
+
+## ⚡ Overview
 
 A CUDA encoder for AV1 still images that writes AVIF. Mode search, partitioning, reconstruction,
 loop-filter decisions and entropy coding all run on the GPU's general-purpose CUDA cores. It does not
@@ -25,16 +36,22 @@ the JPEG bitstream to the finished AVIF bytes. It was built to convert a large p
 | **0.1 cores** | of CPU while encoding, so the CPU stays free for other work |
 | **bit-exact** | every test encode decodes to the encoder's own reconstruction in dav1d and libaom |
 
-```bash
-build/av1gpu --batch photos/ --outdir avif/        # every JPEG in photos/ -> avif/<name>.jpg.avif
-```
+## 🎬 See it run
 
-## Results
+99 camera photos (478 MP, 154 MB of JPEG) converted on the RTX PRO 2000, recorded in real time:
+
+<p align="center">
+  <img alt="Terminal recording: av1gpu --batch converts 99 photos (477.7 MP) in 7.6 seconds of wall time at 83.5 MP/s using 0.35 CPU cores; 154 MB of JPEG becomes 22 MB of AVIF." src="docs/img/demo.gif" width="900">
+</p>
+
+That run includes CUDA start-up; on longer batches the speed settles at the figures below.
+
+## 📊 Results
 
 Measured on an AWS g6.4xlarge (NVIDIA L4, AMD EPYC 7R13 with 16 vCPUs) with 100 public
 [Open Images](https://storage.googleapis.com/openimages/web/index.html) photos from 0.18 to 24 MP, against
 avifenc 1.4 / libaom 3.13.1 with `tune=iq`, one avifenc per vCPU. Full numbers, method and logs:
-[docs/RESULTS.md](docs/RESULTS.md#nvidia-l4-aws-g64xlarge); reproduce them with [Benchmarks](#benchmarks).
+[docs/RESULTS.md](docs/RESULTS.md#nvidia-l4-aws-g64xlarge); reproduce them with [Benchmarks](#-benchmarks).
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/charts/speed-dark.svg">
@@ -66,26 +83,35 @@ The same picture held on the RTX PRO 2000 it was developed on (a 70 W workstatio
 held-out uploads from thumbnails to 35 MP: 110.8 MP/s, −0.6 % against libaom speed 6, +14.0 % for speed 9
 and −30.7 % against WebP ([details](docs/RESULTS.md#rtx-pro-2000-blackwell-development)).
 
-### What the files look like
+### 🖼️ What the files look like
 
 The default quality (`--quality 60`, the avifenc scale) turned the 100 test JPEGs, 160.4 MB, into
 22.5 MB of AVIF, at a mean SSIMULACRA2 of 72 ("high quality"; 90 is visually lossless). `--quality 70`
 gave 33.4 MB at 78. Five of the photos, one from each size class:
 
-| Photo (CC BY 2.0) | Pixels | JPEG | AVIF, quality 60 | Smaller by | SSIMULACRA2 |
-|---|---:|---:|---:|---:|---:|
-| [DSC08815](https://www.flickr.com/photos/stupiddingo/4016599113) by Brent | 640 × 427 | 90.3 KB | 27.2 KB | 70 % | 67.9 |
-| [Fresh Red Peppers at La Boqueria](https://www.flickr.com/photos/oh-barcelona/4811363097) by Oh-Barcelona.com | 1024 × 768 | 177.1 KB | 59.9 KB | 66 % | 77.3 |
-| [Cock](https://www.flickr.com/photos/kallegustafsson/5866854319) by Kalle Gustafsson | 1920 × 1280 | 2.06 MB | 176.9 KB | 91 % | 73.7 |
-| [St.Armands Circle](https://www.flickr.com/photos/philliecasablanca/2037727892) by Phil Whitehouse | 2304 × 3072 | 1.88 MB | 212.3 KB | 89 % | 71.1 |
-| [DSC_2946](https://www.flickr.com/photos/hockeyholic/7881222604) by Andy Blackledge | 2848 × 4288 | 6.08 MB | 578.2 KB | 90 % | 69.0 |
+<table>
+  <tr>
+    <td align="center" width="20%"><img src="docs/img/thumb-tiny.jpg" alt="A display board" width="100%"><br><b>90 KB → 27 KB</b><br>−70 % · 640 × 427</td>
+    <td align="center" width="20%"><img src="docs/img/thumb-small.jpg" alt="Red peppers" width="100%"><br><b>177 KB → 60 KB</b><br>−66 % · 1024 × 768</td>
+    <td align="center" width="20%"><img src="docs/img/thumb-typical.jpg" alt="A rooster" width="100%"><br><b>2.06 MB → 177 KB</b><br>−91 % · 1920 × 1280</td>
+    <td align="center" width="20%"><img src="docs/img/thumb-large.jpg" alt="A shop window with a crib" width="100%"><br><b>1.88 MB → 212 KB</b><br>−89 % · 2304 × 3072</td>
+    <td align="center" width="20%"><img src="docs/img/thumb-huge.jpg" alt="A dog" width="100%"><br><b>6.08 MB → 578 KB</b><br>−90 % · 2848 × 4288</td>
+  </tr>
+</table>
+
+SSIMULACRA2 against the source: 67.9, 77.3, 73.7, 71.1 and 69.0. Thumbnails are cropped from av1gpu's
+output. Photos (CC BY 2.0): [DSC08815](https://www.flickr.com/photos/stupiddingo/4016599113) by Brent,
+[Fresh Red Peppers at La Boqueria](https://www.flickr.com/photos/oh-barcelona/4811363097) by Oh-Barcelona.com,
+[Cock](https://www.flickr.com/photos/kallegustafsson/5866854319) by Kalle Gustafsson,
+[St.Armands Circle](https://www.flickr.com/photos/philliecasablanca/2037727892) by Phil Whitehouse and
+[DSC_2946](https://www.flickr.com/photos/hockeyholic/7881222604) by Andy Blackledge.
 
 Camera originals shrink the most, because they are stored at high JPEG quality. SSIMULACRA2 here compares
 the AVIF with the decoded JPEG, not with the scene.
 
 The RTX PRO 2000 and the L4 produced byte-identical files for all five.
 
-### Same file size, side by side
+### 🔍 Same file size, side by side
 
 Each encoder was pushed to the size of av1gpu's file (the highest quality setting that fits), then the
 same spot was cropped and enlarged 2×. av1gpu and libaom speed 6 keep the texture of the comb; WebP and
@@ -109,9 +135,9 @@ with av1gpu on the RTX PRO 2000, avifenc 1.4 / libaom 3.13 (`tune=iq`), cwebp `-
 **Every output is a standard AV1 bitstream, and the tests check that by decoding.** The encoder's
 own reconstruction must match what dav1d and libaom's decoder produce, byte for byte. That held for
 all 1,475 held-out encodes on the development GPU and all 1,000 encodes of the L4 run, and the test
-suite keeps checking it (see [Correctness](#correctness)).
+suite keeps checking it (see [Correctness](#-correctness)).
 
-## Status
+## 🚦 Status
 
 av1gpu is a working encoder that runs in production on one site. It is also a young, single-developer
 project. Before you rely on it, note:
@@ -128,7 +154,7 @@ project. Before you rely on it, note:
   unreadable files. PNG and WebP inputs are decoded on the CPU.
 - Tools not implemented: palette, intra block copy, loop restoration, superres, film grain.
 
-## Building
+## 🛠️ Building
 
 You need Linux, CUDA 12.0 or newer (12.8 or newer to target Blackwell), CMake 3.24 or newer, a C++17
 compiler, and libjpeg(-turbo), libpng and libwebp development packages.
@@ -148,7 +174,7 @@ CUDA runtime statically, so at run time it needs only the NVIDIA driver and `lib
 `-DAV1GPU_CUDA=OFF` builds just the CPU pieces: the bitstream writer, the AVIF muxer and the fuzz
 test. That build needs no CUDA toolkit.
 
-## Usage
+## 🚀 Usage
 
 ```bash
 # one image
@@ -195,7 +221,7 @@ than by rotating pixels.
 [examples/](examples/) has a directory converter with an avifenc fallback for skipped files, and an
 nginx configuration that serves `image.jpg.avif` to browsers that accept AVIF.
 
-## Correctness
+## ✅ Correctness
 
 The encoder keeps its own copy of the decoded picture. It needs that copy for prediction, and it is
 also used to check every output against independent decoders:
@@ -216,7 +242,7 @@ build/gpu_postfilter_test
 `AV1G_AOMDEC`. During development the CUDA kernels were also run under compute-sanitizer
 (memcheck, racecheck, synccheck) with clean results.
 
-## Benchmarks
+## 📏 Benchmarks
 
 `bench/` reproduces the comparison on 100 public JPEGs from the
 [Open Images](https://storage.googleapis.com/openimages/web/index.html) validation set (CC BY 2.0,
@@ -243,11 +269,14 @@ bench/fetch_images.py --manifest bench/openimages_v4_gamut.csv --out bench/image
 bench/bench.py --images bench/images_gamut --out bench/results/$(hostname)-gamut
 ```
 
+One original in that set (`9fba6f263f3c4f3e`) has since been changed on Flickr, so `fetch_images.py` now
+skips it with a hash mismatch and the set is 99 images.
+
 Speed runs repeat the set up to 1,000 MP (`--min-mp`), so that CUDA start-up does not dominate. Other
 av1gpu settings can be timed through a wrapper script (`--av1gpu`, `--gpu-label`), and `--aom-speeds`
 picks the libaom speeds to compare.
 
-## How it works
+## ⚙️ How it works
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/charts/pipeline-dark.svg">
@@ -275,7 +304,7 @@ Short version (details in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)):
    CDFs, coding the tiles of many images in parallel. The output is byte-identical to the CPU
    writer. Then OBUs are assembled and muxed into AVIF.
 
-## Repository layout
+## 🗂️ Repository layout
 
 | Path | Contents |
 |---|---|
@@ -287,7 +316,7 @@ Short version (details in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)):
 | `bench/` | public-image benchmark |
 | `tools/` | generators for the spec and libaom tables (outputs are checked in) |
 
-## License
+## 📄 License
 
 BSD 2-Clause, see [LICENSE](LICENSE). Parts of `av1f/` and the range coder are derived from libaom
 (BSD 2-Clause, Alliance for Open Media); see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). AV1 is
