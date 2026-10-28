@@ -37,7 +37,7 @@ to store and send (at equal quality, av1gpu's files are 31 % smaller than WebP's
 | | |
 |---|---|
 | **15 M+ photos** | Bellazon's archive (32 M files, 50 trillion pixels) in about 7 GPU-days on one card |
-| **116 MP/s** | on one NVIDIA L4, a 72 W data-centre card (with `GP_ENCODERS=4`); 111 MP/s on an RTX PRO 2000 |
+| **116 MP/s** | on one NVIDIA L4, a 72 W data-centre card (with `GP_ENCODERS=4`) |
 | **−0.1 %** | file size against libaom speed 6 at equal quality (median BD-rate, SSIMULACRA2) |
 | **−31 %** | file size against WebP at equal quality |
 | **0.1 cores** | of CPU while encoding, so the CPU stays free for other work |
@@ -85,10 +85,6 @@ avifenc 1.4 / libaom 3.13.1 with `tune=iq`, one avifenc per vCPU. Full numbers, 
 | libaom speed 6, 16 × avifenc | 29 | 0 | −31.1 % | 16 |
 | libaom speed 9, 16 × avifenc | 188 | +15.0 % | −19.3 % | 16 |
 | WebP (cwebp `-m 4`) | | +45.1 % | 0 | |
-
-The same picture held on the RTX PRO 2000 it was developed on (a 70 W workstation card), with 300
-held-out uploads from thumbnails to 35 MP: 110.8 MP/s, −0.6 % against libaom speed 6, +14.0 % for speed 9
-and −30.7 % against WebP ([details](docs/RESULTS.md#rtx-pro-2000-blackwell-development)).
 
 ### 🖼️ What the files look like
 

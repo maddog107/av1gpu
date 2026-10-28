@@ -3,6 +3,10 @@
 Two GPUs so far: the RTX PRO 2000 Blackwell the encoder was developed on (private images, below), and an
 NVIDIA L4 on AWS with the public `bench/` image sets ([NVIDIA L4](#nvidia-l4-aws-g64xlarge)).
 
+**The L4 run is the reference.** It uses public images, current baselines and a current CPU (AMD EPYC, 16
+vCPUs). The development section below compares against the development server's dual Xeon Silver 4110,
+which is slow per thread, so its CPU figures flatter the GPU. It is kept for its larger held-out image set.
+
 ## RTX PRO 2000 Blackwell (development)
 
 These measurements were taken during development, before the code was extracted into this
