@@ -1,0 +1,59 @@
+name: Release
+
+# A tag v* builds the portable Linux binary and attaches it to a GitHub release. Pull requests that touch
+# the build only build it (download it from the run's artifacts to test on a GPU).
+on:
+  push:
+    tags: ["v*"]
+  pull_request:
+    paths: [".github/workflows/release.yml", "CMakeLists.txt"]
+  workflow_dispatch:
+
+jobs:
+  linux-x86_64:
+    runs-on: ubuntu-24.04
+    # Ubuntu 22.04 (glibc 2.35), so the binary also runs on newer distributions; CUDA 12.9 runs on
+    # drivers from 525 up and still targets Turing (sm_75)
+    container: nvidia/cuda:12.9.1-devel-ubuntu22.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y python3-pip pkg-config g++ file \
+            libjpeg-turbo8-dev libpng-dev libwebp-dev zlib1g-dev
+          pip3 install cmake==3.31.6 ninja    # Ubuntu 22.04's CMake is older than 3.24
+      # every architecture from Turing to Blackwell (the CMakeLists default); -j 2 because k_recon.cu
+      # alone needs about 4 GB per compile
+      - run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DAV1GPU_STATIC_DEPS=ON -DAV1GPU_TESTS=OFF
+      - run: cmake --build build -j 2
+      - name: Package
+        run: |
+          V=${GITHUB_REF_NAME#v}; case "$GITHUB_REF" in refs/tags/*) ;; *) V=dev-${GITHUB_SHA::7};; esac
+          D=av1gpu-$V-linux-x86_64
+          mkdir $D && cp build/av1gpu LICENSE THIRD_PARTY_NOTICES.md $D/ && strip --strip-debug $D/av1gpu
+          ldd $D/av1gpu | tee $D/ldd.txt
+          if grep -E "jpeg|png|webp|libz|cudart" $D/ldd.txt; then echo "not linked in statically"; exit 1; fi
+          $D/av1gpu --help > /dev/null
+          tar czf $D.tar.gz $D && sha256sum $D.tar.gz > $D.tar.gz.sha256
+          echo "PKG=$D" >> "$GITHUB_ENV"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.PKG }}
+          path: ${{ env.PKG }}.tar.gz*
+
+  publish:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: linux-x86_64
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --title "av1gpu $GITHUB_REF_NAME" \
+            --notes "Linux x86_64 binary for NVIDIA GPUs from Turing (RTX 20, T4) to Blackwell. Needs only the NVIDIA driver (525 or newer). See the README for usage." \
+            av1gpu-*.tar.gz*
