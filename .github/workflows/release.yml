@@ -15,6 +15,9 @@ jobs:
     # Ubuntu 22.04 (glibc 2.35), so the binary also runs on newer distributions; CUDA 12.9 runs on
     # drivers from 525 up and still targets Turing (sm_75)
     container: nvidia/cuda:12.9.1-devel-ubuntu22.04
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v4
       - run: |
