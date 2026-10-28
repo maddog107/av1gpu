@@ -1,8 +1,8 @@
-<h1 align="center">av1gpu</h1>
-
 <p align="center">
-  <b>AVIF encoding on the GPU.</b> libaom-speed-6 file sizes, four times faster than libaom speed 6 on a 16-thread CPU,<br>
-  while using a tenth of one CPU core.
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/charts/banner-dark.svg">
+    <img alt="av1gpu: AVIF encoding on the GPU" src="docs/charts/banner-light.svg" width="900">
+  </picture>
 </p>
 
 <p align="center">
@@ -82,6 +82,29 @@ gave 33.4 MB at 78. Five of the photos, one from each size class:
 
 Camera originals shrink the most, because they are stored at high JPEG quality. SSIMULACRA2 here compares
 the AVIF with the decoded JPEG, not with the scene.
+
+The RTX PRO 2000 and the L4 produced byte-identical files for all five.
+
+### Same file size, side by side
+
+Each encoder was pushed to the size of av1gpu's file (the highest quality setting that fits), then the
+same spot was cropped and enlarged 2×. av1gpu and libaom speed 6 keep the texture of the comb; WebP and
+JPEG turn it into blocks.
+
+<p align="center">
+  <img alt="Six 2x crops of a rooster's head: the original JPEG (2,060 KB), and av1gpu (176.9 KB, SSIMULACRA2 74), libaom speed 6 (176.2 KB, 74), libaom speed 9 (173.8 KB, 69), WebP (174.5 KB, 62) and JPEG (175.0 KB, 56) at the same file size." src="docs/img/compare-rooster.png" width="900">
+</p>
+
+<details>
+<summary>A second example: a dog's eye and fur, 12 MP (578 KB each)</summary>
+<p align="center">
+  <img alt="Six 2x crops of a dog's eye: the original JPEG (6,083 KB), and av1gpu (578.2 KB, SSIMULACRA2 69), libaom speed 6 (577.8 KB, 68), libaom speed 9 (565.0 KB, 66), WebP (576.7 KB, 60) and JPEG (558.7 KB, 49) at the same file size." src="docs/img/compare-dog.png" width="900">
+</p>
+</details>
+
+Crops of [Cock](https://www.flickr.com/photos/kallegustafsson/5866854319) by Kalle Gustafsson and
+[DSC_2946](https://www.flickr.com/photos/hockeyholic/7881222604) by Andy Blackledge (CC BY 2.0), re-encoded
+with av1gpu on the RTX PRO 2000, avifenc 1.4 / libaom 3.13 (`tune=iq`), cwebp `-m 4` and libjpeg 4:2:0.
 
 **Every output is a standard AV1 bitstream, and the tests check that by decoding.** The encoder's
 own reconstruction must match what dav1d and libaom's decoder produce, byte for byte. That held for
@@ -225,6 +248,11 @@ av1gpu settings can be timed through a wrapper script (`--av1gpu`, `--gpu-label`
 picks the libaom speeds to compare.
 
 ## How it works
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/charts/pipeline-dark.svg">
+  <img alt="Pipeline: the CPU reads JPEGs and writes AVIF files; the GPU decodes the JPEG, searches modes, picks partitions, reconstructs, loop-filters and entropy-codes." src="docs/charts/pipeline-light.svg" width="900">
+</picture>
 
 Short version (details in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)):
 

@@ -206,10 +206,87 @@ def by_size_chart(t):
     s.save(os.path.join(HERE, f"by-size-{t['name']}.svg"))
 
 
+def pipeline_diagram(t):
+    s = Svg(900, 330, t, "av1gpu pipeline: the CPU parses JPEGs and writes AVIF files; the GPU does everything between")
+    s.header("Where the work happens",
+             ["The CPU only parses JPEG headers and writes files. Everything from the JPEG's pixels to the finished",
+              "AV1 bitstream stays in GPU memory, with many images in flight at once."])
+    s.add(f'<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" '
+          f'orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="{t["muted"]}"/></marker></defs>')
+    gpu = [("Decode JPEG", "nvJPEG or GPU IDCT"), ("Mode search", "every block shape"),
+           ("Partition", "DP per superblock"), ("Reconstruction", "exact, closed loop"),
+           ("Loop filters", "deblock + CDEF"), ("Entropy coding", "AV1 range coder")]
+    bw, gap, x0, bh = 124, 20, 34, 52
+    xs = [x0 + i * (bw + gap) for i in range(len(gpu))]
+    cpu_y, gpu_y = 116, 232
+
+    def box(x, y, a, b):
+        s.add(f'<rect x="{x}" y="{y}" width="{bw}" height="{bh}" rx="8" fill="{t["surface"]}" '
+              f'stroke="{t["axis"]}"/>')
+        s.text(x + bw / 2, y + 22, a, 13, "ink", "middle", 600)
+        s.text(x + bw / 2, y + 39, b, 12, "muted", "middle")
+
+    def arrow(x1, y1, x2, y2):
+        s.add(f'<line x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}" stroke="{t["muted"]}" stroke-width="1.5" '
+              f'marker-end="url(#a)"/>')
+
+    s.add(f'<rect x="{x0 - 16}" y="{cpu_y - 26}" width="{900 - 2 * (x0 - 16)}" height="{bh + 40}" rx="10" '
+          f'fill="{t["muted"]}" fill-opacity="0.08"/>')
+    s.add(f'<rect x="{x0 - 16}" y="{gpu_y - 26}" width="{900 - 2 * (x0 - 16)}" height="{bh + 40}" rx="10" '
+          f'fill="{t["av1gpu"]}" fill-opacity="0.10"/>')
+    s.text(xs[1], cpu_y - 10, "CPU · about 0.1 core", 12, "ink2", weight=600)
+    s.text(xs[1], gpu_y - 10, "GPU · CUDA cores, no NVENC", 12, "ink2", weight=600)
+    box(xs[0], cpu_y, "Read JPEGs", "parse headers")
+    box(xs[-1], cpu_y, "Write AVIF", "OBUs + container")
+    s.text((xs[1] + xs[-1] + bw) / 2 - bw / 2, cpu_y + 31, "free for other work", 13, "muted", "middle")
+    for i, (a, b) in enumerate(gpu):
+        box(xs[i], gpu_y, a, b)
+        if i:
+            arrow(xs[i - 1] + bw + 2, gpu_y + bh / 2, xs[i] - 3, gpu_y + bh / 2)
+    arrow(xs[0] + bw / 2, cpu_y + bh + 2, xs[0] + bw / 2, gpu_y - 3)
+    arrow(xs[-1] + bw / 2, gpu_y - 2, xs[-1] + bw / 2, cpu_y + bh + 3)
+    s.save(os.path.join(HERE, f"pipeline-{t['name']}.svg"))
+
+
+def banner(t):
+    """Wordmark beside a superblock split the way AV1 partitions one: big blocks on flat areas, small on detail."""
+    import random
+    rnd = random.Random(19)
+    ramp = (["#cde2fb", "#9ec5f4", "#6da7ec", "#3987e5", "#256abf", "#184f95"] if t["name"] == "light" else
+            ["#104281", "#184f95", "#1c5cab", "#256abf", "#3987e5", "#6da7ec"])
+    s = Svg(900, 220, t, "av1gpu: AVIF encoding on the GPU")
+    blocks = []
+
+    def split(x, y, n, depth):
+        # detail grows toward the lower right, like an edge running through the block
+        if depth < 3 and rnd.random() < (0.8, 0.5, 0.3)[depth] * (0.5 + ((x + y) / 2 + n / 2) / 192):
+            h = n / 2
+            for dx, dy in ((0, 0), (h, 0), (0, h), (h, h)):
+                split(x + dx, y + dy, h, depth + 1)
+        else:
+            blocks.append((x, y, n))
+
+    for gx in range(3):
+        for gy in range(2):
+            split(gx * 96, gy * 96, 96, 0)
+    ox, oy, sc = 40, 24, 172 / 192
+    for x, y, n in blocks:
+        level = min(5, int(round(5 - (n / 96) * 5 + rnd.random())))
+        s.add(f'<rect x="{ox + x * sc + 1:.1f}" y="{oy + y * sc + 1:.1f}" width="{n * sc - 2:.1f}" '
+              f'height="{n * sc - 2:.1f}" rx="{2 if n < 24 else 4}" fill="{ramp[level]}"/>')
+    s.add(f'<text x="350" y="112" font-size="64" font-weight="700" fill="{t["ink"]}" '
+          f'letter-spacing="-1">av1gpu</text>')
+    s.text(352, 148, "AVIF encoding on the GPU", 22, "ink2")
+    s.text(352, 178, "libaom-speed-6 file sizes · 4× the speed of a 16-thread CPU · 0.1 CPU cores", 14, "muted")
+    s.save(os.path.join(HERE, f"banner-{t['name']}.svg"))
+
+
 if __name__ == "__main__":
     for name, t in THEMES.items():
         t = dict(t, name=name)
         speed_chart(t)
         quality_chart(t)
         by_size_chart(t)
+        pipeline_diagram(t)
+        banner(t)
     print("wrote", ", ".join(sorted(f for f in os.listdir(HERE) if f.endswith(".svg"))))

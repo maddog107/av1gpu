@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="330" viewBox="0 0 900 330" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" role="img" aria-label="av1gpu pipeline: the CPU parses JPEGs and writes AVIF files; the GPU does everything between">
+<title>av1gpu pipeline: the CPU parses JPEGs and writes AVIF files; the GPU does everything between</title>
+<rect x="0.5" y="0.5" width="899" height="329" rx="12" fill="#fcfcfb" stroke="rgba(11,11,11,0.10)"/>
+<text x="24.0" y="34.0" font-size="17" fill="#0b0b0b" text-anchor="start" font-weight="600">Where the work happens</text>
+<text x="24.0" y="56.0" font-size="13" fill="#52514e" text-anchor="start" font-weight="400">The CPU only parses JPEG headers and writes files. Everything from the JPEG's pixels to the finished</text>
+<text x="24.0" y="74.0" font-size="13" fill="#52514e" text-anchor="start" font-weight="400">AV1 bitstream stays in GPU memory, with many images in flight at once.</text>
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#898781"/></marker></defs>
+<rect x="18" y="90" width="864" height="92" rx="10" fill="#898781" fill-opacity="0.08"/>
+<rect x="18" y="206" width="864" height="92" rx="10" fill="#2a78d6" fill-opacity="0.10"/>
+<text x="178.0" y="106.0" font-size="12" fill="#52514e" text-anchor="start" font-weight="600">CPU · about 0.1 core</text>
+<text x="178.0" y="222.0" font-size="12" fill="#52514e" text-anchor="start" font-weight="600">GPU · CUDA cores, no NVENC</text>
+<rect x="34" y="116" width="124" height="52" rx="8" fill="#fcfcfb" stroke="#c3c2b7"/>
+<text x="96.0" y="138.0" font-size="13" fill="#0b0b0b" text-anchor="middle" font-weight="600">Read JPEGs</text>
+<text x="96.0" y="155.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">parse headers</text>
+<rect x="754" y="116" width="124" height="52" rx="8" fill="#fcfcfb" stroke="#c3c2b7"/>
+<text x="816.0" y="138.0" font-size="13" fill="#0b0b0b" text-anchor="middle" font-weight="600">Write AVIF</text>
+<text x="816.0" y="155.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">OBUs + container</text>
+<text x="466.0" y="147.0" font-size="13" fill="#898781" text-anchor="middle" font-weight="400">free for other work</text>
+<rect x="34" y="232" width="124" height="52" rx="8" fill="#fcfcfb" stroke="#c3c2b7"/>
+<text x="96.0" y="254.0" font-size="13" fill="#0b0b0b" text-anchor="middle" font-weight="600">Decode JPEG</text>
+<text x="96.0" y="271.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">nvJPEG or GPU IDCT</text>
+<rect x="178" y="232" width="124" height="52" rx="8" fill="#fcfcfb" stroke="#c3c2b7"/>
+<text x="240.0" y="254.0" font-size="13" fill="#0b0b0b" text-anchor="middle" font-weight="600">Mode search</text>
+<text x="240.0" y="271.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">every block shape</text>
+<line x1="160" y1="258.0" x2="175" y2="258.0" stroke="#898781" stroke-width="1.5" marker-end="url(#a)"/>
+<rect x="322" y="232" width="124" height="52" rx="8" fill="#fcfcfb" stroke="#c3c2b7"/>
+<text x="384.0" y="254.0" font-size="13" fill="#0b0b0b" text-anchor="middle" font-weight="600">Partition</text>
+<text x="384.0" y="271.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">DP per superblock</text>
+<line x1="304" y1="258.0" x2="319" y2="258.0" stroke="#898781" stroke-width="1.5" marker-end="url(#a)"/>
+<rect x="466" y="232" width="124" height="52" rx="8" fill="#fcfcfb" stroke="#c3c2b7"/>
+<text x="528.0" y="254.0" font-size="13" fill="#0b0b0b" text-anchor="middle" font-weight="600">Reconstruction</text>
+<text x="528.0" y="271.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">exact, closed loop</text>
+<line x1="448" y1="258.0" x2="463" y2="258.0" stroke="#898781" stroke-width="1.5" marker-end="url(#a)"/>
+<rect x="610" y="232" width="124" height="52" rx="8" fill="#fcfcfb" stroke="#c3c2b7"/>
+<text x="672.0" y="254.0" font-size="13" fill="#0b0b0b" text-anchor="middle" font-weight="600">Loop filters</text>
+<text x="672.0" y="271.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">deblock + CDEF</text>
+<line x1="592" y1="258.0" x2="607" y2="258.0" stroke="#898781" stroke-width="1.5" marker-end="url(#a)"/>
+<rect x="754" y="232" width="124" height="52" rx="8" fill="#fcfcfb" stroke="#c3c2b7"/>
+<text x="816.0" y="254.0" font-size="13" fill="#0b0b0b" text-anchor="middle" font-weight="600">Entropy coding</text>
+<text x="816.0" y="271.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">AV1 range coder</text>
+<line x1="736" y1="258.0" x2="751" y2="258.0" stroke="#898781" stroke-width="1.5" marker-end="url(#a)"/>
+<line x1="96.0" y1="170" x2="96.0" y2="229" stroke="#898781" stroke-width="1.5" marker-end="url(#a)"/>
+<line x1="816.0" y1="230" x2="816.0" y2="171" stroke="#898781" stroke-width="1.5" marker-end="url(#a)"/>
+</svg>

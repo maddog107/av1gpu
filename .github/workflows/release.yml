@@ -31,8 +31,8 @@ jobs:
           V=${GITHUB_REF_NAME#v}; case "$GITHUB_REF" in refs/tags/*) ;; *) V=dev-${GITHUB_SHA::7};; esac
           D=av1gpu-$V-linux-x86_64
           mkdir $D && cp build/av1gpu LICENSE THIRD_PARTY_NOTICES.md $D/ && strip --strip-debug $D/av1gpu
-          ldd $D/av1gpu | tee $D/ldd.txt
-          if grep -E "jpeg|png|webp|libz|cudart" $D/ldd.txt; then echo "not linked in statically"; exit 1; fi
+          ldd $D/av1gpu | tee ldd.txt
+          if grep -E "jpeg|png|webp|libz|cudart" ldd.txt; then echo "not linked in statically"; exit 1; fi
           $D/av1gpu --help > /dev/null
           tar czf $D.tar.gz $D && sha256sum $D.tar.gz > $D.tar.gz.sha256
           echo "PKG=$D" >> "$GITHUB_ENV"
