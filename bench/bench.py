@@ -148,10 +148,13 @@ def bd_rate(test, anchor, min_overlap=2.0):
 
 
 # ------------------------------------------------------------------------------------------- encoders
-def avifenc_cmd(a, src, dst, q, speed, tune_iq):
-    cmd = [a.avifenc, "-q", str(q), "-s", str(speed), "-y", "420", "-j", "1", "--ignore-exif", "--ignore-xmp"]
-    if tune_iq:
-        cmd += ["-a", "tune=iq"]
+def avifenc_cmd(a, src, dst, q, speed, tune_iq, codec="aom"):
+    """codec "aom": libaom at speed; "svt": SVT-AV1 at preset `speed` (avifenc -c svt, -a preset= so 11-13 work)."""
+    cmd = [a.avifenc, "-q", str(q), "-y", "420", "-j", "1", "--ignore-exif", "--ignore-xmp"]
+    if codec == "svt":
+        cmd += ["-c", "svt", "-a", f"preset={speed}"] + (["-a", f"tune={a.svt_tune}"] if a.svt_tune else [])
+    else:
+        cmd += ["-s", str(speed)] + (["-a", "tune=iq"] if tune_iq else [])
     return cmd + [src, dst]
 
 
@@ -184,9 +187,9 @@ def encode_cpu_set(a, codec, files, qualities, outdir, tune_iq):
     for src in files:
         base = os.path.basename(src)
         for q in qualities:
-            if codec.startswith("aom_s"):
+            if codec.startswith(("aom_s", "svt_p")):
                 dst = os.path.join(outdir, f"{base}.q{q}.avif")
-                jobs.append((src, q, dst, avifenc_cmd(a, src, dst, q, int(codec[5:]), tune_iq)))
+                jobs.append((src, q, dst, avifenc_cmd(a, src, dst, q, int(codec[5:]), tune_iq, codec[:3])))
             else:
                 dst = os.path.join(outdir, f"{base}.q{q}.webp")
                 jobs.append((src, q, dst, [a.cwebp, "-quiet", "-q", str(q), "-m", "4", "-metadata", "icc", src, "-o", dst]))
@@ -252,17 +255,19 @@ def gpu_speed(a, image_dir, work):
                 runs=runs)
 
 
-def cpu_speed(a, files, speed, tune_iq, mp, work):
-    out = os.path.join(work, f"speed_aom_s{speed}")
+def cpu_speed(a, files, speed, tune_iq, mp, work, codec="aom"):
+    out = os.path.join(work, f"speed_{codec}_{speed}")
     shutil.rmtree(out, ignore_errors=True)
     os.makedirs(out)
-    jobs = [avifenc_cmd(a, f, os.path.join(out, os.path.basename(f) + ".avif"), 60, speed, tune_iq) for f in files]
+    jobs = [avifenc_cmd(a, f, os.path.join(out, os.path.basename(f) + ".avif"), 60, speed, tune_iq, codec)
+            for f in files]
     t0 = time.time()
     with cf.ThreadPoolExecutor(os.cpu_count()) as ex:
         rcs = list(ex.map(lambda c: run(c).returncode, jobs))
     wall = time.time() - t0
     nbytes = sum(os.path.getsize(p) for p in glob.glob(os.path.join(out, "*.avif")))
-    return dict(codec=f"libaom speed {speed}, {os.cpu_count()} parallel avifenc -j 1", images=rcs.count(0), mp=mp,
+    name = f"SVT-AV1 preset {speed}" if codec == "svt" else f"libaom speed {speed}"
+    return dict(codec=f"{name}, {os.cpu_count()} parallel avifenc -j 1", images=rcs.count(0), mp=mp,
                 mp_s=mp / wall, img_s=rcs.count(0) / wall, cpu_cores=float(os.cpu_count()), wall_s=wall, bytes=nbytes)
 
 
@@ -281,6 +286,8 @@ def main():
     ap.add_argument("--quality", default="30,40,50,60,70,80", help="avifenc -q / av1gpu --quality points")
     ap.add_argument("--webp-quality", default="50,60,70,80,90,95")
     ap.add_argument("--aom-speeds", default="6,9", help="libaom speeds to compare (6 is the BD-rate anchor and always runs)")
+    ap.add_argument("--svt-presets", default="", help="SVT-AV1 presets to compare (needs avifenc built with SVT-AV1)")
+    ap.add_argument("--svt-tune", default="", help="SVT-AV1 tune= value passed through avifenc -a (default: SVT's own)")
     ap.add_argument("--min-mp", type=float, default=1000, help="speed runs repeat the set up to this many megapixels")
     ap.add_argument("--repeats", type=int, default=3, help="timed av1gpu runs (after one warm-up)")
     ap.add_argument("--jobs", type=int, default=os.cpu_count())
@@ -290,6 +297,7 @@ def main():
     ap.add_argument("--keep", action="store_true", help="keep the encoded files under OUT/files")
     a = ap.parse_args()
     a.aom_speeds = sorted({6} | {int(x) for x in a.aom_speeds.split(",")})
+    a.svt_presets = [int(x) for x in a.svt_presets.split(",") if x]
 
     files = sorted(f for f in glob.glob(os.path.join(a.images, "*")) if f.lower().endswith(EXTS))
     if not files:
@@ -318,6 +326,9 @@ def main():
         for s in a.aom_speeds:
             res["speed"].append(cpu_speed(a, sfiles, s, tune_iq, smp, work))
             print("speed:", res["speed"][-1]["codec"], f"{res['speed'][-1]['mp_s']:.1f} MP/s", flush=True)
+        for p in a.svt_presets:
+            res["speed"].append(cpu_speed(a, sfiles, p, tune_iq, smp, work, "svt"))
+            print("speed:", res["speed"][-1]["codec"], f"{res['speed'][-1]['mp_s']:.1f} MP/s", flush=True)
 
     if not a.skip_quality:
         qs = [int(x) for x in a.quality.split(",")]
@@ -325,7 +336,7 @@ def main():
         enc = {}
         if not a.skip_gpu:
             enc["av1gpu"] = encode_gpu_set(a, files, qs, os.path.join(work, "av1gpu"))
-        for codec in [f"aom_s{s}" for s in a.aom_speeds]:
+        for codec in [f"aom_s{s}" for s in a.aom_speeds] + [f"svt_p{p}" for p in a.svt_presets]:
             enc[codec] = encode_cpu_set(a, codec, files, qs, os.path.join(work, codec), tune_iq)
         enc["webp"] = encode_cpu_set(a, "webp", files, wq, os.path.join(work, "webp"), False)
         for codec, outs in enc.items():
