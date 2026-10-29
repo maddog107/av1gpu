@@ -16,9 +16,9 @@
 </p>
 
 <p align="center">
-  <img alt="A rooster photo split down the middle: the left half is the 2,060 KB original JPEG, the right half av1gpu's 177 KB AVIF. The seam is invisible." src="docs/img/hero-rooster.jpg" width="900"><br>
-  <sub>Left: the original JPEG, 2,060 KB. Right: av1gpu's AVIF at the default quality, 177 KB.
-  Photo: <a href="https://www.flickr.com/photos/kallegustafsson/5866854319">Cock</a> by Kalle Gustafsson, CC BY 2.0.</sub>
+  <img alt="A 12-megapixel photo of a maroon 1962 Opel Kapitän split down the middle: the left half is the 6,031 KB original JPEG, the right half av1gpu's 419 KB AVIF. The seam is invisible." src="docs/img/hero-car.jpg" width="900"><br>
+  <sub>Left: the original 12 MP JPEG, 6,031 KB. Right: av1gpu's AVIF at the default quality, 419 KB.
+  Photo: <a href="https://www.flickr.com/photos/yakobusan/20438833739">Untitled</a> by Jakob Montrasio, CC BY 2.0.</sub>
 </p>
 
 ## ⚡ Overview
@@ -130,11 +130,11 @@ The RTX PRO 2000 and the L4 produced byte-identical files for all five.
 ### 🔍 Same file size, side by side
 
 Each encoder was pushed to the size of av1gpu's file (the highest quality setting that fits), then the
-same spot was cropped and enlarged 2×. av1gpu and libaom speed 6 keep the texture of the comb; WebP and
-JPEG turn it into blocks.
+same spot was cropped and enlarged 2×. av1gpu and libaom speed 6 keep the chrome bars of the grille
+crisp; speed 9 and WebP soften them, and JPEG turns them into blocks.
 
 <p align="center">
-  <img alt="Six 2x crops of a rooster's head: the original JPEG (2,060 KB), and av1gpu (176.9 KB, SSIMULACRA2 74), libaom speed 6 (176.2 KB, 74), libaom speed 9 (173.8 KB, 69), WebP (174.5 KB, 62) and JPEG (175.0 KB, 56) at the same file size." src="docs/img/compare-rooster.png" width="900">
+  <img alt="Six 2x crops of the car's chrome grille and badge: the original JPEG (6,031 KB), and av1gpu (419.4 KB, SSIMULACRA2 72), libaom speed 6 (412.1 KB, 71), libaom speed 9 (395.9 KB, 66), WebP (417.6 KB, 62) and JPEG (409.5 KB, 34) at the same file size." src="docs/img/compare-car.png" width="900">
 </p>
 
 <details>
@@ -144,7 +144,7 @@ JPEG turn it into blocks.
 </p>
 </details>
 
-Crops of [Cock](https://www.flickr.com/photos/kallegustafsson/5866854319) by Kalle Gustafsson and
+Crops of [Untitled](https://www.flickr.com/photos/yakobusan/20438833739) by Jakob Montrasio and
 [DSC_2946](https://www.flickr.com/photos/hockeyholic/7881222604) by Andy Blackledge (CC BY 2.0), re-encoded
 with av1gpu on the RTX PRO 2000, avifenc 1.4 / libaom 3.13 (`tune=iq`), cwebp `-m 4` and libjpeg 4:2:0.
 
