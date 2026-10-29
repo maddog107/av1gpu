@@ -277,7 +277,7 @@ def banner(t):
     s.add(f'<text x="350" y="112" font-size="64" font-weight="700" fill="{t["ink"]}" '
           f'letter-spacing="-1">av1gpu</text>')
     s.text(352, 148, "AVIF encoding on the GPU", 22, "ink2")
-    s.text(352, 178, "libaom-speed-6 file sizes · 4× the speed of a 16-thread CPU · 0.1 CPU cores", 14, "muted")
+    s.text(352, 178, "libaom-speed-6 file sizes, 4× faster than libaom on all 16 CPU threads at once", 14, "muted")
     s.save(os.path.join(HERE, f"banner-{t['name']}.svg"))
 
 

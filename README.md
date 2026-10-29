@@ -65,8 +65,18 @@ avifenc 1.4 / libaom 3.13.1 with `tune=iq`, one avifenc per vCPU. Full numbers, 
   <img alt="Bar chart of encoding speed in megapixels per second: libaom speed 9 188, av1gpu with the small-image preset off 127, av1gpu default 116, libaom speed 6 29." src="docs/charts/speed-light.svg" width="760">
 </picture>
 
-**At the same file size, av1gpu is 4× faster than the whole CPU.** libaom speed 9 is faster still
-(1.6× av1gpu), but its files are 15 % bigger. libaom speed 10 is no faster than 9 for still images.
+**At the same file size, av1gpu is 4× faster than libaom running on all 16 CPU threads at once**,
+and it leaves the CPU almost idle. libaom's faster setting, speed 9, buys its speed with 15 % bigger
+files. av1gpu's fastest setting matches that speed for a third of the cost:
+
+| | libaom, all 16 CPU threads | av1gpu, 0.1–0.4 of a core |
+|---|---|---|
+| **Smallest files** | speed 6 | default: same file sizes, **4× faster** |
+| **Fastest** | speed 9: files **+15 %** | `--preset turbo3 --small-preset none`: files **+5.4 %**, about as fast |
+
+libaom speed 10 is no faster than 9 for still images. The `turbo3` speed (1.7× the av1gpu default,
+against 1.6× for speed 9) was measured on an RTX PRO 2000 Blackwell; its file sizes carry over to every
+GPU because the output is byte-identical.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/charts/quality-dark.svg">
@@ -82,9 +92,12 @@ avifenc 1.4 / libaom 3.13.1 with `tune=iq`, one avifenc per vCPU. Full numbers, 
 |---|---:|---:|---:|---:|
 | **av1gpu** default, `GP_ENCODERS=4` | **116** | **−0.1 %** | **−31.2 %** | 0.1 |
 | av1gpu `--small-preset none` | 127 | +2.1 % | | 0.1 |
+| av1gpu `--preset turbo3 --small-preset none` | ≈ 200¹ | +5.4 % | | 0.4 |
 | libaom speed 6, 16 × avifenc | 29 | 0 | −31.1 % | 16 |
 | libaom speed 9, 16 × avifenc | 188 | +15.0 % | −19.3 % | 16 |
 | WebP (cwebp `-m 4`) | | +45.1 % | 0 | |
+
+¹ Estimated: 1.7× the default as measured on the RTX PRO 2000; not yet run on the L4.
 
 ### 🖼️ What the files look like
 
