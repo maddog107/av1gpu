@@ -72,13 +72,12 @@ avifenc per vCPU. Full numbers, method and logs:
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/charts/tradeoff-dark.svg">
-  <img alt="Scatter chart of speed against file size vs libaom speed 6. av1gpu: default 116 MP/s at −0.1 percent, no small preset 127 at +2.1, turbo3 212 at +5.4. SVT-AV1 on 16 threads: preset 6 49 MP/s at +2.1 percent, preset 8 136 at +7.7, preset 9 183 at +9.8. libaom on 16 threads: speed 6 29 MP/s at 0, speed 9 188 at +15.0. NVENC AV1 16 MP/s at +29.5 percent." src="docs/charts/tradeoff-light.svg" width="760">
+  <img alt="Scatter chart of speed against file size vs libaom speed 6, with an arrow marking av1gpu 4× faster than libaom speed 6 at the same file size. av1gpu: default 116 MP/s at −0.1 percent, no small preset 127 at +2.1, turbo3 212 at +5.4. SVT-AV1 on 16 threads: preset 2 4.6 MP/s at −5.1 percent, preset 4 15.5 at −2.6, preset 6 49 at +2.1, preset 8 136 at +7.7, preset 9 183 at +9.8. libaom on 16 threads: speed 6 29 MP/s at 0, speed 9 188 at +15.0. NVENC AV1 16 MP/s at +29.5 percent." src="docs/charts/tradeoff-light.svg" width="760">
 </picture>
 
 **Speed against file size:** up is faster, left is smaller files. From libaom-speed-6 sizes up to +5 %, av1gpu
 on one GPU is 2.4–4× faster than the best CPU encoder on all 16 threads (interpolating between SVT-AV1
-presets; the slower presets 2 and 4 are in the [table](#-quality-and-file-size) below). For the smallest files, SVT-AV1's
-slow presets go further (preset 2: −5.1 %, at 4.6 MP/s); av1gpu's own `--preset slow` has not been timed
+presets). For the smallest files, SVT-AV1's slow presets go further (preset 2: −5.1 %, at 4.6 MP/s); av1gpu's own `--preset slow` has not been timed
 on the L4 yet.
 
 Each encoder has a "small files" setting and a "fast" setting, so there are two fair match-ups. A third
