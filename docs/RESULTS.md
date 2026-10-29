@@ -162,6 +162,7 @@ BD-rate on SSIMULACRA2 against libaom speed 6, median over images (mean in brack
 | av1gpu `--small-preset none` | +3.4 % (+2.9 %) | +2.1 % (+1.1 %) |
 | av1gpu `--preset turbo3 --small-preset none` | | +5.4 % (+5.4 %)¹ |
 | libaom speed 9 | +17.7 % (+20.7 %) | +15.0 % (+17.2 %) |
+| SVT-AV1 preset 2 / 4 / 6 / 8 / 9 (below) | | −5.1 / −2.6 / +2.1 / +7.7 / +9.8 % |
 | WebP | +41.3 % (+55.3 %) | +45.1 % (+61.2 %) |
 | NVENC AV1 (ffmpeg `av1_nvenc` p7, below) | | +29.5 % (+46.6 %)² |
 
@@ -182,9 +183,46 @@ smaller. Size range by image size (median, images in brackets):
 | av1gpu `--small-preset none` | +3.9 % (40) | +1.1 % (20) | −0.6 % (23) | −2.4 % (17) |
 | libaom speed 9 | +20.1 % (40) | +18.5 % (20) | +12.8 % (23) | +13.4 % (17) |
 | NVENC AV1 | +35.7 % (38) | +29.2 % (18) | +28.5 % (21) | +22.2 % (17) |
+| SVT-AV1 preset 4 | −2.0 % (39) | −2.2 % (20) | −3.4 % (23) | −3.9 % (17) |
+| SVT-AV1 preset 6 | +5.1 % (39) | +2.9 % (20) | +0.7 % (23) | +0.2 % (17) |
+| SVT-AV1 preset 9 | +14.9 % (39) | +12.5 % (20) | +6.3 % (23) | +7.2 % (17) |
 
 (At 1 MP and above both av1gpu rows are the same `turbo` encodes.) The groups are small, but they show the
 same trend as the held-out set: av1gpu compares best on large images.
+
+### SVT-AV1 on the same CPU
+
+SVT-AV1 was run later (2026-10-29) on a c6a.4xlarge, which has the same AMD EPYC 7R13 with 16 vCPUs (no
+g6.4xlarge was available), with `bench.py --skip-gpu --aom-speeds 6,9 --svt-presets 2,4,6,8,9 --svt-tune 3`
+on the 99 size-range photos. Raw results: `bench/results/aws-c6a-gamut-svt/`.
+
+- **Build:** SVT-AV1 v4.2.0 and libavif 1.4.0 (with libaom 3.13.1) from source. avifenc
+  `-c svt -a preset=N -a tune=3 -y 420 -j 1`, one per vCPU; libavif turns on SVT-AV1's still-picture
+  mode (`avif=1`) for single images. All-intra SVT-AV1 runs presets 10–13 as preset 9.
+- **Tune:** `tune=3` ("IQ") is SVT-AV1's still-image tune, the counterpart of libaom's `tune=iq`. On 20 of
+  the photos at preset 8 it scored +6.0 % against libaom speed 6, against +16.5 % for the default tune
+  (PSNR) and +7.6 % for `tune=4` (MS-SSIM and SSIMULACRA2), so the full run used it.
+- **Control:** libaom ran in the same session at 28.7 (speed 6) and 186.4 MP/s (speed 9), against 28.8 and
+  187.6 on the g6.4xlarge, and all 594 of its speed 6 encodes had the same bytes and SSIMULACRA2 scores as
+  in the main run, so the BD-rates below compare directly with the rest of this section.
+
+| SVT-AV1 | MP/s | vs libaom speed 6, median (mean) | vs WebP |
+|---|---:|---:|---:|
+| preset 2 | 4.6 | −5.1 % (−5.5 %) | −34.7 % |
+| preset 4 | 15.5 | −2.6 % (−2.9 %) | −32.8 % |
+| preset 6 | 49.4 | +2.1 % (+3.2 %) | −28.0 % |
+| preset 8 | 136.0 | +7.7 % (+9.6 %) | −23.8 % |
+| preset 9 | 182.8 | +9.8 % (+11.9 %) | −22.8 % |
+
+SVT-AV1 is a better trade than libaom at every speed: at libaom speed 6's file size it runs at about the
+same speed (interpolating between presets 4 and 6 gives about 29 MP/s), and at speed 9's speed its files
+are 5 points smaller. Against av1gpu on one L4:
+
+- at libaom speed 6's file size, av1gpu's default (116 MP/s, −0.1 %) is about 4× faster;
+- at +2.1 %, av1gpu with `--small-preset none` (127 MP/s) is 2.6× faster than preset 6 (49 MP/s);
+- at the fast end, `turbo3` (212 MP/s, +5.4 %) beats preset 9 (183 MP/s, +9.8 %) on both counts;
+- SVT-AV1's slow presets make smaller files than any av1gpu setting measured on the L4 (preset 2: −5.1 %,
+  at 4.6 MP/s). av1gpu's `--preset slow` measured −4.8 % on the development set but has not been run here.
 
 ### NVENC AV1 on the same L4
 
