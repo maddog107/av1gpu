@@ -139,6 +139,19 @@ The default sends images below 1 MP to the slower `base` preset (`--small-preset
 on small images. On a set of nothing but ~1 MP images that dominates the speed: `--small-preset none` is
 2.6× faster there, for files 3 % larger (below).
 
+`--preset turbo3 --small-preset none` was timed later in a separate session on a new g6.4xlarge, the same
+way (`bench.gpu_speed`, `GP_ENCODERS=4`, 1,433 MP per run, median of 3 after a warm-up), on 99 of the 100
+size-range photos (one has since changed on Flickr). Two interleaved rounds:
+
+| Setting | round 1 | round 2 | CPU cores |
+|---|---:|---:|---:|
+| av1gpu default | 120.4 | 118.0 | 0.12 |
+| `--preset turbo3 --small-preset none` | **213.9** | **209.8** | 0.19 |
+| `--preset turbo3` | 167.0 | 167.1 | 0.16 |
+
+So `turbo3 --small-preset none` runs at about 212 MP/s, 1.8× the default and a little faster than libaom
+speed 9 (188).
+
 ### Compression
 
 BD-rate on SSIMULACRA2 against libaom speed 6, median over images (mean in brackets):
@@ -147,8 +160,14 @@ BD-rate on SSIMULACRA2 against libaom speed 6, median over images (mean in brack
 |---|---:|---:|
 | **av1gpu default** | **+0.3 %** (−0.1 %) | **−0.1 %** (−0.4 %) |
 | av1gpu `--small-preset none` | +3.4 % (+2.9 %) | +2.1 % (+1.1 %) |
+| av1gpu `--preset turbo3 --small-preset none` | | +5.4 % (+5.4 %)¹ |
 | libaom speed 9 | +17.7 % (+20.7 %) | +15.0 % (+17.2 %) |
 | WebP | +41.3 % (+55.3 %) | +45.1 % (+61.2 %) |
+
+¹ 99 images, encoded on the RTX PRO 2000 (byte-identical to the L4) and scored with the same SSIMULACRA2
+build on another machine. That machine scored the default 0.55 points more favourably than the L4 run on
+the same files (−0.65 % instead of −0.1 %), so its turbo3 numbers are shifted by the same amount. `turbo3`
+with the small-image preset left on scored +1.3 %.
 
 Against WebP at each image's WebP quality, the default is 30.0 % (standard) and 31.2 % (size range)
 smaller. Size range by image size (median, images in brackets):

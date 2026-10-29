@@ -91,20 +91,23 @@ def files(bd):
     return f"files {bd * 100:+.1f} % vs speed 6".replace("-", "−")
 
 
-# av1gpu --preset turbo3 --small-preset none has not been run on the L4. Its files were scored on the same
-# 99 photos (median BD-rate vs speed 6, shifted onto the L4 scores by the default preset's offset); its speed
-# is the default's L4 speed times the ratio measured on an RTX PRO 2000 (176 / 104 MP/s).
+# av1gpu --preset turbo3 --small-preset none, measured separately on a g6.4xlarge L4 (GP_ENCODERS=4, 99 of the
+# 100 photos, two rounds of bench.gpu_speed: 213.9 and 209.8 MP/s, 0.19 cores; the default gave 120.4 and 118.0
+# in the same session). Files: median BD-rate vs speed 6 on the same photos, shifted onto the L4 scores by the
+# default preset's offset (docs/RESULTS.md).
 TURBO3_BD = 0.054
-TURBO3_SPEED_RATIO = 176 / 104
+TURBO3_SPEED = 212
 
 
-def matchup_chart(t, name, title, subtitle, rows):
-    """Two panels for one pair of encoders: speed (higher is better) and file size (lower is better)."""
+def matchup_chart(t, name, title, subtitle, rows, sizes=True):
+    """One pair of encoders: speed (higher is better) and, if sizes, file size (lower is better) beside it."""
     s = Svg(760, 268, t, title)
     s.header(title, subtitle)
     lx, top, band = 24, 136, 56
     panels = [(250, 470, 250, "Speed, MP/s  (higher is better)", 50),
               (520, 700, 16, "Files vs libaom speed 6  (lower is better)", 5)]
+    if not sizes:
+        panels = [(250, 680, 150, "Speed, MP/s  (higher is better)", 25)]
     for x0, x1, vmax, head, step in panels:
         s.text(x0, top - 22, head, 12, "ink2", weight=600)
         for v in range(0, vmax + 1, step):
@@ -112,18 +115,16 @@ def matchup_chart(t, name, title, subtitle, rows):
             s.line(x, top - 6, x, top + band * len(rows) - 14)
             s.text(x, top + band * len(rows) + 4, f"{v}" + (" %" if vmax == 16 and v else ""), 12, "muted", "middle")
         s.line(x0, top - 6, x0, top + band * len(rows) - 14, "axis")
-    for i, (label, note, key, mps, est, bd) in enumerate(rows):
+    for i, (label, note, key, mps, bd) in enumerate(rows):
         y = top + band * i
         s.text(lx, y + 13, label, 14, weight=600 if key == "av1gpu" else 400)
         s.text(lx, y + 31, note, 12, "muted")
         x0, x1, vmax = panels[0][:3]
         xe = x0 + (x1 - x0) * mps / vmax
-        if est:      # estimated, not measured: hollow bar
-            s.add(f'<rect x="{x0}" y="{y + 5}" width="{xe - x0 - 1:.1f}" height="22" rx="4" fill="{t[key]}" '
-                  f'fill-opacity="0.25" stroke="{t[key]}" stroke-width="2" stroke-dasharray="5 3"/>')
-        else:
-            s.bar_h(x0, xe, y + 4, 24, t[key])
-        s.text(xe + 8, y + 21, ("≈" if est else "") + f"{mps:.0f}" + (" est." if est else ""), 14, weight=600)
+        s.bar_h(x0, xe, y + 4, 24, t[key])
+        s.text(xe + 8, y + 21, f"{mps:.0f}", 14, weight=600)
+        if not sizes:
+            continue
         x0, x1, vmax = panels[1][:3]
         xe = x0 + (x1 - x0) * max(bd, 0) * 100 / vmax
         if xe - x0 > 1:
@@ -142,15 +143,15 @@ def matchup_charts(t):
     cpu = "16 CPU threads at once"
     matchup_chart(t, "match-small", "Smallest files: av1gpu default vs libaom speed 6",
                   ["100 photos of 0.18–24 MP on an AWS g6.4xlarge: libaom on all 16 vCPUs, av1gpu on one",
-                   "NVIDIA L4 and about 0.1 CPU core. Same file sizes, 4× the speed."],
-                  [("av1gpu default", "1 GPU, 4 encoders", "av1gpu", default, False,
+                   "NVIDIA L4 and about 0.1 CPU core. Same file sizes (within 0.1 %), 4× the speed."],
+                  [("av1gpu default", "1 GPU, 4 encoders", "av1gpu", default,
                     gamut["av1gpu_vs_aom_s6"]["median"]),
-                   ("libaom speed 6", cpu, "aom_s6", s6, False, 0.0)])
+                   ("libaom speed 6", cpu, "aom_s6", s6, 0.0)], sizes=False)
     matchup_chart(t, "match-fast", "Fastest: av1gpu turbo3 vs libaom speed 9",
-                  ["The same photos at each encoder's fastest useful setting. About the same speed;",
-                   "libaom's files grow 15 %, av1gpu's 5 %."],
-                  [("av1gpu turbo3", "--small-preset none", "av1gpu", default * TURBO3_SPEED_RATIO, True, TURBO3_BD),
-                   ("libaom speed 9", cpu, "aom_s9", s9, False, gamut["aom_s9_vs_aom_s6"]["median"])])
+                  ["The same photos at each encoder's fastest useful setting. av1gpu is a little faster,",
+                   "and its files grow 5 % where libaom's grow 15 %."],
+                  [("av1gpu turbo3", "--small-preset none", "av1gpu", TURBO3_SPEED, TURBO3_BD),
+                   ("libaom speed 9", cpu, "aom_s9", s9, gamut["aom_s9_vs_aom_s6"]["median"])])
 
 
 def quality_chart(t):

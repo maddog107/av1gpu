@@ -72,7 +72,7 @@ Each encoder has a "small files" setting and a "fast" setting, so there are two 
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/charts/match-small-dark.svg">
-  <img alt="Two bar panels. Speed: av1gpu default 116 MP/s, libaom speed 6 29 MP/s. Files vs libaom speed 6: av1gpu −0.1 percent." src="docs/charts/match-small-light.svg" width="760">
+  <img alt="Bar chart of encoding speed: av1gpu default 116 MP/s, libaom speed 6 29 MP/s." src="docs/charts/match-small-light.svg" width="760">
 </picture>
 
 **At the same file size, av1gpu is 4× faster than libaom running on all 16 CPU threads at once**,
@@ -82,16 +82,15 @@ and it leaves the CPU almost idle (0.1 of a core).
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/charts/match-fast-dark.svg">
-  <img alt="Two bar panels. Speed: av1gpu turbo3 with the small-image preset off about 196 MP/s (estimated), libaom speed 9 188 MP/s. Files vs libaom speed 6: av1gpu turbo3 +5.4 percent, libaom speed 9 +15.0 percent." src="docs/charts/match-fast-light.svg" width="760">
+  <img alt="Two bar panels. Speed: av1gpu turbo3 with the small-image preset off 212 MP/s, libaom speed 9 188 MP/s. Files vs libaom speed 6: av1gpu turbo3 +5.4 percent, libaom speed 9 +15.0 percent." src="docs/charts/match-fast-light.svg" width="760">
 </picture>
 
-**At about the same speed, av1gpu's files grow a third as much:** +5.4 % against libaom speed 6,
-where libaom speed 9 pays +15 %. av1gpu uses 0.4 of a CPU core; libaom still needs all 16 threads.
+**A little faster than speed 9, and av1gpu's files grow a third as much:** +5.4 % against libaom speed 6,
+where libaom speed 9 pays +15 %. av1gpu uses 0.2 of a CPU core; libaom still needs all 16 threads.
 libaom speed 10 is no faster than 9 for still images.
 
-The `turbo3` speed (dashed bar) is an estimate: 1.7× the av1gpu default, the ratio measured on an RTX PRO
-2000 Blackwell. It has not been run on the L4. Its file sizes are exact on every GPU, because the output
-is byte-identical.
+The `turbo3` speed was measured on the same L4 in a separate session, on 99 of the 100 photos (the default
+gave 119 MP/s there, against 116 in the main run).
 
 ### 📈 Quality and file size
 
@@ -109,12 +108,12 @@ is byte-identical.
 |---|---:|---:|---:|---:|
 | **av1gpu** default, `GP_ENCODERS=4` | **116** | **−0.1 %** | **−31.2 %** | 0.1 |
 | av1gpu `--small-preset none` | 127 | +2.1 % | | 0.1 |
-| av1gpu `--preset turbo3 --small-preset none` | ≈ 196¹ | +5.4 % | | 0.4 |
+| av1gpu `--preset turbo3 --small-preset none` | 212¹ | +5.4 % | | 0.2 |
 | libaom speed 6, 16 × avifenc | 29 | 0 | −31.1 % | 16 |
 | libaom speed 9, 16 × avifenc | 188 | +15.0 % | −19.3 % | 16 |
 | WebP (cwebp `-m 4`) | | +45.1 % | 0 | |
 
-¹ Estimated: 1.7× the default as measured on the RTX PRO 2000; not yet run on the L4.
+¹ Measured in a separate L4 session on 99 of the 100 photos, where the default ran at 119 MP/s.
 
 ### 🖼️ What the files look like
 
