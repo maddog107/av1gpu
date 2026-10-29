@@ -1,0 +1,3716 @@
+{
+ "environment": {
+  "machine": "AWS g6.4xlarge (speed), g6.2xlarge (quality); NVIDIA L4",
+  "gpu": "NVIDIA L4, 595.112.07, 23034 MiB, 72.00 W",
+  "ffmpeg": "ffmpeg version n8.1.3-25-g611cec792a-20261028 Copyright (c) 2000-2026 the FFmpeg developers",
+  "decoder": "Version: 1.4.0 (dav1d [dec]:1.4.1, aom [enc/dec]:3.13.1) (avifdec -c dav1d)",
+  "ssimulacra2": "libjxl 0.11.1"
+ },
+ "pipeline": "hybrid_nvenc_libavif: ffmpeg -i <jpg> -c:v av1_nvenc -preset p7 -tune uhq -rc vbr -b:v 0 -spatial-aq 1 -aq-strength 10 -rc-lookahead 32 -lookahead_level 3 -cq <CQ> -pix_fmt yuv420p -color_range pc -frames:v 1 -f ivf, then the OBUs muxed into AVIF; one ffmpeg process per image, <workers> at a time",
+ "images": 99,
+ "megapixels": 477.7,
+ "quality_points": [
+  18,
+  25,
+  32,
+  38,
+  44,
+  50
+ ],
+ "speed": [
+  {
+   "cq": 32,
+   "workers": 1,
+   "wall_s": 83.18,
+   "mp_s": 5.74,
+   "cpu_cores": 0.95
+  },
+  {
+   "cq": 32,
+   "workers": 2,
+   "wall_s": 43.28,
+   "mp_s": 11.04,
+   "cpu_cores": 1.89
+  },
+  {
+   "cq": 32,
+   "workers": 4,
+   "wall_s": 30.84,
+   "mp_s": 15.49,
+   "cpu_cores": 3.17
+  },
+  {
+   "cq": 32,
+   "workers": 8,
+   "wall_s": 30.53,
+   "mp_s": 15.64,
+   "cpu_cores": 3.93
+  },
+  {
+   "cq": 32,
+   "workers": 16,
+   "wall_s": 33.79,
+   "mp_s": 14.14,
+   "cpu_cores": 4.18
+  },
+  {
+   "cq": 32,
+   "workers": 1,
+   "wall_s": 83.71,
+   "mp_s": 5.71,
+   "cpu_cores": 0.95
+  },
+  {
+   "cq": 32,
+   "workers": 2,
+   "wall_s": 43.68,
+   "mp_s": 10.94,
+   "cpu_cores": 1.89
+  },
+  {
+   "cq": 32,
+   "workers": 4,
+   "wall_s": 30.79,
+   "mp_s": 15.51,
+   "cpu_cores": 3.18
+  },
+  {
+   "cq": 32,
+   "workers": 8,
+   "wall_s": 30.51,
+   "mp_s": 15.66,
+   "cpu_cores": 3.92
+  },
+  {
+   "cq": 32,
+   "workers": 16,
+   "wall_s": 33.98,
+   "mp_s": 14.06,
+   "cpu_cores": 4.16
+  }
+ ],
+ "av1gpu_same_session": [
+  {
+   "label": "default, GP_ENCODERS=4",
+   "mp_s": 115.6,
+   "cpu_cores": 0.12
+  },
+  {
+   "label": "default, GP_ENCODERS=4",
+   "mp_s": 117.1,
+   "cpu_cores": 0.12
+  }
+ ],
+ "quality": {
+  "nvenc": [
+   {
+    "image": "037774ce28834ba2_tiny.jpg",
+    "q": 18,
+    "bytes": 94319,
+    "ssimulacra2": 88.58555824
+   },
+   {
+    "image": "037774ce28834ba2_tiny.jpg",
+    "q": 25,
+    "bytes": 74388,
+    "ssimulacra2": 85.91218349
+   },
+   {
+    "image": "037774ce28834ba2_tiny.jpg",
+    "q": 32,
+    "bytes": 55833,
+    "ssimulacra2": 80.74654765
+   },
+   {
+    "image": "037774ce28834ba2_tiny.jpg",
+    "q": 38,
+    "bytes": 41608,
+    "ssimulacra2": 72.90250984
+   },
+   {
+    "image": "037774ce28834ba2_tiny.jpg",
+    "q": 44,
+    "bytes": 28761,
+    "ssimulacra2": 60.55425427
+   },
+   {
+    "image": "037774ce28834ba2_tiny.jpg",
+    "q": 50,
+    "bytes": 17710,
+    "ssimulacra2": 42.12812728
+   },
+   {
+    "image": "06593b76585ed9a5_small.jpg",
+    "q": 18,
+    "bytes": 96091,
+    "ssimulacra2": 90.29803755
+   },
+   {
+    "image": "06593b76585ed9a5_small.jpg",
+    "q": 25,
+    "bytes": 66869,
+    "ssimulacra2": 87.8657095
+   },
+   {
+    "image": "06593b76585ed9a5_small.jpg",
+    "q": 32,
+    "bytes": 44119,
+    "ssimulacra2": 82.94376026
+   },
+   {
+    "image": "06593b76585ed9a5_small.jpg",
+    "q": 38,
+    "bytes": 30588,
+    "ssimulacra2": 75.85000785
+   },
+   {
+    "image": "06593b76585ed9a5_small.jpg",
+    "q": 44,
+    "bytes": 21952,
+    "ssimulacra2": 66.85504487
+   },
+   {
+    "image": "06593b76585ed9a5_small.jpg",
+    "q": 50,
+    "bytes": 15456,
+    "ssimulacra2": 53.42386777
+   },
+   {
+    "image": "0af4d66572273aaf_typical.jpg",
+    "q": 18,
+    "bytes": 527534,
+    "ssimulacra2": 89.1407671
+   },
+   {
+    "image": "0af4d66572273aaf_typical.jpg",
+    "q": 25,
+    "bytes": 246473,
+    "ssimulacra2": 85.36550733
+   },
+   {
+    "image": "0af4d66572273aaf_typical.jpg",
+    "q": 32,
+    "bytes": 127344,
+    "ssimulacra2": 79.66276034
+   },
+   {
+    "image": "0af4d66572273aaf_typical.jpg",
+    "q": 38,
+    "bytes": 77970,
+    "ssimulacra2": 71.53694329
+   },
+   {
+    "image": "0af4d66572273aaf_typical.jpg",
+    "q": 44,
+    "bytes": 52410,
+    "ssimulacra2": 60.73184084
+   },
+   {
+    "image": "0af4d66572273aaf_typical.jpg",
+    "q": 50,
+    "bytes": 34952,
+    "ssimulacra2": 44.98262538
+   },
+   {
+    "image": "0c39de851b8c906a_typical.jpg",
+    "q": 18,
+    "bytes": 263971,
+    "ssimulacra2": 89.22711305
+   },
+   {
+    "image": "0c39de851b8c906a_typical.jpg",
+    "q": 25,
+    "bytes": 204582,
+    "ssimulacra2": 86.01016961
+   },
+   {
+    "image": "0c39de851b8c906a_typical.jpg",
+    "q": 32,
+    "bytes": 150158,
+    "ssimulacra2": 78.38090555
+   },
+   {
+    "image": "0c39de851b8c906a_typical.jpg",
+    "q": 38,
+    "bytes": 103279,
+    "ssimulacra2": 67.52966269
+   },
+   {
+    "image": "0c39de851b8c906a_typical.jpg",
+    "q": 44,
+    "bytes": 64521,
+    "ssimulacra2": 51.60251956
+   },
+   {
+    "image": "0c39de851b8c906a_typical.jpg",
+    "q": 50,
+    "bytes": 39534,
+    "ssimulacra2": 29.54892095
+   },
+   {
+    "image": "0cf2daca3f1c50e1_large.jpg",
+    "q": 18,
+    "bytes": 1685731,
+    "ssimulacra2": 68.43139536
+   },
+   {
+    "image": "0cf2daca3f1c50e1_large.jpg",
+    "q": 25,
+    "bytes": 1191178,
+    "ssimulacra2": 66.42768814
+   },
+   {
+    "image": "0cf2daca3f1c50e1_large.jpg",
+    "q": 32,
+    "bytes": 709403,
+    "ssimulacra2": 61.47275571
+   },
+   {
+    "image": "0cf2daca3f1c50e1_large.jpg",
+    "q": 38,
+    "bytes": 399500,
+    "ssimulacra2": 54.48436848
+   },
+   {
+    "image": "0cf2daca3f1c50e1_large.jpg",
+    "q": 44,
+    "bytes": 247401,
+    "ssimulacra2": 45.20553475
+   },
+   {
+    "image": "0cf2daca3f1c50e1_large.jpg",
+    "q": 50,
+    "bytes": 156161,
+    "ssimulacra2": 30.45713039
+   },
+   {
+    "image": "1068f4f5ac7e8d01_typical.jpg",
+    "q": 18,
+    "bytes": 277696,
+    "ssimulacra2": 86.56093964
+   },
+   {
+    "image": "1068f4f5ac7e8d01_typical.jpg",
+    "q": 25,
+    "bytes": 144159,
+    "ssimulacra2": 79.4810094
+   },
+   {
+    "image": "1068f4f5ac7e8d01_typical.jpg",
+    "q": 32,
+    "bytes": 55642,
+    "ssimulacra2": 68.98065816
+   },
+   {
+    "image": "1068f4f5ac7e8d01_typical.jpg",
+    "q": 38,
+    "bytes": 20288,
+    "ssimulacra2": 58.95156492
+   },
+   {
+    "image": "1068f4f5ac7e8d01_typical.jpg",
+    "q": 44,
+    "bytes": 8762,
+    "ssimulacra2": 49.84411988
+   },
+   {
+    "image": "1068f4f5ac7e8d01_typical.jpg",
+    "q": 50,
+    "bytes": 4696,
+    "ssimulacra2": 40.88454317
+   },
+   {
+    "image": "16aaa6421eaf9905_huge.jpg",
+    "q": 18,
+    "bytes": 1705808,
+    "ssimulacra2": 86.2430688
+   },
+   {
+    "image": "16aaa6421eaf9905_huge.jpg",
+    "q": 25,
+    "bytes": 944713,
+    "ssimulacra2": 81.70525504
+   },
+   {
+    "image": "16aaa6421eaf9905_huge.jpg",
+    "q": 32,
+    "bytes": 467046,
+    "ssimulacra2": 72.43874991
+   },
+   {
+    "image": "16aaa6421eaf9905_huge.jpg",
+    "q": 38,
+    "bytes": 245777,
+    "ssimulacra2": 59.28719518
+   },
+   {
+    "image": "16aaa6421eaf9905_huge.jpg",
+    "q": 44,
+    "bytes": 143951,
+    "ssimulacra2": 43.6617589
+   },
+   {
+    "image": "16aaa6421eaf9905_huge.jpg",
+    "q": 50,
+    "bytes": 85626,
+    "ssimulacra2": 22.15233481
+   },
+   {
+    "image": "1782dce735b551c4_typical.jpg",
+    "q": 18,
+    "bytes": 196074,
+    "ssimulacra2": 86.96082335
+   },
+   {
+    "image": "1782dce735b551c4_typical.jpg",
+    "q": 25,
+    "bytes": 140524,
+    "ssimulacra2": 83.47623935
+   },
+   {
+    "image": "1782dce735b551c4_typical.jpg",
+    "q": 32,
+    "bytes": 64769,
+    "ssimulacra2": 73.37737425
+   },
+   {
+    "image": "1782dce735b551c4_typical.jpg",
+    "q": 38,
+    "bytes": 32714,
+    "ssimulacra2": 63.8522858
+   },
+   {
+    "image": "1782dce735b551c4_typical.jpg",
+    "q": 44,
+    "bytes": 19533,
+    "ssimulacra2": 52.41812492
+   },
+   {
+    "image": "1782dce735b551c4_typical.jpg",
+    "q": 50,
+    "bytes": 11553,
+    "ssimulacra2": 35.28238054
+   },
+   {
+    "image": "2287cba126a77fed_huge.jpg",
+    "q": 18,
+    "bytes": 964631,
+    "ssimulacra2": 86.08311693
+   },
+   {
+    "image": "2287cba126a77fed_huge.jpg",
+    "q": 25,
+    "bytes": 466176,
+    "ssimulacra2": 80.08684807
+   },
+   {
+    "image": "2287cba126a77fed_huge.jpg",
+    "q": 32,
+    "bytes": 228512,
+    "ssimulacra2": 71.20470425
+   },
+   {
+    "image": "2287cba126a77fed_huge.jpg",
+    "q": 38,
+    "bytes": 122597,
+    "ssimulacra2": 60.62553039
+   },
+   {
+    "image": "2287cba126a77fed_huge.jpg",
+    "q": 44,
+    "bytes": 75795,
+    "ssimulacra2": 48.95896867
+   },
+   {
+    "image": "2287cba126a77fed_huge.jpg",
+    "q": 50,
+    "bytes": 48237,
+    "ssimulacra2": 32.37688607
+   },
+   {
+    "image": "2476a0e45c7da3de_small.jpg",
+    "q": 18,
+    "bytes": 228858,
+    "ssimulacra2": 85.71116531
+   },
+   {
+    "image": "2476a0e45c7da3de_small.jpg",
+    "q": 25,
+    "bytes": 163812,
+    "ssimulacra2": 82.65516249
+   },
+   {
+    "image": "2476a0e45c7da3de_small.jpg",
+    "q": 32,
+    "bytes": 112628,
+    "ssimulacra2": 76.17388042
+   },
+   {
+    "image": "2476a0e45c7da3de_small.jpg",
+    "q": 38,
+    "bytes": 79421,
+    "ssimulacra2": 66.04385117
+   },
+   {
+    "image": "2476a0e45c7da3de_small.jpg",
+    "q": 44,
+    "bytes": 53566,
+    "ssimulacra2": 52.09637787
+   },
+   {
+    "image": "2476a0e45c7da3de_small.jpg",
+    "q": 50,
+    "bytes": 33187,
+    "ssimulacra2": 31.92599637
+   },
+   {
+    "image": "25d19e868909e5e2_huge.jpg",
+    "q": 18,
+    "bytes": 4153258,
+    "ssimulacra2": 73.49936228
+   },
+   {
+    "image": "25d19e868909e5e2_huge.jpg",
+    "q": 25,
+    "bytes": 2515498,
+    "ssimulacra2": 64.69203749
+   },
+   {
+    "image": "25d19e868909e5e2_huge.jpg",
+    "q": 32,
+    "bytes": 1966077,
+    "ssimulacra2": 59.51387096
+   },
+   {
+    "image": "25d19e868909e5e2_huge.jpg",
+    "q": 38,
+    "bytes": 1148372,
+    "ssimulacra2": 47.8555737
+   },
+   {
+    "image": "25d19e868909e5e2_huge.jpg",
+    "q": 44,
+    "bytes": 618843,
+    "ssimulacra2": 34.42551657
+   },
+   {
+    "image": "25d19e868909e5e2_huge.jpg",
+    "q": 50,
+    "bytes": 299571,
+    "ssimulacra2": 18.20364089
+   },
+   {
+    "image": "25f594629a440ce8_large.jpg",
+    "q": 18,
+    "bytes": 735907,
+    "ssimulacra2": 86.2253454
+   },
+   {
+    "image": "25f594629a440ce8_large.jpg",
+    "q": 25,
+    "bytes": 251749,
+    "ssimulacra2": 80.96073402
+   },
+   {
+    "image": "25f594629a440ce8_large.jpg",
+    "q": 32,
+    "bytes": 73758,
+    "ssimulacra2": 73.61324535
+   },
+   {
+    "image": "25f594629a440ce8_large.jpg",
+    "q": 38,
+    "bytes": 29841,
+    "ssimulacra2": 66.12765822
+   },
+   {
+    "image": "25f594629a440ce8_large.jpg",
+    "q": 44,
+    "bytes": 17963,
+    "ssimulacra2": 60.23129859
+   },
+   {
+    "image": "25f594629a440ce8_large.jpg",
+    "q": 50,
+    "bytes": 11820,
+    "ssimulacra2": 51.83044621
+   },
+   {
+    "image": "270ca40915180b43_tiny.jpg",
+    "q": 18,
+    "bytes": 74389,
+    "ssimulacra2": 64.44680003
+   },
+   {
+    "image": "270ca40915180b43_tiny.jpg",
+    "q": 25,
+    "bytes": 56005,
+    "ssimulacra2": 64.27713147
+   },
+   {
+    "image": "270ca40915180b43_tiny.jpg",
+    "q": 32,
+    "bytes": 38491,
+    "ssimulacra2": 62.20616669
+   },
+   {
+    "image": "270ca40915180b43_tiny.jpg",
+    "q": 38,
+    "bytes": 23821,
+    "ssimulacra2": 56.24392006
+   },
+   {
+    "image": "270ca40915180b43_tiny.jpg",
+    "q": 44,
+    "bytes": 13863,
+    "ssimulacra2": 45.25578537
+   },
+   {
+    "image": "270ca40915180b43_tiny.jpg",
+    "q": 50,
+    "bytes": 8349,
+    "ssimulacra2": 28.18686952
+   },
+   {
+    "image": "2e67ed20c61dfe3e_typical.jpg",
+    "q": 18,
+    "bytes": 982792,
+    "ssimulacra2": 62.41198051
+   },
+   {
+    "image": "2e67ed20c61dfe3e_typical.jpg",
+    "q": 25,
+    "bytes": 719044,
+    "ssimulacra2": 61.06351567
+   },
+   {
+    "image": "2e67ed20c61dfe3e_typical.jpg",
+    "q": 32,
+    "bytes": 468803,
+    "ssimulacra2": 57.56825648
+   },
+   {
+    "image": "2e67ed20c61dfe3e_typical.jpg",
+    "q": 38,
+    "bytes": 313137,
+    "ssimulacra2": 50.76754343
+   },
+   {
+    "image": "2e67ed20c61dfe3e_typical.jpg",
+    "q": 44,
+    "bytes": 208023,
+    "ssimulacra2": 40.15915156
+   },
+   {
+    "image": "2e67ed20c61dfe3e_typical.jpg",
+    "q": 50,
+    "bytes": 129392,
+    "ssimulacra2": 22.68130412
+   },
+   {
+    "image": "2e785b26c20e7e3a_tiny.jpg",
+    "q": 18,
+    "bytes": 48262,
+    "ssimulacra2": 90.56340619
+   },
+   {
+    "image": "2e785b26c20e7e3a_tiny.jpg",
+    "q": 25,
+    "bytes": 34647,
+    "ssimulacra2": 86.87863596
+   },
+   {
+    "image": "2e785b26c20e7e3a_tiny.jpg",
+    "q": 32,
+    "bytes": 21663,
+    "ssimulacra2": 79.211276
+   },
+   {
+    "image": "2e785b26c20e7e3a_tiny.jpg",
+    "q": 38,
+    "bytes": 14052,
+    "ssimulacra2": 69.93199019
+   },
+   {
+    "image": "2e785b26c20e7e3a_tiny.jpg",
+    "q": 44,
+    "bytes": 8925,
+    "ssimulacra2": 57.73115678
+   },
+   {
+    "image": "2e785b26c20e7e3a_tiny.jpg",
+    "q": 50,
+    "bytes": 5626,
+    "ssimulacra2": 40.27161295
+   },
+   {
+    "image": "2f7fde1527d592e5_small.jpg",
+    "q": 18,
+    "bytes": 273926,
+    "ssimulacra2": 85.71532992
+   },
+   {
+    "image": "2f7fde1527d592e5_small.jpg",
+    "q": 25,
+    "bytes": 204508,
+    "ssimulacra2": 83.78717991
+   },
+   {
+    "image": "2f7fde1527d592e5_small.jpg",
+    "q": 32,
+    "bytes": 135601,
+    "ssimulacra2": 78.78518378
+   },
+   {
+    "image": "2f7fde1527d592e5_small.jpg",
+    "q": 38,
+    "bytes": 89716,
+    "ssimulacra2": 71.35144526
+   },
+   {
+    "image": "2f7fde1527d592e5_small.jpg",
+    "q": 44,
+    "bytes": 59841,
+    "ssimulacra2": 61.36680911
+   },
+   {
+    "image": "2f7fde1527d592e5_small.jpg",
+    "q": 50,
+    "bytes": 38865,
+    "ssimulacra2": 46.0723115
+   },
+   {
+    "image": "3065cbd41a1ad905_typical.jpg",
+    "q": 18,
+    "bytes": 278848,
+    "ssimulacra2": 65.19733835
+   },
+   {
+    "image": "3065cbd41a1ad905_typical.jpg",
+    "q": 25,
+    "bytes": 171481,
+    "ssimulacra2": 63.32398363
+   },
+   {
+    "image": "3065cbd41a1ad905_typical.jpg",
+    "q": 32,
+    "bytes": 90466,
+    "ssimulacra2": 58.71776683
+   },
+   {
+    "image": "3065cbd41a1ad905_typical.jpg",
+    "q": 38,
+    "bytes": 51302,
+    "ssimulacra2": 51.57688807
+   },
+   {
+    "image": "3065cbd41a1ad905_typical.jpg",
+    "q": 44,
+    "bytes": 32170,
+    "ssimulacra2": 42.23555071
+   },
+   {
+    "image": "3065cbd41a1ad905_typical.jpg",
+    "q": 50,
+    "bytes": 20517,
+    "ssimulacra2": 29.77837231
+   },
+   {
+    "image": "34da64f7fecdfa2a_huge.jpg",
+    "q": 18,
+    "bytes": 4787606,
+    "ssimulacra2": 80.67493571
+   },
+   {
+    "image": "34da64f7fecdfa2a_huge.jpg",
+    "q": 25,
+    "bytes": 2876655,
+    "ssimulacra2": 76.71743419
+   },
+   {
+    "image": "34da64f7fecdfa2a_huge.jpg",
+    "q": 32,
+    "bytes": 1714713,
+    "ssimulacra2": 70.06783178
+   },
+   {
+    "image": "34da64f7fecdfa2a_huge.jpg",
+    "q": 38,
+    "bytes": 1084338,
+    "ssimulacra2": 58.71150762
+   },
+   {
+    "image": "34da64f7fecdfa2a_huge.jpg",
+    "q": 44,
+    "bytes": 701405,
+    "ssimulacra2": 41.71554981
+   },
+   {
+    "image": "34da64f7fecdfa2a_huge.jpg",
+    "q": 50,
+    "bytes": 430638,
+    "ssimulacra2": 15.99136452
+   },
+   {
+    "image": "370f7c330a75892f_large.jpg",
+    "q": 18,
+    "bytes": 966522,
+    "ssimulacra2": 84.80113072
+   },
+   {
+    "image": "370f7c330a75892f_large.jpg",
+    "q": 25,
+    "bytes": 644079,
+    "ssimulacra2": 79.7061091
+   },
+   {
+    "image": "370f7c330a75892f_large.jpg",
+    "q": 32,
+    "bytes": 286242,
+    "ssimulacra2": 69.53752784
+   },
+   {
+    "image": "370f7c330a75892f_large.jpg",
+    "q": 38,
+    "bytes": 120444,
+    "ssimulacra2": 59.25084464
+   },
+   {
+    "image": "370f7c330a75892f_large.jpg",
+    "q": 44,
+    "bytes": 69129,
+    "ssimulacra2": 48.47957306
+   },
+   {
+    "image": "370f7c330a75892f_large.jpg",
+    "q": 50,
+    "bytes": 40334,
+    "ssimulacra2": 31.86836858
+   },
+   {
+    "image": "3879c92c11164a6a_large.jpg",
+    "q": 18,
+    "bytes": 1391256,
+    "ssimulacra2": 86.81183481
+   },
+   {
+    "image": "3879c92c11164a6a_large.jpg",
+    "q": 25,
+    "bytes": 811817,
+    "ssimulacra2": 81.99834731
+   },
+   {
+    "image": "3879c92c11164a6a_large.jpg",
+    "q": 32,
+    "bytes": 443861,
+    "ssimulacra2": 73.40953613
+   },
+   {
+    "image": "3879c92c11164a6a_large.jpg",
+    "q": 38,
+    "bytes": 262092,
+    "ssimulacra2": 61.57411407
+   },
+   {
+    "image": "3879c92c11164a6a_large.jpg",
+    "q": 44,
+    "bytes": 165313,
+    "ssimulacra2": 46.64591632
+   },
+   {
+    "image": "3879c92c11164a6a_large.jpg",
+    "q": 50,
+    "bytes": 101819,
+    "ssimulacra2": 25.57822185
+   },
+   {
+    "image": "3c353054856daa8e_typical.jpg",
+    "q": 18,
+    "bytes": 973779,
+    "ssimulacra2": 89.25739865
+   },
+   {
+    "image": "3c353054856daa8e_typical.jpg",
+    "q": 25,
+    "bytes": 699761,
+    "ssimulacra2": 85.06209097
+   },
+   {
+    "image": "3c353054856daa8e_typical.jpg",
+    "q": 32,
+    "bytes": 451582,
+    "ssimulacra2": 77.43882569
+   },
+   {
+    "image": "3c353054856daa8e_typical.jpg",
+    "q": 38,
+    "bytes": 309108,
+    "ssimulacra2": 67.53238291
+   },
+   {
+    "image": "3c353054856daa8e_typical.jpg",
+    "q": 44,
+    "bytes": 211317,
+    "ssimulacra2": 54.65779551
+   },
+   {
+    "image": "3c353054856daa8e_typical.jpg",
+    "q": 50,
+    "bytes": 137645,
+    "ssimulacra2": 36.88555892
+   },
+   {
+    "image": "3fe04f7604431846_tiny.jpg",
+    "q": 18,
+    "bytes": 144975,
+    "ssimulacra2": 31.35935387
+   },
+   {
+    "image": "3fe04f7604431846_tiny.jpg",
+    "q": 25,
+    "bytes": 118597,
+    "ssimulacra2": 31.14629215
+   },
+   {
+    "image": "3fe04f7604431846_tiny.jpg",
+    "q": 32,
+    "bytes": 89129,
+    "ssimulacra2": 29.99940255
+   },
+   {
+    "image": "3fe04f7604431846_tiny.jpg",
+    "q": 38,
+    "bytes": 65773,
+    "ssimulacra2": 27.55651344
+   },
+   {
+    "image": "3fe04f7604431846_tiny.jpg",
+    "q": 44,
+    "bytes": 43522,
+    "ssimulacra2": 20.55810618
+   },
+   {
+    "image": "3fe04f7604431846_tiny.jpg",
+    "q": 50,
+    "bytes": 25034,
+    "ssimulacra2": 4.06175709
+   },
+   {
+    "image": "479b1ea3d61d4035_small.jpg",
+    "q": 18,
+    "bytes": 144605,
+    "ssimulacra2": 89.42826833
+   },
+   {
+    "image": "479b1ea3d61d4035_small.jpg",
+    "q": 25,
+    "bytes": 82292,
+    "ssimulacra2": 85.81392903
+   },
+   {
+    "image": "479b1ea3d61d4035_small.jpg",
+    "q": 32,
+    "bytes": 47936,
+    "ssimulacra2": 79.69029512
+   },
+   {
+    "image": "479b1ea3d61d4035_small.jpg",
+    "q": 38,
+    "bytes": 30520,
+    "ssimulacra2": 70.25947979
+   },
+   {
+    "image": "479b1ea3d61d4035_small.jpg",
+    "q": 44,
+    "bytes": 19706,
+    "ssimulacra2": 57.29944368
+   },
+   {
+    "image": "479b1ea3d61d4035_small.jpg",
+    "q": 50,
+    "bytes": 12124,
+    "ssimulacra2": 37.7173289
+   },
+   {
+    "image": "49a7d4072520bce9_typical.jpg",
+    "q": 18,
+    "bytes": 534968,
+    "ssimulacra2": 88.47128712
+   },
+   {
+    "image": "49a7d4072520bce9_typical.jpg",
+    "q": 25,
+    "bytes": 361884,
+    "ssimulacra2": 83.48888152
+   },
+   {
+    "image": "49a7d4072520bce9_typical.jpg",
+    "q": 32,
+    "bytes": 211715,
+    "ssimulacra2": 74.13972623
+   },
+   {
+    "image": "49a7d4072520bce9_typical.jpg",
+    "q": 38,
+    "bytes": 130599,
+    "ssimulacra2": 60.00164076
+   },
+   {
+    "image": "49a7d4072520bce9_typical.jpg",
+    "q": 44,
+    "bytes": 81164,
+    "ssimulacra2": 40.98894986
+   },
+   {
+    "image": "49a7d4072520bce9_typical.jpg",
+    "q": 50,
+    "bytes": 46032,
+    "ssimulacra2": 14.3956784
+   },
+   {
+    "image": "4bbc8bd3085f9e02_large.jpg",
+    "q": 18,
+    "bytes": 3140933,
+    "ssimulacra2": 85.63723538
+   },
+   {
+    "image": "4bbc8bd3085f9e02_large.jpg",
+    "q": 25,
+    "bytes": 2206310,
+    "ssimulacra2": 80.46377091
+   },
+   {
+    "image": "4bbc8bd3085f9e02_large.jpg",
+    "q": 32,
+    "bytes": 1371762,
+    "ssimulacra2": 70.49386803
+   },
+   {
+    "image": "4bbc8bd3085f9e02_large.jpg",
+    "q": 38,
+    "bytes": 821791,
+    "ssimulacra2": 57.27498844
+   },
+   {
+    "image": "4bbc8bd3085f9e02_large.jpg",
+    "q": 44,
+    "bytes": 446549,
+    "ssimulacra2": 39.85301819
+   },
+   {
+    "image": "4bbc8bd3085f9e02_large.jpg",
+    "q": 50,
+    "bytes": 205599,
+    "ssimulacra2": 16.50213044
+   },
+   {
+    "image": "4cfd020b97be68d5_tiny.jpg",
+    "q": 18,
+    "bytes": 42079,
+    "ssimulacra2": 42.06609374
+   },
+   {
+    "image": "4cfd020b97be68d5_tiny.jpg",
+    "q": 25,
+    "bytes": 30396,
+    "ssimulacra2": 41.78613286
+   },
+   {
+    "image": "4cfd020b97be68d5_tiny.jpg",
+    "q": 32,
+    "bytes": 20654,
+    "ssimulacra2": 41.39732291
+   },
+   {
+    "image": "4cfd020b97be68d5_tiny.jpg",
+    "q": 38,
+    "bytes": 14690,
+    "ssimulacra2": 40.49673152
+   },
+   {
+    "image": "4cfd020b97be68d5_tiny.jpg",
+    "q": 44,
+    "bytes": 10152,
+    "ssimulacra2": 38.39901073
+   },
+   {
+    "image": "4cfd020b97be68d5_tiny.jpg",
+    "q": 50,
+    "bytes": 6632,
+    "ssimulacra2": 32.3849397
+   },
+   {
+    "image": "4d1e8704fa4bc4e5_small.jpg",
+    "q": 18,
+    "bytes": 184098,
+    "ssimulacra2": 90.5503571
+   },
+   {
+    "image": "4d1e8704fa4bc4e5_small.jpg",
+    "q": 25,
+    "bytes": 130326,
+    "ssimulacra2": 86.66196324
+   },
+   {
+    "image": "4d1e8704fa4bc4e5_small.jpg",
+    "q": 32,
+    "bytes": 81501,
+    "ssimulacra2": 79.28496097
+   },
+   {
+    "image": "4d1e8704fa4bc4e5_small.jpg",
+    "q": 38,
+    "bytes": 52478,
+    "ssimulacra2": 69.31593343
+   },
+   {
+    "image": "4d1e8704fa4bc4e5_small.jpg",
+    "q": 44,
+    "bytes": 33782,
+    "ssimulacra2": 56.50759583
+   },
+   {
+    "image": "4d1e8704fa4bc4e5_small.jpg",
+    "q": 50,
+    "bytes": 21007,
+    "ssimulacra2": 37.60018729
+   },
+   {
+    "image": "4eab8ba62499e7b9_huge.jpg",
+    "q": 18,
+    "bytes": 2034077,
+    "ssimulacra2": 86.32374814
+   },
+   {
+    "image": "4eab8ba62499e7b9_huge.jpg",
+    "q": 25,
+    "bytes": 1057818,
+    "ssimulacra2": 82.5361406
+   },
+   {
+    "image": "4eab8ba62499e7b9_huge.jpg",
+    "q": 32,
+    "bytes": 565995,
+    "ssimulacra2": 75.41622383
+   },
+   {
+    "image": "4eab8ba62499e7b9_huge.jpg",
+    "q": 38,
+    "bytes": 336816,
+    "ssimulacra2": 64.42692316
+   },
+   {
+    "image": "4eab8ba62499e7b9_huge.jpg",
+    "q": 44,
+    "bytes": 210618,
+    "ssimulacra2": 48.93339544
+   },
+   {
+    "image": "4eab8ba62499e7b9_huge.jpg",
+    "q": 50,
+    "bytes": 123280,
+    "ssimulacra2": 25.8428133
+   },
+   {
+    "image": "501b1ad04408c3f4_large.jpg",
+    "q": 18,
+    "bytes": 809537,
+    "ssimulacra2": 85.34995789
+   },
+   {
+    "image": "501b1ad04408c3f4_large.jpg",
+    "q": 25,
+    "bytes": 445268,
+    "ssimulacra2": 80.11001936
+   },
+   {
+    "image": "501b1ad04408c3f4_large.jpg",
+    "q": 32,
+    "bytes": 166554,
+    "ssimulacra2": 70.02815489
+   },
+   {
+    "image": "501b1ad04408c3f4_large.jpg",
+    "q": 38,
+    "bytes": 71664,
+    "ssimulacra2": 60.46830968
+   },
+   {
+    "image": "501b1ad04408c3f4_large.jpg",
+    "q": 44,
+    "bytes": 43269,
+    "ssimulacra2": 52.19125409
+   },
+   {
+    "image": "501b1ad04408c3f4_large.jpg",
+    "q": 50,
+    "bytes": 27345,
+    "ssimulacra2": 40.34200181
+   },
+   {
+    "image": "547faad424854128_tiny.jpg",
+    "q": 18,
+    "bytes": 78676,
+    "ssimulacra2": 71.4248367
+   },
+   {
+    "image": "547faad424854128_tiny.jpg",
+    "q": 25,
+    "bytes": 61367,
+    "ssimulacra2": 70.63100154
+   },
+   {
+    "image": "547faad424854128_tiny.jpg",
+    "q": 32,
+    "bytes": 43668,
+    "ssimulacra2": 67.80775875
+   },
+   {
+    "image": "547faad424854128_tiny.jpg",
+    "q": 38,
+    "bytes": 30093,
+    "ssimulacra2": 62.09159375
+   },
+   {
+    "image": "547faad424854128_tiny.jpg",
+    "q": 44,
+    "bytes": 19043,
+    "ssimulacra2": 54.26730321
+   },
+   {
+    "image": "547faad424854128_tiny.jpg",
+    "q": 50,
+    "bytes": 10927,
+    "ssimulacra2": 37.50349723
+   },
+   {
+    "image": "5b0f60b3eb777154_huge.jpg",
+    "q": 18,
+    "bytes": 1860759,
+    "ssimulacra2": 83.78228807
+   },
+   {
+    "image": "5b0f60b3eb777154_huge.jpg",
+    "q": 25,
+    "bytes": 1093560,
+    "ssimulacra2": 79.70412171
+   },
+   {
+    "image": "5b0f60b3eb777154_huge.jpg",
+    "q": 32,
+    "bytes": 430153,
+    "ssimulacra2": 71.5352552
+   },
+   {
+    "image": "5b0f60b3eb777154_huge.jpg",
+    "q": 38,
+    "bytes": 173562,
+    "ssimulacra2": 61.21043498
+   },
+   {
+    "image": "5b0f60b3eb777154_huge.jpg",
+    "q": 44,
+    "bytes": 91431,
+    "ssimulacra2": 51.31384831
+   },
+   {
+    "image": "5b0f60b3eb777154_huge.jpg",
+    "q": 50,
+    "bytes": 54808,
+    "ssimulacra2": 37.81520352
+   },
+   {
+    "image": "5e8cdd2bc708dbfc_small.jpg",
+    "q": 18,
+    "bytes": 171775,
+    "ssimulacra2": 89.26079536
+   },
+   {
+    "image": "5e8cdd2bc708dbfc_small.jpg",
+    "q": 25,
+    "bytes": 103359,
+    "ssimulacra2": 85.07572839
+   },
+   {
+    "image": "5e8cdd2bc708dbfc_small.jpg",
+    "q": 32,
+    "bytes": 54789,
+    "ssimulacra2": 78.04740759
+   },
+   {
+    "image": "5e8cdd2bc708dbfc_small.jpg",
+    "q": 38,
+    "bytes": 33217,
+    "ssimulacra2": 67.81733491
+   },
+   {
+    "image": "5e8cdd2bc708dbfc_small.jpg",
+    "q": 44,
+    "bytes": 20920,
+    "ssimulacra2": 53.41215148
+   },
+   {
+    "image": "5e8cdd2bc708dbfc_small.jpg",
+    "q": 50,
+    "bytes": 12667,
+    "ssimulacra2": 33.20514457
+   },
+   {
+    "image": "5ec353bbf3a3f2f5_tiny.jpg",
+    "q": 18,
+    "bytes": 173316,
+    "ssimulacra2": 57.23268275
+   },
+   {
+    "image": "5ec353bbf3a3f2f5_tiny.jpg",
+    "q": 25,
+    "bytes": 141449,
+    "ssimulacra2": 57.12295635
+   },
+   {
+    "image": "5ec353bbf3a3f2f5_tiny.jpg",
+    "q": 32,
+    "bytes": 108293,
+    "ssimulacra2": 56.17603659
+   },
+   {
+    "image": "5ec353bbf3a3f2f5_tiny.jpg",
+    "q": 38,
+    "bytes": 82343,
+    "ssimulacra2": 53.27797499
+   },
+   {
+    "image": "5ec353bbf3a3f2f5_tiny.jpg",
+    "q": 44,
+    "bytes": 57780,
+    "ssimulacra2": 48.13137051
+   },
+   {
+    "image": "5ec353bbf3a3f2f5_tiny.jpg",
+    "q": 50,
+    "bytes": 36604,
+    "ssimulacra2": 35.5426457
+   },
+   {
+    "image": "6057c6daef8fc78a_typical.jpg",
+    "q": 18,
+    "bytes": 328208,
+    "ssimulacra2": 85.16514961
+   },
+   {
+    "image": "6057c6daef8fc78a_typical.jpg",
+    "q": 25,
+    "bytes": 125229,
+    "ssimulacra2": 80.67280945
+   },
+   {
+    "image": "6057c6daef8fc78a_typical.jpg",
+    "q": 32,
+    "bytes": 58361,
+    "ssimulacra2": 75.43970787
+   },
+   {
+    "image": "6057c6daef8fc78a_typical.jpg",
+    "q": 38,
+    "bytes": 35384,
+    "ssimulacra2": 68.92830036
+   },
+   {
+    "image": "6057c6daef8fc78a_typical.jpg",
+    "q": 44,
+    "bytes": 22363,
+    "ssimulacra2": 59.19235134
+   },
+   {
+    "image": "6057c6daef8fc78a_typical.jpg",
+    "q": 50,
+    "bytes": 13775,
+    "ssimulacra2": 44.27472437
+   },
+   {
+    "image": "66ce30dc11941998_tiny.jpg",
+    "q": 18,
+    "bytes": 91903,
+    "ssimulacra2": 62.85018233
+   },
+   {
+    "image": "66ce30dc11941998_tiny.jpg",
+    "q": 25,
+    "bytes": 72496,
+    "ssimulacra2": 62.0875234
+   },
+   {
+    "image": "66ce30dc11941998_tiny.jpg",
+    "q": 32,
+    "bytes": 52038,
+    "ssimulacra2": 59.7504595
+   },
+   {
+    "image": "66ce30dc11941998_tiny.jpg",
+    "q": 38,
+    "bytes": 34983,
+    "ssimulacra2": 52.27877491
+   },
+   {
+    "image": "66ce30dc11941998_tiny.jpg",
+    "q": 44,
+    "bytes": 21207,
+    "ssimulacra2": 40.77779865
+   },
+   {
+    "image": "66ce30dc11941998_tiny.jpg",
+    "q": 50,
+    "bytes": 11166,
+    "ssimulacra2": 21.0015111
+   },
+   {
+    "image": "6b1467a43bd1c705_typical.jpg",
+    "q": 18,
+    "bytes": 485718,
+    "ssimulacra2": 64.22407953
+   },
+   {
+    "image": "6b1467a43bd1c705_typical.jpg",
+    "q": 25,
+    "bytes": 374751,
+    "ssimulacra2": 62.41863727
+   },
+   {
+    "image": "6b1467a43bd1c705_typical.jpg",
+    "q": 32,
+    "bytes": 259037,
+    "ssimulacra2": 58.0246213
+   },
+   {
+    "image": "6b1467a43bd1c705_typical.jpg",
+    "q": 38,
+    "bytes": 173583,
+    "ssimulacra2": 51.38756606
+   },
+   {
+    "image": "6b1467a43bd1c705_typical.jpg",
+    "q": 44,
+    "bytes": 110389,
+    "ssimulacra2": 40.61217195
+   },
+   {
+    "image": "6b1467a43bd1c705_typical.jpg",
+    "q": 50,
+    "bytes": 66758,
+    "ssimulacra2": 23.61273484
+   },
+   {
+    "image": "6b5935e540d042bd_large.jpg",
+    "q": 18,
+    "bytes": 600298,
+    "ssimulacra2": 73.90109649
+   },
+   {
+    "image": "6b5935e540d042bd_large.jpg",
+    "q": 25,
+    "bytes": 325031,
+    "ssimulacra2": 71.55645228
+   },
+   {
+    "image": "6b5935e540d042bd_large.jpg",
+    "q": 32,
+    "bytes": 147237,
+    "ssimulacra2": 66.06091824
+   },
+   {
+    "image": "6b5935e540d042bd_large.jpg",
+    "q": 38,
+    "bytes": 77725,
+    "ssimulacra2": 56.84379632
+   },
+   {
+    "image": "6b5935e540d042bd_large.jpg",
+    "q": 44,
+    "bytes": 46071,
+    "ssimulacra2": 43.62773659
+   },
+   {
+    "image": "6b5935e540d042bd_large.jpg",
+    "q": 50,
+    "bytes": 26873,
+    "ssimulacra2": 23.81361733
+   },
+   {
+    "image": "6dc7fd759d8440f3_large.jpg",
+    "q": 18,
+    "bytes": 1774921,
+    "ssimulacra2": 86.60417784
+   },
+   {
+    "image": "6dc7fd759d8440f3_large.jpg",
+    "q": 25,
+    "bytes": 1314136,
+    "ssimulacra2": 78.92683305
+   },
+   {
+    "image": "6dc7fd759d8440f3_large.jpg",
+    "q": 32,
+    "bytes": 830561,
+    "ssimulacra2": 66.54732883
+   },
+   {
+    "image": "6dc7fd759d8440f3_large.jpg",
+    "q": 38,
+    "bytes": 486269,
+    "ssimulacra2": 50.48778767
+   },
+   {
+    "image": "6dc7fd759d8440f3_large.jpg",
+    "q": 44,
+    "bytes": 242013,
+    "ssimulacra2": 27.90446086
+   },
+   {
+    "image": "6dc7fd759d8440f3_large.jpg",
+    "q": 50,
+    "bytes": 81815,
+    "ssimulacra2": 1.37762452
+   },
+   {
+    "image": "6e0bd79b44facceb_large.jpg",
+    "q": 18,
+    "bytes": 1408826,
+    "ssimulacra2": 87.90707628
+   },
+   {
+    "image": "6e0bd79b44facceb_large.jpg",
+    "q": 25,
+    "bytes": 964217,
+    "ssimulacra2": 84.30375323
+   },
+   {
+    "image": "6e0bd79b44facceb_large.jpg",
+    "q": 32,
+    "bytes": 569784,
+    "ssimulacra2": 76.35392632
+   },
+   {
+    "image": "6e0bd79b44facceb_large.jpg",
+    "q": 38,
+    "bytes": 344575,
+    "ssimulacra2": 64.69936327
+   },
+   {
+    "image": "6e0bd79b44facceb_large.jpg",
+    "q": 44,
+    "bytes": 214965,
+    "ssimulacra2": 48.83292438
+   },
+   {
+    "image": "6e0bd79b44facceb_large.jpg",
+    "q": 50,
+    "bytes": 129960,
+    "ssimulacra2": 26.92025996
+   },
+   {
+    "image": "702052e78273386d_tiny.jpg",
+    "q": 18,
+    "bytes": 45128,
+    "ssimulacra2": 90.01918751
+   },
+   {
+    "image": "702052e78273386d_tiny.jpg",
+    "q": 25,
+    "bytes": 32228,
+    "ssimulacra2": 86.53624635
+   },
+   {
+    "image": "702052e78273386d_tiny.jpg",
+    "q": 32,
+    "bytes": 20974,
+    "ssimulacra2": 78.4873228
+   },
+   {
+    "image": "702052e78273386d_tiny.jpg",
+    "q": 38,
+    "bytes": 13265,
+    "ssimulacra2": 66.20127318
+   },
+   {
+    "image": "702052e78273386d_tiny.jpg",
+    "q": 44,
+    "bytes": 7736,
+    "ssimulacra2": 49.91892199
+   },
+   {
+    "image": "702052e78273386d_tiny.jpg",
+    "q": 50,
+    "bytes": 4762,
+    "ssimulacra2": 34.29854693
+   },
+   {
+    "image": "72496a1a66a3d206_small.jpg",
+    "q": 18,
+    "bytes": 289762,
+    "ssimulacra2": 57.48994496
+   },
+   {
+    "image": "72496a1a66a3d206_small.jpg",
+    "q": 25,
+    "bytes": 231819,
+    "ssimulacra2": 57.09346359
+   },
+   {
+    "image": "72496a1a66a3d206_small.jpg",
+    "q": 32,
+    "bytes": 174431,
+    "ssimulacra2": 55.70175398
+   },
+   {
+    "image": "72496a1a66a3d206_small.jpg",
+    "q": 38,
+    "bytes": 125640,
+    "ssimulacra2": 51.80179824
+   },
+   {
+    "image": "72496a1a66a3d206_small.jpg",
+    "q": 44,
+    "bytes": 79953,
+    "ssimulacra2": 43.98758526
+   },
+   {
+    "image": "72496a1a66a3d206_small.jpg",
+    "q": 50,
+    "bytes": 46182,
+    "ssimulacra2": 31.08195513
+   },
+   {
+    "image": "75b5f85e46fcfcb1_typical.jpg",
+    "q": 18,
+    "bytes": 1093209,
+    "ssimulacra2": 24.41953008
+   },
+   {
+    "image": "75b5f85e46fcfcb1_typical.jpg",
+    "q": 25,
+    "bytes": 799642,
+    "ssimulacra2": 23.93790167
+   },
+   {
+    "image": "75b5f85e46fcfcb1_typical.jpg",
+    "q": 32,
+    "bytes": 476829,
+    "ssimulacra2": 20.89527269
+   },
+   {
+    "image": "75b5f85e46fcfcb1_typical.jpg",
+    "q": 38,
+    "bytes": 232915,
+    "ssimulacra2": 15.37799117
+   },
+   {
+    "image": "75b5f85e46fcfcb1_typical.jpg",
+    "q": 44,
+    "bytes": 90192,
+    "ssimulacra2": 6.87827001
+   },
+   {
+    "image": "75b5f85e46fcfcb1_typical.jpg",
+    "q": 50,
+    "bytes": 35353,
+    "ssimulacra2": -1.31035125
+   },
+   {
+    "image": "75f04ab8f4fd7ea3_huge.jpg",
+    "q": 18,
+    "bytes": 765020,
+    "ssimulacra2": 78.91664834
+   },
+   {
+    "image": "75f04ab8f4fd7ea3_huge.jpg",
+    "q": 25,
+    "bytes": 550793,
+    "ssimulacra2": 75.11697611
+   },
+   {
+    "image": "75f04ab8f4fd7ea3_huge.jpg",
+    "q": 32,
+    "bytes": 276252,
+    "ssimulacra2": 65.20485478
+   },
+   {
+    "image": "75f04ab8f4fd7ea3_huge.jpg",
+    "q": 38,
+    "bytes": 155470,
+    "ssimulacra2": 56.45659188
+   },
+   {
+    "image": "75f04ab8f4fd7ea3_huge.jpg",
+    "q": 44,
+    "bytes": 97178,
+    "ssimulacra2": 49.7043115
+   },
+   {
+    "image": "75f04ab8f4fd7ea3_huge.jpg",
+    "q": 50,
+    "bytes": 61209,
+    "ssimulacra2": 41.27634985
+   },
+   {
+    "image": "780bfa6cb4af7d8f_huge.jpg",
+    "q": 18,
+    "bytes": 1331196,
+    "ssimulacra2": 84.38485175
+   },
+   {
+    "image": "780bfa6cb4af7d8f_huge.jpg",
+    "q": 25,
+    "bytes": 564932,
+    "ssimulacra2": 78.77937492
+   },
+   {
+    "image": "780bfa6cb4af7d8f_huge.jpg",
+    "q": 32,
+    "bytes": 232762,
+    "ssimulacra2": 71.78822726
+   },
+   {
+    "image": "780bfa6cb4af7d8f_huge.jpg",
+    "q": 38,
+    "bytes": 124265,
+    "ssimulacra2": 65.18473225
+   },
+   {
+    "image": "780bfa6cb4af7d8f_huge.jpg",
+    "q": 44,
+    "bytes": 76532,
+    "ssimulacra2": 56.42488121
+   },
+   {
+    "image": "780bfa6cb4af7d8f_huge.jpg",
+    "q": 50,
+    "bytes": 46799,
+    "ssimulacra2": 43.53218135
+   },
+   {
+    "image": "78ff6bce63837be6_small.jpg",
+    "q": 18,
+    "bytes": 256292,
+    "ssimulacra2": 58.27200813
+   },
+   {
+    "image": "78ff6bce63837be6_small.jpg",
+    "q": 25,
+    "bytes": 171047,
+    "ssimulacra2": 57.62011654
+   },
+   {
+    "image": "78ff6bce63837be6_small.jpg",
+    "q": 32,
+    "bytes": 96305,
+    "ssimulacra2": 54.89301554
+   },
+   {
+    "image": "78ff6bce63837be6_small.jpg",
+    "q": 38,
+    "bytes": 56366,
+    "ssimulacra2": 49.09356096
+   },
+   {
+    "image": "78ff6bce63837be6_small.jpg",
+    "q": 44,
+    "bytes": 34066,
+    "ssimulacra2": 37.57955935
+   },
+   {
+    "image": "78ff6bce63837be6_small.jpg",
+    "q": 50,
+    "bytes": 19110,
+    "ssimulacra2": 16.10215166
+   },
+   {
+    "image": "81f84f0b4da76d1d_large.jpg",
+    "q": 18,
+    "bytes": 492693,
+    "ssimulacra2": 85.71111366
+   },
+   {
+    "image": "81f84f0b4da76d1d_large.jpg",
+    "q": 25,
+    "bytes": 358160,
+    "ssimulacra2": 82.24729047
+   },
+   {
+    "image": "81f84f0b4da76d1d_large.jpg",
+    "q": 32,
+    "bytes": 239452,
+    "ssimulacra2": 72.648415
+   },
+   {
+    "image": "81f84f0b4da76d1d_large.jpg",
+    "q": 38,
+    "bytes": 108842,
+    "ssimulacra2": 54.67694739
+   },
+   {
+    "image": "81f84f0b4da76d1d_large.jpg",
+    "q": 44,
+    "bytes": 58383,
+    "ssimulacra2": 40.39385119
+   },
+   {
+    "image": "81f84f0b4da76d1d_large.jpg",
+    "q": 50,
+    "bytes": 33662,
+    "ssimulacra2": 24.49119629
+   },
+   {
+    "image": "835fd85e4d1dacde_small.jpg",
+    "q": 18,
+    "bytes": 116342,
+    "ssimulacra2": 77.28666767
+   },
+   {
+    "image": "835fd85e4d1dacde_small.jpg",
+    "q": 25,
+    "bytes": 82880,
+    "ssimulacra2": 76.14426052
+   },
+   {
+    "image": "835fd85e4d1dacde_small.jpg",
+    "q": 32,
+    "bytes": 54885,
+    "ssimulacra2": 71.79874108
+   },
+   {
+    "image": "835fd85e4d1dacde_small.jpg",
+    "q": 38,
+    "bytes": 36006,
+    "ssimulacra2": 63.14324597
+   },
+   {
+    "image": "835fd85e4d1dacde_small.jpg",
+    "q": 44,
+    "bytes": 23581,
+    "ssimulacra2": 49.6584222
+   },
+   {
+    "image": "835fd85e4d1dacde_small.jpg",
+    "q": 50,
+    "bytes": 14180,
+    "ssimulacra2": 28.72086603
+   },
+   {
+    "image": "8780ab51c2329849_huge.jpg",
+    "q": 18,
+    "bytes": 1648086,
+    "ssimulacra2": 83.5988571
+   },
+   {
+    "image": "8780ab51c2329849_huge.jpg",
+    "q": 25,
+    "bytes": 1159357,
+    "ssimulacra2": 79.36231654
+   },
+   {
+    "image": "8780ab51c2329849_huge.jpg",
+    "q": 32,
+    "bytes": 753568,
+    "ssimulacra2": 71.88977363
+   },
+   {
+    "image": "8780ab51c2329849_huge.jpg",
+    "q": 38,
+    "bytes": 360188,
+    "ssimulacra2": 60.29741815
+   },
+   {
+    "image": "8780ab51c2329849_huge.jpg",
+    "q": 44,
+    "bytes": 199908,
+    "ssimulacra2": 52.13532423
+   },
+   {
+    "image": "8780ab51c2329849_huge.jpg",
+    "q": 50,
+    "bytes": 122632,
+    "ssimulacra2": 41.54929722
+   },
+   {
+    "image": "8788284a8b3aa6c1_large.jpg",
+    "q": 18,
+    "bytes": 2283162,
+    "ssimulacra2": 88.62881218
+   },
+   {
+    "image": "8788284a8b3aa6c1_large.jpg",
+    "q": 25,
+    "bytes": 1710798,
+    "ssimulacra2": 82.50289736
+   },
+   {
+    "image": "8788284a8b3aa6c1_large.jpg",
+    "q": 32,
+    "bytes": 1186694,
+    "ssimulacra2": 71.83297744
+   },
+   {
+    "image": "8788284a8b3aa6c1_large.jpg",
+    "q": 38,
+    "bytes": 756082,
+    "ssimulacra2": 59.44105776
+   },
+   {
+    "image": "8788284a8b3aa6c1_large.jpg",
+    "q": 44,
+    "bytes": 433198,
+    "ssimulacra2": 43.85967214
+   },
+   {
+    "image": "8788284a8b3aa6c1_large.jpg",
+    "q": 50,
+    "bytes": 232503,
+    "ssimulacra2": 19.33775279
+   },
+   {
+    "image": "8c67f6e6c2ca8a6d_typical.jpg",
+    "q": 18,
+    "bytes": 620605,
+    "ssimulacra2": 88.23286807
+   },
+   {
+    "image": "8c67f6e6c2ca8a6d_typical.jpg",
+    "q": 25,
+    "bytes": 414964,
+    "ssimulacra2": 84.64069197
+   },
+   {
+    "image": "8c67f6e6c2ca8a6d_typical.jpg",
+    "q": 32,
+    "bytes": 261719,
+    "ssimulacra2": 77.23524674
+   },
+   {
+    "image": "8c67f6e6c2ca8a6d_typical.jpg",
+    "q": 38,
+    "bytes": 172013,
+    "ssimulacra2": 66.54867931
+   },
+   {
+    "image": "8c67f6e6c2ca8a6d_typical.jpg",
+    "q": 44,
+    "bytes": 113765,
+    "ssimulacra2": 51.33567301
+   },
+   {
+    "image": "8c67f6e6c2ca8a6d_typical.jpg",
+    "q": 50,
+    "bytes": 70919,
+    "ssimulacra2": 30.00151362
+   },
+   {
+    "image": "92a594bfb7613b85_huge.jpg",
+    "q": 18,
+    "bytes": 755540,
+    "ssimulacra2": 84.51387883
+   },
+   {
+    "image": "92a594bfb7613b85_huge.jpg",
+    "q": 25,
+    "bytes": 440911,
+    "ssimulacra2": 79.76103166
+   },
+   {
+    "image": "92a594bfb7613b85_huge.jpg",
+    "q": 32,
+    "bytes": 208968,
+    "ssimulacra2": 70.99406319
+   },
+   {
+    "image": "92a594bfb7613b85_huge.jpg",
+    "q": 38,
+    "bytes": 97588,
+    "ssimulacra2": 59.75711656
+   },
+   {
+    "image": "92a594bfb7613b85_huge.jpg",
+    "q": 44,
+    "bytes": 53370,
+    "ssimulacra2": 49.39302899
+   },
+   {
+    "image": "92a594bfb7613b85_huge.jpg",
+    "q": 50,
+    "bytes": 32284,
+    "ssimulacra2": 35.75725945
+   },
+   {
+    "image": "94aaae43e2524534_tiny.jpg",
+    "q": 18,
+    "bytes": 134590,
+    "ssimulacra2": 44.9045579
+   },
+   {
+    "image": "94aaae43e2524534_tiny.jpg",
+    "q": 25,
+    "bytes": 108144,
+    "ssimulacra2": 45.19647156
+   },
+   {
+    "image": "94aaae43e2524534_tiny.jpg",
+    "q": 32,
+    "bytes": 80206,
+    "ssimulacra2": 44.26303867
+   },
+   {
+    "image": "94aaae43e2524534_tiny.jpg",
+    "q": 38,
+    "bytes": 56950,
+    "ssimulacra2": 42.99270052
+   },
+   {
+    "image": "94aaae43e2524534_tiny.jpg",
+    "q": 44,
+    "bytes": 35651,
+    "ssimulacra2": 35.07885914
+   },
+   {
+    "image": "94aaae43e2524534_tiny.jpg",
+    "q": 50,
+    "bytes": 19907,
+    "ssimulacra2": 21.35009475
+   },
+   {
+    "image": "957cfe1a4839d118_tiny.jpg",
+    "q": 18,
+    "bytes": 64171,
+    "ssimulacra2": 59.00279802
+   },
+   {
+    "image": "957cfe1a4839d118_tiny.jpg",
+    "q": 25,
+    "bytes": 47675,
+    "ssimulacra2": 58.43987633
+   },
+   {
+    "image": "957cfe1a4839d118_tiny.jpg",
+    "q": 32,
+    "bytes": 32665,
+    "ssimulacra2": 56.49851818
+   },
+   {
+    "image": "957cfe1a4839d118_tiny.jpg",
+    "q": 38,
+    "bytes": 22382,
+    "ssimulacra2": 51.59342805
+   },
+   {
+    "image": "957cfe1a4839d118_tiny.jpg",
+    "q": 44,
+    "bytes": 13732,
+    "ssimulacra2": 41.46473772
+   },
+   {
+    "image": "957cfe1a4839d118_tiny.jpg",
+    "q": 50,
+    "bytes": 7136,
+    "ssimulacra2": 23.05535057
+   },
+   {
+    "image": "9635278c951776ee_large.jpg",
+    "q": 18,
+    "bytes": 1401364,
+    "ssimulacra2": 88.98369468
+   },
+   {
+    "image": "9635278c951776ee_large.jpg",
+    "q": 25,
+    "bytes": 973445,
+    "ssimulacra2": 84.14043747
+   },
+   {
+    "image": "9635278c951776ee_large.jpg",
+    "q": 32,
+    "bytes": 583568,
+    "ssimulacra2": 74.26753002
+   },
+   {
+    "image": "9635278c951776ee_large.jpg",
+    "q": 38,
+    "bytes": 311680,
+    "ssimulacra2": 59.83235756
+   },
+   {
+    "image": "9635278c951776ee_large.jpg",
+    "q": 44,
+    "bytes": 165323,
+    "ssimulacra2": 42.47461496
+   },
+   {
+    "image": "9635278c951776ee_large.jpg",
+    "q": 50,
+    "bytes": 87535,
+    "ssimulacra2": 20.00056792
+   },
+   {
+    "image": "99fc31df576a0af7_small.jpg",
+    "q": 18,
+    "bytes": 195951,
+    "ssimulacra2": 84.47464063
+   },
+   {
+    "image": "99fc31df576a0af7_small.jpg",
+    "q": 25,
+    "bytes": 131561,
+    "ssimulacra2": 79.41929719
+   },
+   {
+    "image": "99fc31df576a0af7_small.jpg",
+    "q": 32,
+    "bytes": 65537,
+    "ssimulacra2": 69.04195352
+   },
+   {
+    "image": "99fc31df576a0af7_small.jpg",
+    "q": 38,
+    "bytes": 34338,
+    "ssimulacra2": 55.34386872
+   },
+   {
+    "image": "99fc31df576a0af7_small.jpg",
+    "q": 44,
+    "bytes": 20299,
+    "ssimulacra2": 39.57898778
+   },
+   {
+    "image": "99fc31df576a0af7_small.jpg",
+    "q": 50,
+    "bytes": 12098,
+    "ssimulacra2": 20.8979216
+   },
+   {
+    "image": "9bbf8af223aa423f_huge.jpg",
+    "q": 18,
+    "bytes": 3340547,
+    "ssimulacra2": 86.88101058
+   },
+   {
+    "image": "9bbf8af223aa423f_huge.jpg",
+    "q": 25,
+    "bytes": 2482515,
+    "ssimulacra2": 80.23796237
+   },
+   {
+    "image": "9bbf8af223aa423f_huge.jpg",
+    "q": 32,
+    "bytes": 1633525,
+    "ssimulacra2": 68.32693872
+   },
+   {
+    "image": "9bbf8af223aa423f_huge.jpg",
+    "q": 38,
+    "bytes": 951729,
+    "ssimulacra2": 54.91709934
+   },
+   {
+    "image": "9bbf8af223aa423f_huge.jpg",
+    "q": 44,
+    "bytes": 520412,
+    "ssimulacra2": 35.60551926
+   },
+   {
+    "image": "9bbf8af223aa423f_huge.jpg",
+    "q": 50,
+    "bytes": 258016,
+    "ssimulacra2": 8.10013987
+   },
+   {
+    "image": "9e0291261be01177_small.jpg",
+    "q": 18,
+    "bytes": 177077,
+    "ssimulacra2": 84.02941214
+   },
+   {
+    "image": "9e0291261be01177_small.jpg",
+    "q": 25,
+    "bytes": 120156,
+    "ssimulacra2": 79.83292709
+   },
+   {
+    "image": "9e0291261be01177_small.jpg",
+    "q": 32,
+    "bytes": 72470,
+    "ssimulacra2": 69.28722406
+   },
+   {
+    "image": "9e0291261be01177_small.jpg",
+    "q": 38,
+    "bytes": 43361,
+    "ssimulacra2": 53.98178566
+   },
+   {
+    "image": "9e0291261be01177_small.jpg",
+    "q": 44,
+    "bytes": 24539,
+    "ssimulacra2": 31.85121819
+   },
+   {
+    "image": "9e0291261be01177_small.jpg",
+    "q": 50,
+    "bytes": 13213,
+    "ssimulacra2": 5.52807886
+   },
+   {
+    "image": "a1a0cb5d7ff4ea34_tiny.jpg",
+    "q": 18,
+    "bytes": 108559,
+    "ssimulacra2": 88.36192452
+   },
+   {
+    "image": "a1a0cb5d7ff4ea34_tiny.jpg",
+    "q": 25,
+    "bytes": 87765,
+    "ssimulacra2": 85.98626957
+   },
+   {
+    "image": "a1a0cb5d7ff4ea34_tiny.jpg",
+    "q": 32,
+    "bytes": 66486,
+    "ssimulacra2": 79.34930797
+   },
+   {
+    "image": "a1a0cb5d7ff4ea34_tiny.jpg",
+    "q": 38,
+    "bytes": 50100,
+    "ssimulacra2": 68.46644556
+   },
+   {
+    "image": "a1a0cb5d7ff4ea34_tiny.jpg",
+    "q": 44,
+    "bytes": 35828,
+    "ssimulacra2": 55.79325
+   },
+   {
+    "image": "a1a0cb5d7ff4ea34_tiny.jpg",
+    "q": 50,
+    "bytes": 23102,
+    "ssimulacra2": 39.42851589
+   },
+   {
+    "image": "a239a24eddebdbba_huge.jpg",
+    "q": 18,
+    "bytes": 3295674,
+    "ssimulacra2": 86.47532758
+   },
+   {
+    "image": "a239a24eddebdbba_huge.jpg",
+    "q": 25,
+    "bytes": 2396236,
+    "ssimulacra2": 80.79712924
+   },
+   {
+    "image": "a239a24eddebdbba_huge.jpg",
+    "q": 32,
+    "bytes": 1493902,
+    "ssimulacra2": 68.75445752
+   },
+   {
+    "image": "a239a24eddebdbba_huge.jpg",
+    "q": 38,
+    "bytes": 791196,
+    "ssimulacra2": 53.77238722
+   },
+   {
+    "image": "a239a24eddebdbba_huge.jpg",
+    "q": 44,
+    "bytes": 444781,
+    "ssimulacra2": 36.60214624
+   },
+   {
+    "image": "a239a24eddebdbba_huge.jpg",
+    "q": 50,
+    "bytes": 231234,
+    "ssimulacra2": 12.70825872
+   },
+   {
+    "image": "a8cbf71967aba819_tiny.jpg",
+    "q": 18,
+    "bytes": 62177,
+    "ssimulacra2": 87.69002847
+   },
+   {
+    "image": "a8cbf71967aba819_tiny.jpg",
+    "q": 25,
+    "bytes": 43817,
+    "ssimulacra2": 84.72842044
+   },
+   {
+    "image": "a8cbf71967aba819_tiny.jpg",
+    "q": 32,
+    "bytes": 28468,
+    "ssimulacra2": 77.79448133
+   },
+   {
+    "image": "a8cbf71967aba819_tiny.jpg",
+    "q": 38,
+    "bytes": 19486,
+    "ssimulacra2": 69.0089517
+   },
+   {
+    "image": "a8cbf71967aba819_tiny.jpg",
+    "q": 44,
+    "bytes": 12823,
+    "ssimulacra2": 53.96006137
+   },
+   {
+    "image": "a8cbf71967aba819_tiny.jpg",
+    "q": 50,
+    "bytes": 7766,
+    "ssimulacra2": 34.09140302
+   },
+   {
+    "image": "a995f0296bf0aff9_tiny.jpg",
+    "q": 18,
+    "bytes": 90049,
+    "ssimulacra2": 68.69975693
+   },
+   {
+    "image": "a995f0296bf0aff9_tiny.jpg",
+    "q": 25,
+    "bytes": 69508,
+    "ssimulacra2": 68.08762192
+   },
+   {
+    "image": "a995f0296bf0aff9_tiny.jpg",
+    "q": 32,
+    "bytes": 47327,
+    "ssimulacra2": 64.32708436
+   },
+   {
+    "image": "a995f0296bf0aff9_tiny.jpg",
+    "q": 38,
+    "bytes": 31887,
+    "ssimulacra2": 57.07218777
+   },
+   {
+    "image": "a995f0296bf0aff9_tiny.jpg",
+    "q": 44,
+    "bytes": 19265,
+    "ssimulacra2": 42.55815233
+   },
+   {
+    "image": "a995f0296bf0aff9_tiny.jpg",
+    "q": 50,
+    "bytes": 10237,
+    "ssimulacra2": 19.33097282
+   },
+   {
+    "image": "aa8e2b1c612805d3_small.jpg",
+    "q": 18,
+    "bytes": 145417,
+    "ssimulacra2": 52.25094897
+   },
+   {
+    "image": "aa8e2b1c612805d3_small.jpg",
+    "q": 25,
+    "bytes": 85384,
+    "ssimulacra2": 51.17922673
+   },
+   {
+    "image": "aa8e2b1c612805d3_small.jpg",
+    "q": 32,
+    "bytes": 50036,
+    "ssimulacra2": 47.64009803
+   },
+   {
+    "image": "aa8e2b1c612805d3_small.jpg",
+    "q": 38,
+    "bytes": 31094,
+    "ssimulacra2": 40.6503719
+   },
+   {
+    "image": "aa8e2b1c612805d3_small.jpg",
+    "q": 44,
+    "bytes": 19887,
+    "ssimulacra2": 28.31921534
+   },
+   {
+    "image": "aa8e2b1c612805d3_small.jpg",
+    "q": 50,
+    "bytes": 12024,
+    "ssimulacra2": 9.1301399
+   },
+   {
+    "image": "ab2fdc612955287d_large.jpg",
+    "q": 18,
+    "bytes": 1489281,
+    "ssimulacra2": 68.39686469
+   },
+   {
+    "image": "ab2fdc612955287d_large.jpg",
+    "q": 25,
+    "bytes": 1077402,
+    "ssimulacra2": 65.61999894
+   },
+   {
+    "image": "ab2fdc612955287d_large.jpg",
+    "q": 32,
+    "bytes": 664896,
+    "ssimulacra2": 57.96957647
+   },
+   {
+    "image": "ab2fdc612955287d_large.jpg",
+    "q": 38,
+    "bytes": 298620,
+    "ssimulacra2": 46.60196291
+   },
+   {
+    "image": "ab2fdc612955287d_large.jpg",
+    "q": 44,
+    "bytes": 154576,
+    "ssimulacra2": 33.59858135
+   },
+   {
+    "image": "ab2fdc612955287d_large.jpg",
+    "q": 50,
+    "bytes": 84921,
+    "ssimulacra2": 13.79134695
+   },
+   {
+    "image": "ad75e45e4b701b5c_typical.jpg",
+    "q": 18,
+    "bytes": 308634,
+    "ssimulacra2": 87.09282143
+   },
+   {
+    "image": "ad75e45e4b701b5c_typical.jpg",
+    "q": 25,
+    "bytes": 174782,
+    "ssimulacra2": 82.88594228
+   },
+   {
+    "image": "ad75e45e4b701b5c_typical.jpg",
+    "q": 32,
+    "bytes": 93877,
+    "ssimulacra2": 75.23936979
+   },
+   {
+    "image": "ad75e45e4b701b5c_typical.jpg",
+    "q": 38,
+    "bytes": 55997,
+    "ssimulacra2": 65.30656128
+   },
+   {
+    "image": "ad75e45e4b701b5c_typical.jpg",
+    "q": 44,
+    "bytes": 36157,
+    "ssimulacra2": 52.24796764
+   },
+   {
+    "image": "ad75e45e4b701b5c_typical.jpg",
+    "q": 50,
+    "bytes": 22721,
+    "ssimulacra2": 33.41693306
+   },
+   {
+    "image": "b0c4e3247203d631_typical.jpg",
+    "q": 18,
+    "bytes": 366109,
+    "ssimulacra2": 84.89586402
+   },
+   {
+    "image": "b0c4e3247203d631_typical.jpg",
+    "q": 25,
+    "bytes": 208220,
+    "ssimulacra2": 81.56622803
+   },
+   {
+    "image": "b0c4e3247203d631_typical.jpg",
+    "q": 32,
+    "bytes": 112779,
+    "ssimulacra2": 75.40767062
+   },
+   {
+    "image": "b0c4e3247203d631_typical.jpg",
+    "q": 38,
+    "bytes": 67131,
+    "ssimulacra2": 68.50645587
+   },
+   {
+    "image": "b0c4e3247203d631_typical.jpg",
+    "q": 44,
+    "bytes": 42749,
+    "ssimulacra2": 60.35634238
+   },
+   {
+    "image": "b0c4e3247203d631_typical.jpg",
+    "q": 50,
+    "bytes": 26524,
+    "ssimulacra2": 48.5800549
+   },
+   {
+    "image": "b0caf2f4a9628298_huge.jpg",
+    "q": 18,
+    "bytes": 1765701,
+    "ssimulacra2": 83.46912062
+   },
+   {
+    "image": "b0caf2f4a9628298_huge.jpg",
+    "q": 25,
+    "bytes": 966070,
+    "ssimulacra2": 77.58574645
+   },
+   {
+    "image": "b0caf2f4a9628298_huge.jpg",
+    "q": 32,
+    "bytes": 357782,
+    "ssimulacra2": 65.14362091
+   },
+   {
+    "image": "b0caf2f4a9628298_huge.jpg",
+    "q": 38,
+    "bytes": 147097,
+    "ssimulacra2": 49.03567842
+   },
+   {
+    "image": "b0caf2f4a9628298_huge.jpg",
+    "q": 44,
+    "bytes": 77720,
+    "ssimulacra2": 33.13566751
+   },
+   {
+    "image": "b0caf2f4a9628298_huge.jpg",
+    "q": 50,
+    "bytes": 42519,
+    "ssimulacra2": 13.40399277
+   },
+   {
+    "image": "b1aa6e8182e3f22f_huge.jpg",
+    "q": 18,
+    "bytes": 2124401,
+    "ssimulacra2": 85.66634224
+   },
+   {
+    "image": "b1aa6e8182e3f22f_huge.jpg",
+    "q": 25,
+    "bytes": 1232222,
+    "ssimulacra2": 81.66568712
+   },
+   {
+    "image": "b1aa6e8182e3f22f_huge.jpg",
+    "q": 32,
+    "bytes": 645305,
+    "ssimulacra2": 73.36447721
+   },
+   {
+    "image": "b1aa6e8182e3f22f_huge.jpg",
+    "q": 38,
+    "bytes": 382419,
+    "ssimulacra2": 63.91383078
+   },
+   {
+    "image": "b1aa6e8182e3f22f_huge.jpg",
+    "q": 44,
+    "bytes": 253133,
+    "ssimulacra2": 53.9934559
+   },
+   {
+    "image": "b1aa6e8182e3f22f_huge.jpg",
+    "q": 50,
+    "bytes": 165913,
+    "ssimulacra2": 39.69173132
+   },
+   {
+    "image": "b25bd1f30abe88bc_large.jpg",
+    "q": 18,
+    "bytes": 1725586,
+    "ssimulacra2": 87.99703695
+   },
+   {
+    "image": "b25bd1f30abe88bc_large.jpg",
+    "q": 25,
+    "bytes": 1213781,
+    "ssimulacra2": 81.89375297
+   },
+   {
+    "image": "b25bd1f30abe88bc_large.jpg",
+    "q": 32,
+    "bytes": 765274,
+    "ssimulacra2": 71.03925413
+   },
+   {
+    "image": "b25bd1f30abe88bc_large.jpg",
+    "q": 38,
+    "bytes": 449924,
+    "ssimulacra2": 56.84819275
+   },
+   {
+    "image": "b25bd1f30abe88bc_large.jpg",
+    "q": 44,
+    "bytes": 222520,
+    "ssimulacra2": 38.39127191
+   },
+   {
+    "image": "b25bd1f30abe88bc_large.jpg",
+    "q": 50,
+    "bytes": 117218,
+    "ssimulacra2": 16.34700406
+   },
+   {
+    "image": "b27f7d163382d46b_small.jpg",
+    "q": 18,
+    "bytes": 455208,
+    "ssimulacra2": 88.18215129
+   },
+   {
+    "image": "b27f7d163382d46b_small.jpg",
+    "q": 25,
+    "bytes": 362870,
+    "ssimulacra2": 82.38595569
+   },
+   {
+    "image": "b27f7d163382d46b_small.jpg",
+    "q": 32,
+    "bytes": 257542,
+    "ssimulacra2": 70.9799937
+   },
+   {
+    "image": "b27f7d163382d46b_small.jpg",
+    "q": 38,
+    "bytes": 178397,
+    "ssimulacra2": 57.535411
+   },
+   {
+    "image": "b27f7d163382d46b_small.jpg",
+    "q": 44,
+    "bytes": 115042,
+    "ssimulacra2": 37.85516722
+   },
+   {
+    "image": "b27f7d163382d46b_small.jpg",
+    "q": 50,
+    "bytes": 62603,
+    "ssimulacra2": 8.40003506
+   },
+   {
+    "image": "b2fef7eca1352b4a_small.jpg",
+    "q": 18,
+    "bytes": 127826,
+    "ssimulacra2": 88.60684556
+   },
+   {
+    "image": "b2fef7eca1352b4a_small.jpg",
+    "q": 25,
+    "bytes": 94833,
+    "ssimulacra2": 85.55675825
+   },
+   {
+    "image": "b2fef7eca1352b4a_small.jpg",
+    "q": 32,
+    "bytes": 64319,
+    "ssimulacra2": 77.53123879
+   },
+   {
+    "image": "b2fef7eca1352b4a_small.jpg",
+    "q": 38,
+    "bytes": 42521,
+    "ssimulacra2": 66.85372576
+   },
+   {
+    "image": "b2fef7eca1352b4a_small.jpg",
+    "q": 44,
+    "bytes": 27426,
+    "ssimulacra2": 53.43172725
+   },
+   {
+    "image": "b2fef7eca1352b4a_small.jpg",
+    "q": 50,
+    "bytes": 15378,
+    "ssimulacra2": 34.92432155
+   },
+   {
+    "image": "b8b257759bd16b1e_small.jpg",
+    "q": 18,
+    "bytes": 244125,
+    "ssimulacra2": 86.46110886
+   },
+   {
+    "image": "b8b257759bd16b1e_small.jpg",
+    "q": 25,
+    "bytes": 177770,
+    "ssimulacra2": 83.24386853
+   },
+   {
+    "image": "b8b257759bd16b1e_small.jpg",
+    "q": 32,
+    "bytes": 119995,
+    "ssimulacra2": 77.94048549
+   },
+   {
+    "image": "b8b257759bd16b1e_small.jpg",
+    "q": 38,
+    "bytes": 81338,
+    "ssimulacra2": 69.20743128
+   },
+   {
+    "image": "b8b257759bd16b1e_small.jpg",
+    "q": 44,
+    "bytes": 55483,
+    "ssimulacra2": 57.0894634
+   },
+   {
+    "image": "b8b257759bd16b1e_small.jpg",
+    "q": 50,
+    "bytes": 35661,
+    "ssimulacra2": 40.25791737
+   },
+   {
+    "image": "bc21a2090ce5df8f_small.jpg",
+    "q": 18,
+    "bytes": 104904,
+    "ssimulacra2": 89.86387011
+   },
+   {
+    "image": "bc21a2090ce5df8f_small.jpg",
+    "q": 25,
+    "bytes": 66110,
+    "ssimulacra2": 86.23795711
+   },
+   {
+    "image": "bc21a2090ce5df8f_small.jpg",
+    "q": 32,
+    "bytes": 39633,
+    "ssimulacra2": 78.39690194
+   },
+   {
+    "image": "bc21a2090ce5df8f_small.jpg",
+    "q": 38,
+    "bytes": 24265,
+    "ssimulacra2": 65.38669147
+   },
+   {
+    "image": "bc21a2090ce5df8f_small.jpg",
+    "q": 44,
+    "bytes": 14978,
+    "ssimulacra2": 48.11546823
+   },
+   {
+    "image": "bc21a2090ce5df8f_small.jpg",
+    "q": 50,
+    "bytes": 8771,
+    "ssimulacra2": 26.80730355
+   },
+   {
+    "image": "bc80b847a0985dd4_small.jpg",
+    "q": 18,
+    "bytes": 152626,
+    "ssimulacra2": 89.21430161
+   },
+   {
+    "image": "bc80b847a0985dd4_small.jpg",
+    "q": 25,
+    "bytes": 101529,
+    "ssimulacra2": 85.49664185
+   },
+   {
+    "image": "bc80b847a0985dd4_small.jpg",
+    "q": 32,
+    "bytes": 63859,
+    "ssimulacra2": 79.10581336
+   },
+   {
+    "image": "bc80b847a0985dd4_small.jpg",
+    "q": 38,
+    "bytes": 41516,
+    "ssimulacra2": 70.30863727
+   },
+   {
+    "image": "bc80b847a0985dd4_small.jpg",
+    "q": 44,
+    "bytes": 28020,
+    "ssimulacra2": 59.12488345
+   },
+   {
+    "image": "bc80b847a0985dd4_small.jpg",
+    "q": 50,
+    "bytes": 18200,
+    "ssimulacra2": 42.32966438
+   },
+   {
+    "image": "bd1dbbc9508f71f6_small.jpg",
+    "q": 18,
+    "bytes": 125227,
+    "ssimulacra2": 86.49813333
+   },
+   {
+    "image": "bd1dbbc9508f71f6_small.jpg",
+    "q": 25,
+    "bytes": 93404,
+    "ssimulacra2": 82.83886521
+   },
+   {
+    "image": "bd1dbbc9508f71f6_small.jpg",
+    "q": 32,
+    "bytes": 62204,
+    "ssimulacra2": 72.78274657
+   },
+   {
+    "image": "bd1dbbc9508f71f6_small.jpg",
+    "q": 38,
+    "bytes": 39835,
+    "ssimulacra2": 58.95688927
+   },
+   {
+    "image": "bd1dbbc9508f71f6_small.jpg",
+    "q": 44,
+    "bytes": 24877,
+    "ssimulacra2": 40.96913079
+   },
+   {
+    "image": "bd1dbbc9508f71f6_small.jpg",
+    "q": 50,
+    "bytes": 13935,
+    "ssimulacra2": 16.46035752
+   },
+   {
+    "image": "bd4ff3b451c3ba6b_large.jpg",
+    "q": 18,
+    "bytes": 370433,
+    "ssimulacra2": 55.12769078
+   },
+   {
+    "image": "bd4ff3b451c3ba6b_large.jpg",
+    "q": 25,
+    "bytes": 189659,
+    "ssimulacra2": 54.69345734
+   },
+   {
+    "image": "bd4ff3b451c3ba6b_large.jpg",
+    "q": 32,
+    "bytes": 94064,
+    "ssimulacra2": 53.23622863
+   },
+   {
+    "image": "bd4ff3b451c3ba6b_large.jpg",
+    "q": 38,
+    "bytes": 54022,
+    "ssimulacra2": 50.11229368
+   },
+   {
+    "image": "bd4ff3b451c3ba6b_large.jpg",
+    "q": 44,
+    "bytes": 34440,
+    "ssimulacra2": 45.18928881
+   },
+   {
+    "image": "bd4ff3b451c3ba6b_large.jpg",
+    "q": 50,
+    "bytes": 21820,
+    "ssimulacra2": 37.82627228
+   },
+   {
+    "image": "c17e9c4a4d71d238_typical.jpg",
+    "q": 18,
+    "bytes": 732544,
+    "ssimulacra2": 89.56910212
+   },
+   {
+    "image": "c17e9c4a4d71d238_typical.jpg",
+    "q": 25,
+    "bytes": 455520,
+    "ssimulacra2": 86.4582076
+   },
+   {
+    "image": "c17e9c4a4d71d238_typical.jpg",
+    "q": 32,
+    "bytes": 284408,
+    "ssimulacra2": 80.06973087
+   },
+   {
+    "image": "c17e9c4a4d71d238_typical.jpg",
+    "q": 38,
+    "bytes": 186458,
+    "ssimulacra2": 70.3226081
+   },
+   {
+    "image": "c17e9c4a4d71d238_typical.jpg",
+    "q": 44,
+    "bytes": 124404,
+    "ssimulacra2": 55.64345353
+   },
+   {
+    "image": "c17e9c4a4d71d238_typical.jpg",
+    "q": 50,
+    "bytes": 79715,
+    "ssimulacra2": 34.38645795
+   },
+   {
+    "image": "c2b1417e3d59c3f4_small.jpg",
+    "q": 18,
+    "bytes": 147797,
+    "ssimulacra2": 89.35177838
+   },
+   {
+    "image": "c2b1417e3d59c3f4_small.jpg",
+    "q": 25,
+    "bytes": 110439,
+    "ssimulacra2": 85.90437348
+   },
+   {
+    "image": "c2b1417e3d59c3f4_small.jpg",
+    "q": 32,
+    "bytes": 71424,
+    "ssimulacra2": 76.63988732
+   },
+   {
+    "image": "c2b1417e3d59c3f4_small.jpg",
+    "q": 38,
+    "bytes": 45356,
+    "ssimulacra2": 65.69090113
+   },
+   {
+    "image": "c2b1417e3d59c3f4_small.jpg",
+    "q": 44,
+    "bytes": 29169,
+    "ssimulacra2": 51.9666942
+   },
+   {
+    "image": "c2b1417e3d59c3f4_small.jpg",
+    "q": 50,
+    "bytes": 17222,
+    "ssimulacra2": 31.65933915
+   },
+   {
+    "image": "c2b9ea7fa6acb336_huge.jpg",
+    "q": 18,
+    "bytes": 3033239,
+    "ssimulacra2": 85.9986553
+   },
+   {
+    "image": "c2b9ea7fa6acb336_huge.jpg",
+    "q": 25,
+    "bytes": 1534724,
+    "ssimulacra2": 81.11962481
+   },
+   {
+    "image": "c2b9ea7fa6acb336_huge.jpg",
+    "q": 32,
+    "bytes": 689259,
+    "ssimulacra2": 71.8861723
+   },
+   {
+    "image": "c2b9ea7fa6acb336_huge.jpg",
+    "q": 38,
+    "bytes": 335941,
+    "ssimulacra2": 58.62212285
+   },
+   {
+    "image": "c2b9ea7fa6acb336_huge.jpg",
+    "q": 44,
+    "bytes": 190841,
+    "ssimulacra2": 43.21288196
+   },
+   {
+    "image": "c2b9ea7fa6acb336_huge.jpg",
+    "q": 50,
+    "bytes": 109559,
+    "ssimulacra2": 22.00057692
+   },
+   {
+    "image": "c2cc34a1a8667c02_tiny.jpg",
+    "q": 18,
+    "bytes": 40354,
+    "ssimulacra2": 90.17343509
+   },
+   {
+    "image": "c2cc34a1a8667c02_tiny.jpg",
+    "q": 25,
+    "bytes": 26976,
+    "ssimulacra2": 86.95450698
+   },
+   {
+    "image": "c2cc34a1a8667c02_tiny.jpg",
+    "q": 32,
+    "bytes": 16904,
+    "ssimulacra2": 79.41084858
+   },
+   {
+    "image": "c2cc34a1a8667c02_tiny.jpg",
+    "q": 38,
+    "bytes": 11335,
+    "ssimulacra2": 70.64072331
+   },
+   {
+    "image": "c2cc34a1a8667c02_tiny.jpg",
+    "q": 44,
+    "bytes": 7744,
+    "ssimulacra2": 56.63390481
+   },
+   {
+    "image": "c2cc34a1a8667c02_tiny.jpg",
+    "q": 50,
+    "bytes": 5175,
+    "ssimulacra2": 35.5356339
+   },
+   {
+    "image": "c6952770be3b1fb1_tiny.jpg",
+    "q": 18,
+    "bytes": 89668,
+    "ssimulacra2": 92.08092667
+   },
+   {
+    "image": "c6952770be3b1fb1_tiny.jpg",
+    "q": 25,
+    "bytes": 70199,
+    "ssimulacra2": 88.70733876
+   },
+   {
+    "image": "c6952770be3b1fb1_tiny.jpg",
+    "q": 32,
+    "bytes": 49725,
+    "ssimulacra2": 82.09517375
+   },
+   {
+    "image": "c6952770be3b1fb1_tiny.jpg",
+    "q": 38,
+    "bytes": 34217,
+    "ssimulacra2": 72.29750699
+   },
+   {
+    "image": "c6952770be3b1fb1_tiny.jpg",
+    "q": 44,
+    "bytes": 21468,
+    "ssimulacra2": 58.89684784
+   },
+   {
+    "image": "c6952770be3b1fb1_tiny.jpg",
+    "q": 50,
+    "bytes": 12635,
+    "ssimulacra2": 39.88482138
+   },
+   {
+    "image": "ca12d94f3a1dca2c_large.jpg",
+    "q": 18,
+    "bytes": 1011685,
+    "ssimulacra2": 80.88553037
+   },
+   {
+    "image": "ca12d94f3a1dca2c_large.jpg",
+    "q": 25,
+    "bytes": 597306,
+    "ssimulacra2": 76.9787617
+   },
+   {
+    "image": "ca12d94f3a1dca2c_large.jpg",
+    "q": 32,
+    "bytes": 266176,
+    "ssimulacra2": 68.50614839
+   },
+   {
+    "image": "ca12d94f3a1dca2c_large.jpg",
+    "q": 38,
+    "bytes": 129847,
+    "ssimulacra2": 57.17978529
+   },
+   {
+    "image": "ca12d94f3a1dca2c_large.jpg",
+    "q": 44,
+    "bytes": 76129,
+    "ssimulacra2": 43.39773726
+   },
+   {
+    "image": "ca12d94f3a1dca2c_large.jpg",
+    "q": 50,
+    "bytes": 44116,
+    "ssimulacra2": 23.78063417
+   },
+   {
+    "image": "caab750516644ab1_huge.jpg",
+    "q": 18,
+    "bytes": 1308057,
+    "ssimulacra2": 85.63354172
+   },
+   {
+    "image": "caab750516644ab1_huge.jpg",
+    "q": 25,
+    "bytes": 678123,
+    "ssimulacra2": 81.12655639
+   },
+   {
+    "image": "caab750516644ab1_huge.jpg",
+    "q": 32,
+    "bytes": 297044,
+    "ssimulacra2": 73.28504554
+   },
+   {
+    "image": "caab750516644ab1_huge.jpg",
+    "q": 38,
+    "bytes": 147283,
+    "ssimulacra2": 63.73269162
+   },
+   {
+    "image": "caab750516644ab1_huge.jpg",
+    "q": 44,
+    "bytes": 88131,
+    "ssimulacra2": 53.65120868
+   },
+   {
+    "image": "caab750516644ab1_huge.jpg",
+    "q": 50,
+    "bytes": 54597,
+    "ssimulacra2": 38.66899368
+   },
+   {
+    "image": "cf493062fb197e53_huge.jpg",
+    "q": 18,
+    "bytes": 1649148,
+    "ssimulacra2": 86.81182878
+   },
+   {
+    "image": "cf493062fb197e53_huge.jpg",
+    "q": 25,
+    "bytes": 961056,
+    "ssimulacra2": 82.31046749
+   },
+   {
+    "image": "cf493062fb197e53_huge.jpg",
+    "q": 32,
+    "bytes": 524585,
+    "ssimulacra2": 74.49457836
+   },
+   {
+    "image": "cf493062fb197e53_huge.jpg",
+    "q": 38,
+    "bytes": 312343,
+    "ssimulacra2": 63.20435266
+   },
+   {
+    "image": "cf493062fb197e53_huge.jpg",
+    "q": 44,
+    "bytes": 191986,
+    "ssimulacra2": 48.32420279
+   },
+   {
+    "image": "cf493062fb197e53_huge.jpg",
+    "q": 50,
+    "bytes": 111186,
+    "ssimulacra2": 26.78985476
+   },
+   {
+    "image": "d4c7b30f6b66e4a1_large.jpg",
+    "q": 18,
+    "bytes": 1460784,
+    "ssimulacra2": 55.1997965
+   },
+   {
+    "image": "d4c7b30f6b66e4a1_large.jpg",
+    "q": 25,
+    "bytes": 975289,
+    "ssimulacra2": 53.46801157
+   },
+   {
+    "image": "d4c7b30f6b66e4a1_large.jpg",
+    "q": 32,
+    "bytes": 618640,
+    "ssimulacra2": 49.72711376
+   },
+   {
+    "image": "d4c7b30f6b66e4a1_large.jpg",
+    "q": 38,
+    "bytes": 408202,
+    "ssimulacra2": 43.50295877
+   },
+   {
+    "image": "d4c7b30f6b66e4a1_large.jpg",
+    "q": 44,
+    "bytes": 271698,
+    "ssimulacra2": 33.42594239
+   },
+   {
+    "image": "d4c7b30f6b66e4a1_large.jpg",
+    "q": 50,
+    "bytes": 172884,
+    "ssimulacra2": 16.83533997
+   },
+   {
+    "image": "d952f6ca796cc51c_typical.jpg",
+    "q": 18,
+    "bytes": 788053,
+    "ssimulacra2": 88.38860689
+   },
+   {
+    "image": "d952f6ca796cc51c_typical.jpg",
+    "q": 25,
+    "bytes": 597246,
+    "ssimulacra2": 82.90209426
+   },
+   {
+    "image": "d952f6ca796cc51c_typical.jpg",
+    "q": 32,
+    "bytes": 387094,
+    "ssimulacra2": 71.7193383
+   },
+   {
+    "image": "d952f6ca796cc51c_typical.jpg",
+    "q": 38,
+    "bytes": 219488,
+    "ssimulacra2": 57.26453661
+   },
+   {
+    "image": "d952f6ca796cc51c_typical.jpg",
+    "q": 44,
+    "bytes": 117125,
+    "ssimulacra2": 42.46262294
+   },
+   {
+    "image": "d952f6ca796cc51c_typical.jpg",
+    "q": 50,
+    "bytes": 64342,
+    "ssimulacra2": 24.2929917
+   },
+   {
+    "image": "daf6f2eccfd7743b_typical.jpg",
+    "q": 18,
+    "bytes": 321256,
+    "ssimulacra2": 72.19345771
+   },
+   {
+    "image": "daf6f2eccfd7743b_typical.jpg",
+    "q": 25,
+    "bytes": 234387,
+    "ssimulacra2": 70.72602845
+   },
+   {
+    "image": "daf6f2eccfd7743b_typical.jpg",
+    "q": 32,
+    "bytes": 141440,
+    "ssimulacra2": 64.36288566
+   },
+   {
+    "image": "daf6f2eccfd7743b_typical.jpg",
+    "q": 38,
+    "bytes": 78330,
+    "ssimulacra2": 52.30818877
+   },
+   {
+    "image": "daf6f2eccfd7743b_typical.jpg",
+    "q": 44,
+    "bytes": 43125,
+    "ssimulacra2": 34.57701269
+   },
+   {
+    "image": "daf6f2eccfd7743b_typical.jpg",
+    "q": 50,
+    "bytes": 22539,
+    "ssimulacra2": 7.80142003
+   },
+   {
+    "image": "dce6a047a1e3fbee_huge.jpg",
+    "q": 18,
+    "bytes": 1605995,
+    "ssimulacra2": 84.49929873
+   },
+   {
+    "image": "dce6a047a1e3fbee_huge.jpg",
+    "q": 25,
+    "bytes": 687903,
+    "ssimulacra2": 80.17921042
+   },
+   {
+    "image": "dce6a047a1e3fbee_huge.jpg",
+    "q": 32,
+    "bytes": 241283,
+    "ssimulacra2": 72.43483911
+   },
+   {
+    "image": "dce6a047a1e3fbee_huge.jpg",
+    "q": 38,
+    "bytes": 96621,
+    "ssimulacra2": 63.16546891
+   },
+   {
+    "image": "dce6a047a1e3fbee_huge.jpg",
+    "q": 44,
+    "bytes": 53767,
+    "ssimulacra2": 54.87830501
+   },
+   {
+    "image": "dce6a047a1e3fbee_huge.jpg",
+    "q": 50,
+    "bytes": 33971,
+    "ssimulacra2": 44.42576829
+   },
+   {
+    "image": "dd519c2ee4a76db8_typical.jpg",
+    "q": 18,
+    "bytes": 268559,
+    "ssimulacra2": 62.8143228
+   },
+   {
+    "image": "dd519c2ee4a76db8_typical.jpg",
+    "q": 25,
+    "bytes": 143502,
+    "ssimulacra2": 61.70669364
+   },
+   {
+    "image": "dd519c2ee4a76db8_typical.jpg",
+    "q": 32,
+    "bytes": 73707,
+    "ssimulacra2": 59.44610677
+   },
+   {
+    "image": "dd519c2ee4a76db8_typical.jpg",
+    "q": 38,
+    "bytes": 45334,
+    "ssimulacra2": 55.78265616
+   },
+   {
+    "image": "dd519c2ee4a76db8_typical.jpg",
+    "q": 44,
+    "bytes": 29753,
+    "ssimulacra2": 49.90200049
+   },
+   {
+    "image": "dd519c2ee4a76db8_typical.jpg",
+    "q": 50,
+    "bytes": 19314,
+    "ssimulacra2": 39.94506013
+   },
+   {
+    "image": "df28dcbd0a84d456_huge.jpg",
+    "q": 18,
+    "bytes": 2629218,
+    "ssimulacra2": 86.12952408
+   },
+   {
+    "image": "df28dcbd0a84d456_huge.jpg",
+    "q": 25,
+    "bytes": 1521695,
+    "ssimulacra2": 80.92667171
+   },
+   {
+    "image": "df28dcbd0a84d456_huge.jpg",
+    "q": 32,
+    "bytes": 798517,
+    "ssimulacra2": 71.22282162
+   },
+   {
+    "image": "df28dcbd0a84d456_huge.jpg",
+    "q": 38,
+    "bytes": 440293,
+    "ssimulacra2": 56.86742688
+   },
+   {
+    "image": "df28dcbd0a84d456_huge.jpg",
+    "q": 44,
+    "bytes": 258470,
+    "ssimulacra2": 39.86164387
+   },
+   {
+    "image": "df28dcbd0a84d456_huge.jpg",
+    "q": 50,
+    "bytes": 145163,
+    "ssimulacra2": 16.05944527
+   },
+   {
+    "image": "dffb1cea132cdffb_tiny.jpg",
+    "q": 18,
+    "bytes": 35066,
+    "ssimulacra2": 71.16897128
+   },
+   {
+    "image": "dffb1cea132cdffb_tiny.jpg",
+    "q": 25,
+    "bytes": 25300,
+    "ssimulacra2": 70.35339934
+   },
+   {
+    "image": "dffb1cea132cdffb_tiny.jpg",
+    "q": 32,
+    "bytes": 17432,
+    "ssimulacra2": 68.25765819
+   },
+   {
+    "image": "dffb1cea132cdffb_tiny.jpg",
+    "q": 38,
+    "bytes": 12284,
+    "ssimulacra2": 63.44575928
+   },
+   {
+    "image": "dffb1cea132cdffb_tiny.jpg",
+    "q": 44,
+    "bytes": 8418,
+    "ssimulacra2": 57.18725927
+   },
+   {
+    "image": "dffb1cea132cdffb_tiny.jpg",
+    "q": 50,
+    "bytes": 5467,
+    "ssimulacra2": 47.83344205
+   },
+   {
+    "image": "e72fd1fd98da81db_small.jpg",
+    "q": 18,
+    "bytes": 196348,
+    "ssimulacra2": 85.97772254
+   },
+   {
+    "image": "e72fd1fd98da81db_small.jpg",
+    "q": 25,
+    "bytes": 118445,
+    "ssimulacra2": 81.13009099
+   },
+   {
+    "image": "e72fd1fd98da81db_small.jpg",
+    "q": 32,
+    "bytes": 68075,
+    "ssimulacra2": 74.12156391
+   },
+   {
+    "image": "e72fd1fd98da81db_small.jpg",
+    "q": 38,
+    "bytes": 43035,
+    "ssimulacra2": 63.7950651
+   },
+   {
+    "image": "e72fd1fd98da81db_small.jpg",
+    "q": 44,
+    "bytes": 27583,
+    "ssimulacra2": 50.86910836
+   },
+   {
+    "image": "e72fd1fd98da81db_small.jpg",
+    "q": 50,
+    "bytes": 16476,
+    "ssimulacra2": 31.01777993
+   },
+   {
+    "image": "e9e99ead530de1de_large.jpg",
+    "q": 18,
+    "bytes": 509698,
+    "ssimulacra2": 86.29310291
+   },
+   {
+    "image": "e9e99ead530de1de_large.jpg",
+    "q": 25,
+    "bytes": 288149,
+    "ssimulacra2": 82.6214029
+   },
+   {
+    "image": "e9e99ead530de1de_large.jpg",
+    "q": 32,
+    "bytes": 164205,
+    "ssimulacra2": 75.08374162
+   },
+   {
+    "image": "e9e99ead530de1de_large.jpg",
+    "q": 38,
+    "bytes": 97460,
+    "ssimulacra2": 62.69508701
+   },
+   {
+    "image": "e9e99ead530de1de_large.jpg",
+    "q": 44,
+    "bytes": 60361,
+    "ssimulacra2": 47.51377927
+   },
+   {
+    "image": "e9e99ead530de1de_large.jpg",
+    "q": 50,
+    "bytes": 36145,
+    "ssimulacra2": 27.51886825
+   },
+   {
+    "image": "ea86c9930a2b5346_typical.jpg",
+    "q": 18,
+    "bytes": 628694,
+    "ssimulacra2": 90.13972266
+   },
+   {
+    "image": "ea86c9930a2b5346_typical.jpg",
+    "q": 25,
+    "bytes": 489590,
+    "ssimulacra2": 85.09954579
+   },
+   {
+    "image": "ea86c9930a2b5346_typical.jpg",
+    "q": 32,
+    "bytes": 358669,
+    "ssimulacra2": 75.73292511
+   },
+   {
+    "image": "ea86c9930a2b5346_typical.jpg",
+    "q": 38,
+    "bytes": 255949,
+    "ssimulacra2": 64.01729764
+   },
+   {
+    "image": "ea86c9930a2b5346_typical.jpg",
+    "q": 44,
+    "bytes": 165245,
+    "ssimulacra2": 48.30545811
+   },
+   {
+    "image": "ea86c9930a2b5346_typical.jpg",
+    "q": 50,
+    "bytes": 95011,
+    "ssimulacra2": 24.91567726
+   },
+   {
+    "image": "eab7df87e7fc3317_large.jpg",
+    "q": 18,
+    "bytes": 857337,
+    "ssimulacra2": 85.33431538
+   },
+   {
+    "image": "eab7df87e7fc3317_large.jpg",
+    "q": 25,
+    "bytes": 402606,
+    "ssimulacra2": 80.11422193
+   },
+   {
+    "image": "eab7df87e7fc3317_large.jpg",
+    "q": 32,
+    "bytes": 165031,
+    "ssimulacra2": 70.20081813
+   },
+   {
+    "image": "eab7df87e7fc3317_large.jpg",
+    "q": 38,
+    "bytes": 77639,
+    "ssimulacra2": 57.12558192
+   },
+   {
+    "image": "eab7df87e7fc3317_large.jpg",
+    "q": 44,
+    "bytes": 42431,
+    "ssimulacra2": 43.4904286
+   },
+   {
+    "image": "eab7df87e7fc3317_large.jpg",
+    "q": 50,
+    "bytes": 22753,
+    "ssimulacra2": 26.10881582
+   },
+   {
+    "image": "f0656ef9af634733_tiny.jpg",
+    "q": 18,
+    "bytes": 62884,
+    "ssimulacra2": 56.24910904
+   },
+   {
+    "image": "f0656ef9af634733_tiny.jpg",
+    "q": 25,
+    "bytes": 44146,
+    "ssimulacra2": 55.84247927
+   },
+   {
+    "image": "f0656ef9af634733_tiny.jpg",
+    "q": 32,
+    "bytes": 26917,
+    "ssimulacra2": 53.96738627
+   },
+   {
+    "image": "f0656ef9af634733_tiny.jpg",
+    "q": 38,
+    "bytes": 16393,
+    "ssimulacra2": 48.99988275
+   },
+   {
+    "image": "f0656ef9af634733_tiny.jpg",
+    "q": 44,
+    "bytes": 10134,
+    "ssimulacra2": 38.99967452
+   },
+   {
+    "image": "f0656ef9af634733_tiny.jpg",
+    "q": 50,
+    "bytes": 6162,
+    "ssimulacra2": 24.20362543
+   },
+   {
+    "image": "fa7294ff486dc283_huge.jpg",
+    "q": 18,
+    "bytes": 3141019,
+    "ssimulacra2": 88.23877586
+   },
+   {
+    "image": "fa7294ff486dc283_huge.jpg",
+    "q": 25,
+    "bytes": 2302834,
+    "ssimulacra2": 82.43442346
+   },
+   {
+    "image": "fa7294ff486dc283_huge.jpg",
+    "q": 32,
+    "bytes": 1516293,
+    "ssimulacra2": 71.79264321
+   },
+   {
+    "image": "fa7294ff486dc283_huge.jpg",
+    "q": 38,
+    "bytes": 896144,
+    "ssimulacra2": 57.74100189
+   },
+   {
+    "image": "fa7294ff486dc283_huge.jpg",
+    "q": 44,
+    "bytes": 505372,
+    "ssimulacra2": 38.18337372
+   },
+   {
+    "image": "fa7294ff486dc283_huge.jpg",
+    "q": 50,
+    "bytes": 274201,
+    "ssimulacra2": 9.65544674
+   },
+   {
+    "image": "fb7ec599dea70a4a_typical.jpg",
+    "q": 18,
+    "bytes": 1152976,
+    "ssimulacra2": 83.89745828
+   },
+   {
+    "image": "fb7ec599dea70a4a_typical.jpg",
+    "q": 25,
+    "bytes": 797411,
+    "ssimulacra2": 78.84499913
+   },
+   {
+    "image": "fb7ec599dea70a4a_typical.jpg",
+    "q": 32,
+    "bytes": 465164,
+    "ssimulacra2": 69.84223146
+   },
+   {
+    "image": "fb7ec599dea70a4a_typical.jpg",
+    "q": 38,
+    "bytes": 265111,
+    "ssimulacra2": 59.02426655
+   },
+   {
+    "image": "fb7ec599dea70a4a_typical.jpg",
+    "q": 44,
+    "bytes": 155903,
+    "ssimulacra2": 46.77360814
+   },
+   {
+    "image": "fb7ec599dea70a4a_typical.jpg",
+    "q": 50,
+    "bytes": 95234,
+    "ssimulacra2": 31.44221332
+   },
+   {
+    "image": "fe00a8d898a01166_large.jpg",
+    "q": 18,
+    "bytes": 1025919,
+    "ssimulacra2": 44.2771209
+   },
+   {
+    "image": "fe00a8d898a01166_large.jpg",
+    "q": 25,
+    "bytes": 471501,
+    "ssimulacra2": 42.53684237
+   },
+   {
+    "image": "fe00a8d898a01166_large.jpg",
+    "q": 32,
+    "bytes": 223146,
+    "ssimulacra2": 39.54779745
+   },
+   {
+    "image": "fe00a8d898a01166_large.jpg",
+    "q": 38,
+    "bytes": 132125,
+    "ssimulacra2": 34.33215399
+   },
+   {
+    "image": "fe00a8d898a01166_large.jpg",
+    "q": 44,
+    "bytes": 85320,
+    "ssimulacra2": 26.44672425
+   },
+   {
+    "image": "fe00a8d898a01166_large.jpg",
+    "q": 50,
+    "bytes": 53296,
+    "ssimulacra2": 13.35301453
+   },
+   {
+    "image": "ffb9d9c4c74837ac_tiny.jpg",
+    "q": 18,
+    "bytes": 62795,
+    "ssimulacra2": 84.62103334
+   },
+   {
+    "image": "ffb9d9c4c74837ac_tiny.jpg",
+    "q": 25,
+    "bytes": 49572,
+    "ssimulacra2": 83.24412878
+   },
+   {
+    "image": "ffb9d9c4c74837ac_tiny.jpg",
+    "q": 32,
+    "bytes": 37276,
+    "ssimulacra2": 78.43389648
+   },
+   {
+    "image": "ffb9d9c4c74837ac_tiny.jpg",
+    "q": 38,
+    "bytes": 27498,
+    "ssimulacra2": 70.67878845
+   },
+   {
+    "image": "ffb9d9c4c74837ac_tiny.jpg",
+    "q": 44,
+    "bytes": 18223,
+    "ssimulacra2": 59.91980473
+   },
+   {
+    "image": "ffb9d9c4c74837ac_tiny.jpg",
+    "q": 50,
+    "bytes": 10247,
+    "ssimulacra2": 45.92503472
+   }
+  ]
+ },
+ "bd_rate": {
+  "nvenc_vs_aom_s6": {
+   "n": 94,
+   "median": 0.2952392067680938,
+   "mean": 0.465963326724705
+  },
+  "nvenc_vs_aom_s6_no_icc": {
+   "n": 61,
+   "median": 0.29104780580600376,
+   "mean": 0.43745827010593435
+  },
+  "nvenc_vs_webp": {
+   "n": 87,
+   "median": -0.12161071480059349,
+   "mean": -0.07110459443233745
+  },
+  "nvenc_vs_aom_s6_by_size": {
+   "< 1 MP": {
+    "n": 38,
+    "median": 0.3566410025134015,
+    "mean": 0.5739845515005384
+   },
+   "1-5 MP": {
+    "n": 18,
+    "median": 0.2915043519669187,
+    "mean": 0.4508527988178926
+   },
+   "5-10 MP": {
+    "n": 21,
+    "median": 0.28469757088749575,
+    "mean": 0.43533835502366974
+   },
+   ">= 10 MP": {
+    "n": 17,
+    "median": 0.22218346995103316,
+    "mean": 0.27833434828721654
+   }
+  },
+  "av1gpu_vs_nvenc": {
+   "n": 96,
+   "median": -0.22804807074515326,
+   "mean": -0.268049855665025
+  }
+ }
+}

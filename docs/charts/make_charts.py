@@ -20,17 +20,24 @@ from bench import SIZE_CLASSES, bd_rate  # noqa: E402
 THEMES = {
     "light": dict(surface="#fcfcfb", ink="#0b0b0b", ink2="#52514e", muted="#898781", grid="#e1e0d9",
                   axis="#c3c2b7", border="rgba(11,11,11,0.10)",
-                  av1gpu="#2a78d6", aom_s6="#eb6834", aom_s9="#1baf7a", webp="#eda100"),
+                  av1gpu="#2a78d6", aom_s6="#eb6834", aom_s9="#1baf7a", webp="#eda100", nvenc="#e87ba4"),
     "dark": dict(surface="#1a1a19", ink="#f0efec", ink2="#c3c2b7", muted="#898781", grid="#2c2c2a",
                  axis="#383835", border="rgba(255,255,255,0.10)",
-                 av1gpu="#3987e5", aom_s6="#d95926", aom_s9="#199e70", webp="#c98500"),
+                 av1gpu="#3987e5", aom_s6="#d95926", aom_s9="#199e70", webp="#c98500", nvenc="#d55181"),
 }
 FONT = "system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif"
-NAMES = dict(av1gpu="av1gpu", aom_s6="libaom speed 6", aom_s9="libaom speed 9", webp="WebP")
+NAMES = dict(av1gpu="av1gpu", aom_s6="libaom speed 6", aom_s9="libaom speed 9", webp="WebP", nvenc="NVENC AV1")
 
 
 def load(name):
     return json.load(open(os.path.join(RES, name, "results.json")))
+
+
+def nvenc():
+    """NVENC AV1 on the same L4 (bench/results/aws-g6-l4-nvenc): best speed, per-image scores, BD-rate vs speed 6."""
+    r = load("aws-g6-l4-nvenc")
+    best = max(r["speed"], key=lambda x: x["mp_s"])
+    return r, best
 
 
 def esc(s):
@@ -99,21 +106,23 @@ TURBO3_BD = 0.054
 TURBO3_SPEED = 212
 
 
-def matchup_chart(t, name, title, subtitle, rows, sizes=True):
-    """One pair of encoders: speed (higher is better) and, if sizes, file size (lower is better) beside it."""
-    s = Svg(760, 268, t, title)
-    s.header(title, subtitle)
+def matchup_chart(t, name, title, subtitle, rows, sizes=True, speed=(250, 50), size=(16, 5)):
+    """Encoders side by side: speed (higher is better) and, if sizes, file size (lower is better) beside it.
+
+    speed and size are (axis maximum, tick step)."""
     lx, top, band = 24, 136, 56
-    panels = [(250, 470, 250, "Speed, MP/s  (higher is better)", 50),
-              (520, 700, 16, "Files vs libaom speed 6  (lower is better)", 5)]
+    s = Svg(760, 156 + band * len(rows), t, title)
+    s.header(title, subtitle)
+    panels = [(250, 470, *speed[:1], "Speed, MP/s  (higher is better)", speed[1]),
+              (520, 700, *size[:1], "Files vs libaom speed 6  (lower is better)", size[1])]
     if not sizes:
-        panels = [(250, 680, 150, "Speed, MP/s  (higher is better)", 25)]
-    for x0, x1, vmax, head, step in panels:
+        panels = [(250, 680, *speed[:1], "Speed, MP/s  (higher is better)", speed[1])]
+    for i, (x0, x1, vmax, head, step) in enumerate(panels):
         s.text(x0, top - 22, head, 12, "ink2", weight=600)
         for v in range(0, vmax + 1, step):
             x = x0 + (x1 - x0) * v / vmax
             s.line(x, top - 6, x, top + band * len(rows) - 14)
-            s.text(x, top + band * len(rows) + 4, f"{v}" + (" %" if vmax == 16 and v else ""), 12, "muted", "middle")
+            s.text(x, top + band * len(rows) + 4, f"{v}" + (" %" if i and v else ""), 12, "muted", "middle")
         s.line(x0, top - 6, x0, top + band * len(rows) - 14, "axis")
     for i, (label, note, key, mps, bd) in enumerate(rows):
         y = top + band * i
@@ -140,13 +149,25 @@ def matchup_charts(t):
     s6 = next(x for x in enc2 if "speed 6" in x["codec"])["mp_s"]
     s9 = next(x for x in enc2 if "speed 9" in x["codec"])["mp_s"]
     default = load("aws-g6-l4-gamut-enc4")["speed"][0]["mp_s"]
+    nv, nv_best = nvenc()
+    nv_bd = nv["bd_rate"]["nvenc_vs_aom_s6"]["median"]
     cpu = "16 CPU threads at once"
     matchup_chart(t, "match-small", "Smallest files: av1gpu default vs libaom speed 6",
                   ["100 photos of 0.18–24 MP on an AWS g6.4xlarge: libaom on all 16 vCPUs, av1gpu on one",
                    "NVIDIA L4 and about 0.1 CPU core. Same file sizes (within 0.1 %), 4× the speed."],
                   [("av1gpu default", "1 GPU, 4 encoders", "av1gpu", default,
                     gamut["av1gpu_vs_aom_s6"]["median"]),
-                   ("libaom speed 6", cpu, "aom_s6", s6, 0.0)], sizes=False)
+                   ("libaom speed 6", cpu, "aom_s6", s6, 0.0),
+                   ("NVENC AV1, p7", f"same L4; files {nv_bd * 100:+.0f} %", "nvenc", nv_best["mp_s"], nv_bd)],
+                  sizes=False, speed=(150, 25))
+    matchup_chart(t, "match-nvenc", "Same GPU: av1gpu vs the NVENC AV1 hardware encoder",
+                  ["The same photos through ffmpeg av1_nvenc (preset p7, tune uhq) on the same L4. NVENC is",
+                   f"one fixed-function block; av1gpu runs on the CUDA cores, {default / nv_best['mp_s']:.0f}× faster "
+                   "with much smaller files."],
+                  [("av1gpu default", "1 GPU, 4 encoders", "av1gpu", default,
+                    gamut["av1gpu_vs_aom_s6"]["median"]),
+                   ("NVENC AV1, p7", f"{nv_best['workers']} at once, {nv_best['cpu_cores']:.0f} CPU cores", "nvenc", nv_best["mp_s"], nv_bd)],
+                  speed=(125, 25), size=(30, 10))
     matchup_chart(t, "match-fast", "Fastest: av1gpu turbo3 vs libaom speed 9",
                   ["The same photos at each encoder's fastest useful setting. av1gpu is a little faster,",
                    "and its files grow 5 % where libaom's grow 15 %."],
@@ -166,14 +187,21 @@ def quality_chart(t):
             bpp = sum(x["bytes"] for x in sel) * 8 / sum(man[x["image"]] for x in sel)
             pts.append((bpp, statistics.fmean(x["ssimulacra2"] for x in sel)))
         curves[codec] = pts
-    s = Svg(760, 420, t, "Quality against file size: av1gpu, libaom speed 6 and 9, WebP")
+    nv = nvenc()[0]["quality"]["nvenc"]
+    curves["nvenc"] = []
+    for q in sorted({x["q"] for x in nv}):
+        sel = [x for x in nv if x["q"] == q]
+        bpp = sum(x["bytes"] for x in sel) * 8 / sum(man[x["image"]] for x in sel)
+        curves["nvenc"].append((bpp, statistics.fmean(x["ssimulacra2"] for x in sel)))
+    curves["nvenc"] = [p for p in curves["nvenc"] if p[0] <= 1.8]
+    s = Svg(760, 420, t, "Quality against file size: av1gpu, libaom speed 6 and 9, WebP, NVENC AV1")
     s.header("Quality against file size",
              ["Mean SSIMULACRA2 (higher is better) against bits per pixel, over the same 100 photos.",
-              "Up and to the left is better; av1gpu lies on top of libaom speed 6."])
-    order = ["av1gpu", "aom_s6", "aom_s9", "webp"]
+              "Up and to the left is better; av1gpu lies on top of libaom speed 6, NVENC well below it."])
+    order = ["av1gpu", "aom_s6", "aom_s9", "webp", "nvenc"]
     s.legend(24, 110, [(k, NAMES[k]) for k in order])
     L, R, T, B = 64, 730, 132, 370
-    xmax, ymin, ymax = 1.8, 30, 90
+    xmax, ymin, ymax = 1.8, 20, 90
     X = lambda v: L + (R - L) * v / xmax
     Y = lambda v: B - (B - T) * (v - ymin) / (ymax - ymin)
     for v in range(ymin, ymax + 1, 10):
@@ -204,20 +232,22 @@ def by_size_chart(t):
         for x in rows:
             per.setdefault(codec, {}).setdefault(x["image"], []).append((x["bytes"], x["ssimulacra2"]))
     by = {}
-    for k in ("av1gpu", "aom_s9"):
+    for x in nvenc()[0]["quality"]["nvenc"]:
+        per.setdefault("nvenc", {}).setdefault(x["image"], []).append((x["bytes"], x["ssimulacra2"]))
+    for k in ("av1gpu", "aom_s9", "nvenc"):
         for cls, lo, hi in SIZE_CLASSES:
             v = [bd_rate(per[k][im], per["aom_s6"][im]) for im in per[k] if lo <= mp[im] < hi]
             v = [x for x in v if x is not None]
             by.setdefault(f"{k}_vs_aom_s6", {})[cls] = dict(n=len(v), median=statistics.median(v))
     classes = [c for c, _, _ in SIZE_CLASSES]
-    series = [("av1gpu", "av1gpu default"), ("aom_s9", "libaom speed 9")]
+    series = [("av1gpu", "av1gpu default"), ("aom_s9", "libaom speed 9"), ("nvenc", "NVENC AV1")]
     s = Svg(760, 380, t, "File size against libaom speed 6 by image size")
     s.header("File size against libaom speed 6, by image size",
              ["Median BD-rate on SSIMULACRA2: how much bigger (+) or smaller (−) the files are at equal quality.",
-              "av1gpu matches speed 6 and does better as images get larger."])
+              "av1gpu matches speed 6 and does better as images get larger; NVENC is 22–36 % bigger."])
     s.legend(24, 110, [(k, n) for k, n in series])
     L, R, T, B = 64, 730, 136, 330
-    ymin, ymax = -5, 25
+    ymin, ymax = -5, 40
     Y = lambda v: B - (B - T) * (v - ymin) / (ymax - ymin)
     for v in range(ymin, ymax + 1, 5):
         s.line(L, Y(v), R, Y(v), "axis" if v == 0 else "grid")
@@ -230,7 +260,7 @@ def by_size_chart(t):
         s.text(cx, B + 37, f"{n} images", 12, "muted", "middle")
         for j, (k, _) in enumerate(series):
             v = by[f"{k}_vs_aom_s6"][cls]["median"] * 100
-            x = cx - 26 + j * 28
+            x = cx - 12 - 14 * (len(series) - 1) + j * 28
             s.bar_v(x, 24, Y(0), Y(v), t[k])
             s.text(x + 12, Y(v) - 6 if v >= 0 else Y(v) + 16, f"{v:+.1f}".replace("-", "−"), 12, "ink", "middle")
     s.save(os.path.join(HERE, f"by-size-{t['name']}.svg"))

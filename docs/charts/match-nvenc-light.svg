@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="268" viewBox="0 0 760 268" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" role="img" aria-label="Same GPU: av1gpu vs the NVENC AV1 hardware encoder">
+<title>Same GPU: av1gpu vs the NVENC AV1 hardware encoder</title>
+<rect x="0.5" y="0.5" width="759" height="267" rx="12" fill="#fcfcfb" stroke="rgba(11,11,11,0.10)"/>
+<text x="24.0" y="34.0" font-size="17" fill="#0b0b0b" text-anchor="start" font-weight="600">Same GPU: av1gpu vs the NVENC AV1 hardware encoder</text>
+<text x="24.0" y="56.0" font-size="13" fill="#52514e" text-anchor="start" font-weight="400">The same photos through ffmpeg av1_nvenc (preset p7, tune uhq) on the same L4. NVENC is</text>
+<text x="24.0" y="74.0" font-size="13" fill="#52514e" text-anchor="start" font-weight="400">one fixed-function block; av1gpu runs on the CUDA cores, 7× faster with much smaller files.</text>
+<text x="250.0" y="114.0" font-size="12" fill="#52514e" text-anchor="start" font-weight="600">Speed, MP/s  (higher is better)</text>
+<line x1="250.0" y1="130.0" x2="250.0" y2="234.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="250.0" y="252.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">0</text>
+<line x1="294.0" y1="130.0" x2="294.0" y2="234.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="294.0" y="252.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">25</text>
+<line x1="338.0" y1="130.0" x2="338.0" y2="234.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="338.0" y="252.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">50</text>
+<line x1="382.0" y1="130.0" x2="382.0" y2="234.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="382.0" y="252.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">75</text>
+<line x1="426.0" y1="130.0" x2="426.0" y2="234.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="426.0" y="252.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">100</text>
+<line x1="470.0" y1="130.0" x2="470.0" y2="234.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="470.0" y="252.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">125</text>
+<line x1="250.0" y1="130.0" x2="250.0" y2="234.0" stroke="#c3c2b7" stroke-width="1"/>
+<text x="520.0" y="114.0" font-size="12" fill="#52514e" text-anchor="start" font-weight="600">Files vs libaom speed 6  (lower is better)</text>
+<line x1="520.0" y1="130.0" x2="520.0" y2="234.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="520.0" y="252.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">0</text>
+<line x1="580.0" y1="130.0" x2="580.0" y2="234.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="580.0" y="252.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">10 %</text>
+<line x1="640.0" y1="130.0" x2="640.0" y2="234.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="640.0" y="252.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">20 %</text>
+<line x1="700.0" y1="130.0" x2="700.0" y2="234.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="700.0" y="252.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">30 %</text>
+<line x1="520.0" y1="130.0" x2="520.0" y2="234.0" stroke="#c3c2b7" stroke-width="1"/>
+<text x="24.0" y="149.0" font-size="14" fill="#0b0b0b" text-anchor="start" font-weight="600">av1gpu default</text>
+<text x="24.0" y="167.0" font-size="12" fill="#898781" text-anchor="start" font-weight="400">1 GPU, 4 encoders</text>
+<path d="M250.0,140.0 H450.1 Q454.1,140.0 454.1,144.0 V160.0 Q454.1,164.0 450.1,164.0 H250.0 Z" fill="#2a78d6"/>
+<text x="462.1" y="157.0" font-size="14" fill="#0b0b0b" text-anchor="start" font-weight="600">116</text>
+<text x="528.0" y="157.0" font-size="14" fill="#0b0b0b" text-anchor="start" font-weight="600">−0.1 %</text>
+<text x="24.0" y="205.0" font-size="14" fill="#0b0b0b" text-anchor="start" font-weight="400">NVENC AV1, p7</text>
+<text x="24.0" y="223.0" font-size="12" fill="#898781" text-anchor="start" font-weight="400">8 at once, 4 CPU cores</text>
+<path d="M250.0,196.0 H273.6 Q277.6,196.0 277.6,200.0 V216.0 Q277.6,220.0 273.6,220.0 H250.0 Z" fill="#e87ba4"/>
+<text x="285.6" y="213.0" font-size="14" fill="#0b0b0b" text-anchor="start" font-weight="600">16</text>
+<path d="M520.0,196.0 H693.1 Q697.1,196.0 697.1,200.0 V216.0 Q697.1,220.0 693.1,220.0 H520.0 Z" fill="#e87ba4"/>
+<text x="705.1" y="213.0" font-size="14" fill="#0b0b0b" text-anchor="start" font-weight="600">+29.5 %</text>
+</svg>

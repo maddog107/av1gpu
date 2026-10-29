@@ -163,11 +163,15 @@ BD-rate on SSIMULACRA2 against libaom speed 6, median over images (mean in brack
 | av1gpu `--preset turbo3 --small-preset none` | | +5.4 % (+5.4 %)¹ |
 | libaom speed 9 | +17.7 % (+20.7 %) | +15.0 % (+17.2 %) |
 | WebP | +41.3 % (+55.3 %) | +45.1 % (+61.2 %) |
+| NVENC AV1 (ffmpeg `av1_nvenc` p7, below) | | +29.5 % (+46.6 %)² |
 
 ¹ 99 images, encoded on the RTX PRO 2000 (byte-identical to the L4) and scored with the same SSIMULACRA2
 build on another machine. That machine scored the default 0.55 points more favourably than the L4 run on
 the same files (−0.65 % instead of −0.1 %), so its turbo3 numbers are shifted by the same amount. `turbo3`
 with the small-image preset left on scored +1.3 %.
+
+² 94 of the 99 photos (on the other 5 its quality range does not overlap libaom's), scored on the L4 with
+the same tools as the rest of the table; see [NVENC AV1 on the same L4](#nvenc-av1-on-the-same-l4).
 
 Against WebP at each image's WebP quality, the default is 30.0 % (standard) and 31.2 % (size range)
 smaller. Size range by image size (median, images in brackets):
@@ -177,9 +181,73 @@ smaller. Size range by image size (median, images in brackets):
 | av1gpu default | +0.1 % (40) | +1.1 % (20) | −0.6 % (23) | −2.4 % (17) |
 | av1gpu `--small-preset none` | +3.9 % (40) | +1.1 % (20) | −0.6 % (23) | −2.4 % (17) |
 | libaom speed 9 | +20.1 % (40) | +18.5 % (20) | +12.8 % (23) | +13.4 % (17) |
+| NVENC AV1 | +35.7 % (38) | +29.2 % (18) | +28.5 % (21) | +22.2 % (17) |
 
 (At 1 MP and above both av1gpu rows are the same `turbo` encodes.) The groups are small, but they show the
 same trend as the held-out set: av1gpu compares best on large images.
+
+### NVENC AV1 on the same L4
+
+The L4 also has NVIDIA's fixed-function video encoder (two NVENC engines on this card). We measured its
+AV1 encoder on the same 99 size-range photos (2026-10-29) through Bellazon's earlier production pipeline,
+unchanged: one ffmpeg process per image,
+
+```
+ffmpeg -i in.jpg -c:v av1_nvenc -preset p7 -tune uhq -rc vbr -b:v 0 -spatial-aq 1 -aq-strength 10 \
+       -rc-lookahead 32 -lookahead_level 3 -cq <CQ> -pix_fmt yuv420p -color_range pc -frames:v 1 -f ivf out.ivf
+```
+
+then the AV1 OBUs muxed into an AVIF. p7 with `tune uhq` is NVENC's slowest, highest-quality setting.
+ffmpeg n8.1.3 (BtbN static build; the 9.0 and master builds need NVENC API 13.1, a newer driver than
+595.112.07). Raw results: `bench/results/aws-g6-l4-nvenc/`.
+
+**Speed** at CQ 32 (99 photos, 477.7 MP per pass), by the number of encodes in flight; two rounds:
+
+| Encodes at once | round 1 | round 2 | CPU cores |
+|---:|---:|---:|---:|
+| 1 | 5.7 | 5.7 | 0.95 |
+| 2 | 11.0 | 10.9 | 1.9 |
+| 4 | 15.5 | 15.5 | 3.2 |
+| 8 | **15.6** | **15.7** | 3.9 |
+| 16 | 14.1 | 14.1 | 4.2 |
+
+It levels off at about 16 MP/s once both engines are busy. av1gpu's default, timed in the same session
+with `bench.gpu_speed`, ran at 115.6 and 117.1 MP/s on 0.12 cores, **7.4× faster**. The CPU cores are
+ffmpeg decoding JPEGs and converting to 4:2:0 for the encoder; av1gpu decodes on the GPU.
+
+**Compression:** six points, CQ 18, 25, 32, 38, 44 and 50, decoded with avifdec 1.4.0 and scored with the
+same `ssimulacra2` as everything else. Against libaom speed 6 its files are **+29.5 %** (median; mean
++46.6 %) at equal quality, worse than libaom speed 9 (+15.0 %), and still 12.2 % smaller than WebP (87
+photos); measured the other way, av1gpu's default files are 22.8 % smaller than NVENC's (96 photos). The
+61 photos without an ICC profile (the pipeline drops ICC) give +29.1 %, so that is not the cause. Totals
+per CQ:
+
+| CQ | AVIF bytes | Mean SSIMULACRA2 |
+|---:|---:|---:|
+| 18 | 85.5 MB | 79.1 |
+| 25 | 54.2 MB | 75.6 |
+| 32 | 31.8 MB | 68.7 |
+| 38 | 18.4 MB | 59.1 |
+| 44 | 10.8 MB | 46.5 |
+| 50 | 6.1 MB | 28.5 |
+
+For comparison, av1gpu's default quality gives 22.5 MB at 72.0 on the same photos, and libaom speed 6
+28.9 MB at 75.9.
+
+Other things we noticed:
+
+- **Deterministic:** a second run on another L4 instance gave byte-identical totals at every CQ.
+- **libaom rejects CQ 18:** libaom 3.13.1 (and 3.11) fails all 99 CQ 18 files with "Bitstream not
+  supported by this decoder"; dav1d and libaom 3.13.3 decode them. CQ 25 and above decode everywhere. We
+  scored every NVENC file with avifdec's dav1d codec (identical output to libaom where both decode).
+- **Odd sizes are padded:** NVENC encodes 4:2:0 at even dimensions, so a 1,023-pixel-wide photo becomes a
+  1,024-pixel-wide AVIF with a repeated edge column (cropped off before scoring).
+- **8,192-pixel limit** per side; the pipeline sends bigger images to libaom instead (none in this set).
+
+The same pipeline on the development machine's RTX PRO 2000 Blackwell (one NVENC engine) peaked at
+about 9.4 MP/s (4 encodes at once; 9.5 MP/s with the JPEGs decoded to raw 4:2:0 in RAM beforehand, so the
+engine itself is the limit), against av1gpu's 104 MP/s there, and scored about +25 % against libaom speed 6
+(scored on a different machine, so not directly comparable with the L4's +29.5 %).
 
 ### Correctness
 
