@@ -25,13 +25,15 @@
 > **TL;DR:** av1gpu turns JPEGs into AVIFs on an NVIDIA GPU **4× faster than libaom running on all 16 CPU
 > threads at once**, with the **same file sizes** (libaom speed 6, −0.1 %), while using only **0.1 of a CPU
 > core**. The 100 test photos went from **160 MB of JPEG to 22.5 MB of AVIF (−86 %)**, and its files are
-> **31 % smaller than WebP** at the same quality. One prebuilt binary, no CPU farm.
+> **31 % smaller than WebP** at the same quality. On the same GPU it is also **7× faster than NVIDIA's own
+> NVENC AV1 encoder**, whose files are 30 % bigger. One prebuilt binary, no CPU farm.
 
 ## ⚡ Overview
 
 A CUDA encoder for AV1 still images that writes AVIF. Mode search, partitioning, reconstruction,
 loop-filter decisions and entropy coding all run on the GPU's general-purpose CUDA cores. It does not
-use NVENC. JPEG input is decoded on the GPU too, so a whole batch of images stays in GPU memory from
+use NVENC, the GPU's fixed-function video encoder, which on the same card is 7× slower and makes 30 %
+bigger files ([below](#-same-gpu-av1gpu-vs-nvenc)). JPEG input is decoded on the GPU too, so a whole batch of images stays in GPU memory from
 the JPEG bitstream to the finished AVIF bytes.
 
 It was built for [Bellazon](https://www.bellazon.com), a forum with more than **15 million photos**:
@@ -66,13 +68,14 @@ Measured on an AWS g6.4xlarge (NVIDIA L4, AMD EPYC 7R13 with 16 vCPUs) with 100 
 avifenc 1.4 / libaom 3.13.1 with `tune=iq`, one avifenc per vCPU. Full numbers, method and logs:
 [docs/RESULTS.md](docs/RESULTS.md#nvidia-l4-aws-g64xlarge); reproduce them with [Benchmarks](#-benchmarks).
 
-Each encoder has a "small files" setting and a "fast" setting, so there are two fair match-ups.
+Each encoder has a "small files" setting and a "fast" setting, so there are two fair match-ups. A third
+compares av1gpu with NVENC, the AV1 hardware encoder built into the same GPU.
 
 ### 🐢 Smallest files: av1gpu default vs libaom speed 6
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/charts/match-small-dark.svg">
-  <img alt="Bar chart of encoding speed: av1gpu default 116 MP/s, libaom speed 6 29 MP/s." src="docs/charts/match-small-light.svg" width="760">
+  <img alt="Bar chart of encoding speed: av1gpu default 116 MP/s, libaom speed 6 29 MP/s, NVENC AV1 on the same L4 16 MP/s with files 30 percent bigger." src="docs/charts/match-small-light.svg" width="760">
 </picture>
 
 **At the same file size, av1gpu is 4× faster than libaom running on all 16 CPU threads at once**,
@@ -92,16 +95,30 @@ libaom speed 10 is no faster than 9 for still images.
 The `turbo3` speed was measured on the same L4 in a separate session, on 99 of the 100 photos (the default
 gave 119 MP/s there, against 116 in the main run).
 
+### 🆚 Same GPU: av1gpu vs NVENC
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/charts/match-nvenc-dark.svg">
+  <img alt="Two bar panels. Speed: av1gpu default 116 MP/s, NVENC AV1 preset p7 16 MP/s. Files vs libaom speed 6: av1gpu −0.1 percent, NVENC +29.5 percent." src="docs/charts/match-nvenc-light.svg" width="760">
+</picture>
+
+**7× faster than the GPU's own AV1 encoder, with files 23 % smaller.** NVENC is a fixed-function block
+(the L4 has two), so it tops out at about 16 MP/s however many encodes you run at once, and it keeps
+4 CPU cores busy decoding JPEGs for it. Its files are 29.5 % bigger than libaom speed 6's at equal
+quality, worse than libaom speed 9. Tested through ffmpeg `av1_nvenc` at its best-quality setting (`-preset p7
+-tune uhq`) on 99 of the photos; details in
+[docs/RESULTS.md](docs/RESULTS.md#nvenc-av1-on-the-same-l4).
+
 ### 📈 Quality and file size
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/charts/quality-dark.svg">
-  <img alt="Line chart of mean SSIMULACRA2 against bits per pixel. The av1gpu and libaom speed 6 curves coincide; libaom speed 9 is below them and WebP well below." src="docs/charts/quality-light.svg" width="760">
+  <img alt="Line chart of mean SSIMULACRA2 against bits per pixel. The av1gpu and libaom speed 6 curves coincide; libaom speed 9 is below them, and WebP and NVENC AV1 well below." src="docs/charts/quality-light.svg" width="760">
 </picture>
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/charts/by-size-dark.svg">
-  <img alt="Column chart of median BD-rate against libaom speed 6 by image size. av1gpu: +0.1, +1.1, −0.6 and −2.4 percent for under 1 MP, 1–5, 5–10 and 10 MP and over. libaom speed 9: +20.1, +18.5, +12.8 and +13.4 percent." src="docs/charts/by-size-light.svg" width="760">
+  <img alt="Column chart of median BD-rate against libaom speed 6 by image size. av1gpu: +0.1, +1.1, −0.6 and −2.4 percent for under 1 MP, 1–5, 5–10 and 10 MP and over. libaom speed 9: +20.1, +18.5, +12.8 and +13.4 percent. NVENC AV1: +35.7, +29.2, +28.5 and +22.2 percent." src="docs/charts/by-size-light.svg" width="760">
 </picture>
 
 | Encoder | MP/s | Files vs libaom s6 | Files vs WebP | CPU cores |
@@ -112,8 +129,10 @@ gave 119 MP/s there, against 116 in the main run).
 | libaom speed 6, 16 × avifenc | 29 | 0 | −31.1 % | 16 |
 | libaom speed 9, 16 × avifenc | 188 | +15.0 % | −19.3 % | 16 |
 | WebP (cwebp `-m 4`) | | +45.1 % | 0 | |
+| NVENC AV1 (ffmpeg `av1_nvenc -preset p7 -tune uhq`), 8 at once | 16² | +29.5 % | −12.2 % | 4 |
 
 ¹ Measured in a separate L4 session on 99 of the 100 photos, where the default ran at 119 MP/s.
+² Same L4, separate session, 99 photos; the av1gpu default ran at 116 MP/s alongside it.
 
 ### 🖼️ What the files look like
 

@@ -1,0 +1,16 @@
+ffmpeg version n8.1.3-25-g611cec792a-20261028 Copyright (c) 2000-2026 the FFmpeg developers
+quality {"cq": 18, "workers": 8, "wall_s": 32.64838505099999, "mp_s": 14.630536985331519, "cpu_cores": 3.719326386598124, "bytes": 85548695, "failed": []}
+quality {"cq": 25, "workers": 8, "wall_s": 31.875760027000013, "mp_s": 14.985161282284736, "cpu_cores": 3.7978702279555825, "bytes": 54242912, "failed": []}
+quality {"cq": 32, "workers": 8, "wall_s": 31.91060745499999, "mp_s": 14.968796995594522, "cpu_cores": 3.802497341083602, "bytes": 31796850, "failed": []}
+quality {"cq": 38, "workers": 8, "wall_s": 32.04059802799998, "mp_s": 14.908067714047487, "cpu_cores": 3.795809300866277, "bytes": 18356641, "failed": []}
+quality {"cq": 44, "workers": 8, "wall_s": 32.37073976199997, "mp_s": 14.756023758243836, "cpu_cores": 3.788915573192397, "bytes": 10808711, "failed": []}
+quality {"cq": 50, "workers": 8, "wall_s": 32.522764170000016, "mp_s": 14.687048201167698, "cpu_cores": 3.780428974527717, "bytes": 6129551, "failed": []}
+all {"n": 94, "nvenc_median": 0.2952392067680938, "nvenc_mean": 0.465963326724705, "av1gpu_aws_median": -0.00036770732671038183}
+no_icc {"n": 61, "nvenc_median": 0.29104780580600376, "nvenc_mean": 0.43745827010593435, "av1gpu_aws_median": -0.005264547176936598}
+cq 18 bytes 85548695 mean ssimulacra2 79.1
+cq 25 bytes 54242912 mean ssimulacra2 75.6
+cq 32 bytes 31796850 mean ssimulacra2 68.7
+cq 38 bytes 18356641 mean ssimulacra2 59.1
+cq 44 bytes 10808711 mean ssimulacra2 46.5
+cq 50 bytes 6129551 mean ssimulacra2 28.5
+SCORE_DONE
