@@ -191,8 +191,7 @@ def matchup_charts(t):
 
 
 def tradeoff_chart(t):
-    """Every measured setting: file size against libaom speed 6 (x) and speed (y, log scale)."""
-    import math
+    """Every measured setting: file size against libaom speed 6 (x) and speed (y)."""
     gamut = load("aws-g6-l4-gamut")["bd_rate"]
     enc2 = load("aws-g6-l4-gamut-enc2")["speed"]
     ns = load("aws-g6-l4-gamut-turbo-nosmall")
@@ -201,18 +200,18 @@ def tradeoff_chart(t):
     series = [  # key, legend, marker, dashed, points (BD, MP/s, label, label anchor)
         ("av1gpu", "av1gpu (one L4)", "circle", False,
          [(gamut["av1gpu_vs_aom_s6"]["median"], load("aws-g6-l4-gamut-enc4")["speed"][0]["mp_s"], "default", "w"),
-          (ns["bd_rate"]["av1gpu_vs_aom_s6"]["median"], ns["speed"][0]["mp_s"], "no small preset", "se"),
+          (ns["bd_rate"]["av1gpu_vs_aom_s6"]["median"], ns["speed"][0]["mp_s"], "no small preset", "nw"),
           (TURBO3_BD, TURBO3_SPEED, "turbo3", "n")]),
         ("svt", "SVT-AV1 (16 threads)", "triangle", True,
-         [(sv[p][1], sv[p][0], f"preset {p}", {8: "se", 9: "n"}.get(p, "e")) for p in sorted(sv)]),
+         [(sv[p][1], sv[p][0], f"preset {p}", {2: "n", 4: "n", 8: "w", 9: "n"}.get(p, "e")) for p in sorted(sv)]),
         ("aom_s6", "libaom (16 threads)", "square", False,
          [(0.0, next(x for x in enc2 if "speed 6" in x["codec"])["mp_s"], "speed 6", "e"),
           (gamut["aom_s9_vs_aom_s6"]["median"], next(x for x in enc2 if "speed 9" in x["codec"])["mp_s"], "speed 9", "e")]),
         ("nvenc", "NVENC AV1 (same L4)", "diamond", False,
          [(nv["bd_rate"]["nvenc_vs_aom_s6"]["median"], nv_best["mp_s"], "p7, uhq", "n")]),
     ]
-    s = Svg(760, 470, t, "Speed against file size for every setting measured")
-    s.header("Speed against file size, every setting",
+    s = Svg(760, 590, t, "Speed against file size: av1gpu, SVT-AV1, libaom, NVENC")
+    s.header("Speed against file size",
              ["Each point is one setting. Up is faster, left is smaller files at equal quality (median BD-rate",
               "on SSIMULACRA2 against libaom speed 6). The CPU encoders use all 16 threads of an EPYC 7R13."])
     lx = 24
@@ -223,20 +222,28 @@ def tradeoff_chart(t):
         marker(s, t, mk, lx + 11, 106, t[key])
         s.text(lx + 30, 110, label, 13, "ink2")
         lx += 30 + 7.0 * len(label) + 22
-    L, R, T, B = 70, 730, 136, 410
-    xmin, xmax, ymin, ymax = -6, 30, 4, 300
+    L, R, T, B = 70, 730, 136, 530
+    xmin, xmax, ymin, ymax = -6, 30, 0, 225
     X = lambda v: L + (R - L) * (v * 100 - xmin) / (xmax - xmin)
-    Y = lambda v: B - (B - T) * (math.log(v) - math.log(ymin)) / (math.log(ymax) - math.log(ymin))
-    for v in (5, 10, 20, 50, 100, 200):
-        s.line(L, Y(v), R, Y(v))
+    Y = lambda v: B - (B - T) * (v - ymin) / (ymax - ymin)
+    for v in range(ymin, ymax + 1, 25):
+        s.line(L, Y(v), R, Y(v), "axis" if v == 0 else "grid")
         s.text(L - 8, Y(v) + 4, str(v), 12, "muted", "end")
     for v in range(-5, xmax + 1, 5):
         s.line(X(v / 100), T, X(v / 100), B, "axis" if v == 0 else "grid")
         s.text(X(v / 100), B + 18, (f"{v:+d} %" if v else "0").replace("-", "−"), 12, "muted", "middle")
     s.text((L + R) / 2, B + 38, "files vs libaom speed 6 (smaller is better)", 12, "muted", "middle")
     s.add(f'<text x="18" y="{(T + B) / 2:.1f}" font-size="12" fill="{t["muted"]}" text-anchor="middle" '
-          f'transform="rotate(-90 18 {(T + B) / 2:.1f})">MP/s, log scale (faster is higher)</text>')
-    off = dict(n=(0, -12, "middle"), s=(0, 20, "middle"), e=(10, 4, "start"), w=(-10, 4, "end"), se=(8, 18, "start"))
+          f'transform="rotate(-90 18 {(T + B) / 2:.1f})">MP/s (faster is higher)</text>')
+    # the headline gap: av1gpu default against libaom speed 6, at the same file size
+    ax, lo, hi = X(0) - 14, Y(29) - 10, Y(116) + 10
+    s.add(f'<line x1="{ax:.1f}" y1="{lo:.1f}" x2="{ax:.1f}" y2="{hi + 6:.1f}" stroke="{t["ink2"]}" stroke-width="1.5"/>')
+    s.add(f'<path d="M{ax - 5:.1f},{hi + 7:.1f} L{ax:.1f},{hi:.1f} L{ax + 5:.1f},{hi + 7:.1f}" fill="none" '
+          f'stroke="{t["ink2"]}" stroke-width="1.5" stroke-linejoin="round"/>')
+    s.text(ax - 8, (lo + hi) / 2 + 2, "4×", 20, "ink", "end", 700)
+    s.text(ax - 8, (lo + hi) / 2 + 18, "faster at the", 12, "ink2", "end")
+    s.text(ax - 8, (lo + hi) / 2 + 33, "same file size", 12, "ink2", "end")
+    off = dict(n=(0, -12, "middle"), s=(0, 20, "middle"), e=(10, 4, "start"), w=(-10, 4, "end"), se=(8, 18, "start"), nw=(-6, -10, "end"))
     for key, _, mk, dashed, pts in reversed(series):
         pts = sorted(pts)
         if len(pts) > 1:
