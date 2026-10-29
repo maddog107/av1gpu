@@ -77,8 +77,8 @@ avifenc per vCPU. Full numbers, method and logs:
 
 **Speed against file size:** up is faster, left is smaller files. From libaom-speed-6 sizes up to +5 %, av1gpu
 on one GPU is 2.4–4× faster than the best CPU encoder on all 16 threads (interpolating between SVT-AV1
-presets). For the smallest files, SVT-AV1's slow presets go further (preset 2: −5.1 %, at 4.6 MP/s); av1gpu's own `--preset slow` has not been timed
-on the L4 yet.
+presets). For the smallest files, SVT-AV1's slow presets go further (preset 2: −5.1 %, at 4.6 MP/s);
+av1gpu's own `--preset slow` has not been timed on the L4 yet.
 
 Each encoder has a "small files" setting and a "fast" setting, so there are two fair match-ups. A third
 compares av1gpu with NVENC, the AV1 hardware encoder built into the same GPU.
