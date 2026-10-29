@@ -1,0 +1,70 @@
+99 images, 477.7 MP; avifenc tune=iq: yes
+speed workload: the set 3x, 297 images, 1433 MP
+speed: libaom speed 6, 16 parallel avifenc -j 1 28.7 MP/s
+speed: libaom speed 9, 16 parallel avifenc -j 1 186.4 MP/s
+speed: SVT-AV1 preset 2, 16 parallel avifenc -j 1 4.6 MP/s
+speed: SVT-AV1 preset 4, 16 parallel avifenc -j 1 15.5 MP/s
+speed: SVT-AV1 preset 6, 16 parallel avifenc -j 1 49.4 MP/s
+speed: SVT-AV1 preset 8, 16 parallel avifenc -j 1 136.0 MP/s
+speed: SVT-AV1 preset 9, 16 parallel avifenc -j 1 182.8 MP/s
+scoring aom_s6: 594 files
+scoring aom_s9: 594 files
+scoring svt_p2: 594 files
+scoring svt_p4: 594 files
+scoring svt_p6: 594 files
+scoring svt_p8: 594 files
+scoring svt_p9: 594 files
+scoring webp: 594 files
+# av1gpu benchmark
+
+- GPU: none
+- CPU: AMD EPYC 7R13 Processor (16 logical CPUs)
+- avifenc 1.4.0 (aom [enc/dec]:3.13.1, svt [enc]:v4.2.0); tune=iq: yes
+- cwebp 1.3.2
+- 99 images, 477.7 MP
+- speed runs: the set repeated 3x (297 images, 1433 MP)
+
+## Throughput (quality 60)
+
+| Encoder | MP/s | images/s | CPU cores used | output MB |
+|---|---:|---:|---:|---:|
+| libaom speed 6, 16 parallel avifenc -j 1 | 28.7 | 6.0 | 16.0 | 86.54 |
+| libaom speed 9, 16 parallel avifenc -j 1 | 186.4 | 38.6 | 16.0 | 92.58 |
+| SVT-AV1 preset 2, 16 parallel avifenc -j 1 | 4.6 | 1.0 | 16.0 | 107.64 |
+| SVT-AV1 preset 4, 16 parallel avifenc -j 1 | 15.5 | 3.2 | 16.0 | 109.76 |
+| SVT-AV1 preset 6, 16 parallel avifenc -j 1 | 49.4 | 10.2 | 16.0 | 112.77 |
+| SVT-AV1 preset 8, 16 parallel avifenc -j 1 | 136.0 | 28.2 | 16.0 | 117.06 |
+| SVT-AV1 preset 9, 16 parallel avifenc -j 1 | 182.8 | 37.9 | 16.0 | 117.10 |
+
+## Compression (BD-rate on SSIMULACRA2, per image; negative = smaller files at equal quality)
+
+| Codec | vs | images | median | mean |
+|---|---|---:|---:|---:|
+| aom_s9 | aom_s6 | 99 | +15.0% | +17.1% |
+| svt_p2 | aom_s6 | 99 | -5.1% | -5.5% |
+| svt_p4 | aom_s6 | 99 | -2.6% | -2.9% |
+| svt_p6 | aom_s6 | 99 | +2.1% | +3.2% |
+| svt_p8 | aom_s6 | 99 | +7.7% | +9.6% |
+| svt_p9 | aom_s6 | 99 | +9.8% | +11.9% |
+| webp | aom_s6 | 98 | +45.2% | +61.6% |
+| aom_s6 | webp | 98 | -31.1% | -33.3% |
+| aom_s9 | webp | 98 | -19.3% | -22.8% |
+| svt_p2 | webp | 97 | -34.7% | -36.3% |
+| svt_p4 | webp | 97 | -32.8% | -34.7% |
+| svt_p6 | webp | 97 | -28.0% | -30.9% |
+| svt_p8 | webp | 97 | -23.8% | -26.8% |
+| svt_p9 | webp | 97 | -22.8% | -25.2% |
+
+## BD-rate vs libaom s6 by image size (median; images in brackets)
+
+| Codec | < 1 MP | 1-5 MP | 5-10 MP | >= 10 MP |
+|---|---:|---:|---:|---:|
+| aom_s9 | +20.1% (39) | +18.5% (20) | +12.8% (23) | +13.4% (17) |
+| svt_p2 | -4.6% (39) | -4.8% (20) | -5.7% (23) | -6.7% (17) |
+| svt_p4 | -2.0% (39) | -2.2% (20) | -3.4% (23) | -3.9% (17) |
+| svt_p6 | +5.1% (39) | +2.9% (20) | +0.7% (23) | +0.2% (17) |
+| svt_p8 | +11.2% (39) | +9.6% (20) | +5.6% (23) | +4.8% (17) |
+| svt_p9 | +14.9% (39) | +12.5% (20) | +6.3% (23) | +7.2% (17) |
+| webp | +39.1% (39) | +49.9% (20) | +49.4% (22) | +58.9% (17) |
+
+FULL_DONE

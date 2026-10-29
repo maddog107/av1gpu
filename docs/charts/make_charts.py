@@ -20,13 +20,13 @@ from bench import SIZE_CLASSES, bd_rate  # noqa: E402
 THEMES = {
     "light": dict(surface="#fcfcfb", ink="#0b0b0b", ink2="#52514e", muted="#898781", grid="#e1e0d9",
                   axis="#c3c2b7", border="rgba(11,11,11,0.10)",
-                  av1gpu="#2a78d6", aom_s6="#eb6834", aom_s9="#1baf7a", webp="#eda100", nvenc="#e87ba4"),
+                  av1gpu="#2a78d6", aom_s6="#eb6834", aom_s9="#1baf7a", webp="#eda100", nvenc="#e87ba4", svt="#008300"),
     "dark": dict(surface="#1a1a19", ink="#f0efec", ink2="#c3c2b7", muted="#898781", grid="#2c2c2a",
                  axis="#383835", border="rgba(255,255,255,0.10)",
-                 av1gpu="#3987e5", aom_s6="#d95926", aom_s9="#199e70", webp="#c98500", nvenc="#d55181"),
+                 av1gpu="#3987e5", aom_s6="#d95926", aom_s9="#199e70", webp="#c98500", nvenc="#d55181", svt="#008300"),
 }
 FONT = "system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif"
-NAMES = dict(av1gpu="av1gpu", aom_s6="libaom speed 6", aom_s9="libaom speed 9", webp="WebP", nvenc="NVENC AV1")
+NAMES = dict(av1gpu="av1gpu", aom_s6="libaom speed 6", aom_s9="libaom speed 9", webp="WebP", nvenc="NVENC AV1", svt="SVT-AV1")
 
 
 def load(name):
@@ -38,6 +38,15 @@ def nvenc():
     r = load("aws-g6-l4-nvenc")
     best = max(r["speed"], key=lambda x: x["mp_s"])
     return r, best
+
+
+def svt():
+    """SVT-AV1 presets on the same 16-vCPU EPYC 7R13 (bench/results/aws-c6a-gamut-svt): {preset: (MP/s, BD vs s6)}.
+
+    That run's libaom speed 6 encodes and scores are identical to the L4 run's, so the BD-rates compare directly."""
+    r = load("aws-c6a-gamut-svt")
+    mps = {int(x["codec"].split()[2].rstrip(",")): x["mp_s"] for x in r["speed"] if x["codec"].startswith("SVT")}
+    return {p: (v, r["bd_rate"][f"svt_p{p}_vs_aom_s6"]["median"]) for p, v in mps.items()}
 
 
 def esc(s):
@@ -110,8 +119,8 @@ def matchup_chart(t, name, title, subtitle, rows, sizes=True, speed=(250, 50), s
     """Encoders side by side: speed (higher is better) and, if sizes, file size (lower is better) beside it.
 
     speed and size are (axis maximum, tick step)."""
-    lx, top, band = 24, 136, 56
-    s = Svg(760, 156 + band * len(rows), t, title)
+    lx, top, band = 24, 100 + 18 * len(subtitle), 56
+    s = Svg(760, top + 20 + band * len(rows), t, title)
     s.header(title, subtitle)
     panels = [(250, 470, *speed[:1], "Speed, MP/s  (higher is better)", speed[1]),
               (520, 700, *size[:1], "Files vs libaom speed 6  (lower is better)", size[1])]
@@ -151,13 +160,18 @@ def matchup_charts(t):
     default = load("aws-g6-l4-gamut-enc4")["speed"][0]["mp_s"]
     nv, nv_best = nvenc()
     nv_bd = nv["bd_rate"]["nvenc_vs_aom_s6"]["median"]
+    sv = svt()
     cpu = "16 CPU threads at once"
-    matchup_chart(t, "match-small", "Smallest files: av1gpu default vs libaom speed 6",
-                  ["100 photos of 0.18–24 MP on an AWS g6.4xlarge: libaom on all 16 vCPUs, av1gpu on one",
-                   "NVIDIA L4 and about 0.1 CPU core. Same file sizes (within 0.1 %), 4× the speed."],
+    svt_note = lambda p: f"16 CPU threads; files {sv[p][1] * 100:+.1f} %".replace("-", "−")
+    matchup_chart(t, "match-small", "Smallest files: av1gpu default vs libaom speed 6 and SVT-AV1",
+                  ["100 photos of 0.18–24 MP on an AWS g6.4xlarge: the CPU encoders on all 16 vCPUs, av1gpu",
+                   "on one NVIDIA L4 and about 0.1 CPU core. Same file sizes as libaom speed 6, 4× the speed;",
+                   "SVT-AV1 reaches those sizes between its presets 4 and 6."],
                   [("av1gpu default", "1 GPU, 4 encoders", "av1gpu", default,
                     gamut["av1gpu_vs_aom_s6"]["median"]),
                    ("libaom speed 6", cpu, "aom_s6", s6, 0.0),
+                   ("SVT-AV1 preset 6", svt_note(6), "svt", sv[6][0], sv[6][1]),
+                   ("SVT-AV1 preset 4", svt_note(4), "svt", sv[4][0], sv[4][1]),
                    ("NVENC AV1, p7", f"same L4; files {nv_bd * 100:+.0f} %", "nvenc", nv_best["mp_s"], nv_bd)],
                   sizes=False, speed=(150, 25))
     matchup_chart(t, "match-nvenc", "Same GPU: av1gpu vs the NVENC AV1 hardware encoder",
@@ -168,11 +182,86 @@ def matchup_charts(t):
                     gamut["av1gpu_vs_aom_s6"]["median"]),
                    ("NVENC AV1, p7", f"{nv_best['workers']} at once, {nv_best['cpu_cores']:.0f} CPU cores", "nvenc", nv_best["mp_s"], nv_bd)],
                   speed=(125, 25), size=(30, 10))
-    matchup_chart(t, "match-fast", "Fastest: av1gpu turbo3 vs libaom speed 9",
+    matchup_chart(t, "match-fast", "Fastest: av1gpu turbo3 vs SVT-AV1 preset 9 and libaom speed 9",
                   ["The same photos at each encoder's fastest useful setting. av1gpu is a little faster,",
-                   "and its files grow 5 % where libaom's grow 15 %."],
+                   "and its files grow 5 % where SVT-AV1's grow 10 % and libaom's 15 %."],
                   [("av1gpu turbo3", "--small-preset none", "av1gpu", TURBO3_SPEED, TURBO3_BD),
+                   ("SVT-AV1 preset 9", cpu, "svt", sv[9][0], sv[9][1]),
                    ("libaom speed 9", cpu, "aom_s9", s9, gamut["aom_s9_vs_aom_s6"]["median"])])
+
+
+def tradeoff_chart(t):
+    """Every measured setting: file size against libaom speed 6 (x) and speed (y, log scale)."""
+    import math
+    gamut = load("aws-g6-l4-gamut")["bd_rate"]
+    enc2 = load("aws-g6-l4-gamut-enc2")["speed"]
+    ns = load("aws-g6-l4-gamut-turbo-nosmall")
+    nv, nv_best = nvenc()
+    sv = svt()
+    series = [  # key, legend, marker, dashed, points (BD, MP/s, label, label anchor)
+        ("av1gpu", "av1gpu (one L4)", "circle", False,
+         [(gamut["av1gpu_vs_aom_s6"]["median"], load("aws-g6-l4-gamut-enc4")["speed"][0]["mp_s"], "default", "w"),
+          (ns["bd_rate"]["av1gpu_vs_aom_s6"]["median"], ns["speed"][0]["mp_s"], "no small preset", "se"),
+          (TURBO3_BD, TURBO3_SPEED, "turbo3", "n")]),
+        ("svt", "SVT-AV1 (16 threads)", "triangle", True,
+         [(sv[p][1], sv[p][0], f"preset {p}", {8: "se", 9: "n"}.get(p, "e")) for p in sorted(sv)]),
+        ("aom_s6", "libaom (16 threads)", "square", False,
+         [(0.0, next(x for x in enc2 if "speed 6" in x["codec"])["mp_s"], "speed 6", "e"),
+          (gamut["aom_s9_vs_aom_s6"]["median"], next(x for x in enc2 if "speed 9" in x["codec"])["mp_s"], "speed 9", "e")]),
+        ("nvenc", "NVENC AV1 (same L4)", "diamond", False,
+         [(nv["bd_rate"]["nvenc_vs_aom_s6"]["median"], nv_best["mp_s"], "p7, uhq", "n")]),
+    ]
+    s = Svg(760, 470, t, "Speed against file size for every setting measured")
+    s.header("Speed against file size, every setting",
+             ["Each point is one setting. Up is faster, left is smaller files at equal quality (median BD-rate",
+              "on SSIMULACRA2 against libaom speed 6). The CPU encoders use all 16 threads of an EPYC 7R13."])
+    lx = 24
+    for key, label, mk, dashed, pts in series:
+        if len(pts) > 1:
+            s.add(f'<line x1="{lx}" y1="{106}" x2="{lx + 22}" y2="{106}" stroke="{t[key]}" stroke-width="2"'
+                  + (' stroke-dasharray="5 3"' if dashed else "") + '/>')
+        marker(s, t, mk, lx + 11, 106, t[key])
+        s.text(lx + 30, 110, label, 13, "ink2")
+        lx += 30 + 7.0 * len(label) + 22
+    L, R, T, B = 70, 730, 136, 410
+    xmin, xmax, ymin, ymax = -6, 30, 4, 300
+    X = lambda v: L + (R - L) * (v * 100 - xmin) / (xmax - xmin)
+    Y = lambda v: B - (B - T) * (math.log(v) - math.log(ymin)) / (math.log(ymax) - math.log(ymin))
+    for v in (5, 10, 20, 50, 100, 200):
+        s.line(L, Y(v), R, Y(v))
+        s.text(L - 8, Y(v) + 4, str(v), 12, "muted", "end")
+    for v in range(-5, xmax + 1, 5):
+        s.line(X(v / 100), T, X(v / 100), B, "axis" if v == 0 else "grid")
+        s.text(X(v / 100), B + 18, (f"{v:+d} %" if v else "0").replace("-", "−"), 12, "muted", "middle")
+    s.text((L + R) / 2, B + 38, "files vs libaom speed 6 (smaller is better)", 12, "muted", "middle")
+    s.add(f'<text x="18" y="{(T + B) / 2:.1f}" font-size="12" fill="{t["muted"]}" text-anchor="middle" '
+          f'transform="rotate(-90 18 {(T + B) / 2:.1f})">MP/s, log scale (faster is higher)</text>')
+    off = dict(n=(0, -12, "middle"), s=(0, 20, "middle"), e=(10, 4, "start"), w=(-10, 4, "end"), se=(8, 18, "start"))
+    for key, _, mk, dashed, pts in reversed(series):
+        pts = sorted(pts)
+        if len(pts) > 1:
+            d = " ".join(f"{'M' if i == 0 else 'L'}{X(b):.1f},{Y(m):.1f}" for i, (b, m, _, _) in enumerate(pts))
+            s.add(f'<path d="{d}" fill="none" stroke="{t[key]}" stroke-width="2" stroke-linejoin="round"'
+                  + (' stroke-dasharray="5 3"' if dashed else "") + '/>')
+        for b, m, label, anc in pts:
+            marker(s, t, mk, X(b), Y(m), t[key])
+            dx, dy, ta = off[anc]
+            s.text(X(b) + dx, Y(m) + dy, label, 12, "ink2", ta)
+    s.save(os.path.join(HERE, f"tradeoff-{t['name']}.svg"))
+
+
+def marker(s, t, kind, x, y, color, r=5):
+    ring = f'stroke="{t["surface"]}" stroke-width="2"'
+    if kind == "circle":
+        s.add(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{r}" fill="{color}" {ring}/>')
+    elif kind == "square":
+        s.add(f'<rect x="{x - r:.1f}" y="{y - r:.1f}" width="{2 * r}" height="{2 * r}" rx="1.5" fill="{color}" {ring}/>')
+    elif kind == "triangle":
+        s.add(f'<path d="M{x:.1f},{y - r - 1:.1f} L{x + r + 1:.1f},{y + r:.1f} L{x - r - 1:.1f},{y + r:.1f} Z" '
+              f'fill="{color}" {ring}/>')
+    else:
+        s.add(f'<path d="M{x:.1f},{y - r - 1:.1f} L{x + r + 1:.1f},{y:.1f} L{x:.1f},{y + r + 1:.1f} '
+              f'L{x - r - 1:.1f},{y:.1f} Z" fill="{color}" {ring}/>')
 
 
 def quality_chart(t):
@@ -345,6 +434,7 @@ if __name__ == "__main__":
     for name, t in THEMES.items():
         t = dict(t, name=name)
         matchup_charts(t)
+        tradeoff_chart(t)
         quality_chart(t)
         by_size_chart(t)
         pipeline_diagram(t)
