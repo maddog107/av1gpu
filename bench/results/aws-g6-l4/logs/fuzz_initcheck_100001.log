@@ -1,0 +1,5 @@
+========= COMPUTE-SANITIZER
+swapped-block record was not reported as an order error
+GPU FUZZ (run_batch_device, device arrays, non-blocking stream, 7 scratch allocations) seeds 100001..102000: 2000 cases, 2408 tiles, 61792342 symbols, 17 symbol-capacity errors reported + rerun, order check FAILED, 1 mismatches -> FAILED
+========= Target application returned an error
+========= ERROR SUMMARY: 0 errors

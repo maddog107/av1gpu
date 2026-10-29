@@ -1,0 +1,19 @@
+av1gpu c266cd3b09763ec96181ce6b7520c19ee38c2e1d
+name, driver_version, vbios_version, memory.total [MiB], power.limit [W], clocks.max.sm [MHz], compute_cap
+NVIDIA L4, 595.91.07, 95.04.65.00.37, 23034 MiB, 72.00 W, 2040 MHz, 8.9
+Cuda compilation tools, release 13.2, V13.2.51
+Build cuda_13.2.r13.2/compiler.37434383_0
+Version: 1.4.0 (aom [enc/dec]:3.13.1)
+libyuv : available (1883)
+
+1.4.1
+    av1    - AOMedia Project AV1 Decoder 3.13.1
+1.3.2
+libsharpyuv: 0.2.1
+Usage: ssimulacra2 orig.png distorted.png
+cmake version 3.28.3
+gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0
+CPU(s):                                  16
+Model name:                              AMD EPYC 7R13 Processor
+Thread(s) per core:                      2
+7.0.0-1014-aws

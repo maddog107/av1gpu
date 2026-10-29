@@ -17,6 +17,8 @@ project(av1gpu VERSION 0.1.0 LANGUAGES C CXX)
 
 option(AV1GPU_CUDA "Build the CUDA encoder" ON)
 option(AV1GPU_TESTS "Build the tests" ON)
+# release binaries: libjpeg, libpng, zlib, libwebp and nvJPEG linked in, so only the NVIDIA driver is needed
+option(AV1GPU_STATIC_DEPS "Link the image libraries and nvJPEG statically" OFF)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -59,6 +61,12 @@ set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 set(CMAKE_CUDA_FLAGS_RELEASE "-O3 -lineinfo")
 set(CMAKE_CUDA_RUNTIME_LIBRARY Static)
 find_package(CUDAToolkit 12.0 REQUIRED)
+if(AV1GPU_STATIC_DEPS)
+  set(CMAKE_FIND_LIBRARY_SUFFIXES .a)
+  set(AV1GPU_NVJPEG CUDA::nvjpeg_static)
+else()
+  set(AV1GPU_NVJPEG CUDA::nvjpeg)
+endif()
 find_package(JPEG REQUIRED)
 find_package(PNG REQUIRED)
 find_package(PkgConfig REQUIRED)
@@ -81,7 +89,7 @@ target_compile_options(av1f PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:--expt-relaxed-co
 # ingest: JPEG -> GPU-resident 4:2:0 planes (nvJPEG hardware/hybrid decode or CPU entropy decode + GPU IDCT)
 add_library(gpujpegingest STATIC ingest/src/jpeg_reader.cpp ingest/src/kernels.cu ingest/src/pipeline.cu)
 target_include_directories(gpujpegingest PUBLIC ingest/src)
-target_link_libraries(gpujpegingest PUBLIC CUDA::cudart_static CUDA::nvjpeg JPEG::JPEG Threads::Threads ${CMAKE_DL_LIBS} rt)
+target_link_libraries(gpujpegingest PUBLIC CUDA::cudart_static ${AV1GPU_NVJPEG} JPEG::JPEG Threads::Threads ${CMAKE_DL_LIBS} rt)
 
 # encoder: analysis, partition DP, wavefront reconstruction, batching
 add_library(av1gpu_encoder STATIC

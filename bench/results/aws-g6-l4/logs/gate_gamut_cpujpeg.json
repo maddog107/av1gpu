@@ -1,0 +1,19 @@
+{
+ "bin": "build/av1gpu",
+ "images": "bench/images_gamut",
+ "opts": [],
+ "n_inputs": 100,
+ "runs": [
+  {
+   "q": 120,
+   "rc": 0,
+   "wall_s": 8.9,
+   "batch": "[av1gpu] 100 images (477.8 MP) in 5953.7 ms: 16.80 img/s, 80.26 MP/s; 9 batches; out 22.49 MB (0.377 bpp); CPU 3475 ms = 0.58 cores; skipped (unsupported): 0; WebP/PNG via CPU decode: 0; write failures 0",
+   "n_encoded": 100,
+   "n_pass": 100,
+   "n_not_encoded": 0,
+   "failures": []
+  }
+ ],
+ "pass": true
+}

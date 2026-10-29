@@ -1,0 +1,3 @@
+========= COMPUTE-SANITIZER
+GPU FUZZ (run_batch_device, device arrays, non-blocking stream, 1 scratch allocations) seeds 1..600: 600 cases, 724 tiles, 19994288 symbols, 5 symbol-capacity errors reported + rerun, order check ok, 0 mismatches -> PASSED
+========= ERROR SUMMARY: 0 errors

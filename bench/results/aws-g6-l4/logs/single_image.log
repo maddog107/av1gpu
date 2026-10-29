@@ -1,0 +1,23 @@
++ /home/ubuntu/av1gpu/build/av1gpu x.jpg x.avif
++ echo rc=0
+rc=0
++ /home/ubuntu/av1gpu/build/av1gpu x.png xpng.avif
++ echo rc=0
+rc=0
++ /home/ubuntu/av1gpu/build/av1gpu cmyk.jpg cmyk.avif
+cmyk.jpg: CMYK/YCCK JPEG
++ echo rc=3
+rc=3
++ ls -l x.avif xpng.avif
+-rw-rw-r-- 1 ubuntu ubuntu 25997 Oct 25 20:35 x.avif
+-rw-rw-r-- 1 ubuntu ubuntu 25507 Oct 25 20:35 xpng.avif
++ for f in x.avif xpng.avif
++ avifdec x.avif x.avif.png
+++ ssimulacra2 x.png x.avif.png
++ echo 'x.avif decodes; ssimulacra2 77.63320903'
+x.avif decodes; ssimulacra2 77.63320903
++ for f in x.avif xpng.avif
++ avifdec xpng.avif xpng.avif.png
+++ ssimulacra2 x.png xpng.avif.png
++ echo 'xpng.avif decodes; ssimulacra2 77.30057222'
+xpng.avif decodes; ssimulacra2 77.30057222

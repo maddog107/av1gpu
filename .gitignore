@@ -1,5 +1,7 @@
 build*/
 bench/images/
+bench/images_gamut/
+images/
 bench/results/*/files/
 __pycache__/
 *.avif

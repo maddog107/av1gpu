@@ -1,0 +1,289 @@
+{
+ "passed": true,
+ "rows": [
+  {
+   "orientation": 1,
+   "avifenc": {
+    "ispe": [
+     320,
+     200
+    ]
+   },
+   "single": {
+    "ispe": [
+     320,
+     200
+    ]
+   },
+   "batch": {
+    "ispe": [
+     320,
+     200
+    ]
+   },
+   "match": true
+  },
+  {
+   "orientation": 2,
+   "avifenc": {
+    "ispe": [
+     320,
+     200
+    ],
+    "imir": [
+     1,
+     true
+    ]
+   },
+   "single": {
+    "ispe": [
+     320,
+     200
+    ],
+    "imir": [
+     1,
+     true
+    ]
+   },
+   "batch": {
+    "ispe": [
+     320,
+     200
+    ],
+    "imir": [
+     1,
+     true
+    ]
+   },
+   "match": true
+  },
+  {
+   "orientation": 3,
+   "avifenc": {
+    "ispe": [
+     320,
+     200
+    ],
+    "irot": [
+     2,
+     true
+    ]
+   },
+   "single": {
+    "ispe": [
+     320,
+     200
+    ],
+    "irot": [
+     2,
+     true
+    ]
+   },
+   "batch": {
+    "ispe": [
+     320,
+     200
+    ],
+    "irot": [
+     2,
+     true
+    ]
+   },
+   "match": true
+  },
+  {
+   "orientation": 4,
+   "avifenc": {
+    "ispe": [
+     320,
+     200
+    ],
+    "imir": [
+     0,
+     true
+    ]
+   },
+   "single": {
+    "ispe": [
+     320,
+     200
+    ],
+    "imir": [
+     0,
+     true
+    ]
+   },
+   "batch": {
+    "ispe": [
+     320,
+     200
+    ],
+    "imir": [
+     0,
+     true
+    ]
+   },
+   "match": true
+  },
+  {
+   "orientation": 5,
+   "avifenc": {
+    "ispe": [
+     320,
+     200
+    ],
+    "irot": [
+     1,
+     true
+    ],
+    "imir": [
+     0,
+     true
+    ]
+   },
+   "single": {
+    "ispe": [
+     320,
+     200
+    ],
+    "irot": [
+     1,
+     true
+    ],
+    "imir": [
+     0,
+     true
+    ]
+   },
+   "batch": {
+    "ispe": [
+     320,
+     200
+    ],
+    "irot": [
+     1,
+     true
+    ],
+    "imir": [
+     0,
+     true
+    ]
+   },
+   "match": true
+  },
+  {
+   "orientation": 6,
+   "avifenc": {
+    "ispe": [
+     320,
+     200
+    ],
+    "irot": [
+     3,
+     true
+    ]
+   },
+   "single": {
+    "ispe": [
+     320,
+     200
+    ],
+    "irot": [
+     3,
+     true
+    ]
+   },
+   "batch": {
+    "ispe": [
+     320,
+     200
+    ],
+    "irot": [
+     3,
+     true
+    ]
+   },
+   "match": true
+  },
+  {
+   "orientation": 7,
+   "avifenc": {
+    "ispe": [
+     320,
+     200
+    ],
+    "irot": [
+     3,
+     true
+    ],
+    "imir": [
+     0,
+     true
+    ]
+   },
+   "single": {
+    "ispe": [
+     320,
+     200
+    ],
+    "irot": [
+     3,
+     true
+    ],
+    "imir": [
+     0,
+     true
+    ]
+   },
+   "batch": {
+    "ispe": [
+     320,
+     200
+    ],
+    "irot": [
+     3,
+     true
+    ],
+    "imir": [
+     0,
+     true
+    ]
+   },
+   "match": true
+  },
+  {
+   "orientation": 8,
+   "avifenc": {
+    "ispe": [
+     320,
+     200
+    ],
+    "irot": [
+     1,
+     true
+    ]
+   },
+   "single": {
+    "ispe": [
+     320,
+     200
+    ],
+    "irot": [
+     1,
+     true
+    ]
+   },
+   "batch": {
+    "ispe": [
+     320,
+     200
+    ],
+    "irot": [
+     1,
+     true
+    ]
+   },
+   "match": true
+  }
+ ]
+}

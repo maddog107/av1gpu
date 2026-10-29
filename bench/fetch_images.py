@@ -5,7 +5,8 @@
 
 The default manifest is 100 JPEGs from the Open Images Dataset V4 validation set (CC BY 2.0; author,
 title and source page per image are in the CSV), served by the dataset's public S3 bucket at
-https://open-images-dataset.s3.amazonaws.com/validation/<image_id>.jpg.  Files already present
+https://open-images-dataset.s3.amazonaws.com/validation/<image_id>.jpg.  A manifest may also give
+`file` (local name) and `url` columns, as bench/openimages_v4_gamut.csv does.  Files already present
 with the right hash are skipped.
 """
 import argparse
@@ -29,11 +30,11 @@ def sha256(path):
 
 
 def fetch(row, out):
-    path = os.path.join(out, row["image_id"] + ".jpg")
+    path = os.path.join(out, row.get("file") or row["image_id"] + ".jpg")
     if os.path.exists(path) and sha256(path) == row["sha256"]:
         return path, "cached"
     tmp = path + ".part"
-    urllib.request.urlretrieve(URL.format(row["image_id"]), tmp)
+    urllib.request.urlretrieve(row.get("url") or URL.format(row["image_id"]), tmp)
     got = sha256(tmp)
     if got != row["sha256"]:
         os.remove(tmp)

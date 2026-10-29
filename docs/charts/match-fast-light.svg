@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="268" viewBox="0 0 760 268" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" role="img" aria-label="Fastest: av1gpu turbo3 vs libaom speed 9">
+<title>Fastest: av1gpu turbo3 vs libaom speed 9</title>
+<rect x="0.5" y="0.5" width="759" height="267" rx="12" fill="#fcfcfb" stroke="rgba(11,11,11,0.10)"/>
+<text x="24.0" y="34.0" font-size="17" fill="#0b0b0b" text-anchor="start" font-weight="600">Fastest: av1gpu turbo3 vs libaom speed 9</text>
+<text x="24.0" y="56.0" font-size="13" fill="#52514e" text-anchor="start" font-weight="400">The same photos at each encoder's fastest useful setting. av1gpu is a little faster,</text>
+<text x="24.0" y="74.0" font-size="13" fill="#52514e" text-anchor="start" font-weight="400">and its files grow 5 % where libaom's grow 15 %.</text>
+<text x="250.0" y="114.0" font-size="12" fill="#52514e" text-anchor="start" font-weight="600">Speed, MP/s  (higher is better)</text>
+<line x1="250.0" y1="130.0" x2="250.0" y2="234.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="250.0" y="252.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">0</text>
+<line x1="294.0" y1="130.0" x2="294.0" y2="234.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="294.0" y="252.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">50</text>
+<line x1="338.0" y1="130.0" x2="338.0" y2="234.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="338.0" y="252.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">100</text>
+<line x1="382.0" y1="130.0" x2="382.0" y2="234.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="382.0" y="252.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">150</text>
+<line x1="426.0" y1="130.0" x2="426.0" y2="234.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="426.0" y="252.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">200</text>
+<line x1="470.0" y1="130.0" x2="470.0" y2="234.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="470.0" y="252.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">250</text>
+<line x1="250.0" y1="130.0" x2="250.0" y2="234.0" stroke="#c3c2b7" stroke-width="1"/>
+<text x="520.0" y="114.0" font-size="12" fill="#52514e" text-anchor="start" font-weight="600">Files vs libaom speed 6  (lower is better)</text>
+<line x1="520.0" y1="130.0" x2="520.0" y2="234.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="520.0" y="252.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">0</text>
+<line x1="576.2" y1="130.0" x2="576.2" y2="234.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="576.2" y="252.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">5 %</text>
+<line x1="632.5" y1="130.0" x2="632.5" y2="234.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="632.5" y="252.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">10 %</text>
+<line x1="688.8" y1="130.0" x2="688.8" y2="234.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="688.8" y="252.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">15 %</text>
+<line x1="520.0" y1="130.0" x2="520.0" y2="234.0" stroke="#c3c2b7" stroke-width="1"/>
+<text x="24.0" y="149.0" font-size="14" fill="#0b0b0b" text-anchor="start" font-weight="600">av1gpu turbo3</text>
+<text x="24.0" y="167.0" font-size="12" fill="#898781" text-anchor="start" font-weight="400">--small-preset none</text>
+<path d="M250.0,140.0 H432.6 Q436.6,140.0 436.6,144.0 V160.0 Q436.6,164.0 432.6,164.0 H250.0 Z" fill="#2a78d6"/>
+<text x="444.6" y="157.0" font-size="14" fill="#0b0b0b" text-anchor="start" font-weight="600">212</text>
+<path d="M520.0,140.0 H576.8 Q580.8,140.0 580.8,144.0 V160.0 Q580.8,164.0 576.8,164.0 H520.0 Z" fill="#2a78d6"/>
+<text x="588.8" y="157.0" font-size="14" fill="#0b0b0b" text-anchor="start" font-weight="600">+5.4 %</text>
+<text x="24.0" y="205.0" font-size="14" fill="#0b0b0b" text-anchor="start" font-weight="400">libaom speed 9</text>
+<text x="24.0" y="223.0" font-size="12" fill="#898781" text-anchor="start" font-weight="400">16 CPU threads at once</text>
+<path d="M250.0,196.0 H411.1 Q415.1,196.0 415.1,200.0 V216.0 Q415.1,220.0 411.1,220.0 H250.0 Z" fill="#1baf7a"/>
+<text x="423.1" y="213.0" font-size="14" fill="#0b0b0b" text-anchor="start" font-weight="600">188</text>
+<path d="M520.0,196.0 H684.9 Q688.9,196.0 688.9,200.0 V216.0 Q688.9,220.0 684.9,220.0 H520.0 Z" fill="#1baf7a"/>
+<text x="696.9" y="213.0" font-size="14" fill="#0b0b0b" text-anchor="start" font-weight="600">+15.0 %</text>
+</svg>
