@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="268" viewBox="0 0 760 268" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" role="img" aria-label="Smallest files: av1gpu default vs libaom speed 6">
+<title>Smallest files: av1gpu default vs libaom speed 6</title>
+<rect x="0.5" y="0.5" width="759" height="267" rx="12" fill="#fcfcfb" stroke="rgba(11,11,11,0.10)"/>
+<text x="24.0" y="34.0" font-size="17" fill="#0b0b0b" text-anchor="start" font-weight="600">Smallest files: av1gpu default vs libaom speed 6</text>
+<text x="24.0" y="56.0" font-size="13" fill="#52514e" text-anchor="start" font-weight="400">100 photos of 0.18–24 MP on an AWS g6.4xlarge: libaom on all 16 vCPUs, av1gpu on one</text>
+<text x="24.0" y="74.0" font-size="13" fill="#52514e" text-anchor="start" font-weight="400">NVIDIA L4 and about 0.1 CPU core. Same file sizes, 4× the speed.</text>
+<text x="250.0" y="114.0" font-size="12" fill="#52514e" text-anchor="start" font-weight="600">Speed, MP/s  (higher is better)</text>
+<line x1="250.0" y1="130.0" x2="250.0" y2="234.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="250.0" y="252.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">0</text>
+<line x1="294.0" y1="130.0" x2="294.0" y2="234.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="294.0" y="252.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">50</text>
+<line x1="338.0" y1="130.0" x2="338.0" y2="234.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="338.0" y="252.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">100</text>
+<line x1="382.0" y1="130.0" x2="382.0" y2="234.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="382.0" y="252.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">150</text>
+<line x1="426.0" y1="130.0" x2="426.0" y2="234.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="426.0" y="252.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">200</text>
+<line x1="470.0" y1="130.0" x2="470.0" y2="234.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="470.0" y="252.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">250</text>
+<line x1="250.0" y1="130.0" x2="250.0" y2="234.0" stroke="#c3c2b7" stroke-width="1"/>
+<text x="520.0" y="114.0" font-size="12" fill="#52514e" text-anchor="start" font-weight="600">Files vs libaom speed 6  (lower is better)</text>
+<line x1="520.0" y1="130.0" x2="520.0" y2="234.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="520.0" y="252.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">0</text>
+<line x1="576.2" y1="130.0" x2="576.2" y2="234.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="576.2" y="252.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">5 %</text>
+<line x1="632.5" y1="130.0" x2="632.5" y2="234.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="632.5" y="252.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">10 %</text>
+<line x1="688.8" y1="130.0" x2="688.8" y2="234.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="688.8" y="252.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">15 %</text>
+<line x1="520.0" y1="130.0" x2="520.0" y2="234.0" stroke="#c3c2b7" stroke-width="1"/>
+<text x="24.0" y="149.0" font-size="14" fill="#0b0b0b" text-anchor="start" font-weight="600">av1gpu default</text>
+<text x="24.0" y="167.0" font-size="12" fill="#898781" text-anchor="start" font-weight="400">1 GPU, 4 encoders</text>
+<path d="M250.0,140.0 H348.1 Q352.1,140.0 352.1,144.0 V160.0 Q352.1,164.0 348.1,164.0 H250.0 Z" fill="#2a78d6"/>
+<text x="360.1" y="157.0" font-size="14" fill="#0b0b0b" text-anchor="start" font-weight="600">116</text>
+<text x="528.0" y="157.0" font-size="14" fill="#0b0b0b" text-anchor="start" font-weight="600">−0.1 %</text>
+<text x="24.0" y="205.0" font-size="14" fill="#0b0b0b" text-anchor="start" font-weight="400">libaom speed 6</text>
+<text x="24.0" y="223.0" font-size="12" fill="#898781" text-anchor="start" font-weight="400">16 CPU threads at once</text>
+<path d="M250.0,196.0 H271.3 Q275.3,196.0 275.3,200.0 V216.0 Q275.3,220.0 271.3,220.0 H250.0 Z" fill="#eb6834"/>
+<text x="283.3" y="213.0" font-size="14" fill="#0b0b0b" text-anchor="start" font-weight="600">29</text>
+<text x="528.0" y="213.0" font-size="14" fill="#0b0b0b" text-anchor="start" font-weight="600">reference</text>
+</svg>

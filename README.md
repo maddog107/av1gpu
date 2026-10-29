@@ -21,6 +21,12 @@
   Photo: <a href="https://www.flickr.com/photos/yakobusan/20438833739">Untitled</a> by Jakob Montrasio, CC BY 2.0.</sub>
 </p>
 
+> [!TIP]
+> **TL;DR:** av1gpu turns JPEGs into AVIFs on an NVIDIA GPU **4× faster than libaom running on all 16 CPU
+> threads at once**, with the **same file sizes** (libaom speed 6, −0.1 %), while using only **0.1 of a CPU
+> core**. The 100 test photos went from **160 MB of JPEG to 22.5 MB of AVIF (−86 %)**, and its files are
+> **31 % smaller than WebP** at the same quality. One prebuilt binary, no CPU farm.
+
 ## ⚡ Overview
 
 A CUDA encoder for AV1 still images that writes AVIF. Mode search, partitioning, reconstruction,
@@ -60,23 +66,34 @@ Measured on an AWS g6.4xlarge (NVIDIA L4, AMD EPYC 7R13 with 16 vCPUs) with 100 
 avifenc 1.4 / libaom 3.13.1 with `tune=iq`, one avifenc per vCPU. Full numbers, method and logs:
 [docs/RESULTS.md](docs/RESULTS.md#nvidia-l4-aws-g64xlarge); reproduce them with [Benchmarks](#-benchmarks).
 
+Each encoder has a "small files" setting and a "fast" setting, so there are two fair match-ups.
+
+### 🐢 Smallest files: av1gpu default vs libaom speed 6
+
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/charts/speed-dark.svg">
-  <img alt="Bar chart of encoding speed in megapixels per second: libaom speed 9 188, av1gpu with the small-image preset off 127, av1gpu default 116, libaom speed 6 29." src="docs/charts/speed-light.svg" width="760">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/charts/match-small-dark.svg">
+  <img alt="Two bar panels. Speed: av1gpu default 116 MP/s, libaom speed 6 29 MP/s. Files vs libaom speed 6: av1gpu −0.1 percent." src="docs/charts/match-small-light.svg" width="760">
 </picture>
 
 **At the same file size, av1gpu is 4× faster than libaom running on all 16 CPU threads at once**,
-and it leaves the CPU almost idle. libaom's faster setting, speed 9, buys its speed with 15 % bigger
-files. av1gpu's fastest setting matches that speed for a third of the cost:
+and it leaves the CPU almost idle (0.1 of a core).
 
-| | libaom, all 16 CPU threads | av1gpu, 0.1–0.4 of a core |
-|---|---|---|
-| **Smallest files** | speed 6 | default: same file sizes, **4× faster** |
-| **Fastest** | speed 9: files **+15 %** | `--preset turbo3 --small-preset none`: files **+5.4 %**, about as fast |
+### 🐇 Fastest: av1gpu turbo3 vs libaom speed 9
 
-libaom speed 10 is no faster than 9 for still images. The `turbo3` speed (1.7× the av1gpu default,
-against 1.6× for speed 9) was measured on an RTX PRO 2000 Blackwell; its file sizes carry over to every
-GPU because the output is byte-identical.
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/charts/match-fast-dark.svg">
+  <img alt="Two bar panels. Speed: av1gpu turbo3 with the small-image preset off about 196 MP/s (estimated), libaom speed 9 188 MP/s. Files vs libaom speed 6: av1gpu turbo3 +5.4 percent, libaom speed 9 +15.0 percent." src="docs/charts/match-fast-light.svg" width="760">
+</picture>
+
+**At about the same speed, av1gpu's files grow a third as much:** +5.4 % against libaom speed 6,
+where libaom speed 9 pays +15 %. av1gpu uses 0.4 of a CPU core; libaom still needs all 16 threads.
+libaom speed 10 is no faster than 9 for still images.
+
+The `turbo3` speed (dashed bar) is an estimate: 1.7× the av1gpu default, the ratio measured on an RTX PRO
+2000 Blackwell. It has not been run on the L4. Its file sizes are exact on every GPU, because the output
+is byte-identical.
+
+### 📈 Quality and file size
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/charts/quality-dark.svg">
@@ -92,7 +109,7 @@ GPU because the output is byte-identical.
 |---|---:|---:|---:|---:|
 | **av1gpu** default, `GP_ENCODERS=4` | **116** | **−0.1 %** | **−31.2 %** | 0.1 |
 | av1gpu `--small-preset none` | 127 | +2.1 % | | 0.1 |
-| av1gpu `--preset turbo3 --small-preset none` | ≈ 200¹ | +5.4 % | | 0.4 |
+| av1gpu `--preset turbo3 --small-preset none` | ≈ 196¹ | +5.4 % | | 0.4 |
 | libaom speed 6, 16 × avifenc | 29 | 0 | −31.1 % | 16 |
 | libaom speed 9, 16 × avifenc | 188 | +15.0 % | −19.3 % | 16 |
 | WebP (cwebp `-m 4`) | | +45.1 % | 0 | |
