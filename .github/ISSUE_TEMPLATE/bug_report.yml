@@ -1,0 +1,56 @@
+name: Bug report
+description: av1gpu crashes, fails, or writes a wrong or undecodable AVIF
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. Questions, benchmark requests and ideas go in
+        [Discussions](https://github.com/maddog107/av1gpu/discussions) instead.
+  - type: input
+    id: gpu
+    attributes:
+      label: GPU and driver
+      description: The first lines of `nvidia-smi` show both
+      placeholder: NVIDIA L4, driver 595.112.07
+    validations:
+      required: true
+  - type: dropdown
+    id: build
+    attributes:
+      label: Which av1gpu
+      options:
+        - Release binary (say which version below)
+        - Built from source (say the commit and CUDA version below)
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version, commit, CUDA, OS
+      placeholder: v0.1.0 on Ubuntu 24.04
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: Command
+      description: The exact command line you ran
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: Output
+      description: Everything av1gpu printed, plus the decoder's error if the AVIF doesn't open
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: details
+    attributes:
+      label: What happened, and what you expected
+      description: If you can share the input image (or the AVIF that came out wrong), attach it here
+    validations:
+      required: false

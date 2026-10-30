@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Questions, benchmark requests and ideas
+    url: https://github.com/maddog107/av1gpu/discussions
+    about: Ask how to use av1gpu, how it compares with another encoder, or suggest a feature
