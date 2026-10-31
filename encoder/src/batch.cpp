@@ -305,10 +305,47 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
     std::atomic<bool> ingestDrained{false}, fbDone{false};
     std::atomic<int> cpuFallbackA{0}, gpuFallbackA{0};
     std::thread fbThread([&]() {
-        cudaStream_t fs;
-        cudaStreamCreateWithFlags(&fs, cudaStreamNonBlocking);
+        // GP_FALLBACK_WORKERS (default 4) threads decode + upload the fallback images of each poll in parallel
+        const int nfw = getenv("GP_FALLBACK_WORKERS") ? std::max(1, atoi(getenv("GP_FALLBACK_WORKERS"))) : 4;
+        std::vector<cudaStream_t> fss(nfw);
+        for (auto &x : fss) cudaStreamCreateWithFlags(&x, cudaStreamNonBlocking);
         std::vector<ingest_fallback> fb(4096);
         int handled = 0;
+        auto one = [&](const ingest_fallback &fe, cudaStream_t fs) {
+            const std::string &p = paths[fe.index];
+            const GpFileKind kind = gp_sniff(p);
+            if (kind != GP_FILE_WEBP && kind != GP_FILE_PNG) {
+                fprintf(stderr, "[av1gpu] skipped %s: %s\n", p.c_str(), gp_fallback_reason(fe.reason));
+                cpuFallbackA++;
+                return;
+            }
+            GpHostPlanes hp;
+            std::string e2, note;
+            int matrix = -1;
+            const bool dec = cfg.lossless ? gp_decode_lossless(p, hp, cfg.ycgcoRe, &matrix, note, e2) : gp_decode_cpu(p, hp, e2, cfg.yuv444, cfg.depth);
+            if (dec && !note.empty()) fprintf(stderr, "[av1gpu] %s: %s\n", p.c_str(), note.c_str());
+            if (!dec || (double)hp.W * hp.H > 35.6e6) {
+                fprintf(stderr, "[av1gpu] skipped %s: %s\n", p.c_str(), e2.empty() ? "larger than 35.6 megapixels" : e2.c_str());
+                cpuFallbackA++;
+                return;
+            }
+            const size_t ys = hp.bytes(0), cs = hp.bytes(1);   // bytes (10-bit: uint16_t samples)
+            uint8_t *d = nullptr;
+            if (cudaMallocAsync((void **)&d, ys + 2 * cs, fs) != cudaSuccess) { cpuFallbackA++; return; }
+            cudaMemcpyAsync(d, hp.data(0), ys, cudaMemcpyHostToDevice, fs);
+            cudaMemcpyAsync(d + ys, hp.data(1), cs, cudaMemcpyHostToDevice, fs);
+            cudaMemcpyAsync(d + ys + cs, hp.data(2), cs, cudaMemcpyHostToDevice, fs);
+            if (cudaStreamSynchronize(fs) != cudaSuccess) { cpuFallbackA++; return; }
+            FbFrame F;
+            F.d = d;
+            F.name = base_name(p);
+            F.f.W = hp.W; F.f.H = hp.H; F.f.aw = hp.aw; F.f.ah = hp.ah; F.f.yuv444 = hp.yuv444; F.f.bitDepth = hp.bitDepth;
+            F.f.mono = hp.mono; F.f.colorMatrix = matrix;
+            F.f.dsrc[0] = d; F.f.dsrc[1] = d + ys; F.f.dsrc[2] = d + ys + cs;
+            F.f.spitch[0] = hp.aw; F.f.spitch[1] = F.f.spitch[2] = hp.cw();
+            std::lock_guard<std::mutex> lk(fbMu);
+            fbReady.push_back(F);
+        };
         for (;;) {
             const bool last = ingestDrained.load();   // all fallbacks are recorded once ingest is drained
             int nfb = ingest_get_fallbacks(ictx, fb.data(), (int)fb.size());
@@ -316,45 +353,20 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
                 fb.resize((size_t)nfb * 2);
                 nfb = std::min(ingest_get_fallbacks(ictx, fb.data(), (int)fb.size()), (int)fb.size());
             }
-            for (; handled < nfb; handled++) {
-                const std::string &p = paths[fb[handled].index];
-                const GpFileKind kind = gp_sniff(p);
-                if (kind != GP_FILE_WEBP && kind != GP_FILE_PNG) {
-                    fprintf(stderr, "[av1gpu] skipped %s: %s\n", p.c_str(), gp_fallback_reason(fb[handled].reason));
-                    cpuFallbackA++;
-                    continue;
-                }
-                GpHostPlanes hp;
-                std::string e2, note;
-                int matrix = -1;
-                const bool dec = cfg.lossless ? gp_decode_lossless(p, hp, cfg.ycgcoRe, &matrix, note, e2) : gp_decode_cpu(p, hp, e2, cfg.yuv444, cfg.depth);
-                if (dec && !note.empty()) fprintf(stderr, "[av1gpu] %s: %s\n", p.c_str(), note.c_str());
-                if (!dec || (double)hp.W * hp.H > 35.6e6) {
-                    fprintf(stderr, "[av1gpu] skipped %s: %s\n", p.c_str(), e2.empty() ? "larger than 35.6 megapixels" : e2.c_str());
-                    cpuFallbackA++;
-                    continue;
-                }
-                const size_t ys = hp.bytes(0), cs = hp.bytes(1);   // bytes (10-bit: uint16_t samples)
-                uint8_t *d = nullptr;
-                if (cudaMallocAsync((void **)&d, ys + 2 * cs, fs) != cudaSuccess) { cpuFallbackA++; continue; }
-                cudaMemcpyAsync(d, hp.data(0), ys, cudaMemcpyHostToDevice, fs);
-                cudaMemcpyAsync(d + ys, hp.data(1), cs, cudaMemcpyHostToDevice, fs);
-                cudaMemcpyAsync(d + ys + cs, hp.data(2), cs, cudaMemcpyHostToDevice, fs);
-                if (cudaStreamSynchronize(fs) != cudaSuccess) { cpuFallbackA++; continue; }
-                FbFrame F;
-                F.d = d;
-                F.name = base_name(p);
-                F.f.W = hp.W; F.f.H = hp.H; F.f.aw = hp.aw; F.f.ah = hp.ah; F.f.yuv444 = hp.yuv444; F.f.bitDepth = hp.bitDepth;
-                F.f.mono = hp.mono; F.f.colorMatrix = matrix;
-                F.f.dsrc[0] = d; F.f.dsrc[1] = d + ys; F.f.dsrc[2] = d + ys + cs;
-                F.f.spitch[0] = hp.aw; F.f.spitch[1] = F.f.spitch[2] = hp.cw();
-                std::lock_guard<std::mutex> lk(fbMu);
-                fbReady.push_back(F);
+            if (handled < nfb) {
+                std::atomic<int> next{handled};
+                std::vector<std::thread> th;
+                for (int w = 0; w < std::min(nfw, nfb - handled); w++)
+                    th.emplace_back([&, w]() {
+                        for (int k; (k = next.fetch_add(1)) < nfb;) one(fb[k], fss[w]);
+                    });
+                for (auto &t : th) t.join();
+                handled = nfb;
             }
             if (last && handled >= nfb) break;
             std::this_thread::sleep_for(std::chrono::milliseconds(20));
         }
-        cudaStreamDestroy(fs);
+        for (auto &x : fss) cudaStreamDestroy(x);
         fbDone = true;
     });
     auto encLoop = [&](GpEncoder *E, GpEncoder *Es, cudaStream_t s) {
