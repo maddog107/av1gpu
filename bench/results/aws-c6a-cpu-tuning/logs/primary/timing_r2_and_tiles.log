@@ -1,0 +1,27 @@
++ python3 -u /home/ubuntu/timing.py r2
+99 images, 477.7 MP; speed workload 297 images, 1433 MP
+04:16:14 R2       stock_aom_s6_j1            28.68 MP/s    50.0 s    86537268 B  ok=297  det=True  same_as_stock_j1=True
+04:17:02 R2       tuned_aom_s6_j1            29.62 MP/s    48.4 s    86537268 B  ok=297  det=True  same_as_stock_j1=True
+04:17:10 R2       stock_aom_s9_j1           186.84 MP/s     7.7 s    92580096 B  ok=297  det=True  same_as_stock_j1=True
+04:17:18 R2       tuned_aom_s9_j1           188.31 MP/s     7.6 s    92580096 B  ok=297  det=True  same_as_stock_j1=True
+04:18:50 R2       stock_svt_p4_j1            15.57 MP/s    92.1 s   109761972 B  ok=297  det=True  same_as_stock_j1=True
+04:20:21 R2       tuned_svt_p4_j1            15.79 MP/s    90.7 s   109761972 B  ok=297  det=True  same_as_stock_j1=True
+04:21:44 R2       pgo_svt_p4_j1              17.27 MP/s    83.0 s   109761972 B  ok=297  det=True  same_as_stock_j1=True
+04:22:13 R2       stock_svt_p6_j1            49.75 MP/s    28.8 s   112772220 B  ok=297  det=True  same_as_stock_j1=True
+04:22:41 R2       tuned_svt_p6_j1            50.99 MP/s    28.1 s   112772220 B  ok=297  det=True  same_as_stock_j1=True
+04:23:07 R2       pgo_svt_p6_j1              55.29 MP/s    25.9 s   112772220 B  ok=297  det=True  same_as_stock_j1=True
+04:23:18 R2       stock_svt_p8_j1           134.02 MP/s    10.7 s   117064116 B  ok=297  det=True  same_as_stock_j1=True
+04:23:28 R2       tuned_svt_p8_j1           140.06 MP/s    10.2 s   117064116 B  ok=297  det=True  same_as_stock_j1=True
+04:23:38 R2       pgo_svt_p8_j1             149.36 MP/s     9.6 s   117064116 B  ok=297  det=True  same_as_stock_j1=True
+04:23:46 R2       stock_svt_p9_j1           181.93 MP/s     7.9 s   117104919 B  ok=297  det=True  same_as_stock_j1=True
+04:23:53 R2       tuned_svt_p9_j1           189.78 MP/s     7.6 s   117104919 B  ok=297  det=True  same_as_stock_j1=True
+04:24:01 R2       pgo_svt_p9_j1             199.37 MP/s     7.2 s   117104919 B  ok=297  det=True  same_as_stock_j1=True
+04:24:49 R2       stock_aom_s6_j2            29.36 MP/s    48.8 s    86445924 B  ok=297  det=True  same_as_stock_j1=False
+04:26:17 R2       stock_svt_p4_j2            16.31 MP/s    87.9 s   109761972 B  ok=297  det=True  same_as_stock_j1=True
+PHASE_DONE r2
++ python3 -u /home/ubuntu/timing.py tiles
+99 images, 477.7 MP; speed workload 297 images, 1433 MP
+04:27:36 tiles    stock_aom_s6_j16_tiles     18.40 MP/s    77.9 s    86445924 B  ok=297  det=True  same_as_stock_j1=False
+04:28:26 tiles    stock_aom_s6_j4_tiles      28.50 MP/s    50.3 s    86445924 B  ok=297  det=True  same_as_stock_j1=False
+04:28:53 tiles    stock_aom_s9_j16_tiles     52.40 MP/s    27.3 s    92593338 B  ok=297  det=True  same_as_stock_j1=False
+04:29:04 tiles    stock_aom_s9_j4_tiles     139.55 MP/s    10.3 s    92593338 B  ok=297  det=True  same_as_stock_j1=False

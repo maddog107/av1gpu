@@ -975,17 +975,15 @@ __device__ __noinline__ void rc_chroma(int W, int H, RcShared<BD> &S, const GpBa
     __syncthreads();
     // ---- CfL luma values (reconstructed luma, spec 7.11.5) ----
     if (cflOk) {
-        int maxLumaW, maxLumaH;
-        if (ssx) {   // 4:2:0: the end of the block's largest luma tx
-            const int lumaTx = AV1G_T(Max_Tx_Size_Rect)[bsize];
-            maxLumaW = mi_col * 4 + AV1G_T(Tx_Width)[lumaTx]; maxLumaH = mi_row * 4 + AV1G_T(Tx_Height)[lumaTx];
-        } else {     // 4:4:4: the decoder's MaxLumaW/H, i.e. the end of the last CODED luma tx block (tx_depth, frame edge)
-            const int ltx = av1g_luma_tx_size(bsize, yTxDepth), lw = AV1G_T(Tx_Width)[ltx], lh = AV1G_T(Tx_Height)[ltx];
-            maxLumaW = mi_col * 4 + lw; maxLumaH = mi_row * 4 + lh;
-            for (int yy = 0; yy < bh_px(bsize); yy += lh)
-                for (int xx = 0; xx < bw_px(bsize); xx += lw)
-                    if (mi_col + (xx >> 2) < I.MiCols && mi_row + (yy >> 2) < I.MiRows) { maxLumaW = mi_col * 4 + xx + lw; maxLumaH = mi_row * 4 + yy + lh; }
-        }
+        // MaxLumaW/H (spec transform_block): right / bottom edge of the last luma tx block coded, in raster
+        // order.  Tx blocks whose top-left lies outside the frame are not coded, so with a split luma tx
+        // (tx_depth 1) on the right / bottom frame edge this can stop short of the block.
+        const int lumaTx = av1g_luma_tx_size(bsize, yTxDepth);
+        const int tw = AV1G_T(Tx_Width)[lumaTx], th = AV1G_T(Tx_Height)[lumaTx];
+        int maxLumaW = 0, maxLumaH = 0;
+        for (int ly = mi_row * 4; ly < mi_row * 4 + bh_px(bsize); ly += th)
+            for (int lx = mi_col * 4; lx < mi_col * 4 + bw_px(bsize); lx += tw)
+                if (lx < I.MiCols * 4 && ly < I.MiRows * 4) { maxLumaW = lx + tw; maxLumaH = ly + th; }
         const Px *luma = gp_rec<BD>(I, 0);
         const int lp = I.rpitch[0];
         int sum = 0;

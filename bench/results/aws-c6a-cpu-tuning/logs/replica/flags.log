@@ -1,0 +1,229 @@
+## toolchain
+gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0
+g++ (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0
+GNU ld (GNU Binutils for Ubuntu) 2.42
+cmake version 3.28.3
+ninja 1.11.1
+NASM version 2.16.01
+yasm 1.3.0
+7.0.0-1014-aws
+PRETTY_NAME="Ubuntu 24.04.5 LTS"
+## cpu
+CPU(s):                                  16
+Model name:                              AMD EPYC 7R13 Processor
+Thread(s) per core:                      2
+Core(s) per socket:                      8
+Socket(s):                               1
+L1d cache:                               256 KiB (8 instances)
+L2 cache:                                4 MiB (8 instances)
+L3 cache:                                32 MiB (1 instance)
+NUMA node(s):                            1
+avx2: 1 avx512f: 0 fma: 1
+gcc -march=native resolves to: znver3
+
+## aom-build
+BUILD_SHARED_LIBS:UNINITIALIZED=1
+CMAKE_BUILD_TYPE:STRING=Release
+CMAKE_CXX_FLAGS:STRING=
+CMAKE_CXX_FLAGS_RELEASE:STRING=-O3 -DNDEBUG -std=c++17 -Wall -Wdisabled-optimization -Wextra -Wextra-semi -Wfloat-conversion -Wformat=2 -Wlogical-op -Wmissing-declarations -Wpointer-arith -Wshadow -Wsign-compare -Wtype-limits -Wundef -Wuninitialized -Wunused -Wvla -Wc++20-extensions -Wc++23-extensions -Wstack-usage=240000 -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64
+CMAKE_C_FLAGS:STRING=
+CMAKE_C_FLAGS_RELEASE:STRING=-O3 -DNDEBUG -std=c99 -Wall -Wdisabled-optimization -Wextra -Wfloat-conversion -Wformat=2 -Wimplicit-function-declaration -Wlogical-op -Wmissing-declarations -Wmissing-prototypes -Wpointer-arith -Wshadow -Wsign-compare -Wtype-limits -Wundef -Wuninitialized -Wunused -Wvla -Wstack-usage=100000 -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64
+CMAKE_INSTALL_PREFIX:PATH=/home/ubuntu/opt
+CONFIG_RUNTIME_CPU_DETECT:STRING=1
+ENABLE_AVX512:BOOL=ON
+-- av1/encoder/encoder.c:
+/usr/bin/cc  -I/home/ubuntu/src/aom -I/home/ubuntu/src/aom-build -I/home/ubuntu/src/aom/apps -I/home/ubuntu/src/aom/common -I/home/ubuntu/src/aom/examples -I/home/ubuntu/src/aom/stats -I/home/ubuntu/src/aom/third_party/libyuv/include -I/home/ubuntu/src/aom/third_party/libwebm -O3 -DNDEBUG -std=c99 -Wall -Wdisabled-optimization -Wextra -Wfloat-conversion -Wformat=2 -Wimplicit-function-declaration -Wlogical-op -Wmissing-declarations -Wmissing-prototypes -Wpointer-arith -Wshadow -Wsign-compare -Wtype-limits -Wundef -Wuninitialized -Wunused -Wvla -Wstack-usage=100000 -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -fPIC -MD -MT CMakeFiles/aom_av1_encoder.dir/av1/encoder/encoder.c.o -MF CMakeFiles/aom_av1_encoder.dir/av1/encoder/encoder.c.o.d -o CMakeFiles/aom_av1_encoder.dir/av1/encoder/encoder.c.o -c /home/ubuntu/src/aom/av1/encoder/encoder.c
+-- av1/encoder/x86/rdopt_avx2.c:
+/usr/bin/cc  -I/home/ubuntu/src/aom -I/home/ubuntu/src/aom-build -I/home/ubuntu/src/aom/apps -I/home/ubuntu/src/aom/common -I/home/ubuntu/src/aom/examples -I/home/ubuntu/src/aom/stats -I/home/ubuntu/src/aom/third_party/libyuv/include -I/home/ubuntu/src/aom/third_party/libwebm -O3 -DNDEBUG -std=c99 -Wall -Wdisabled-optimization -Wextra -Wfloat-conversion -Wformat=2 -Wimplicit-function-declaration -Wlogical-op -Wmissing-declarations -Wmissing-prototypes -Wpointer-arith -Wshadow -Wsign-compare -Wtype-limits -Wundef -Wuninitialized -Wunused -Wvla -Wstack-usage=100000 -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -fPIC -mavx2 -mno-avx256-split-unaligned-load -mno-avx256-split-unaligned-store -MD -MT CMakeFiles/aom_av1_encoder_avx2_intrinsics.dir/av1/encoder/x86/rdopt_avx2.c.o -MF CMakeFiles/aom_av1_encoder_avx2_intrinsics.dir/av1/encoder/x86/rdopt_avx2.c.o.d -o CMakeFiles/aom_av1_encoder_avx2_intrinsics.dir/av1/encoder/x86/rdopt_avx2.c.o -c /home/ubuntu/src/aom/av1/encoder/x86/rdopt_avx2.c
+-- libaom.so:
+: && /usr/bin/cc -fPIC -O3 -DNDEBUG -std=c99 -Wall -Wdisabled-optimization -Wextra -Wfloat-conversion -Wformat=2 -Wimplicit-function-declaration -Wlogical-op -Wmissing-declarations -Wmissing-prototypes -Wpointer-arith -Wshadow -Wsign-compare -Wtype-limits -Wundef -Wuninitialized -Wunused -Wvla -Wstack-usage=100000 -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64  -Wl,--version-script,/home/ubuntu/src/aom-build/libaom.ver  -Wl,-z,defs -shared -Wl,-soname,libaom.so.3 -o libaom.so.3.13.1 CMakeFiles/aom_obj.dir/config/aom_config.c.o CMakeFiles/aom_obj.dir/aom/src/aom_codec.c.o CMakeFiles/aom_obj.dir/aom/src/aom_decoder.c.o CMakeFiles/aom_obj.dir/aom/src/aom_encoder.c.o CMakeFiles/aom_obj.dir/aom/src/aom_image.c.o CMakeFiles/aom_obj.dir/aom/src/aom_integer.c.o CMakeFiles/aom_rtcd.dir/aom_dsp/aom_dsp_rtcd.c.o CMakeFiles/aom_rtcd.dir/aom_scale/aom_scale_rtcd.c.o CMakeFiles/aom_rtcd.dir/av1/common/av1_rtcd.c.o CMakeFiles/aom_dsp_common.dir/aom_dsp/aom_convolve.c.o CMakeFiles/aom_dsp_common.dir/aom_dsp/bitreader_buffer.c.o CMakeFiles/aom_dsp_common.dir/aom_dsp/bitwriter_buffer.c.o CMakeFiles/aom_dsp_common.dir/aom_dsp/blend_a64_hmask.c.o CMakeFiles/aom_dsp_common.dir/aom_dsp/blend_a64_mask.c.o CMakeFiles/aom_dsp_common.dir/aom_dsp/blend_a64_vmask.c.o CMakeFiles/aom_dsp_common.dir/aom_dsp/entcode.c.o CMakeFiles/aom_dsp_common.dir/aom_dsp/intrapred.c.o CMakeFiles/aom_dsp_common.dir/aom_dsp/loopfilter.c.o CMakeFiles/aom_dsp_common.dir/aom_dsp/odintrin.c.o 
+-- commands with -flto: 0 of 392; with -march=native: 0; with -mno-avx: 60; with -fprofile-use: 0; with -O3: 363
+
+## aom-tuned
+AOM_EXTRA_CXX_FLAGS:UNINITIALIZED=-march=native
+AOM_EXTRA_C_FLAGS:UNINITIALIZED=-march=native
+BUILD_SHARED_LIBS:UNINITIALIZED=1
+CMAKE_BUILD_TYPE:STRING=Release
+CMAKE_CXX_FLAGS:STRING=
+CMAKE_CXX_FLAGS_RELEASE:STRING=-O3 -DNDEBUG -std=c++17 -Wall -Wdisabled-optimization -Wextra -Wextra-semi -Wfloat-conversion -Wformat=2 -Wlogical-op -Wmissing-declarations -Wpointer-arith -Wshadow -Wsign-compare -Wtype-limits -Wundef -Wuninitialized -Wunused -Wvla -Wc++20-extensions -Wc++23-extensions -Wstack-usage=240000 -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -march=native
+CMAKE_C_FLAGS:STRING=
+CMAKE_C_FLAGS_RELEASE:STRING=-O3 -DNDEBUG -std=c99 -Wall -Wdisabled-optimization -Wextra -Wfloat-conversion -Wformat=2 -Wimplicit-function-declaration -Wlogical-op -Wmissing-declarations -Wmissing-prototypes -Wpointer-arith -Wshadow -Wsign-compare -Wtype-limits -Wundef -Wuninitialized -Wunused -Wvla -Wstack-usage=100000 -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -march=native
+CMAKE_INSTALL_PREFIX:PATH=/home/ubuntu/opt-tuned
+CMAKE_INTERPROCEDURAL_OPTIMIZATION:UNINITIALIZED=ON
+CONFIG_RUNTIME_CPU_DETECT:STRING=1
+ENABLE_AVX512:BOOL=ON
+-- av1/encoder/encoder.c:
+/usr/bin/cc  -I/home/ubuntu/src/aom -I/home/ubuntu/src/aom-tuned -I/home/ubuntu/src/aom/apps -I/home/ubuntu/src/aom/common -I/home/ubuntu/src/aom/examples -I/home/ubuntu/src/aom/stats -I/home/ubuntu/src/aom/third_party/libyuv/include -I/home/ubuntu/src/aom/third_party/libwebm -O3 -DNDEBUG -std=c99 -Wall -Wdisabled-optimization -Wextra -Wfloat-conversion -Wformat=2 -Wimplicit-function-declaration -Wlogical-op -Wmissing-declarations -Wmissing-prototypes -Wpointer-arith -Wshadow -Wsign-compare -Wtype-limits -Wundef -Wuninitialized -Wunused -Wvla -Wstack-usage=100000 -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -march=native -flto=auto -fno-fat-lto-objects -fPIC -MD -MT CMakeFiles/aom_av1_encoder.dir/av1/encoder/encoder.c.o -MF CMakeFiles/aom_av1_encoder.dir/av1/encoder/encoder.c.o.d -o CMakeFiles/aom_av1_encoder.dir/av1/encoder/encoder.c.o -c /home/ubuntu/src/aom/av1/encoder/encoder.c
+-- av1/encoder/x86/rdopt_avx2.c:
+/usr/bin/cc  -I/home/ubuntu/src/aom -I/home/ubuntu/src/aom-tuned -I/home/ubuntu/src/aom/apps -I/home/ubuntu/src/aom/common -I/home/ubuntu/src/aom/examples -I/home/ubuntu/src/aom/stats -I/home/ubuntu/src/aom/third_party/libyuv/include -I/home/ubuntu/src/aom/third_party/libwebm -O3 -DNDEBUG -std=c99 -Wall -Wdisabled-optimization -Wextra -Wfloat-conversion -Wformat=2 -Wimplicit-function-declaration -Wlogical-op -Wmissing-declarations -Wmissing-prototypes -Wpointer-arith -Wshadow -Wsign-compare -Wtype-limits -Wundef -Wuninitialized -Wunused -Wvla -Wstack-usage=100000 -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -march=native -flto=auto -fno-fat-lto-objects -fPIC -mavx2 -mno-avx256-split-unaligned-load -mno-avx256-split-unaligned-store -MD -MT CMakeFiles/aom_av1_encoder_avx2_intrinsics.dir/av1/encoder/x86/rdopt_avx2.c.o -MF CMakeFiles/aom_av1_encoder_avx2_intrinsics.dir/av1/encoder/x86/rdopt_avx2.c.o.d -o CMakeFiles/aom_av1_encoder_avx2_intrinsics.dir/av1/encoder/x86/rdopt_avx2.c.o -c /home/ubuntu/src/aom/av1/encoder/x86/rdopt_avx2.c
+-- libaom.so:
+: && /usr/bin/cc -fPIC -O3 -DNDEBUG -std=c99 -Wall -Wdisabled-optimization -Wextra -Wfloat-conversion -Wformat=2 -Wimplicit-function-declaration -Wlogical-op -Wmissing-declarations -Wmissing-prototypes -Wpointer-arith -Wshadow -Wsign-compare -Wtype-limits -Wundef -Wuninitialized -Wunused -Wvla -Wstack-usage=100000 -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -march=native -flto=auto -fno-fat-lto-objects  -Wl,--version-script,/home/ubuntu/src/aom-tuned/libaom.ver  -Wl,-z,defs -shared -Wl,-soname,libaom.so.3 -o libaom.so.3.13.1 CMakeFiles/aom_obj.dir/config/aom_config.c.o CMakeFiles/aom_obj.dir/aom/src/aom_codec.c.o CMakeFiles/aom_obj.dir/aom/src/aom_decoder.c.o CMakeFiles/aom_obj.dir/aom/src/aom_encoder.c.o CMakeFiles/aom_obj.dir/aom/src/aom_image.c.o CMakeFiles/aom_obj.dir/aom/src/aom_integer.c.o CMakeFiles/aom_rtcd.dir/aom_dsp/aom_dsp_rtcd.c.o CMakeFiles/aom_rtcd.dir/aom_scale/aom_scale_rtcd.c.o CMakeFiles/aom_rtcd.dir/av1/common/av1_rtcd.c.o CMakeFiles/aom_dsp_common.dir/aom_dsp/aom_convolve.c.o CMakeFiles/aom_dsp_common.dir/aom_dsp/bitreader_buffer.c.o CMakeFiles/aom_dsp_common.dir/aom_dsp/bitwriter_buffer.c.o CMakeFiles/aom_dsp_common.dir/aom_dsp/blend_a64_hmask.c.o CMakeFiles/aom_dsp_common.dir/aom_dsp/blend_a64_mask.c.o CMakeFiles/aom_dsp_common.dir/aom_dsp/blend_a64_vmask.c.o CMakeFiles/aom_dsp_common.dir/aom_dsp/entcode.c.o CMakeFiles/aom_dsp_common.dir/aom_dsp/intrapred.c.o CMakeFiles/aom_dsp_common.dir/aom_dsp/loopfilter.c.o CMake
+-- commands with -flto: 363 of 392; with -march=native: 363; with -mno-avx: 60; with -fprofile-use: 0; with -O3: 363
+
+## svt-build
+BUILD_SHARED_LIBS:BOOL=ON
+CMAKE_BUILD_TYPE:STRING=Release
+CMAKE_CXX_FLAGS:STRING=
+CMAKE_CXX_FLAGS_RELEASE:STRING=-O3 -DNDEBUG
+CMAKE_C_FLAGS:STRING=
+CMAKE_C_FLAGS_RELEASE:STRING=-O3 -DNDEBUG
+CMAKE_INSTALL_PREFIX:PATH=/home/ubuntu/opt
+CMAKE_OUTPUT_DIRECTORY:PATH=/home/ubuntu/src/svt/Bin/Release
+ENABLE_AVX512:BOOL=ON
+NATIVE:BOOL=OFF
+SVT_AV1_LTO:BOOL=ON
+SVT_AV1_PGO:BOOL=OFF
+SVT_AV1_PGO_DIR:PATH=/home/ubuntu/src/svt-build
+SVT_INTERNAL_PGO_GENERATE:BOOL=OFF
+SVT_INTERNAL_PGO_USE:BOOL=OFF
+-- Codec/enc_dec_process.c:
+/usr/bin/cc -DARCH_X86_64=1 -DEN_AVX512_SUPPORT=1 -DEXCLUDE_HASH=0 -DHAVE_BUILTIN_ASSUME=0 -DHAVE_BUILTIN_EXPECT=1 -DHAVE_ELF_AUX_INFO=0 -DHAVE_VALGRIND_H=0 -DREPRODUCIBLE_BUILDS=0 -DSAFECLIB_STR_NULL_SLACK=1 -DSVT_AV1_NVTX=0 -I/home/ubuntu/src/svt/. -I/home/ubuntu/src/svt/Source/API -I/home/ubuntu/src/svt/Source/Lib/Codec -I/home/ubuntu/src/svt/Source/Lib/C_DEFAULT -I/home/ubuntu/src/svt/third_party/fastfeat -I/home/ubuntu/src/svt/Source/Lib/Globals -I/home/ubuntu/src/svt/Source/Lib/ASM_SSE2 -I/home/ubuntu/src/svt/Source/Lib/ASM_SSSE3 -I/home/ubuntu/src/svt/Source/Lib/ASM_SSE4_1 -I/home/ubuntu/src/svt/Source/Lib/ASM_AVX2 -I/home/ubuntu/src/svt/Source/Lib/ASM_AVX512 -fno-stack-clash-protection -Wall -Wextra -Wformat -Wformat-security  -fstack-protector-strong -mno-avx -O3 -DNDEBUG -std=gnu99 -flto=auto -fno-fat-lto-objects -fPIC -fvisibility=hidden -MD -MT Source/Lib/Codec/CMakeFiles/CODEC.dir/enc_dec_process.c.o -MF Source/Lib/Codec/CMakeFiles/CODEC.dir/enc_dec_process.c.o.d -o Source/Lib/Codec/CMakeFiles/CODEC.dir/enc_dec_process.c.o -c /home/ubuntu/src/svt/Source/Lib/Codec/enc_dec_process.c
+-- ASM_AVX2/:
+/usr/bin/cc -DARCH_X86_64=1 -DEN_AVX512_SUPPORT=1 -DEXCLUDE_HASH=0 -DHAVE_BUILTIN_ASSUME=0 -DHAVE_BUILTIN_EXPECT=1 -DHAVE_ELF_AUX_INFO=0 -DHAVE_VALGRIND_H=0 -DREPRODUCIBLE_BUILDS=0 -DSAFECLIB_STR_NULL_SLACK=1 -I/home/ubuntu/src/svt/. -I/home/ubuntu/src/svt/Source/API -I/home/ubuntu/src/svt/Source/Lib/Codec -I/home/ubuntu/src/svt/Source/Lib/C_DEFAULT -I/home/ubuntu/src/svt/third_party/fastfeat -I/home/ubuntu/src/svt/Source/Lib/ASM_SSE2 -I/home/ubuntu/src/svt/Source/Lib/ASM_SSSE3 -I/home/ubuntu/src/svt/Source/Lib/ASM_SSE4_1 -I/home/ubuntu/src/svt/Source/Lib/ASM_AVX2 -I/home/ubuntu/src/svt/Source/Lib/ASM_AVX512 -fno-stack-clash-protection -Wall -Wextra -Wformat -Wformat-security  -fstack-protector-strong -mno-avx -mavx2 -O3 -DNDEBUG -std=gnu99 -flto=auto -fno-fat-lto-objects -fPIC -fvisibility=hidden -MD -MT Source/Lib/ASM_AVX2/CMakeFiles/ASM_AVX2.dir/aom_subpixel_8t_intrin_avx2.c.o -MF Source/Lib/ASM_AVX2/CMakeFiles/ASM_AVX2.dir/aom_subpixel_8t_intrin_avx2.c.o.d -o Source/Lib/ASM_AVX2/CMakeFiles/ASM_AVX2.dir/aom_subpixel_8t_intrin_avx2.c.o -c /home/ubuntu/src/svt/Source/Lib/ASM_AVX2/aom_subpixel_8t_intrin_avx2.c
+-- libSvtAv1Enc.so:
+: && /usr/bin/cc -fPIC -fno-stack-clash-protection -Wall -Wextra -Wformat -Wformat-security  -fstack-protector-strong -mno-avx -O3 -DNDEBUG -flto=auto -fno-fat-lto-objects   -shared -Wl,-soname,libSvtAv1Enc.so.4 -o /home/ubuntu/src/svt/Bin/Release/libSvtAv1Enc.so.4.2.0 third_party/fastfeat/CMakeFiles/FASTFEAT.dir/fast.c.o third_party/fastfeat/CMakeFiles/FASTFEAT.dir/fast_9.c.o third_party/fastfeat/CMakeFiles/FASTFEAT.dir/nonmax.c.o Source/Lib/Globals/CMakeFiles/GLOBALS.dir/enc_handle.c.o Source/Lib/Globals/CMakeFiles/GLOBALS.dir/enc_settings.c.o Source/Lib/Globals/CMakeFiles/GLOBALS.dir/metadata_handle.c.o Source/Lib/Codec/CMakeFiles/CODEC.dir/adaptive_mv_pred.c.o Source/Lib/Codec/CMakeFiles/CODEC.dir/aom_dsp_rtcd.c.o Source/Lib/Codec/CMakeFiles/CODEC.dir/av1me.c.o Source/Lib/Codec/CMakeFiles/CODEC.dir/bitstream_unit.c.o Source/Lib/Codec/CMakeFiles/CODEC.dir/blend_a64_mask.c.o Source/Lib/Codec/CMakeFiles/CODEC.dir/block_structures.c.o Source/Lib/Codec/CMakeFiles/CODEC.dir/cabac_context_model.c.o Source/Lib/Codec/CMakeFiles/CODEC.dir/cdef.c.o Source/Lib/Codec/CMakeFiles/CODEC.dir/cdef_process.c.o Source/Lib/Codec/CMakeFiles/CODEC.dir/coding_loop.c.o Source/Lib/Codec/CMakeFiles/CODEC.dir/coding_unit.c.o Source/Lib/Codec/CMakeFiles/CODEC.dir/coefficients.c.o Source/Lib/Codec/CMakeFiles/CODEC.dir/common_dsp_rtcd.c.o Source/Lib/Codec/CMakeFiles/CODEC.dir/common_utils.c.o Source/Lib/Codec/CMakeFiles/CODEC.dir/convolve.c.o Source/Lib/Codec/CMakeFiles/CODEC.dir/corner_detect.c.o Sour
+-- commands with -flto: 254 of 270; with -march=native: 0; with -mno-avx: 254; with -fprofile-use: 0; with -O3: 254
+
+## svt-tuned
+BUILD_SHARED_LIBS:BOOL=ON
+CMAKE_BUILD_TYPE:STRING=Release
+CMAKE_CXX_FLAGS:STRING=
+CMAKE_CXX_FLAGS_RELEASE:STRING=-O3 -DNDEBUG
+CMAKE_C_FLAGS:STRING=
+CMAKE_C_FLAGS_RELEASE:STRING=-O3 -DNDEBUG
+CMAKE_INSTALL_PREFIX:PATH=/home/ubuntu/opt-tuned
+CMAKE_OUTPUT_DIRECTORY:PATH=/home/ubuntu/src/svt-tuned/Bin
+ENABLE_AVX512:BOOL=ON
+NATIVE:BOOL=ON
+SVT_AV1_LTO:BOOL=ON
+SVT_AV1_PGO:BOOL=OFF
+SVT_AV1_PGO_DIR:PATH=/home/ubuntu/src/svt-tuned
+SVT_INTERNAL_PGO_GENERATE:BOOL=OFF
+SVT_INTERNAL_PGO_USE:BOOL=OFF
+-- Codec/enc_dec_process.c:
+/usr/bin/cc -DARCH_X86_64=1 -DEN_AVX512_SUPPORT=1 -DEXCLUDE_HASH=0 -DHAVE_BUILTIN_ASSUME=0 -DHAVE_BUILTIN_EXPECT=1 -DHAVE_ELF_AUX_INFO=0 -DHAVE_VALGRIND_H=0 -DREPRODUCIBLE_BUILDS=0 -DSAFECLIB_STR_NULL_SLACK=1 -DSVT_AV1_NVTX=0 -I/home/ubuntu/src/svt/. -I/home/ubuntu/src/svt/Source/API -I/home/ubuntu/src/svt/Source/Lib/Codec -I/home/ubuntu/src/svt/Source/Lib/C_DEFAULT -I/home/ubuntu/src/svt/third_party/fastfeat -I/home/ubuntu/src/svt/Source/Lib/Globals -I/home/ubuntu/src/svt/Source/Lib/ASM_SSE2 -I/home/ubuntu/src/svt/Source/Lib/ASM_SSSE3 -I/home/ubuntu/src/svt/Source/Lib/ASM_SSE4_1 -I/home/ubuntu/src/svt/Source/Lib/ASM_AVX2 -I/home/ubuntu/src/svt/Source/Lib/ASM_AVX512 -fno-stack-clash-protection -Wall -Wextra -Wformat -Wformat-security  -march=native -fstack-protector-strong -mno-avx -O3 -DNDEBUG -std=gnu99 -flto=auto -fno-fat-lto-objects -fPIC -fvisibility=hidden -MD -MT Source/Lib/Codec/CMakeFiles/CODEC.dir/enc_dec_process.c.o -MF Source/Lib/Codec/CMakeFiles/CODEC.dir/enc_dec_process.c.o.d -o Source/Lib/Codec/CMakeFiles/CODEC.dir/enc_dec_process.c.o -c /home/ubuntu/src/svt/Source/Lib/Codec/enc_dec_process.c
+-- ASM_AVX2/:
+/usr/bin/cc -DARCH_X86_64=1 -DEN_AVX512_SUPPORT=1 -DEXCLUDE_HASH=0 -DHAVE_BUILTIN_ASSUME=0 -DHAVE_BUILTIN_EXPECT=1 -DHAVE_ELF_AUX_INFO=0 -DHAVE_VALGRIND_H=0 -DREPRODUCIBLE_BUILDS=0 -DSAFECLIB_STR_NULL_SLACK=1 -I/home/ubuntu/src/svt/. -I/home/ubuntu/src/svt/Source/API -I/home/ubuntu/src/svt/Source/Lib/Codec -I/home/ubuntu/src/svt/Source/Lib/C_DEFAULT -I/home/ubuntu/src/svt/third_party/fastfeat -I/home/ubuntu/src/svt/Source/Lib/ASM_SSE2 -I/home/ubuntu/src/svt/Source/Lib/ASM_SSSE3 -I/home/ubuntu/src/svt/Source/Lib/ASM_SSE4_1 -I/home/ubuntu/src/svt/Source/Lib/ASM_AVX2 -I/home/ubuntu/src/svt/Source/Lib/ASM_AVX512 -fno-stack-clash-protection -Wall -Wextra -Wformat -Wformat-security  -march=native -fstack-protector-strong -mno-avx -mavx2 -O3 -DNDEBUG -std=gnu99 -flto=auto -fno-fat-lto-objects -fPIC -fvisibility=hidden -MD -MT Source/Lib/ASM_AVX2/CMakeFiles/ASM_AVX2.dir/aom_subpixel_8t_intrin_avx2.c.o -MF Source/Lib/ASM_AVX2/CMakeFiles/ASM_AVX2.dir/aom_subpixel_8t_intrin_avx2.c.o.d -o Source/Lib/ASM_AVX2/CMakeFiles/ASM_AVX2.dir/aom_subpixel_8t_intrin_avx2.c.o -c /home/ubuntu/src/svt/Source/Lib/ASM_AVX2/aom_subpixel_8t_intrin_avx2.c
+-- libSvtAv1Enc.so:
+: && /usr/bin/cc -fPIC -fno-stack-clash-protection -Wall -Wextra -Wformat -Wformat-security  -march=native -fstack-protector-strong -mno-avx -O3 -DNDEBUG -flto=auto -fno-fat-lto-objects   -shared -Wl,-soname,libSvtAv1Enc.so.4 -o Bin/libSvtAv1Enc.so.4.2.0 third_party/fastfeat/CMakeFiles/FASTFEAT.dir/fast.c.o third_party/fastfeat/CMakeFiles/FASTFEAT.dir/fast_9.c.o third_party/fastfeat/CMakeFiles/FASTFEAT.dir/nonmax.c.o Source/Lib/Globals/CMakeFiles/GLOBALS.dir/enc_handle.c.o Source/Lib/Globals/CMakeFiles/GLOBALS.dir/enc_settings.c.o Source/Lib/Globals/CMakeFiles/GLOBALS.dir/metadata_handle.c.o Source/Lib/Codec/CMakeFiles/CODEC.dir/adaptive_mv_pred.c.o Source/Lib/Codec/CMakeFiles/CODEC.dir/aom_dsp_rtcd.c.o Source/Lib/Codec/CMakeFiles/CODEC.dir/av1me.c.o Source/Lib/Codec/CMakeFiles/CODEC.dir/bitstream_unit.c.o Source/Lib/Codec/CMakeFiles/CODEC.dir/blend_a64_mask.c.o Source/Lib/Codec/CMakeFiles/CODEC.dir/block_structures.c.o Source/Lib/Codec/CMakeFiles/CODEC.dir/cabac_context_model.c.o Source/Lib/Codec/CMakeFiles/CODEC.dir/cdef.c.o Source/Lib/Codec/CMakeFiles/CODEC.dir/cdef_process.c.o Source/Lib/Codec/CMakeFiles/CODEC.dir/coding_loop.c.o Source/Lib/Codec/CMakeFiles/CODEC.dir/coding_unit.c.o Source/Lib/Codec/CMakeFiles/CODEC.dir/coefficients.c.o Source/Lib/Codec/CMakeFiles/CODEC.dir/common_dsp_rtcd.c.o Source/Lib/Codec/CMakeFiles/CODEC.dir/common_utils.c.o Source/Lib/Codec/CMakeFiles/CODEC.dir/convolve.c.o Source/Lib/Codec/CMakeFiles/CODEC.dir/corner_detect.c.o Source/Lib/Codec/CM
+-- commands with -flto: 254 of 270; with -march=native: 254; with -mno-avx: 254; with -fprofile-use: 0; with -O3: 254
+
+## svt-pgo
+BUILD_SHARED_LIBS:BOOL=ON
+CMAKE_BUILD_TYPE:STRING=Release
+CMAKE_CXX_FLAGS:STRING=
+CMAKE_CXX_FLAGS_RELEASE:STRING=-O3 -DNDEBUG
+CMAKE_C_FLAGS:STRING=
+CMAKE_C_FLAGS_RELEASE:STRING=-O3 -DNDEBUG
+CMAKE_INSTALL_PREFIX:PATH=/home/ubuntu/opt-pgo
+CMAKE_OUTPUT_DIRECTORY:PATH=/home/ubuntu/src/svt-pgo/Bin
+ENABLE_AVX512:BOOL=ON
+NATIVE:BOOL=ON
+SVT_AV1_LTO:BOOL=ON
+SVT_AV1_PGO:BOOL=ON
+SVT_AV1_PGO_DIR:PATH=/home/ubuntu/src/svt-pgo/profile
+SVT_INTERNAL_PGO_GENERATE:BOOL=OFF
+SVT_INTERNAL_PGO_USE:BOOL=ON
+-- Codec/enc_dec_process.c:
+/usr/bin/cc -DARCH_X86_64=1 -DEN_AVX512_SUPPORT=1 -DEXCLUDE_HASH=0 -DHAVE_BUILTIN_ASSUME=0 -DHAVE_BUILTIN_EXPECT=1 -DHAVE_ELF_AUX_INFO=0 -DHAVE_VALGRIND_H=0 -DREPRODUCIBLE_BUILDS=0 -DSAFECLIB_STR_NULL_SLACK=1 -DSVT_AV1_NVTX=0 -I/home/ubuntu/src/svt/. -I/home/ubuntu/src/svt/Source/API -I/home/ubuntu/src/svt/Source/Lib/Codec -I/home/ubuntu/src/svt/Source/Lib/C_DEFAULT -I/home/ubuntu/src/svt/third_party/fastfeat -I/home/ubuntu/src/svt/Source/Lib/Globals -I/home/ubuntu/src/svt/Source/Lib/ASM_SSE2 -I/home/ubuntu/src/svt/Source/Lib/ASM_SSSE3 -I/home/ubuntu/src/svt/Source/Lib/ASM_SSE4_1 -I/home/ubuntu/src/svt/Source/Lib/ASM_AVX2 -I/home/ubuntu/src/svt/Source/Lib/ASM_AVX512 -fno-stack-clash-protection -Wall -Wextra -Wformat -Wformat-security  -fprofile-use=/home/ubuntu/src/svt-pgo/profile -fprofile-correction -fprofile-partial-training -march=native -fstack-protector-strong -mno-avx -O3 -DNDEBUG -std=gnu99 -flto=auto -fno-fat-lto-objects -fPIC -fvisibility=hidden -MD -MT Source/Lib/Codec/CMakeFiles/CODEC.dir/enc_dec_process.c.o -MF Source/Lib/Codec/CMakeFiles/CODEC.dir/enc_dec_process.c.o.d -o Source/Lib/Codec/CMakeFiles/CODEC.dir/enc_dec_process.c.o -c /home/ubuntu/src/svt/Source/Lib/Codec/enc_dec_process.c
+-- ASM_AVX2/:
+/usr/bin/cc -DARCH_X86_64=1 -DEN_AVX512_SUPPORT=1 -DEXCLUDE_HASH=0 -DHAVE_BUILTIN_ASSUME=0 -DHAVE_BUILTIN_EXPECT=1 -DHAVE_ELF_AUX_INFO=0 -DHAVE_VALGRIND_H=0 -DREPRODUCIBLE_BUILDS=0 -DSAFECLIB_STR_NULL_SLACK=1 -I/home/ubuntu/src/svt/. -I/home/ubuntu/src/svt/Source/API -I/home/ubuntu/src/svt/Source/Lib/Codec -I/home/ubuntu/src/svt/Source/Lib/C_DEFAULT -I/home/ubuntu/src/svt/third_party/fastfeat -I/home/ubuntu/src/svt/Source/Lib/ASM_SSE2 -I/home/ubuntu/src/svt/Source/Lib/ASM_SSSE3 -I/home/ubuntu/src/svt/Source/Lib/ASM_SSE4_1 -I/home/ubuntu/src/svt/Source/Lib/ASM_AVX2 -I/home/ubuntu/src/svt/Source/Lib/ASM_AVX512 -fno-stack-clash-protection -Wall -Wextra -Wformat -Wformat-security  -fprofile-use=/home/ubuntu/src/svt-pgo/profile -fprofile-correction -fprofile-partial-training -march=native -fstack-protector-strong -mno-avx -mavx2 -O3 -DNDEBUG -std=gnu99 -flto=auto -fno-fat-lto-objects -fPIC -fvisibility=hidden -MD -MT Source/Lib/ASM_AVX2/CMakeFiles/ASM_AVX2.dir/aom_subpixel_8t_intrin_avx2.c.o -MF Source/Lib/ASM_AVX2/CMakeFiles/ASM_AVX2.dir/aom_subpixel_8t_intrin_avx2.c.o.d -o Source/Lib/ASM_AVX2/CMakeFiles/ASM_AVX2.dir/aom_subpixel_8t_intrin_avx2.c.o -c /home/ubuntu/src/svt/Source/Lib/ASM_AVX2/aom_subpixel_8t_intrin_avx2.c
+-- libSvtAv1Enc.so:
+: && /usr/bin/cc -fPIC -fno-stack-clash-protection -Wall -Wextra -Wformat -Wformat-security  -fprofile-use=/home/ubuntu/src/svt-pgo/profile -fprofile-correction -fprofile-partial-training -march=native -fstack-protector-strong -mno-avx -O3 -DNDEBUG -flto=auto -fno-fat-lto-objects  -fprofile-use=/home/ubuntu/src/svt-pgo/profile -fprofile-correction -fprofile-partial-training -shared -Wl,-soname,libSvtAv1Enc.so.4 -o Bin/libSvtAv1Enc.so.4.2.0 third_party/fastfeat/CMakeFiles/FASTFEAT.dir/fast.c.o third_party/fastfeat/CMakeFiles/FASTFEAT.dir/fast_9.c.o third_party/fastfeat/CMakeFiles/FASTFEAT.dir/nonmax.c.o Source/Lib/Globals/CMakeFiles/GLOBALS.dir/enc_handle.c.o Source/Lib/Globals/CMakeFiles/GLOBALS.dir/enc_settings.c.o Source/Lib/Globals/CMakeFiles/GLOBALS.dir/metadata_handle.c.o Source/Lib/Codec/CMakeFiles/CODEC.dir/adaptive_mv_pred.c.o Source/Lib/Codec/CMakeFiles/CODEC.dir/aom_dsp_rtcd.c.o Source/Lib/Codec/CMakeFiles/CODEC.dir/av1me.c.o Source/Lib/Codec/CMakeFiles/CODEC.dir/bitstream_unit.c.o Source/Lib/Codec/CMakeFiles/CODEC.dir/blend_a64_mask.c.o Source/Lib/Codec/CMakeFiles/CODEC.dir/block_structures.c.o Source/Lib/Codec/CMakeFiles/CODEC.dir/cabac_context_model.c.o Source/Lib/Codec/CMakeFiles/CODEC.dir/cdef.c.o Source/Lib/Codec/CMakeFiles/CODEC.dir/cdef_process.c.o Source/Lib/Codec/CMakeFiles/CODEC.dir/coding_loop.c.o Source/Lib/Codec/CMakeFiles/CODEC.dir/coding_unit.c.o Source/Lib/Codec/CMakeFiles/CODEC.dir/coefficients.c.o Source/Lib/Codec/CMakeFiles/CODEC.dir/common_dsp_r
+-- commands with -flto: 254 of 270; with -march=native: 254; with -mno-avx: 254; with -fprofile-use: 254; with -O3: 254
+
+## avif-build
+BUILD_SHARED_LIBS:BOOL=ON
+CMAKE_BUILD_TYPE:STRING=Release
+CMAKE_CXX_FLAGS:STRING=
+CMAKE_CXX_FLAGS_RELEASE:STRING=-O3 -DNDEBUG
+CMAKE_C_FLAGS:STRING=
+CMAKE_C_FLAGS_RELEASE:STRING=-O3 -DNDEBUG
+CMAKE_INSTALL_PREFIX:PATH=/home/ubuntu/opt
+-- src/avif.c:
+/usr/bin/cc -DAVIF_BUILDING_SHARED_LIBS -DAVIF_CODEC_AOM=1 -DAVIF_CODEC_AOM_DECODE=1 -DAVIF_CODEC_AOM_ENCODE=1 -DAVIF_CODEC_SVT=1 -DAVIF_DLL -DAVIF_LIBYUV_ENABLED=1 -I/home/ubuntu/src/libavif/include -isystem /home/ubuntu/opt/include -O3 -DNDEBUG -std=gnu99 -fPIC -fvisibility=hidden -Wall -Wextra -MD -MT CMakeFiles/avif_obj.dir/src/avif.c.o -MF CMakeFiles/avif_obj.dir/src/avif.c.o.d -o CMakeFiles/avif_obj.dir/src/avif.c.o -c /home/ubuntu/src/libavif/src/avif.c
+-- libavif.so:
+: && /usr/bin/c++ -fPIC -O3 -DNDEBUG   -shared -Wl,-soname,libavif.so.16 -o libavif.so.16.4.0 CMakeFiles/avif_obj.dir/src/alpha.c.o CMakeFiles/avif_obj.dir/src/avif.c.o CMakeFiles/avif_obj.dir/src/colr.c.o CMakeFiles/avif_obj.dir/src/colrconvert.c.o CMakeFiles/avif_obj.dir/src/diag.c.o CMakeFiles/avif_obj.dir/src/exif.c.o CMakeFiles/avif_obj.dir/src/gainmap.c.o CMakeFiles/avif_obj.dir/src/io.c.o CMakeFiles/avif_obj.dir/src/mem.c.o CMakeFiles/avif_obj.dir/src/obu.c.o CMakeFiles/avif_obj.dir/src/properties.c.o CMakeFiles/avif_obj.dir/src/rawdata.c.o CMakeFiles/avif_obj.dir/src/read.c.o CMakeFiles/avif_obj.dir/src/reformat.c.o CMakeFiles/avif_obj.dir/src/reformat_libsharpyuv.c.o CMakeFiles/avif_obj.dir/src/reformat_libyuv.c.o CMakeFiles/avif_obj.dir/src/sampletransform.c.o CMakeFiles/avif_obj.dir/src/scale.c.o CMakeFiles/avif_obj.dir/src/stream.c.o CMakeFiles/avif_obj.dir/src/utils.c.o CMakeFiles/avif_obj.dir/src/write.c.o CMakeFiles/avif_obj.dir/src/codec_svt.c.o CMakeFiles/avif_obj.dir/src/codec_aom.c.o  -Wl,-rpath,/home/ubuntu/opt/lib:  /usr/lib/x86_64-linux-gnu/libyuv.so  -lm  /home/ubuntu/opt/lib/libSvtAv1Enc.so  /home/ubuntu/opt/lib/libaom.so && :
+-- apps/avifenc.c:
+/usr/bin/cc -DAVIF_DLL -I/home/ubuntu/src/libavif/apps/shared -I/home/ubuntu/src/libavif/include -O3 -DNDEBUG -std=gnu99 -fPIE -Wall -Wextra -MD -MT CMakeFiles/avifenc.dir/apps/avifenc.c.o -MF CMakeFiles/avifenc.dir/apps/avifenc.c.o.d -o CMakeFiles/avifenc.dir/apps/avifenc.c.o -c /home/ubuntu/src/libavif/apps/avifenc.c
+-- commands with -flto: 0 of 60; with -march=native: 0; with -mno-avx: 0; with -fprofile-use: 0; with -O3: 55
+
+## avif-tuned
+BUILD_SHARED_LIBS:BOOL=ON
+CMAKE_BUILD_TYPE:STRING=Release
+CMAKE_CXX_FLAGS:STRING=-march=native
+CMAKE_CXX_FLAGS_RELEASE:STRING=-O3 -DNDEBUG
+CMAKE_C_FLAGS:STRING=-march=native
+CMAKE_C_FLAGS_RELEASE:STRING=-O3 -DNDEBUG
+CMAKE_INSTALL_PREFIX:PATH=/home/ubuntu/opt-tuned
+CMAKE_INTERPROCEDURAL_OPTIMIZATION:UNINITIALIZED=ON
+-- src/avif.c:
+/usr/bin/cc -DAVIF_BUILDING_SHARED_LIBS -DAVIF_CODEC_AOM=1 -DAVIF_CODEC_AOM_DECODE=1 -DAVIF_CODEC_AOM_ENCODE=1 -DAVIF_CODEC_SVT=1 -DAVIF_DLL -DAVIF_LIBYUV_ENABLED=1 -I/home/ubuntu/src/libavif/include -isystem /home/ubuntu/opt-tuned/include -march=native -O3 -DNDEBUG -std=gnu99 -flto=auto -fno-fat-lto-objects -fPIC -fvisibility=hidden -Wall -Wextra -MD -MT CMakeFiles/avif_obj.dir/src/avif.c.o -MF CMakeFiles/avif_obj.dir/src/avif.c.o.d -o CMakeFiles/avif_obj.dir/src/avif.c.o -c /home/ubuntu/src/libavif/src/avif.c
+-- libavif.so:
+: && /usr/bin/c++ -fPIC -march=native -O3 -DNDEBUG -flto=auto -fno-fat-lto-objects   -shared -Wl,-soname,libavif.so.16 -o libavif.so.16.4.0 CMakeFiles/avif_obj.dir/src/alpha.c.o CMakeFiles/avif_obj.dir/src/avif.c.o CMakeFiles/avif_obj.dir/src/colr.c.o CMakeFiles/avif_obj.dir/src/colrconvert.c.o CMakeFiles/avif_obj.dir/src/diag.c.o CMakeFiles/avif_obj.dir/src/exif.c.o CMakeFiles/avif_obj.dir/src/gainmap.c.o CMakeFiles/avif_obj.dir/src/io.c.o CMakeFiles/avif_obj.dir/src/mem.c.o CMakeFiles/avif_obj.dir/src/obu.c.o CMakeFiles/avif_obj.dir/src/properties.c.o CMakeFiles/avif_obj.dir/src/rawdata.c.o CMakeFiles/avif_obj.dir/src/read.c.o CMakeFiles/avif_obj.dir/src/reformat.c.o CMakeFiles/avif_obj.dir/src/reformat_libsharpyuv.c.o CMakeFiles/avif_obj.dir/src/reformat_libyuv.c.o CMakeFiles/avif_obj.dir/src/sampletransform.c.o CMakeFiles/avif_obj.dir/src/scale.c.o CMakeFiles/avif_obj.dir/src/stream.c.o CMakeFiles/avif_obj.dir/src/utils.c.o CMakeFiles/avif_obj.dir/src/write.c.o CMakeFiles/avif_obj.dir/src/codec_svt.c.o CMakeFiles/avif_obj.dir/src/codec_aom.c.o  -Wl,-rpath,/home/ubuntu/opt-tuned/lib:  /usr/lib/x86_64-linux-gnu/libyuv.so  -lm  /home/ubuntu/opt-tuned/lib/libSvtAv1Enc.so  /home/ubuntu/opt-tuned/lib/libaom.so && :
+-- apps/avifenc.c:
+/usr/bin/cc -DAVIF_DLL -I/home/ubuntu/src/libavif/apps/shared -I/home/ubuntu/src/libavif/include -march=native -O3 -DNDEBUG -std=gnu99 -flto=auto -fno-fat-lto-objects -fPIE -Wall -Wextra -MD -MT CMakeFiles/avifenc.dir/apps/avifenc.c.o -MF CMakeFiles/avifenc.dir/apps/avifenc.c.o.d -o CMakeFiles/avifenc.dir/apps/avifenc.c.o -c /home/ubuntu/src/libavif/apps/avifenc.c
+-- commands with -flto: 55 of 60; with -march=native: 55; with -mno-avx: 0; with -fprofile-use: 0; with -O3: 55
+
+## avif-pgo
+BUILD_SHARED_LIBS:BOOL=ON
+CMAKE_BUILD_TYPE:STRING=Release
+CMAKE_CXX_FLAGS:STRING=-march=native
+CMAKE_CXX_FLAGS_RELEASE:STRING=-O3 -DNDEBUG
+CMAKE_C_FLAGS:STRING=-march=native
+CMAKE_C_FLAGS_RELEASE:STRING=-O3 -DNDEBUG
+CMAKE_INSTALL_PREFIX:PATH=/home/ubuntu/opt-pgo
+CMAKE_INTERPROCEDURAL_OPTIMIZATION:UNINITIALIZED=ON
+-- src/avif.c:
+/usr/bin/cc -DAVIF_BUILDING_SHARED_LIBS -DAVIF_CODEC_AOM=1 -DAVIF_CODEC_AOM_DECODE=1 -DAVIF_CODEC_AOM_ENCODE=1 -DAVIF_CODEC_SVT=1 -DAVIF_DLL -DAVIF_LIBYUV_ENABLED=1 -I/home/ubuntu/src/libavif/include -isystem /home/ubuntu/opt-pgo/include -isystem /home/ubuntu/opt-tuned/include -march=native -O3 -DNDEBUG -std=gnu99 -flto=auto -fno-fat-lto-objects -fPIC -fvisibility=hidden -Wall -Wextra -MD -MT CMakeFiles/avif_obj.dir/src/avif.c.o -MF CMakeFiles/avif_obj.dir/src/avif.c.o.d -o CMakeFiles/avif_obj.dir/src/avif.c.o -c /home/ubuntu/src/libavif/src/avif.c
+-- libavif.so:
+: && /usr/bin/c++ -fPIC -march=native -O3 -DNDEBUG -flto=auto -fno-fat-lto-objects   -shared -Wl,-soname,libavif.so.16 -o libavif.so.16.4.0 CMakeFiles/avif_obj.dir/src/alpha.c.o CMakeFiles/avif_obj.dir/src/avif.c.o CMakeFiles/avif_obj.dir/src/colr.c.o CMakeFiles/avif_obj.dir/src/colrconvert.c.o CMakeFiles/avif_obj.dir/src/diag.c.o CMakeFiles/avif_obj.dir/src/exif.c.o CMakeFiles/avif_obj.dir/src/gainmap.c.o CMakeFiles/avif_obj.dir/src/io.c.o CMakeFiles/avif_obj.dir/src/mem.c.o CMakeFiles/avif_obj.dir/src/obu.c.o CMakeFiles/avif_obj.dir/src/properties.c.o CMakeFiles/avif_obj.dir/src/rawdata.c.o CMakeFiles/avif_obj.dir/src/read.c.o CMakeFiles/avif_obj.dir/src/reformat.c.o CMakeFiles/avif_obj.dir/src/reformat_libsharpyuv.c.o CMakeFiles/avif_obj.dir/src/reformat_libyuv.c.o CMakeFiles/avif_obj.dir/src/sampletransform.c.o CMakeFiles/avif_obj.dir/src/scale.c.o CMakeFiles/avif_obj.dir/src/stream.c.o CMakeFiles/avif_obj.dir/src/utils.c.o CMakeFiles/avif_obj.dir/src/write.c.o CMakeFiles/avif_obj.dir/src/codec_svt.c.o CMakeFiles/avif_obj.dir/src/codec_aom.c.o  -Wl,-rpath,/home/ubuntu/opt-pgo/lib:/home/ubuntu/opt-tuned/lib:  /usr/lib/x86_64-linux-gnu/libyuv.so  -lm  /home/ubuntu/opt-pgo/lib/libSvtAv1Enc.so  /home/ubuntu/opt-tuned/lib/libaom.so && :
+-- apps/avifenc.c:
+/usr/bin/cc -DAVIF_DLL -I/home/ubuntu/src/libavif/apps/shared -I/home/ubuntu/src/libavif/include -march=native -O3 -DNDEBUG -std=gnu99 -flto=auto -fno-fat-lto-objects -fPIE -Wall -Wextra -MD -MT CMakeFiles/avifenc.dir/apps/avifenc.c.o -MF CMakeFiles/avifenc.dir/apps/avifenc.c.o.d -o CMakeFiles/avifenc.dir/apps/avifenc.c.o -c /home/ubuntu/src/libavif/apps/avifenc.c
+-- commands with -flto: 55 of 60; with -march=native: 55; with -mno-avx: 0; with -fprofile-use: 0; with -O3: 55
+
+## installed binaries
+== ~/opt
+Version: 1.4.0 (aom [enc/dec]:3.13.1, svt [enc]:v4.2.0)
+	libavif.so.16 => /home/ubuntu/opt/lib/libavif.so.16 (0x000079db92861000)
+	libjpeg.so.8 => /lib/x86_64-linux-gnu/libjpeg.so.8 (0x000079db9279f000)
+	libyuv.so.0 => /lib/x86_64-linux-gnu/libyuv.so.0 (0x000079db9261c000)
+	libSvtAv1Enc.so.4 => /home/ubuntu/opt/lib/libSvtAv1Enc.so.4 (0x000079db91c00000)
+	libaom.so.3 => /home/ubuntu/opt/lib/libaom.so.3 (0x000079db91400000)
+ 0x000000000000001d (RUNPATH)            Library runpath: [/home/ubuntu/opt/lib]
+== ~/opt-tuned
+Version: 1.4.0 (aom [enc/dec]:3.13.1, svt [enc]:v4.2.0)
+	libavif.so.16 => /home/ubuntu/opt-tuned/lib/libavif.so.16 (0x00007043e8b9b000)
+	libjpeg.so.8 => /lib/x86_64-linux-gnu/libjpeg.so.8 (0x00007043e8ad9000)
+	libyuv.so.0 => /lib/x86_64-linux-gnu/libyuv.so.0 (0x00007043e8956000)
+	libSvtAv1Enc.so.4 => /home/ubuntu/opt-tuned/lib/libSvtAv1Enc.so.4 (0x00007043e7e00000)
+	libaom.so.3 => /home/ubuntu/opt-tuned/lib/libaom.so.3 (0x00007043e7600000)
+ 0x000000000000001d (RUNPATH)            Library runpath: [/home/ubuntu/opt-tuned/lib]
+== ~/opt-pgo
+Version: 1.4.0 (aom [enc/dec]:3.13.1, svt [enc]:v4.2.0)
+	libavif.so.16 => /home/ubuntu/opt-pgo/lib/libavif.so.16 (0x0000735c58651000)
+	libjpeg.so.8 => /lib/x86_64-linux-gnu/libjpeg.so.8 (0x0000735c5858f000)
+	libyuv.so.0 => /lib/x86_64-linux-gnu/libyuv.so.0 (0x0000735c58168000)
+	libSvtAv1Enc.so.4 => /home/ubuntu/opt-pgo/lib/libSvtAv1Enc.so.4 (0x0000735c57a00000)
+	libaom.so.3 => /home/ubuntu/opt-tuned/lib/libaom.so.3 (0x0000735c57200000)
+ 0x000000000000001d (RUNPATH)            Library runpath: [/home/ubuntu/opt-pgo/lib:/home/ubuntu/opt-tuned/lib]
+lrwxrwxrwx 1 ubuntu ubuntu      17 Oct 31 03:08 /home/ubuntu/opt-pgo/lib/libSvtAv1Enc.so -> libSvtAv1Enc.so.4
+lrwxrwxrwx 1 ubuntu ubuntu      21 Oct 31 03:08 /home/ubuntu/opt-pgo/lib/libSvtAv1Enc.so.4 -> libSvtAv1Enc.so.4.2.0
+-rw-r--r-- 1 ubuntu ubuntu 7179888 Oct 31 03:08 /home/ubuntu/opt-pgo/lib/libSvtAv1Enc.so.4.2.0
+lrwxrwxrwx 1 ubuntu ubuntu      17 Oct 31 03:04 /home/ubuntu/opt-tuned/lib/libSvtAv1Enc.so -> libSvtAv1Enc.so.4
+lrwxrwxrwx 1 ubuntu ubuntu      21 Oct 31 03:04 /home/ubuntu/opt-tuned/lib/libSvtAv1Enc.so.4 -> libSvtAv1Enc.so.4.2.0
+-rw-r--r-- 1 ubuntu ubuntu 7473624 Oct 31 03:04 /home/ubuntu/opt-tuned/lib/libSvtAv1Enc.so.4.2.0
+lrwxrwxrwx 1 ubuntu ubuntu      11 Oct 31 03:03 /home/ubuntu/opt-tuned/lib/libaom.so -> libaom.so.3
+lrwxrwxrwx 1 ubuntu ubuntu      16 Oct 31 03:03 /home/ubuntu/opt-tuned/lib/libaom.so.3 -> libaom.so.3.13.1
+-rw-r--r-- 1 ubuntu ubuntu 8409488 Oct 31 03:03 /home/ubuntu/opt-tuned/lib/libaom.so.3.13.1
+lrwxrwxrwx 1 ubuntu ubuntu      17 Oct 31 03:00 /home/ubuntu/opt/lib/libSvtAv1Enc.so -> libSvtAv1Enc.so.4
+lrwxrwxrwx 1 ubuntu ubuntu      21 Oct 31 03:00 /home/ubuntu/opt/lib/libSvtAv1Enc.so.4 -> libSvtAv1Enc.so.4.2.0
+-rw-r--r-- 1 ubuntu ubuntu 7411416 Oct 31 03:00 /home/ubuntu/opt/lib/libSvtAv1Enc.so.4.2.0
+lrwxrwxrwx 1 ubuntu ubuntu      11 Oct 31 02:59 /home/ubuntu/opt/lib/libaom.so -> libaom.so.3
+lrwxrwxrwx 1 ubuntu ubuntu      16 Oct 31 02:59 /home/ubuntu/opt/lib/libaom.so.3 -> libaom.so.3.13.1
+-rw-r--r-- 1 ubuntu ubuntu 8007600 Oct 31 02:59 /home/ubuntu/opt/lib/libaom.so.3.13.1
+dca002f1114cf6e5698ce3446c756f4e9d1ff14d669d9d54efc9ab92c15ec5fc  /home/ubuntu/opt/lib/libaom.so.3.13.1
+bcb86995c089ae3f7651c1d53ef21abb9120d035c72708eb5d3f990341eb6dcd  /home/ubuntu/opt-tuned/lib/libaom.so.3.13.1
+6249bb73dc63f043c1273e0876e2d7f35ae5082c72d47708862febbf695aa233  /home/ubuntu/opt/lib/libSvtAv1Enc.so.4.2.0
+b2b5a1f08e54a159d3c7f58be8e161bd0f43b52f609a7338fa493d393fd419d0  /home/ubuntu/opt-tuned/lib/libSvtAv1Enc.so.4.2.0
+0579598f869e68ceaead27eafd874241fd399e7848e95e832fce96f17c6541c5  /home/ubuntu/opt-pgo/lib/libSvtAv1Enc.so.4.2.0
