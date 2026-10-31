@@ -257,7 +257,7 @@ def srgb8(path, icc=None):
     for a decoder that drops the profile); no profile means sRGB"""
     from PIL import Image, ImageCms
     im = Image.open(path)
-    icc = im.info.get("icc_profile") or icc
+    icc = im.info.get("icc_profile") or _jpeg_icc(im) or icc
     if im.mode not in ("RGB", "L"):
         im = im.convert("RGB")
     if icc:
@@ -269,6 +269,13 @@ def srgb8(path, icc=None):
         except (ImageCms.PyCMSError, OSError) as e:  # a broken profile, or one for other pixels: use them as they are
             print(f"{path}: ICC profile not applied ({e})", file=sys.stderr, flush=True)
     return np.asarray(im.convert("RGB"))
+
+
+def _jpeg_icc(im):
+    """a JPEG's ICC profile from its APP2 markers.  Pillow only assembles the markers that precede the frame header,
+    and some files (4 of the size-range photos) put it after; libjpeg, and so libjxl, libavif and cwebp, read it."""
+    chunks = sorted((d[12], d[14:]) for m, d in getattr(im, "applist", []) if m == "APP2" and d[:12] == b"ICC_PROFILE\0")
+    return b"".join(c for _, c in chunks) or None
 
 
 def file_icc(path):
