@@ -1,7 +1,8 @@
 # Measured results
 
 Two GPUs so far: the RTX PRO 2000 Blackwell the encoder was developed on (private images, below), and an
-NVIDIA L4 on AWS with the public `bench/` image sets ([NVIDIA L4](#nvidia-l4-aws-g64xlarge)).
+NVIDIA L4 on AWS with the public `bench/` image sets ([NVIDIA L4](#nvidia-l4-aws-g64xlarge)). A contributor
+added speed measurements on a GeForce RTX 5090 ([RTX 5090](#geforce-rtx-5090-contributed-by-pickae)).
 
 **The L4 run is the reference.** It uses public images, current baselines and a current CPU (AMD EPYC, 16
 vCPUs). The development section below compares against the development server's dual Xeon Silver 4110,
@@ -573,3 +574,86 @@ originals. With that caveat:
   speed 6 at the same file size, while libaom speed 9 is 1.6× faster than av1gpu with files 15 % larger.
 - **Cost of the run:** 1 h 39 min on a g6.4xlarge spot instance at about $0.80/hour, plus about 2 minutes
   on demand, roughly $1.40.
+
+## GeForce RTX 5090 (contributed by pickae)
+
+Contributed by pickae ([discussion #19](https://github.com/maddog107/av1gpu/discussions/19)) and measured on
+their machine, not by us. Speed only: avifenc, libaom and `ssimulacra2` were not installed there, so there are no
+CPU baselines or BD-rates. The output was byte-identical to the L4's (see Correctness), so the L4's compression
+results apply unchanged. The raw results are not in `bench/results/`.
+
+### Setup
+
+- **GPU:** NVIDIA GeForce RTX 5090 (Blackwell, compute capability 12.0, 170 SMs, 32 GB, 575 W board power
+  limit), driver 615.71.09, CUDA 13.4 (V13.4.92), built with `-DCMAKE_CUDA_ARCHITECTURES=native`. Ubuntu
+  26.04.1, kernel 7.0.0-38, gcc 15.2, CMake 4.2.3.
+- **CPU:** Intel Core i9-13900K, 32 threads.
+- **Code:** `cbea9b8`, the same code as 0.2.0.
+- **Images:** the standard set and 99 of the 100 size-range photos (one had changed on Flickr, as in the L4
+  `turbo3` run).
+- **Speed runs** as on the L4 (`bench.speed_set` / `bench.gpu_speed`): 1,023 MP (standard) and 1,433 MP (size
+  range) per run, one warm-up, median of 3. Power and SM clock: `nvidia-smi` every second, averaged over the
+  samples above 50 % utilisation.
+
+### Speed
+
+MP/s at quality 60, 8-bit 4:2:0. av1gpu used 0.12–0.36 CPU cores in every run.
+
+| Setting | standard (~1 MP) | size range | L4 standard | L4 size range |
+|---|---:|---:|---:|---:|
+| default (`GP_ENCODERS=3`) | 121.1 | 225.8 | | |
+| default, `GP_ENCODERS=2` | 110.4 | 195.7 | 39.2 | 103.8 |
+| default, `GP_ENCODERS=4` | 130.3 | 256.5 | 39.2 | 116.0 |
+| `--small-preset none` | 290.6 | 270.5 | 100.9 | 126.8 |
+| `--preset turbo3` | 131.8 | 370.4 | | 167.1 |
+| `--preset turbo3 --small-preset none` | **416.5** | **462.2** | | 209.8–213.9 |
+| default, `--tiles 2,2,2` (4 × 4 tiles from 2 MP) | | 314.4 | | |
+
+Run-to-run spread was within ±1 % on the standard set and ±6 % on the size range.
+
+- **About twice the L4** on the size range with the same number of encoders (195.7 against 103.8 with 2,
+  256.5 against 116.0 with 4) and 2.8–3.3× on the standard set; 2.2× with `turbo3 --small-preset none`. Here 4
+  encoders beat the default 3 by 8–14 %.
+- **Not power-limited:** 175–280 W of the 575 W limit at a 2.75 GHz SM clock, 0.83 J/MP on the size range with
+  the default settings and 0.44 J/MP with `turbo3 --small-preset none` (the L4: about 0.5 J/MP at 116 MP/s).
+- **More tiles help on this GPU:** `--tiles 2,2,2` (4 × 4 tiles instead of turbo's 2 × 2 for images of 2 MP
+  and more) was 39 % faster on the size range for 0.21 % more bytes (67,558,719 against 67,417,788). With
+  `--prof`, the reconstruction used 5–12 % of the GPU's CTA-cycle capacity, so the wavefront's serial chain is
+  the limit there ([discussion #18](https://github.com/maddog107/av1gpu/discussions/18)).
+
+### 4:4:4 and 10-bit
+
+Size range, default settings:
+
+| Format | MP/s | vs 8-bit 4:2:0 | L4 MP/s |
+|---|---:|---:|---:|
+| 8-bit 4:2:0 | 225.8 | | 113.4 |
+| 8-bit 4:4:4 | 192.1 | −15 % | 94.5 |
+| 10-bit 4:2:0 | 233.8 | +4 % | 109.8 |
+| 10-bit 4:4:4 | 186.2 | −18 % | 92.8 |
+| 10-bit 4:4:4, `--tiles 2,2,2` | 261.5 | +16 % | |
+
+As on the L4, 4:4:4 costs 15–18 %; 10 bits made no measurable difference.
+
+### Comic pages
+
+Not a bench set: 60 scanned comic pages of 2035 × 2960 (JPEG q94, 4:4:4) against 20 size-range photos of 5–9
+MP, `turbo`, MP/s:
+
+| | photos | comic pages |
+|---|---:|---:|
+| 8-bit 4:2:0 | 191–206 | 124–144 |
+| 10-bit 4:4:4 | 147–166 | 89–102 |
+| 10-bit 4:4:4, `--tiles 2,2,2` | 246 | 149–150 |
+
+The pages run at 60–70 % of the photos' speed: on line art the reconstruction does about 3.5× more work per
+superblock (more, smaller blocks), and the files take more bits per pixel (0.70 against 0.41). Tiles speed both
+up by about the same factor.
+
+### Correctness
+
+- **Byte-identical to the L4** where the sets are the same: the standard set gave 5,494,550 bytes per pass with
+  the default settings and 71,872,515 bytes for 1,023 MP with `--preset turbo --small-preset none`, the same
+  totals as in `bench/results/aws-g6-l4/` and `bench/results/aws-g6-l4-turbo-nosmall/`. The size-range totals
+  differ only by the missing photo.
+- `tests/decoder_gate.py` was not run (no dav1d or aomdec on that machine).
