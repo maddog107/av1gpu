@@ -3,8 +3,9 @@
 
 Batch mode gets a list with a good PNG, a directory, a directory with an image name, a missing file and an empty
 file, then a directory holding the good PNG, the image-named subdirectory and the empty file. Both runs must exit 0,
-write only the good image's AVIF and report the others as skipped. Single-image mode on a directory must fail with
-status 3. Before this test, a directory aborted av1gpu with std::bad_alloc in both modes.
+write only the good image's AVIF into an --outdir whose parents do not exist yet, and report the others as skipped.
+Single-image mode on a directory must fail with status 3. Before this test, a directory aborted av1gpu with
+std::bad_alloc in both modes, and a nested --outdir was not created.
 
   tests/batch_skip_test.py --bin build/av1gpu --image tests/gate_images/cfl_edge_211x149.png
 """
@@ -34,10 +35,10 @@ def main():
             for p in ("good.png", "", "subdir.png", "missing.png", "empty.png"):
                 f.write(os.path.join(src, p).rstrip("/") + "\n")
         for name, inp, skipped in (("list", lst, 4), ("dir", src, 2)):
-            out = os.path.join(t, "out_" + name)
-            os.makedirs(out)
+            out = os.path.join(t, "out_" + name, "a", "b")   # --outdir and its missing parents are created
+
             p = subprocess.run([a.bin, "--batch", inp, "--outdir", out], capture_output=True, text=True, timeout=300)
-            got = sorted(os.listdir(out))
+            got = sorted(os.listdir(out)) if os.path.isdir(out) else []
             m = re.search(r"skipped \(unsupported\): (\d+)", p.stderr)
             n = int(m.group(1)) if m else None
             ok = p.returncode == 0 and got == ["good.png.avif"] and n == skipped
