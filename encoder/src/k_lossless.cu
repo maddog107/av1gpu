@@ -265,6 +265,7 @@ __device__ __forceinline__ void ll_shape_arbl(int i, int j, int bw4, int bh4, in
     else bl = ol_decoded(x - 4, y + 4, x0, y0, sub, tb);
 }
 
+template <int BD>
 __global__ void __launch_bounds__(128) k_ll_shape(GpBatch B, GpLossless L, int bs, uint32_t nTotal, int fiOn) {
     __shared__ float sJ[4][LL_NCAND_Y];
     const int warp = threadIdx.x >> 5, lane = threadIdx.x & 31;
@@ -318,6 +319,7 @@ __global__ void __launch_bounds__(128) k_ll_shape(GpBatch B, GpLossless L, int b
         const int pw4 = I.MiCols >> sx, ph4 = I.MiRows >> sy;
         const int cbw4 = cw >> 2, cbh4 = ch >> 2;
         const int nj = min(cbw4, pw4 - (cx0 >> 2)), ni = min(cbh4, ph4 - (cy0 >> 2));
+        const int cflOk = L.cfl && av1g_cfl_allowed_ex(bs, 1, sx, sy);
         float best = GP_INF;
         for (int c = lane; c < LL_NCAND_UV; c += 32) {
             const LLCand cd = c_llCand[c];
@@ -333,8 +335,36 @@ __global__ void __launch_bounds__(128) k_ll_shape(GpBatch B, GpLossless L, int b
                         s += ct[((size_t)((cy0 >> 2) + i) * pw4 + (cx0 >> 2) + j) * LL_NE_UV + e];
                     }
             }
-            const float J = s * (1.f / 16.f) + ll_uvmode_bits(bs, AV1G_DC_PRED, cd.mode, cd.delta, 0, C);
+            const float J = s * (1.f / 16.f) + ll_uvmode_bits(bs, AV1G_DC_PRED, cd.mode, cd.delta, cflOk, C);
             best = fminf(best, J);
+        }
+        if (cflOk) {
+            // CfL (allowed for one 4x4 chroma tx block per plane): DC prediction + the best alpha per plane, luma = the
+            // source of the block the chroma covers (4:2:0 sub-8x8: the 8x8)
+            const LLTile tl = ll_tile(I, (cy0 << sy) >> 2, (cx0 << sx) >> 2);
+            const int haveL = (cx0 >> 2) > (tl.c0 >> sx), haveA = (cy0 >> 2) > (tl.r0 >> sy);
+            const int maxLumaW = min((cx0 + cw) << sx, I.MiCols * 4), maxLumaH = min((cy0 + ch) << sy, I.MiRows * 4);
+            int ac[16];
+            ll_cfl_ac<BD>(I, cx0, cy0, maxLumaW, maxLumaH, ac);
+            float jc = ll_uvmode_bits(bs, AV1G_DC_PRED, AV1G_UV_CFL_PRED, 0, 1, C) + 3.f;   // + ~3 bits of joint signs
+            for (int p = 1; p < 3; p++) {
+                av1g_pixel_t(BD) dc[16];
+                ll_predict<BD>(I, p, cx0, cy0, AV1G_DC_PRED, 0, -1, haveL, haveA, 0, 0, 0, 0, dc);
+                float bp = GP_INF;
+                for (int a = lane - 16; a <= 16; a += 32) {
+                    av1g_pixel_t(BD) pr[16];
+                    for (int i = 0; i < 16; i++) pr[i] = dc[i];
+                    ll_cfl<BD>(a, ac, pr);
+                    int16_t q[16];
+                    ll_levels<BD>(I, p, cx0, cy0, pr, q);
+                    float J = ll_rate(q, 1, C);
+                    if (a) J += C[CID(cfl_alpha[0]) + (a < 0 ? -a : a) - 1];
+                    bp = fminf(bp, J);
+                }
+                for (int o = 16; o > 0; o >>= 1) bp = fminf(bp, __shfl_xor_sync(0xffffffffu, bp, o));
+                jc += bp;
+            }
+            best = fminf(best, jc);
         }
         for (int o = 16; o > 0; o >>= 1) best = fminf(best, __shfl_xor_sync(0xffffffffu, best, o));
         uvJ = best * frac;
@@ -666,7 +696,8 @@ void gp_launch_ll_analysis(const GpBatch &B, const GpLossless &L, const uint32_t
     }
     for (int s = 0; s < GP_NSHAPES; s++) {
         if (!shTotal[s] || s >= AV1G_BLOCK_INVALID || (s >= 13 && s <= 15)) continue;
-        k_ll_shape<<<(shTotal[s] + 3) / 4, 128, 0, st>>>(B, L, s, shTotal[s], fiOn);
+        if (bd == 10) k_ll_shape<10><<<(shTotal[s] + 3) / 4, 128, 0, st>>>(B, L, s, shTotal[s], fiOn);
+        else k_ll_shape<8><<<(shTotal[s] + 3) / 4, 128, 0, st>>>(B, L, s, shTotal[s], fiOn);
     }
 }
 
