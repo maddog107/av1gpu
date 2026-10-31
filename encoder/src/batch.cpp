@@ -327,6 +327,7 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
     std::deque<FbFrame> fbReady;
     std::atomic<bool> ingestDrained{false}, fbDone{false};
     std::atomic<int> cpuFallbackA{0}, gpuFallbackA{0};
+    std::atomic<int> fbPending{0};   // fallback images being decoded (not yet in fbReady or skipped)
     std::thread fbThread([&]() {
         // GP_FALLBACK_WORKERS (default 4) threads decode + upload the fallback images of each poll in parallel
         const int nfw = getenv("GP_FALLBACK_WORKERS") ? std::max(1, atoi(getenv("GP_FALLBACK_WORKERS"))) : 4;
@@ -335,6 +336,7 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
         std::vector<ingest_fallback> fb(4096);
         int handled = 0;
         auto one = [&](const ingest_fallback &fe, cudaStream_t fs) {
+            struct Done { std::atomic<int> &n; ~Done() { n--; } } done{fbPending};
             const std::string &p = paths[fe.index];
             const GpFileKind kind = gp_sniff(p);
             if (kind != GP_FILE_WEBP && kind != GP_FILE_PNG) {
@@ -386,6 +388,7 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
                 nfb = std::min(ingest_get_fallbacks(ictx, fb.data(), (int)fb.size()), (int)fb.size());
             }
             if (handled < nfb) {
+                fbPending += nfb - handled;
                 std::atomic<int> next{handled};
                 std::vector<std::thread> th;
                 for (int w = 0; w < std::min(nfw, nfb - handled); w++)
@@ -442,7 +445,13 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
             int fbConv = 0;   // 1 when fbHeld also holds the 10-bit conversion buffer (not a fallback image)
             {
                 std::lock_guard<std::mutex> lk(fbMu);
-                while (!fbReady.empty() && mpAcc < targetMp && (int)fin.size() < maxImgs) {
+                // Decoded fallbacks arrive one at a time; taking whatever is ready gave batches of 1-4 images, and
+                // every batch pays the whole wavefront latency (40 PNG pages: 14 batches, recon 2x the same JPEGs').
+                // While more are being decoded, wait for a batch's worth.
+                double readyMp = 0;
+                for (const FbFrame &F : fbReady) readyMp += F.f.W * (double)F.f.H / 1e6;
+                const bool takeFb = readyMp >= targetMp || (int)fbReady.size() >= maxImgs || fbPending.load() == 0;
+                while (takeFb && !fbReady.empty() && mpAcc < targetMp && (int)fin.size() < maxImgs) {
                     const FbFrame F = fbReady.front();
                     fbReady.pop_front();
                     fin.push_back(F.f);
