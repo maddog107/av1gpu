@@ -1,0 +1,46 @@
+100 images, 477.8 MP; tune=iq True; GP_ENCODERS=4
+speed workload: the set 3x, 300 images, 1434 MP
+speed round 0 av1gpu 8-bit 4:2:0: 114.2 MP/s (runs 116.5, 113.4, 114.2)
+speed round 0 av1gpu 8-bit 4:4:4: 93.5 MP/s (runs 94.7, 93.1, 93.5)
+speed round 0 av1gpu 10-bit 4:2:0: 112.5 MP/s (runs 114.5, 112.5, 107.0)
+speed round 0 av1gpu 10-bit 4:4:4: 93.8 MP/s (runs 94.2, 93.8, 91.5)
+speed round 1 av1gpu 10-bit 4:4:4: 92.3 MP/s (runs 91.7, 92.3, 92.8)
+speed round 1 av1gpu 10-bit 4:2:0: 109.0 MP/s (runs 109.0, 107.6, 111.6)
+speed round 1 av1gpu 8-bit 4:4:4: 94.5 MP/s (runs 96.3, 93.3, 94.5)
+speed round 1 av1gpu 8-bit 4:2:0: 112.8 MP/s (runs 114.5, 112.7, 112.8)
+speed round 2 av1gpu 8-bit 4:2:0: 111.4 MP/s (runs 111.4, 114.1, 110.9)
+speed round 2 av1gpu 8-bit 4:4:4: 94.6 MP/s (runs 95.5, 94.6, 91.7)
+speed round 2 av1gpu 10-bit 4:2:0: 109.8 MP/s (runs 110.4, 109.8, 109.3)
+speed round 2 av1gpu 10-bit 4:4:4: 92.9 MP/s (runs 92.1, 94.0, 92.9)
+speed libaom speed 6, 16 parallel avifenc -j 1: 28.6 MP/s
+speed libaom speed 6, 16 parallel avifenc -j 1, 8-bit 4:4:4: 24.3 MP/s
+speed libaom speed 6, 16 parallel avifenc -j 1, 10-bit 4:2:0: 22.0 MP/s
+speed libaom speed 6, 16 parallel avifenc -j 1, 10-bit 4:4:4: 18.9 MP/s
+speed SVT-AV1 preset 6, 16 parallel avifenc -j 1, 10-bit 4:2:0: 43.5 MP/s
+# av1gpu formats benchmark
+
+- GPU: NVIDIA L4, 595.112.07, 23034 MiB, 72.00 W; `GP_ENCODERS=4`
+- CPU: AMD EPYC 7R13 Processor (16 logical CPUs)
+- avifenc 1.4.0 (dav1d [dec]:1.4.1, aom [enc/dec]:3.13.1, svt [enc]:v4.2.0); tune=iq: yes; libaom speed 6, one avifenc -j 1 per CPU
+- decoding: avifdec 1.4.0 (dav1d [dec]:1.4.1, aom [enc/dec]:3.13.1, svt [enc]:v4.2.0), -c dav1d (16-bit PNGs for 10-bit); SSIMULACRA2 against the source JPEG
+- 100 images, 477.8 MP; quality points 30,40,50,60,70,80
+- SVT-AV1: tune 3
+- speed runs: the set repeated 3x (300 images, 1434 MP), quality 60
+
+## Throughput (quality 60)
+
+av1gpu: median of all timed runs over the interleaved rounds (round medians in brackets).
+
+| Encoder | Format | MP/s | images/s | CPU cores | output MB |
+|---|---|---:|---:|---:|---:|
+| av1gpu | 8-bit 4:2:0 | 113.4 (114.2, 112.8, 111.4) | 23.7 | 0.1 | 67.47 |
+| av1gpu | 8-bit 4:4:4 | 94.5 (93.5, 94.5, 94.6) | 19.8 | 0.1 | 70.67 |
+| av1gpu | 10-bit 4:2:0 | 109.8 (112.5, 109.0, 109.8) | 23.0 | 0.1 | 66.64 |
+| av1gpu | 10-bit 4:4:4 | 92.8 (93.8, 92.3, 92.9) | 19.4 | 0.1 | 69.26 |
+| libaom s6 | 8-bit 4:2:0 | 28.6 | 6.0 | 16.0 | 86.61 |
+| libaom s6 | 8-bit 4:4:4 | 24.3 | 5.1 | 16.0 | 90.11 |
+| libaom s6 | 10-bit 4:2:0 | 22.0 | 4.6 | 16.0 | 87.83 |
+| libaom s6 | 10-bit 4:4:4 | 18.9 | 4.0 | 16.0 | 91.69 |
+| SVT-AV1 preset 6 | 10-bit 4:2:0 | 43.5 | 9.1 | 16.0 | 112.74 |
+
+

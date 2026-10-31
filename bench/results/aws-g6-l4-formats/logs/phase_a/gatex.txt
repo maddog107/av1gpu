@@ -1,0 +1,48 @@
+-- CPU JPEG route 8-bit 420 (images, q120)
+[gate] q120: 100/100 identical in dav1d and aomdec (420 99, mono 1; 5494550 bytes), 0 not encoded (unsupported input), rc=0 PASS
+   (5 s)
+-- CPU entropy 8-bit 420 (images, q120)
+[gate] q120: 100/100 identical in dav1d and aomdec (420 99, mono 1; 5494550 bytes), 0 not encoded (unsupported input), rc=0 PASS
+   (7 s)
+-- turbo3 8-bit 420 (images_gamut, q120)
+[gate] q120: 100/100 identical in dav1d and aomdec (420 100; 23083380 bytes), 0 not encoded (unsupported input), rc=0 PASS
+   (10 s)
+-- slow small-preset none 8-bit 420 (images_gamut, q120)
+[gate] q120: 100/100 identical in dav1d and aomdec (420 100; 22187424 bytes), 0 not encoded (unsupported input), rc=0 PASS
+   (36 s)
+-- CPU JPEG route 8-bit 444 (images, q120)
+[gate] q120: 100/100 identical in dav1d and aomdec (444 99, mono 1; 5737029 bytes), 0 not encoded (unsupported input), rc=0 PASS
+   (6 s)
+-- CPU entropy 8-bit 444 (images, q120)
+[gate] q120: 100/100 identical in dav1d and aomdec (444 99, mono 1; 5737029 bytes), 0 not encoded (unsupported input), rc=0 PASS
+   (7 s)
+-- turbo3 8-bit 444 (images_gamut, q120)
+[gate] q120: 100/100 identical in dav1d and aomdec (444 100; 24065560 bytes), 0 not encoded (unsupported input), rc=0 PASS
+   (13 s)
+-- slow small-preset none 8-bit 444 (images_gamut, q120)
+[gate] q120: 100/100 identical in dav1d and aomdec (444 100; 23317831 bytes), 0 not encoded (unsupported input), rc=0 PASS
+   (37 s)
+-- CPU JPEG route 10-bit 420 (images, q120)
+[gate] q120: 100/100 identical in dav1d and aomdec (420 10-bit 99, mono 10-bit 1; 5441830 bytes), 0 not encoded (unsupported input), rc=0 PASS
+   (7 s)
+-- CPU entropy 10-bit 420 (images, q120)
+[gate] q120: 100/100 identical in dav1d and aomdec (420 10-bit 99, mono 10-bit 1; 5441830 bytes), 0 not encoded (unsupported input), rc=0 PASS
+   (7 s)
+-- turbo3 10-bit 420 (images_gamut, q120)
+[gate] q120: 100/100 identical in dav1d and aomdec (420 10-bit 100; 22825963 bytes), 0 not encoded (unsupported input), rc=0 PASS
+   (12 s)
+-- slow small-preset none 10-bit 420 (images_gamut, q120)
+[gate] q120: 100/100 identical in dav1d and aomdec (420 10-bit 100; 21807960 bytes), 0 not encoded (unsupported input), rc=0 PASS
+   (37 s)
+-- CPU JPEG route 10-bit 444 (images, q120)
+[gate] q120: 100/100 identical in dav1d and aomdec (444 10-bit 99, mono 10-bit 1; 5648543 bytes), 0 not encoded (unsupported input), rc=0 PASS
+   (7 s)
+-- CPU entropy 10-bit 444 (images, q120)
+[gate] q120: 100/100 identical in dav1d and aomdec (444 10-bit 99, mono 10-bit 1; 5648543 bytes), 0 not encoded (unsupported input), rc=0 PASS
+   (8 s)
+-- turbo3 10-bit 444 (images_gamut, q120)
+[gate] q120: 100/100 identical in dav1d and aomdec (444 10-bit 100; 23615982 bytes), 0 not encoded (unsupported input), rc=0 PASS
+   (19 s)
+-- slow small-preset none 10-bit 444 (images_gamut, q120)
+[gate] q120: 100/100 identical in dav1d and aomdec (444 10-bit 100; 22741023 bytes), 0 not encoded (unsupported input), rc=0 PASS
+   (45 s)
