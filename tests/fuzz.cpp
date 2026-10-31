@@ -3,11 +3,14 @@
 // Generates random *legal* DecisionRecords (random sizes, partitions, modes,
 // angle deltas, CFL alphas, tx sizes/types, sparse coefficients incl. Golomb-range
 // magnitudes, skip blocks, tiles, delta-q, QM, filter intra, edge filter,
-// deblocking + CDEF), encodes them with av1core and checks
+// deblocking + CDEF; 4:2:0, 4:4:4 and monochrome), encodes them with av1core and checks
 // that dav1d AND aomdec reproduce av1core's reconstruction byte for byte.
 //
 //   av1g_fuzz --seed S --count N [--mode m2|full] [--out DIR] [--keep] [--maxdim D]
-//             [--big P] [--no-aom] [--quiet]
+//             [--big P] [--yuv444 P] [--no-aom] [--quiet]
+// --yuv444 P: P % of the non-monochrome cases are 4:4:4 (default 40).  That choice comes from
+// its own random stream, so every other case of a seed is the same record as with
+// --yuv444 0, which reproduces the pre-4:4:4 (4:2:0 / monochrome only) case stream exactly.
 // Exit status 0 iff every case matched.  Failing cases are kept in DIR as
 // case_<seed>.{obu,yuv,txt}.
 // post-filter path coverage (counted when the fuzzer re-runs the shared filters itself)
@@ -76,6 +79,16 @@ struct Coverage {
     uint64_t lf = 0, lfChromaOff = 0, lfSharp[8] = {}, cdef = 0, cdefBits[4] = {}, cdefDamp[4] = {}, cdefSec4 = 0, pfBoth = 0;
     uint64_t golomb = 0, maxMag = 0, skip = 0, mono = 0, deltaq = 0, sepuv = 0, multiTile = 0, edgeForced = 0;
     uint32_t maxTileCols = 0, maxTileRows = 0;
+    // 4:4:4 cases (counted separately: everything 4:2:0 exercises must also be hit in 4:4:4)
+    uint64_t c444 = 0, c444Tiles = 0, c444Lf = 0, c444Cdef = 0, c444Dq = 0, c444Qm = 0, c444Fi = 0, c444Ef = 0, c444TxSel = 0,
+             c444Reduced = 0, c444Sct = 0, c444DeltaQ = 0, c444Big = 0;
+    uint64_t txChroma444[19] = {};       // coded (eob > 0) chroma tx blocks per size
+    uint64_t txChromaType444[19][16] = {};  // derived chroma tx types coded per size
+    uint64_t cfl444[22] = {};            // CfL blocks per bsize
+    uint64_t uvmode444[14][7] = {};      // uv mode x angle delta
+    uint64_t subChroma444 = 0;           // 4xN / Nx4 blocks at even mi positions (no chroma in 4:2:0)
+    uint64_t multiTxChroma444 = 0;       // blocks with several chroma tx blocks per plane (64-sample sides)
+    uint64_t bsize444[22] = {};
     void report() const {
         static const int sq[4] = {AV1G_BLOCK_8X8, AV1G_BLOCK_16X16, AV1G_BLOCK_32X32, AV1G_BLOCK_64X64};
         int missing = 0;
@@ -147,6 +160,47 @@ struct Coverage {
         printf("  post-filter paths (lines / blocks / px):");
         for (int i = 0; i < AV1G_PF_STAT_COUNT; i++) { printf(" %s %llu,", pfName[i], g_pfStat[i]); missing += !g_pfStat[i]; }
         printf("\n");
+        // ---- 4:4:4 ----
+        printf("COVERAGE 4:4:4: %llu cases (tiles %llu, deblocking %llu, CDEF %llu, delta-q %llu, QM %llu, filter intra %llu,"
+               " edge filter %llu, tx-select %llu, reduced set %llu, screen content %llu, frame delta-q %llu, forced tiles %llu)\n",
+               (unsigned long long)c444, (unsigned long long)c444Tiles, (unsigned long long)c444Lf, (unsigned long long)c444Cdef,
+               (unsigned long long)c444Dq, (unsigned long long)c444Qm, (unsigned long long)c444Fi, (unsigned long long)c444Ef,
+               (unsigned long long)c444TxSel, (unsigned long long)c444Reduced, (unsigned long long)c444Sct,
+               (unsigned long long)c444DeltaQ, (unsigned long long)c444Big);
+        missing += !c444 + !c444Tiles + !c444Lf + !c444Cdef + !c444Dq + !c444Qm + !c444Fi + !c444Ef + !c444TxSel + !c444Reduced +
+                   !c444Sct + !c444DeltaQ;
+        printf("  block sizes:");
+        for (int b = 0; b < 22; b++) if (b < 13 || b > 15) { printf(" %llu", (unsigned long long)bsize444[b]); missing += !bsize444[b]; }
+        printf("\n  chroma tx sizes coded:");
+        int cAllowed = 0, cHit = 0;
+        for (int t = 0; t < 19; t++) {
+            printf(" %llu", (unsigned long long)txChroma444[t]);
+            if (av1g_tx_w(t) <= 32 && av1g_tx_h(t) <= 32) { cAllowed++; cHit += txChroma444[t] > 0; missing += !txChroma444[t]; }
+        }
+        int ctAllowed = 0, ctHit = 0;
+        for (int t = 0; t < 19; t++) {
+            if (av1g_tx_w(t) > 32 || av1g_tx_h(t) > 32) continue;
+            for (int ty = 0; ty < 16; ty++) {
+                bool derivable = false;   // some uv_mode / reduced_tx_set maps to this type
+                for (int m = 0; m <= AV1G_UV_CFL_PRED && !derivable; m++)
+                    derivable = av1g_chroma_tx_type(t, m, 0) == ty || av1g_chroma_tx_type(t, m, 1) == ty;
+                if (!derivable) continue;
+                ctAllowed++;
+                if (txChromaType444[t][ty]) ctHit++; else { missing++; printf("\n  MISSING 4:4:4 chroma tx size %d type %d", t, ty); }
+            }
+        }
+        printf("\n  chroma tx sizes: %d / %d, (size, derived type) combos: %d / %d\n  CfL per bsize:", cHit, cAllowed, ctHit, ctAllowed);
+        for (int b = 0; b < 22; b++)
+            if ((b < 13 || b > 15) && av1g_cfl_allowed(b)) { printf(" %llu", (unsigned long long)cfl444[b]); missing += !cfl444[b]; }
+        printf("\n  uv_mode x angle:");
+        for (int m = 0; m < 14; m++) for (int d = 0; d < 7; d++) {
+            bool need = (m < 13 && av1g_is_directional(m)) || d == 3;
+            if (need) missing += !uvmode444[m][d];
+        }
+        for (int m = 0; m < 14; m++) printf(" %llu", (unsigned long long)uvmode444[m][3]);
+        printf("\n  4xN/Nx4 chroma at even positions %llu, blocks with several chroma tx per plane %llu\n",
+               (unsigned long long)subChroma444, (unsigned long long)multiTxChroma444);
+        missing += !subChroma444 + !multiTxChroma444;
         printf("COVERAGE missing items: %d\n", missing);
     }
 };
@@ -156,6 +210,7 @@ struct Gen {
     Rng &rng;
     bool m2;
     int W, H, MiCols, MiRows, mono, txSelect, reduced;
+    int ssx = 1, ssy = 1;   // 4:4:4: 0, 0
     std::vector<av1g_block> blocks;
     int maxDepthBias;
     int dqBias = 0;
@@ -183,7 +238,7 @@ struct Gen {
         b.y_mode = (uint8_t)rng.range(0, 12);
         if (bs >= AV1G_BLOCK_8X8 && av1g_is_directional(b.y_mode) && rng.chance(70)) b.angle_delta_y = (int8_t)rng.range(-3, 3);
         if (txSelect && bs > AV1G_BLOCK_4X4) b.tx_depth = (uint8_t)rng.range(0, av1g_max_tx_depth(bs));
-        if (av1g_has_chroma(bs, r, c, mono)) {
+        if (av1g_has_chroma(bs, r, c, mono, ssx, ssy)) {
             int maxuv = av1g_cfl_allowed(bs) ? 13 : 12;
             b.uv_mode = (uint8_t)rng.range(0, maxuv);
             if (av1g_cfl_allowed(bs) && rng.chance(20)) b.uv_mode = AV1G_UV_CFL_PRED;
@@ -195,6 +250,12 @@ struct Gen {
             }
             if (bs >= AV1G_BLOCK_8X8 && av1g_is_directional(b.uv_mode) && rng.chance(70)) b.angle_delta_uv = (int8_t)rng.range(-3, 3);
             cov.uvmode[b.uv_mode][b.angle_delta_uv + 3]++;
+            if (!ssx) {
+                cov.uvmode444[b.uv_mode][b.angle_delta_uv + 3]++;
+                if (b.uv_mode == AV1G_UV_CFL_PRED) cov.cfl444[bs]++;
+                if ((av1g_bw4(bs) == 1 && !(c & 1)) || (av1g_bh4(bs) == 1 && !(r & 1))) cov.subChroma444++;
+                if (av1g_bw4(bs) == 16 || av1g_bh4(bs) == 16) cov.multiTxChroma444++;
+            }
             if (b.uv_mode == AV1G_UV_CFL_PRED) {
                 int su = b.cfl_alpha_u == 0 ? 0 : b.cfl_alpha_u < 0 ? 1 : 2, sv = b.cfl_alpha_v == 0 ? 0 : b.cfl_alpha_v < 0 ? 1 : 2;
                 cov.cflSigns[su * 3 + sv - 1]++;
@@ -206,6 +267,7 @@ struct Gen {
         }
         cov.ymode[b.y_mode][b.angle_delta_y + 3]++;
         cov.bsize[bs]++;
+        if (!ssx && !mono) cov.bsize444[bs]++;
         cov.depth[bs][b.tx_depth]++;
         blocks.push_back(b);
     }
@@ -323,8 +385,9 @@ struct FuzzCase {
     std::vector<int16_t> coeffs;
 };
 
-// Build the random legal record of seed cs (deterministic).
-static bool make_case(uint64_t cs, bool m2, int maxdim, int bigPct, FuzzCase &fc) {
+// Build the random legal record of seed cs (deterministic).  pct444: % of the non-monochrome
+// cases that are 4:4:4, drawn from a separate stream (0: the 4:2:0 / monochrome stream as before).
+static bool make_case(uint64_t cs, bool m2, int maxdim, int bigPct, FuzzCase &fc, int pct444 = 40) {
     Rng rng(cs);
     Gen g(rng, m2);
     // ---- frame parameters ----
@@ -344,6 +407,13 @@ static bool make_case(uint64_t cs, bool m2, int maxdim, int bigPct, FuzzCase &fc
     rec.fp.width = W;
     rec.fp.height = H;
     rec.fp.monochrome = m2 ? 0 : rng.chance(15);
+    {
+        Rng yrng(cs ^ 0x4444C0FFEE444444ull);   // own stream: the other cases keep their records
+        if (!m2 && !rec.fp.monochrome && pct444 > 0 && yrng.chance(pct444)) {
+            rec.fp.chroma_format = AV1G_CHROMA_444;
+            g.ssx = g.ssy = 0;
+        }
+    }
     rec.fp.base_q_idx = (uint8_t)rng.range(1, 255);
     rec.fp.tx_mode_select = m2 ? 0 : rng.chance(60);
     rec.fp.reduced_tx_set = m2 ? 0 : rng.chance(30);
@@ -466,7 +536,7 @@ static bool make_case(uint64_t cs, bool m2, int maxdim, int bigPct, FuzzCase &fc
 #ifndef AV1G_FUZZ_NO_MAIN
 int main(int argc, char **argv) {
     uint64_t seed = 1;
-    int count = 100, maxdim = 300, bigPct = 2;
+    int count = 100, maxdim = 300, bigPct = 2, pct444 = 40;
     bool m2 = false, keep = false, useAom = true, quiet = false;
     std::string out = default_out_dir("av1g_fuzz");
     for (int i = 1; i < argc; i++) {
@@ -479,6 +549,7 @@ int main(int argc, char **argv) {
         else if (a == "--keep") keep = true;
         else if (a == "--maxdim") maxdim = atoi(nx().c_str());
         else if (a == "--big") bigPct = atoi(nx().c_str());
+        else if (a == "--yuv444") pct444 = atoi(nx().c_str());
         else if (a == "--no-aom") useAom = false;
         else if (a == "--quiet") quiet = true;
         else { fprintf(stderr, "unknown arg %s\n", a.c_str()); return 2; }
@@ -489,7 +560,7 @@ int main(int argc, char **argv) {
     for (int ci = 0; ci < count; ci++) {
         const uint64_t cs = seed + ci;
         FuzzCase fc;
-        if (!make_case(cs, m2, maxdim, bigPct, fc)) return 1;
+        if (!make_case(cs, m2, maxdim, bigPct, fc, pct444)) return 1;
         av1g_decision_record &rec = fc.rec;
         totalBlocks += rec.n_blocks;
         totalTxb += rec.n_txb;
@@ -505,6 +576,23 @@ int main(int argc, char **argv) {
         }
         totalFixed += o.n_fixed_txb;
         cov.mono += rec.fp.monochrome;
+        const bool is444 = rec.fp.chroma_format == AV1G_CHROMA_444;
+        const int ssx = av1g_ssx(&rec.fp), ssy = av1g_ssy(&rec.fp);
+        if (is444) {
+            cov.c444++;
+            cov.c444Tiles += o.tile_cols * o.tile_rows > 1;
+            cov.c444Lf += rec.fp.loop_filter_level[0] || rec.fp.loop_filter_level[1];
+            cov.c444Cdef += rec.fp.enable_cdef;
+            cov.c444Dq += rec.fp.delta_q_present;
+            cov.c444Qm += rec.fp.using_qmatrix;
+            cov.c444Fi += rec.fp.enable_filter_intra;
+            cov.c444Ef += rec.fp.enable_intra_edge_filter;
+            cov.c444TxSel += rec.fp.tx_mode_select;
+            cov.c444Reduced += rec.fp.reduced_tx_set;
+            cov.c444Sct += rec.fp.allow_screen_content_tools;
+            cov.c444DeltaQ += rec.fp.delta_q_u_dc || rec.fp.delta_q_u_ac || rec.fp.delta_q_v_dc || rec.fp.delta_q_v_ac;
+            cov.c444Big += rec.fp.width > 4096 || (uint64_t)rec.fp.width * rec.fp.height > 4096ull * 2304;
+        }
         cov.sct += rec.fp.allow_screen_content_tools;
         cov.fiFrames += rec.fp.enable_filter_intra;
         const bool lfOn = rec.fp.loop_filter_level[0] || rec.fp.loop_filter_level[1];
@@ -553,6 +641,7 @@ int main(int argc, char **argv) {
                 const av1g_txb &x = rec.txb[t];
                 if (!x.eob) continue;
                 if (x.plane == 0) cov.txLuma[x.tx_size][x.tx_type]++; else cov.txChroma[x.tx_size]++;
+                if (x.plane && is444) { cov.txChroma444[x.tx_size]++; cov.txChromaType444[x.tx_size][x.tx_type]++; }
                 const int16_t *q = rec.coeffs + x.coeff_off;
                 for (int i = 0, n = av1g_tx_coeffs(x.tx_size); i < n; i++) {
                     uint64_t a = q[i] < 0 ? -q[i] : q[i];
@@ -571,6 +660,8 @@ int main(int argc, char **argv) {
             else {
                 av1g_decision_record &q = pr->rec;
                 if (q.n_blocks != rec.n_blocks || q.n_txb != rec.n_txb) why = "block/txb count";
+                if (q.fp.chroma_format != rec.fp.chroma_format || q.fp.monochrome != rec.fp.monochrome)
+                    why = "frame params (chroma format)";
                 if (q.fp.using_qmatrix != rec.fp.using_qmatrix || q.fp.delta_q_present != rec.fp.delta_q_present ||
                     q.fp.enable_filter_intra != rec.fp.enable_filter_intra ||
                     q.fp.enable_intra_edge_filter != rec.fp.enable_intra_edge_filter ||
@@ -596,7 +687,7 @@ int main(int argc, char **argv) {
                 }
                 for (uint32_t b = 0; why.empty() && b < rec.n_blocks; b++) {
                     const av1g_block &x = rec.blocks[b], &y = q.blocks[b];
-                    bool hc = av1g_has_chroma(x.bsize, x.mi_row, x.mi_col, rec.fp.monochrome);
+                    bool hc = av1g_has_chroma(x.bsize, x.mi_row, x.mi_col, rec.fp.monochrome, ssx, ssy);
                     if (x.mi_row != y.mi_row || x.mi_col != y.mi_col || x.bsize != y.bsize || x.skip != y.skip ||
                         x.tx_depth != y.tx_depth || x.y_mode != y.y_mode || x.angle_delta_y != y.angle_delta_y ||
                         (hc && (x.uv_mode != y.uv_mode || x.angle_delta_uv != y.angle_delta_uv ||
@@ -671,7 +762,8 @@ int main(int argc, char **argv) {
                 av1g_pf_frame f;
                 memset(&f, 0, sizeof f);
                 av1g_pf_frame_init(&rec.fp, &f);
-                std::vector<uint8_t> sk((size_t)f.MiRows * f.MiCols), t0(sk.size()), t1((size_t)(f.MiRows / 2) * (f.MiCols / 2)), t2(t1.size());
+                std::vector<uint8_t> sk((size_t)f.MiRows * f.MiCols), t0(sk.size()), t1((size_t)(f.MiRows >> ssy) * (f.MiCols >> ssx)),
+                    t2(t1.size());
                 std::vector<int8_t> cd((size_t)f.sbCols * f.sbRows, -1);
                 f.skip = sk.data(); f.lfTx[0] = t0.data(); f.lfTx[1] = t1.data(); f.lfTx[2] = t2.data(); f.cdefIdx = cd.data();
                 for (uint32_t b = 0; b < rec.n_blocks; b++) av1g_pf_mark_block(&f, &rec.blocks[b]);
@@ -701,7 +793,8 @@ int main(int argc, char **argv) {
         ok1 = ok1 && okPf;
         if (!quiet || !(ok1 && ok2))
             printf("seed %llu %dx%d%s q%d lf%d/%d/%d/%d cdef%d txsel%d red%d tiles %ux%u blocks %u txb %u fixed %u bytes %zu: dav1d %s aomdec %s\n",
-                   (unsigned long long)cs, (int)rec.fp.width, (int)rec.fp.height, rec.fp.monochrome ? " mono" : "", rec.fp.base_q_idx,
+                   (unsigned long long)cs, (int)rec.fp.width, (int)rec.fp.height, rec.fp.monochrome ? " mono" : is444 ? " 444" : "",
+                   rec.fp.base_q_idx,
                    rec.fp.loop_filter_level[0], rec.fp.loop_filter_level[1], rec.fp.loop_filter_level[2], rec.fp.loop_filter_level[3],
                    rec.fp.enable_cdef ? 1 + rec.fp.cdef_bits : 0, rec.fp.tx_mode_select, rec.fp.reduced_tx_set, o.tile_cols, o.tile_rows, rec.n_blocks, rec.n_txb,
                    o.n_fixed_txb, o.obu_size, ok1 ? "OK" : (r1 ? "ERR" : "MISMATCH"),
@@ -729,9 +822,11 @@ int main(int argc, char **argv) {
         fflush(stdout);
     }
     cov.report();
-    printf("SUMMARY seeds %llu..%llu mode %s: %d cases, %d mismatches (%d parser round-trip failures), %d encode errors, blocks %llu, txb %llu, range-fixed txb %llu\n",
-           (unsigned long long)seed, (unsigned long long)(seed + count - 1), m2 ? "m2" : "full", count, fails, parseFails, encFails,
-           (unsigned long long)totalBlocks, (unsigned long long)totalTxb, (unsigned long long)totalFixed);
+    printf("SUMMARY seeds %llu..%llu mode %s: %d cases (%llu 4:4:4, %llu monochrome), %d mismatches (%d parser round-trip failures), "
+           "%d encode errors, blocks %llu, txb %llu, range-fixed txb %llu\n",
+           (unsigned long long)seed, (unsigned long long)(seed + count - 1), m2 ? "m2" : "full", count, (unsigned long long)cov.c444,
+           (unsigned long long)cov.mono, fails, parseFails, encFails, (unsigned long long)totalBlocks, (unsigned long long)totalTxb,
+           (unsigned long long)totalFixed);
     return (fails || encFails) ? 1 : 0;
 }
 #endif  // AV1G_FUZZ_NO_MAIN

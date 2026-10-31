@@ -256,8 +256,8 @@ struct Decider {
     }
 
     void best_chroma(int x, int y, int bs, av1g_block &b) const {
-        const int ubs = av1g_uv_bsize(bs);
-        const int txSz = av1g_uv_tx_size(bs);
+        const int ubs = av1g_uv_bsize(bs, 1, 1);  // reference engine: 4:2:0 only
+        const int txSz = av1g_uv_tx_size(bs, 1, 1);
         const int lw = AV1G_T(Tx_Width_Log2)[txSz], lh = AV1G_T(Tx_Height_Log2)[txSz];
         // chroma block origin: (MiCol >> 1) * 4 (sub-8x8 blocks carry the chroma of the 8x8 area)
         const int cx = ((x >> 2) >> 1) << 2, cy = ((y >> 2) >> 1) << 2;
@@ -326,7 +326,7 @@ struct Decider {
         b.bsize = (uint8_t)bs;
         if (sbq) b.sb_qindex = (*sbq)[(size_t)(r >> 4) * sbCols + (c >> 4)];
         best_luma(c * 4, r * 4, bs, b);
-        if (av1g_has_chroma(bs, r, c, mono)) best_chroma(c * 4, r * 4, bs, b);
+        if (av1g_has_chroma(bs, r, c, mono, 1, 1)) best_chroma(c * 4, r * 4, bs, b);
         out.push_back(b);
     }
 
@@ -600,7 +600,7 @@ int ref_engine_encode(const Image &img, const RefEngineOpts &o, OwnedRecord &R, 
         bool zero = true;
         for (uint32_t t = R.block_txb[b]; t < R.block_txb[b + 1]; t++) zero &= R.txb[t].eob == 0;
         if (zero) { R.blocks[b].skip = 1; nskip++; }
-        if (R.blocks[b].uv_mode == AV1G_UV_CFL_PRED && av1g_has_chroma(R.blocks[b].bsize, R.blocks[b].mi_row, R.blocks[b].mi_col, img.mono)) ncfl++;
+        if (R.blocks[b].uv_mode == AV1G_UV_CFL_PRED && av1g_has_chroma(R.blocks[b].bsize, R.blocks[b].mi_row, R.blocks[b].mi_col, img.mono, 1, 1)) ncfl++;
     }
     eo.flags = AV1G_ENC_AVIF | AV1G_ENC_PREFILTER_RECON;
     rc = av1g_encode(&R.rec, &eo, out);

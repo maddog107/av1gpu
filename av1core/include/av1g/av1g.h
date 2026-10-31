@@ -29,7 +29,7 @@ extern "C" {
 #define AV1G_ENC_TD          4u  /* prefix the OBU stream with a temporal delimiter */
 #define AV1G_ENC_AVIF        8u  /* also produce AVIF file bytes */
 #define AV1G_ENC_PREFILTER_RECON 0x20u /* recon = before deblocking / CDEF, NOT cropped: planes are
-                                         MiCols*4 x MiRows*4 (>> 1 for chroma) because the filters
+                                         MiCols*4 x MiRows*4 (>> ssx/ssy for chroma) because the filters
                                          read the decoded area beyond the picture.  Strength
                                          searches start here; av1g_postfilter finishes it. */
 #define AV1G_ENC_BITSTREAM_ONLY 0x10000u /* no reconstruction and no range check: symbol coding only
@@ -42,11 +42,11 @@ typedef struct av1g_encode_opts {
 } av1g_encode_opts;
 
 typedef struct av1g_output {
-    uint8_t *obu;            /* [TD] + OBU_SEQUENCE_HEADER + OBU_FRAME */
+    uint8_t *obu;            /* [TD] + OBU_SEQUENCE_HEADER (seq_profile 0, or 1 for 4:4:4) + OBU_FRAME */
     size_t   obu_size;
     uint8_t *avif;           /* AVIF file (AV1G_ENC_AVIF) */
     size_t   avif_size;
-    uint8_t *recon[3];       /* cropped planes: Y w x h, U/V ((w+1)/2) x ((h+1)/2) */
+    uint8_t *recon[3];       /* cropped planes: Y w x h, U/V ((w+1)/2) x ((h+1)/2) (4:2:0) or w x h (4:4:4) */
     uint32_t recon_w[3], recon_h[3];
     /* stats */
     uint32_t seq_level_idx;
@@ -89,8 +89,8 @@ int av1g_apply_sb_qindex(av1g_decision_record *rec, const uint8_t *sb_map);
 /* Post-filters (deblocking, then CDEF) exactly as the decoder applies them, in place on a
  * pre-filter reconstruction (av1g_encode with AV1G_ENC_PREFILTER_RECON).  Uses fp's
  * loop_filter_* / cdef_* fields and the blocks' skip / tx_depth / cdef_idx.  planes: Y, U, V
- * (U/V ignored for monochrome), each at least MiCols*4 x MiRows*4 (>> 1 for chroma) with the
- * given strides.  Building blocks for GPU kernels are in av1g/postfilter.h (host + device). */
+ * (U/V ignored for monochrome), each at least MiCols*4 x MiRows*4 (>> ssx / ssy for chroma, i.e.
+ * halved for 4:2:0, full size for 4:4:4) with the given strides.  Building blocks for GPU kernels are in av1g/postfilter.h (host + device). */
 int av1g_postfilter(const av1g_decision_record *rec, uint8_t *const planes[3], const int stride[3]);
 
 /* Validate a record (block sequence / partition derivation, field ranges).
@@ -104,8 +104,8 @@ int av1g_validate(const av1g_decision_record *rec, char *err, size_t errlen);
 int av1g_encode(av1g_decision_record *rec, const av1g_encode_opts *opts, av1g_output *out);
 void av1g_output_free(av1g_output *out);
 
-/* Parse an AV1 OBU stream (sequence header + one intra OBU_FRAME using only the
- * Wave-1 toolset: no deblocking/CDEF/LR/QM/delta-q/segmentation/filter-intra/
+/* Parse an AV1 OBU stream (Main or High profile 8-bit sequence header + one intra OBU_FRAME
+ * using only the Wave-1 toolset: no deblocking/CDEF/LR/QM/delta-q/segmentation/filter-intra/
  * edge filter/palette/intrabc, 64x64 superblocks, uniform tiles) back into a
  * DecisionRecord with all decisions and quantized coefficients.  Used for libaom
  * decision replay.  Free with av1g_parsed_free(). */

@@ -11,8 +11,9 @@
  * Order (spec 7.14 / 7.15): deblock every plane - pass 0 (vertical edges) of a plane
  * completes before its pass 1 (horizontal edges); within a pass all edges are independent
  * - then CDEF reads the deblocked frame and writes a separate output frame; all 8x8 blocks
- * are independent.  8-bit, 4:2:0 or monochrome, no segmentation / delta-lf / lossless;
- * lfLevel[] are the effective levels (Y vertical, Y horizontal, U, V).
+ * are independent.  8-bit, 4:2:0, 4:4:4 or monochrome (ssx/ssy from fp.chroma_format), no
+ * segmentation / delta-lf / lossless; lfLevel[] are the effective levels (Y vertical,
+ * Y horizontal, U, V).
  *
  * Define AV1G_PF_STAT(kind) before including to count filter paths (tests only). */
 #ifndef AV1G_POSTFILTER_H
@@ -33,10 +34,12 @@ enum { AV1G_PF_LF_MASKED = 0, AV1G_PF_LF_NARROW_HEV, AV1G_PF_LF_NARROW, AV1G_PF_
 
 typedef struct av1g_pf_frame {
     int W, H, MiRows, MiCols, mono;
+    int ssx, ssy;               /* chroma subsampling: 1, 1 (4:2:0, monochrome) or 0, 0 (4:4:4) */
     uint8_t *plane[3];          /* frame being deblocked in place / CDEF source */
     int stride[3];
     uint8_t *skip;              /* Skips, MiRows x MiCols, stride MiCols */
-    uint8_t *lfTx[3];           /* LoopfilterTxSizes: luma like skip; chroma (MiRows/2) x (MiCols/2), stride MiCols/2 */
+    uint8_t *lfTx[3];           /* LoopfilterTxSizes: luma like skip; chroma (MiRows >> ssy) x (MiCols >> ssx),
+                                   stride MiCols >> ssx */
     int8_t *cdefIdx;            /* per 64x64, raster, stride sbCols; -1 = no CDEF (no non-skip block in it) */
     int32_t *cdefDirVar;        /* optional (GPU path): per 8x8, (var << 3) | yDir, stride MiCols/2 */
     int sbCols, sbRows;
@@ -54,6 +57,8 @@ AV1G_HD void av1g_pf_frame_init(const av1g_frame_params *fp, av1g_pf_frame *f) {
     f->MiRows = av1g_mi_rows((int)fp->height);
     f->MiCols = av1g_mi_cols((int)fp->width);
     f->mono = fp->monochrome;
+    f->ssx = av1g_ssx(fp);
+    f->ssy = av1g_ssy(fp);
     f->sbCols = (f->MiCols + 15) >> 4;
     f->sbRows = (f->MiRows + 15) >> 4;
     for (int i = 0; i < 4; i++) f->lfLevel[i] = fp->loop_filter_level[i];
@@ -80,9 +85,9 @@ AV1G_HD void av1g_pf_mark_block(const av1g_pf_frame *f, const av1g_block *b) {
             f->skip[k] = b->skip;
             f->lfTx[0][k] = (uint8_t)txY;
         }
-    if (av1g_has_chroma(bs, r0, c0, f->mono)) {
-        const int uvSz = av1g_uv_bsize(bs), txUV = av1g_uv_tx_size(bs);
-        const int cr = f->MiRows >> 1, cc = f->MiCols >> 1, y0 = r0 >> 1, x0 = c0 >> 1;
+    if (av1g_has_chroma(bs, r0, c0, f->mono, f->ssx, f->ssy)) {
+        const int uvSz = av1g_uv_bsize(bs, f->ssx, f->ssy), txUV = av1g_uv_tx_size(bs, f->ssx, f->ssy);
+        const int cr = f->MiRows >> f->ssy, cc = f->MiCols >> f->ssx, y0 = r0 >> f->ssy, x0 = c0 >> f->ssx;
         const int w = av1g_bw4(uvSz), h = av1g_bh4(uvSz);
         for (int y = y0; y < y0 + h && y < cr; y++)
             for (int x = x0; x < x0 + w && x < cc; x++) {
@@ -157,20 +162,21 @@ AV1G_HD void av1g_lf_line(uint8_t *q0p, ptrdiff_t step, int plane, int filterSiz
 }
 
 /* Edge loop filter process (7.14.2): plane, pass, luma 4x4 position (row, col) - the 4
- * lines of one edge segment.  Callers visit row/col in steps of 2 for chroma. */
+ * lines of one edge segment.  Callers visit row/col in steps of 1 << ssy / 1 << ssx for
+ * chroma (every 4x4 in 4:4:4). */
 AV1G_HD void av1g_lf_edge(const av1g_pf_frame *f, int plane, int pass, int row, int col) {
-    const int sub = plane ? 1 : 0;
+    const int subX = plane ? f->ssx : 0, subY = plane ? f->ssy : 0;
     const int x = col * 4, y = row * 4;
     if (x >= f->W || y >= f->H) return;
     if (pass == 0 && x == 0) return;
     if (pass == 1 && y == 0) return;
-    row |= sub;
-    col |= sub;
-    const int xP = x >> sub, yP = y >> sub;
-    const int prevRow = row - ((pass == 1) << sub), prevCol = col - ((pass == 0) << sub);
-    const int s = f->MiCols >> sub;
-    const int txSz = f->lfTx[plane][(size_t)(row >> sub) * s + (col >> sub)];
-    const int prevTxSz = f->lfTx[plane][(size_t)(prevRow >> sub) * s + (prevCol >> sub)];
+    row |= subY;
+    col |= subX;
+    const int xP = x >> subX, yP = y >> subY;
+    const int prevRow = row - ((pass == 1) << subY), prevCol = col - ((pass == 0) << subX);
+    const int s = f->MiCols >> subX;
+    const int txSz = f->lfTx[plane][(size_t)(row >> subY) * s + (col >> subX)];
+    const int prevTxSz = f->lfTx[plane][(size_t)(prevRow >> subY) * s + (prevCol >> subX)];
     /* intra frame: applyFilter = isTxEdge (isIntra = 1), so MiSize / skip do not matter */
     int cur, prev;
     if (pass == 0) {
@@ -205,10 +211,10 @@ AV1G_HD void av1g_deblock_frame(const av1g_pf_frame *f) {
     if (!f->lfLevel[0] && !f->lfLevel[1]) return;
     for (int p = 0; p < (f->mono ? 1 : 3); p++) {
         if (p > 0 && !f->lfLevel[1 + p]) continue;
-        const int step = p ? 2 : 1;
+        const int rowStep = p ? 1 << f->ssy : 1, colStep = p ? 1 << f->ssx : 1;
         for (int pass = 0; pass < 2; pass++)
-            for (int row = 0; row < f->MiRows; row += step)
-                for (int col = 0; col < f->MiCols; col += step) av1g_lf_edge(f, p, pass, row, col);
+            for (int row = 0; row < f->MiRows; row += rowStep)
+                for (int col = 0; col < f->MiCols; col += colStep) av1g_lf_edge(f, p, pass, row, col);
     }
 }
 
@@ -309,7 +315,7 @@ AV1G_HD av1g_cdef_blk av1g_cdef_params(const av1g_pf_frame *f, int idx, int yDir
     o.ySec = f->cdefYSec[idx];
     o.uvPri = f->cdefUVPri[idx];
     o.uvSec = f->cdefUVSec[idx];
-    o.uvDir = o.uvPri == 0 ? 0 : yDir;  /* Cdef_Uv_Dir[1][1] is the identity (4:2:0) */
+    o.uvDir = o.uvPri == 0 ? 0 : yDir;  /* Cdef_Uv_Dir[ssx][ssy] is the identity for 4:2:0 and 4:4:4 */
     return o;
 }
 
@@ -330,7 +336,7 @@ AV1G_HD av1g_cdef_blk av1g_cdef_setup(const av1g_pf_frame *f, const uint8_t *src
  * plane src.  damping: CdefDamping for luma, CdefDamping - 1 for chroma. */
 AV1G_HD int av1g_cdef_pixel(const av1g_pf_frame *f, const uint8_t *src, int sstride, int plane, int x, int y, int priStr,
                             int secStr, int damping, int dir) {
-    const int sub = plane ? 1 : 0;
+    const int subX = plane ? f->ssx : 0, subY = plane ? f->ssy : 0;
     const int8_t Dirs[8][2][2] = {{{-1, 1}, {-2, 2}}, {{0, 1}, {-1, 2}}, {{0, 1}, {0, 2}}, {{0, 1}, {1, 2}},  /* Cdef_Directions */
                                   {{1, 1}, {2, 2}},   {{1, 0}, {2, 1}},  {{1, 0}, {2, 0}}, {{1, 0}, {2, -1}}};
     const int8_t PriTaps[2][2] = {{4, 2}, {3, 3}}, SecTaps[2] = {2, 1};  /* Cdef_Pri_Taps / Cdef_Sec_Taps */
@@ -343,7 +349,7 @@ AV1G_HD int av1g_cdef_pixel(const av1g_pf_frame *f, const uint8_t *src, int sstr
                 const int dd = t == 0 ? dir : (dir + (t == 1 ? -2 : 2)) & 7;
                 const int yy = y + sign * Dirs[dd][k][0], xx = x + sign * Dirs[dd][k][1];
                 /* is_inside_filter_region: the frame (MiRows x MiCols in luma 4x4 units) */
-                if (yy < 0 || xx < 0 || ((yy << sub) >> 2) >= f->MiRows || ((xx << sub) >> 2) >= f->MiCols) continue;
+                if (yy < 0 || xx < 0 || ((yy << subY) >> 2) >= f->MiRows || ((xx << subX) >> 2) >= f->MiCols) continue;
                 const int p = src[(size_t)yy * sstride + xx];
                 if (t == 0) sum += PriTaps[priStr & 1][k] * av1g_cdef_constrain_adj(p - x0v, priStr, priAdj);
                 else sum += SecTaps[k] * av1g_cdef_constrain_adj(p - x0v, secStr, secAdj);
@@ -361,10 +367,11 @@ AV1G_HD void av1g_cdef_block(const av1g_pf_frame *f, uint8_t *const dst[3], cons
     const av1g_cdef_blk o = av1g_cdef_setup(f, f->plane[0], f->stride[0], r, c);
     if (o.filtered) AV1G_PF_STAT(AV1G_PF_CDEF_FILTERED);
     for (int p = 0; p < (f->mono ? 1 : 3); p++) {
-        const int sub = p ? 1 : 0, x0 = (c * 4) >> sub, y0 = (r * 4) >> sub, w = 8 >> sub;
+        const int subX = p ? f->ssx : 0, subY = p ? f->ssy : 0;
+        const int x0 = (c * 4) >> subX, y0 = (r * 4) >> subY, w = 8 >> subX, h = 8 >> subY;
         const uint8_t *src = f->plane[p];
         const int ss = f->stride[p];
-        for (int i = 0; i < w; i++)
+        for (int i = 0; i < h; i++)
             for (int j = 0; j < w; j++) {
                 int v = src[(size_t)(y0 + i) * ss + x0 + j];
                 if (o.filtered)
