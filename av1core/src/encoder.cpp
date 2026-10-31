@@ -89,7 +89,7 @@ bool compute_tiles(uint32_t W, uint32_t H, int colsLog2, int rowsLog2, TileInfo 
     }
 }
 
-static int choose_level(uint32_t W, uint32_t H, int ntiles, int tcols) {
+int choose_level(uint32_t W, uint32_t H, int ntiles, int tcols) {
     if (W < 16 || H < 16) return 31;
     for (int i = 0; i < AV1G_NUM_LEVELS; i++) {
         const uint32_t *L = av1g_levels[i];
@@ -234,6 +234,7 @@ private:
     int W = 0, H = 0, MiCols = 0, MiRows = 0, mono = 0, sbCols = 0, sbRows = 0;
     int ssx = 1, ssy = 1;           // chroma subsampling (spec subsampling_x / subsampling_y)
     int bd = 8;                     // BitDepth (8 or 10)
+    int lossless = 0;               // CodedLossless (base_q_idx 0): 4x4 WHT in every plane, no post-filters
     int subX(int p) const { return p ? ssx : 0; }
     int subY(int p) const { return p ? ssy : 0; }
     TileInfo tiles;
@@ -300,7 +301,6 @@ private:
     int derive_partition(int r, int c, int bSize, int hasRows, int hasCols);
     void clear_block_decoded(int r, int c);
     void check_block_fields(const av1g_block &b);
-    void write_headers(BitWriter &seq, BitWriter &fh, int level);
 };
 
 void Encoder::check_block_fields(const av1g_block &b) {
@@ -327,7 +327,8 @@ void Encoder::check_block_fields(const av1g_block &b) {
     if (hasChroma) {
         if (b.uv_mode > AV1G_UV_CFL_PRED) throw Error(AV1G_ERR_INVALID, "block %u: uv_mode %d", bIdx, b.uv_mode);
         if (b.uv_mode == AV1G_UV_CFL_PRED) {
-            if (!av1g_cfl_allowed(bs)) throw Error(AV1G_ERR_INVALID, "block %u: CFL not allowed for bsize %d", bIdx, bs);
+            if (!av1g_cfl_allowed_ex(bs, lossless, ssx, ssy))
+                throw Error(AV1G_ERR_INVALID, "block %u: CFL not allowed for bsize %d%s", bIdx, bs, lossless ? " (lossless)" : "");
             if (b.cfl_alpha_u < -16 || b.cfl_alpha_u > 16 || b.cfl_alpha_v < -16 || b.cfl_alpha_v > 16 ||
                 (b.cfl_alpha_u == 0 && b.cfl_alpha_v == 0))
                 throw Error(AV1G_ERR_INVALID, "block %u: bad CFL alphas %d %d", bIdx, b.cfl_alpha_u, b.cfl_alpha_v);
@@ -511,8 +512,8 @@ void Encoder::encode_block(S &sk, int r, int c, int bsize) {
         int ctx = (availU ? mapAt(mapSkip, r - 1, c) : 0) + (availL ? mapAt(mapSkip, r, c - 1) : 0);
         b.skip = (uint8_t)sk.sym(cdf.skip[ctx], b.skip, 2);
     }
-    // ---- read_cdef ----
-    if (fp->enable_cdef && !b.skip) {
+    // ---- read_cdef (not coded in CodedLossless frames; lossless records have enable_cdef = 0) ----
+    if (fp->enable_cdef && !b.skip && !lossless) {
         if (sbCdef[sbIndex] == -1) {
             b.cdef_idx = (int8_t)lit(sk, b.cdef_idx, fp->cdef_bits);
             sbCdef[sbIndex] = b.cdef_idx;
@@ -569,7 +570,7 @@ void Encoder::encode_block(S &sk, int r, int c, int bsize) {
         b.angle_delta_y = (int8_t)(sk.sym(cdf.angle_delta[b.y_mode - AV1G_V_PRED], b.angle_delta_y + AV1G_MAX_ANGLE_DELTA, 7) -
                                    AV1G_MAX_ANGLE_DELTA);
     if (hasChroma) {
-        if (av1g_cfl_allowed(bsize))
+        if (av1g_cfl_allowed_ex(bsize, lossless, ssx, ssy))
             b.uv_mode = (uint8_t)sk.sym(cdf.uv_mode_cfl_allowed[b.y_mode], b.uv_mode, AV1G_UV_INTRA_MODES_CFL_ALLOWED);
         else
             b.uv_mode = (uint8_t)sk.sym(cdf.uv_mode_cfl_not_allowed[b.y_mode], b.uv_mode, AV1G_UV_INTRA_MODES_CFL_NOT_ALLOWED);
@@ -623,7 +624,7 @@ void Encoder::encode_block(S &sk, int r, int c, int bsize) {
         else if (maxTxDepth == 2) b.tx_depth = (uint8_t)sk.sym(cdf.tx_16x16[ctx], b.tx_depth, 3);
         else b.tx_depth = (uint8_t)sk.sym(cdf.tx_8x8[ctx], b.tx_depth, 2);
     }
-    txSize = av1g_luma_tx_size(bsize, b.tx_depth);
+    txSize = lossless ? (int)AV1G_TX_4X4 : av1g_luma_tx_size(bsize, b.tx_depth);   // read_tx_size: Lossless -> TX_4X4
     if (!S::kWrite) check_block_fields(b);
 
     if (b.skip) {  // reset_block_context
@@ -644,7 +645,7 @@ void Encoder::encode_block(S &sk, int r, int c, int bsize) {
     if (S::kWrite) {
         const uint32_t t0 = R->block_txb[bIdx], t1 = R->block_txb[bIdx + 1];
         uint32_t ti = t0;
-        av1g_for_each_txb(bsize, r, c, b.tx_depth, mono, ssx, ssy, MiRows, MiCols,
+        av1g_for_each_txb_ex(bsize, r, c, b.tx_depth, lossless, mono, ssx, ssy, MiRows, MiCols,
                           [&](int plane, int txSz, int x4, int y4, int xi, int yi) {
                               if (ti >= t1 || R->txb[ti].plane != plane || R->txb[ti].tx_size != txSz ||
                                   R->txb[ti].x4 != x4 || R->txb[ti].y4 != y4)
@@ -655,7 +656,7 @@ void Encoder::encode_block(S &sk, int r, int c, int bsize) {
                           });
         if (ti != t1) throw Error(AV1G_ERR_INVALID, "block %u: tx layout mismatch (count)", bIdx);
     } else {
-        av1g_for_each_txb(bsize, r, c, b.tx_depth, mono, ssx, ssy, MiRows, MiCols,
+        av1g_for_each_txb_ex(bsize, r, c, b.tx_depth, lossless, mono, ssx, ssy, MiRows, MiCols,
                           [&](int plane, int txSz, int x4, int y4, int xi, int yi) {
                               av1g_txb t;
                               memset(&t, 0, sizeof t);
@@ -734,7 +735,8 @@ template <int BD>
 uint32_t Encoder::dequant_inverse(const int16_t *q, int plane, int txSz, int txType, int32_t *dq, int32_t *res) {
     av1g_dequant<BD>(q, dq, txSz, dcQ[plane], acQ[plane], av1g_qm(fp->using_qmatrix, qmLevel[plane], plane, txSz, txType));
     uint32_t err = 0;
-    av1g_inv_txfm2d<BD>(dq, txSz, txType, res, &err);
+    if (lossless) av1g_inv_wht4x4<BD>(dq, res, &err);   // 7.13.3 with Lossless = 1 (txSz is TX_4X4)
+    else av1g_inv_txfm2d<BD>(dq, txSz, txType, res, &err);
     return err;
 }
 
@@ -760,7 +762,7 @@ void Encoder::code_txb(S &sk, av1g_txb &t, int xi, int yi) {
     if (plane == 0) {
         txType = t.tx_type;
     } else {
-        txType = av1g_chroma_tx_type(txSz, b.uv_mode, fp->reduced_tx_set);
+        txType = lossless ? (int)AV1G_DCT_DCT : av1g_chroma_tx_type(txSz, b.uv_mode, fp->reduced_tx_set);   // compute_tx_type
         t.tx_type = (uint8_t)txType;
     }
     if (!b.skip) {
@@ -769,10 +771,11 @@ void Encoder::code_txb(S &sk, av1g_txb &t, int xi, int yi) {
         int eob = 0;
         static thread_local int32_t dq[1024], res[4096];
         if (S::kWrite) {
-            if (hook && doRecon) {
-                if (bd != 8) throw Error(AV1G_ERR_INVALID, "closed-loop hooks are 8-bit only");
-                hook->on_txb(b, bIdx, t, q, plane_ptr(plane) + (size_t)startY * pstride[plane] + startX, pstride[plane],
-                             dcQ[plane], acQ[plane], txType, fp->using_qmatrix ? qmLevel[plane] : 15);
+            if (hook && doRecon) {   // 10-bit: the recon pointer addresses uint16_t samples
+                const size_t o = (size_t)startY * pstride[plane] + startX;
+                const uint8_t *rp = bd == 8 ? pix<8>(plane) + o : (const uint8_t *)(pix<10>(plane) + o);
+                hook->on_txb(b, bIdx, t, q, rp, pstride[plane], dcQ[plane], acQ[plane], txType,
+                             fp->using_qmatrix ? qmLevel[plane] : 15);
                 if (plane == 0) txType = t.tx_type;
             }
             int nz = 0;
@@ -782,6 +785,8 @@ void Encoder::code_txb(S &sk, av1g_txb &t, int xi, int yi) {
                 if (txType >= AV1G_TX_TYPES || !av1g_tx_type_in_set_intra(set, txType))
                     throw Error(AV1G_ERR_INVALID, "block %u: luma tx_type %d not in tx set %d of tx size %d", bIdx,
                                 txType, set, txSz);
+                if (lossless && txType != AV1G_DCT_DCT)   // no tx type is coded: TxType = DCT_DCT (the WHT)
+                    throw Error(AV1G_ERR_INVALID, "block %u: lossless luma tx_type must be DCT_DCT (got %d)", bIdx, txType);
             }
             if (nz && doRecon) {
                 for (;;) {
@@ -899,9 +904,9 @@ int Encoder::code_coeffs(S &sk, int plane, int txSz, int &txType, int x4, int y4
         eob = 0;
         if (plane == 0) txType = AV1G_DCT_DCT;
     } else {
-        if (plane == 0) {  // transform_type()
+        if (plane == 0) {  // transform_type(): coded only when base_q_idx > 0 (no segmentation)
             const int set = av1g_get_tx_set_intra(txSz, fp->reduced_tx_set);
-            if (set > 0) {
+            if (set > 0 && fp->base_q_idx > 0) {
                 const int sqr = AV1G_T(Tx_Size_Sqr)[txSz];
                 const int intraDir = B->filter_intra ? AV1G_T(Filter_Intra_Mode_To_Intra_Dir)[B->filter_intra - 1] : B->y_mode;
                 if (set == AV1G_TX_SET_INTRA_1) {
@@ -1101,7 +1106,10 @@ void Encoder::encode_tile(S &sk, int tileRow, int tileCol) {
     }
 }
 
-void Encoder::write_headers(BitWriter &seq, BitWriter &fh, int level) {
+// Sequence header + uncompressed frame header of a record (shared with the GPU entropy path's OBU assembly).
+void write_headers(const av1g_frame_params *fp, const TileInfo &tiles, int level, BitWriter &seq, BitWriter &fh) {
+    const int W = (int)fp->width, H = (int)fp->height, mono = fp->monochrome;
+    const int ssx = av1g_ssx(fp), ssy = av1g_ssy(fp), bd = av1g_bit_depth(fp), lossless = av1g_lossless(fp);
     // ---- sequence_header_obu (reduced still picture) ----
     const int diff_uv = (fp->delta_q_v_dc != fp->delta_q_u_dc || fp->delta_q_v_ac != fp->delta_q_u_ac);
     const int separate_uv = !mono && (diff_uv || (fp->using_qmatrix && fp->qm_v != fp->qm_u));
@@ -1126,11 +1134,16 @@ void Encoder::write_headers(BitWriter &seq, BitWriter &fh, int level) {
     // color_config
     seq.put(bd == 10, 1);   // high_bitdepth (BitDepth 10; twelve_bit is only coded in the Professional profile)
     if (!high) seq.put(mono, 1);  // mono_chrome (High profile: not coded, 0)
+    // colour description: default BT.709 primaries, sRGB transfer, BT.601 matrix (YCbCr also in 4:4:4)
+    const int cp = fp->color_description ? fp->color_primaries : 1;
+    const int tc = fp->color_description ? fp->transfer_characteristics : 13;
+    const int mc = fp->color_description ? fp->matrix_coefficients : 6;
     seq.put(1, 1);          // color_description_present_flag
-    seq.put(1, 8);          // color_primaries = CP_BT_709
-    seq.put(13, 8);         // transfer_characteristics = TC_SRGB
-    seq.put(6, 8);          // matrix_coefficients = MC_BT_601 (YCbCr also in 4:4:4, not identity/RGB)
-    seq.put(1, 1);          // color_range = full
+    seq.put(cp, 8);         // color_primaries
+    seq.put(tc, 8);         // transfer_characteristics
+    seq.put(mc, 8);         // matrix_coefficients
+    if (mono || !(cp == 1 && tc == 13 && mc == 0))
+        seq.put(1, 1);      // color_range = full (BT.709 / sRGB / identity: not coded, implied 1, 4:4:4)
     if (!mono) {            // subsampling_x/y follow from seq_profile (Main 1/1, High 0/0)
         if (ssx && ssy) seq.put(0, 2);  // chroma_sample_position = CSP_UNKNOWN (4:2:0 only)
         seq.put(separate_uv, 1);  // separate_uv_delta_q
@@ -1180,34 +1193,38 @@ void Encoder::write_headers(BitWriter &seq, BitWriter &fh, int level) {
         if (separate_uv) fh.put(fp->qm_v, 4);
     }
     fh.put(0, 1);           // segmentation_enabled
-    fh.put(fp->delta_q_present, 1);  // delta_q_present (base_q_idx > 0)
+    if (fp->base_q_idx > 0) fh.put(fp->delta_q_present, 1);  // delta_q_present (coded only for base_q_idx > 0)
     if (fp->delta_q_present) {
         fh.put(fp->delta_q_res, 2);  // delta_q_res
         fh.put(0, 1);                // delta_lf_present
     }
-    // loop_filter_params (effective levels; ref deltas off)
-    fh.put(fp->loop_filter_level[0], 6);
-    fh.put(fp->loop_filter_level[1], 6);
-    if (!mono && (fp->loop_filter_level[0] || fp->loop_filter_level[1])) {
-        fh.put(fp->loop_filter_level[2], 6);
-        fh.put(fp->loop_filter_level[3], 6);
-    }
-    fh.put(fp->loop_filter_sharpness, 3);
-    fh.put(0, 1);           // loop_filter_delta_enabled
-    if (fp->enable_cdef) {  // cdef_params
-        fh.put(fp->cdef_damping_minus_3, 2);
-        fh.put(fp->cdef_bits, 2);
-        for (int i = 0; i < (1 << fp->cdef_bits); i++) {
-            fh.put(fp->cdef_y_pri[i], 4);
-            fh.put(fp->cdef_y_sec[i] == 4 ? 3 : fp->cdef_y_sec[i], 2);
-            if (!mono) {
-                fh.put(fp->cdef_uv_pri[i], 4);
-                fh.put(fp->cdef_uv_sec[i] == 4 ? 3 : fp->cdef_uv_sec[i], 2);
+    // CodedLossless (lossless records: base_q_idx 0, every DeltaQ 0): loop_filter_params, cdef_params and
+    // read_tx_mode (TxMode = ONLY_4X4) code nothing
+    if (!lossless) {
+        // loop_filter_params (effective levels; ref deltas off)
+        fh.put(fp->loop_filter_level[0], 6);
+        fh.put(fp->loop_filter_level[1], 6);
+        if (!mono && (fp->loop_filter_level[0] || fp->loop_filter_level[1])) {
+            fh.put(fp->loop_filter_level[2], 6);
+            fh.put(fp->loop_filter_level[3], 6);
+        }
+        fh.put(fp->loop_filter_sharpness, 3);
+        fh.put(0, 1);           // loop_filter_delta_enabled
+        if (fp->enable_cdef) {  // cdef_params
+            fh.put(fp->cdef_damping_minus_3, 2);
+            fh.put(fp->cdef_bits, 2);
+            for (int i = 0; i < (1 << fp->cdef_bits); i++) {
+                fh.put(fp->cdef_y_pri[i], 4);
+                fh.put(fp->cdef_y_sec[i] == 4 ? 3 : fp->cdef_y_sec[i], 2);
+                if (!mono) {
+                    fh.put(fp->cdef_uv_pri[i], 4);
+                    fh.put(fp->cdef_uv_sec[i] == 4 ? 3 : fp->cdef_uv_sec[i], 2);
+                }
             }
         }
     }
     // lr_params: disabled in sequence header
-    fh.put(fp->tx_mode_select ? 1 : 0, 1);  // tx_mode_select
+    if (!lossless) fh.put(fp->tx_mode_select ? 1 : 0, 1);  // tx_mode_select
     fh.put(fp->reduced_tx_set ? 1 : 0, 1);  // reduced_tx_set
     fh.byte_align();
 }
@@ -1218,6 +1235,7 @@ void Encoder::setup_frame() {
     mono = fp->monochrome;
     ssx = av1g_ssx(fp); ssy = av1g_ssy(fp);
     bd = av1g_bit_depth(fp);
+    lossless = av1g_lossless(fp);
     MiCols = av1g_mi_cols(W); MiRows = av1g_mi_rows(H);
     sbCols = (MiCols + 15) >> 4; sbRows = (MiRows + 15) >> 4;
     if (!compute_tiles(W, H, fp->tile_cols_log2, fp->tile_rows_log2, tiles))
@@ -1255,7 +1273,24 @@ void Encoder::run(av1g_output *out) {
                     fp->chroma_format);
     if (fp->width < 1 || fp->height < 1 || fp->width > 65535 || fp->height > 65535)
         throw Error(AV1G_ERR_INVALID, "bad size %ux%u", fp->width, fp->height);
-    if (fp->base_q_idx < 1) throw Error(AV1G_ERR_INVALID, "base_q_idx must be >= 1 (lossless unsupported)");
+    if (fp->base_q_idx == 0) {   // lossless (v4): CodedLossless, so nothing of the lossy-only syntax may be set
+        if (fp->delta_q_y_dc || fp->delta_q_u_dc || fp->delta_q_u_ac || fp->delta_q_v_dc || fp->delta_q_v_ac)
+            throw Error(AV1G_ERR_INVALID, "lossless (base_q_idx 0): every delta_q_* must be 0");
+        if (fp->delta_q_present || fp->delta_q_res)
+            throw Error(AV1G_ERR_INVALID, "lossless (base_q_idx 0): delta_q_present must be 0 (not coded)");
+        if (fp->using_qmatrix) throw Error(AV1G_ERR_INVALID, "lossless (base_q_idx 0): using_qmatrix must be 0");
+        if (fp->tx_mode_select) throw Error(AV1G_ERR_INVALID, "lossless (base_q_idx 0): tx_mode_select must be 0 (TxMode ONLY_4X4)");
+        if (fp->loop_filter_level[0] || fp->loop_filter_level[1] || fp->loop_filter_level[2] || fp->loop_filter_level[3] ||
+            fp->loop_filter_sharpness || fp->enable_cdef)
+            throw Error(AV1G_ERR_INVALID, "lossless (base_q_idx 0): deblocking and CDEF must be off");
+    }
+    if (fp->color_description > 1 || (fp->version < 4 && (fp->color_description || fp->color_primaries ||
+                                                          fp->transfer_characteristics || fp->matrix_coefficients)))
+        throw Error(AV1G_ERR_INVALID, "color_description must be 0/1 (0 and no CICP values for version 1 .. 3 records)");
+    if (!fp->color_description && (fp->color_primaries || fp->transfer_characteristics || fp->matrix_coefficients))
+        throw Error(AV1G_ERR_INVALID, "color_primaries / transfer_characteristics / matrix_coefficients need color_description = 1");
+    if (fp->color_description && fp->matrix_coefficients == 0 && (fp->monochrome || fp->chroma_format != AV1G_CHROMA_444))
+        throw Error(AV1G_ERR_INVALID, "matrix_coefficients 0 (identity) needs 4:4:4 (spec color_config conformance)");
     if (fp->monochrome > 1 || fp->tx_mode_select > 1 || fp->reduced_tx_set > 1) throw Error(AV1G_ERR_INVALID, "bad frame flags");
     const int8_t dqs[5] = {fp->delta_q_y_dc, fp->delta_q_u_dc, fp->delta_q_u_ac, fp->delta_q_v_dc, fp->delta_q_v_ac};
     for (int i = 0; i < 5; i++) if (dqs[i] < -64 || dqs[i] > 63) throw Error(AV1G_ERR_INVALID, "delta_q out of range");
@@ -1340,7 +1375,7 @@ void Encoder::run(av1g_output *out) {
 
     int level = opts.seq_level_idx >= 0 ? opts.seq_level_idx : choose_level(W, H, ntiles, tiles.cols);
     BitWriter seq, fh;
-    write_headers(seq, fh, level);
+    write_headers(fp, tiles, level, seq, fh);
     // tile group
     std::vector<uint8_t> frame = fh.buf;
     if (ntiles > 1) frame.push_back(0);  // tile_start_and_end_present_flag = 0 + byte_alignment
@@ -1424,6 +1459,7 @@ void Encoder::parse(const uint8_t *obus, size_t n) {
         int reduced = 0, level = 0, wbits = 0, hbits = 0, maxW = 0, maxH = 0, filterIntra = 0, edgeFilter = 0;
         int superres = 0, cdef = 0, restoration = 0, mono = 0, separateUv = 0, forceSct = 2, forceIntMv = 2, profile = 0, hbd = 0;
         int orderHintBits = 0, frameIds = 0, filmGrain = 0, decoderModel = 0;
+        int cp = 2, tc = 2, mc = 2, colorDesc = 0;
     } sq;
     av1g_frame_params &F = R->fp;
     memset(&F, 0, sizeof F);
@@ -1503,13 +1539,19 @@ void Encoder::parse(const uint8_t *obus, size_t n) {
             sq.hbd = br.f(1);  // high_bitdepth: BitDepth 10 (Main / High profile; no twelve_bit)
             sq.mono = sq.profile == 1 ? 0 : br.f(1);  // High profile: no mono_chrome flag
             int cp = 2, tc = 2, mc = 2;
-            if (br.f(1)) { cp = br.f(8); tc = br.f(8); mc = br.f(8); }
+            sq.colorDesc = br.f(1);
+            if (sq.colorDesc) { cp = br.f(8); tc = br.f(8); mc = br.f(8); }
+            sq.cp = cp; sq.tc = tc; sq.mc = mc;
             if (sq.mono) {
                 br.f(1);
             } else {
-                NEED(!(cp == 1 && tc == 13 && mc == 0), "4:4:4 identity matrix not supported");
-                br.f(1);  // color_range
-                if (sq.profile == 0) br.f(2);  // chroma_sample_position (4:2:0 only; High = 4:4:4)
+                if (cp == 1 && tc == 13 && mc == 0) {  // color_range implied 1, 4:4:4
+                    NEED(sq.profile == 1, "BT.709 / sRGB / identity colour description needs the High profile (4:4:4)");
+                } else {
+                    br.f(1);  // color_range
+                    if (sq.profile == 0) br.f(2);  // chroma_sample_position (4:2:0 only; High = 4:4:4)
+                }
+                NEED(!(mc == 0 && sq.profile == 0), "identity matrix with 4:2:0 subsampling");
                 sq.separateUv = br.f(1);
             }
             sq.filmGrain = br.f(1);
@@ -1546,6 +1588,14 @@ void Encoder::parse(const uint8_t *obus, size_t n) {
             F.monochrome = (uint8_t)sq.mono;
             F.chroma_format = (uint8_t)(sq.profile == 1 ? AV1G_CHROMA_444 : AV1G_CHROMA_420);
             F.bit_depth = (uint8_t)(sq.hbd ? 10 : 8);
+            // colour description: kept when present and not the default 1/13/6 (re-encodes identically)
+            if (sq.colorDesc && !(sq.cp == 1 && sq.tc == 13 && sq.mc == 6)) {
+                NEED(!(sq.mc == 0 && sq.mono), "identity matrix in a monochrome stream not supported");
+                F.color_description = 1;
+                F.color_primaries = (uint8_t)sq.cp;
+                F.transfer_characteristics = (uint8_t)sq.tc;
+                F.matrix_coefficients = (uint8_t)sq.mc;
+            }
             int tileSizeBytes = 4;
             // tile_info
             {
@@ -1583,13 +1633,18 @@ void Encoder::parse(const uint8_t *obus, size_t n) {
                 F.qm_v = sq.separateUv ? (uint8_t)br.f(4) : F.qm_u;
             }
             NEED(br.f(1) == 0, "segmentation not supported");
-            NEED(F.base_q_idx > 0, "lossless not supported");
-            F.delta_q_present = (uint8_t)br.f(1);
+            const int codedLossless = F.base_q_idx == 0 && !F.delta_q_y_dc && !F.delta_q_u_dc && !F.delta_q_u_ac &&
+                                      !F.delta_q_v_dc && !F.delta_q_v_ac;
+            NEED(F.base_q_idx > 0 || codedLossless, "base_q_idx 0 with nonzero DeltaQ (not lossless) not supported");
+            NEED(!codedLossless || !F.using_qmatrix, "using_qmatrix in a lossless frame not supported");
+            F.delta_q_present = F.base_q_idx > 0 ? (uint8_t)br.f(1) : 0;   // coded only for base_q_idx > 0
             if (F.delta_q_present) {
                 F.delta_q_res = (uint8_t)br.f(2);
                 NEED(br.f(1) == 0, "delta_lf_present (M5) not supported");
             }
-            // loop_filter_params -> effective levels (intra frame: only the INTRA ref delta applies)
+            // loop_filter_params -> effective levels (intra frame: only the INTRA ref delta applies);
+            // CodedLossless: loop_filter_params / cdef_params / read_tx_mode code nothing (TxMode ONLY_4X4)
+            if (!codedLossless) {
             int lvl[4] = {0, 0, 0, 0};
             lvl[0] = br.f(6);
             lvl[1] = br.f(6);
@@ -1628,9 +1683,10 @@ void Encoder::parse(const uint8_t *obus, size_t n) {
                     }
                 }
             }
-            if (sq.restoration)
+            }   // !codedLossless
+            if (sq.restoration && !codedLossless)   // AllLossless: lr_params code nothing either
                 for (int i = 0; i < (sq.mono ? 1 : 3); i++) NEED(br.f(2) == 0, "loop restoration not supported");
-            F.tx_mode_select = (uint8_t)br.f(1);
+            F.tx_mode_select = codedLossless ? 0 : (uint8_t)br.f(1);
             F.reduced_tx_set = (uint8_t)br.f(1);
             br.byte_align();
             setup_frame();
@@ -1764,7 +1820,7 @@ int av1g_apply_sb_qindex(av1g_decision_record *rec, const uint8_t *sb_map) {
 extern "C" int av1g_layout(av1g_decision_record *rec, uint32_t txb_cap, uint64_t coeff_cap) {
     const av1g_frame_params &fp = rec->fp;
     const int MiCols = av1g_mi_cols(fp.width), MiRows = av1g_mi_rows(fp.height);
-    const int ssx = av1g_ssx(&fp), ssy = av1g_ssy(&fp);
+    const int ssx = av1g_ssx(&fp), ssy = av1g_ssy(&fp), lossless = av1g_lossless(&fp);
     const bool fill = rec->txb && rec->block_txb;
     uint32_t n = 0;
     uint64_t nc = 0;
@@ -1773,8 +1829,8 @@ extern "C" int av1g_layout(av1g_decision_record *rec, uint32_t txb_cap, uint64_t
         const av1g_block &k = rec->blocks[b];
         if (k.bsize >= AV1G_BLOCK_SIZES || k.mi_row >= MiRows || k.mi_col >= MiCols) return AV1G_ERR_INVALID;
         int depth = k.tx_depth > av1g_max_tx_depth(k.bsize) ? av1g_max_tx_depth(k.bsize) : k.tx_depth;
-        av1g_for_each_txb(k.bsize, k.mi_row, k.mi_col, depth, fp.monochrome, ssx, ssy, MiRows, MiCols,
-                          [&](int, int txSz, int, int, int, int) { n++; nc += av1g_tx_coeffs(txSz); });
+        av1g_for_each_txb_ex(k.bsize, k.mi_row, k.mi_col, depth, lossless, fp.monochrome, ssx, ssy, MiRows, MiCols,
+                             [&](int, int txSz, int, int, int, int) { n++; nc += av1g_tx_coeffs(txSz); });
     }
     rec->n_txb = n;
     rec->n_coeffs = nc;
@@ -1785,7 +1841,7 @@ extern "C" int av1g_layout(av1g_decision_record *rec, uint32_t txb_cap, uint64_t
         const av1g_block &k = rec->blocks[b];
         rec->block_txb[b] = n;
         int depth = k.tx_depth > av1g_max_tx_depth(k.bsize) ? av1g_max_tx_depth(k.bsize) : k.tx_depth;
-        av1g_for_each_txb(k.bsize, k.mi_row, k.mi_col, depth, fp.monochrome, ssx, ssy, MiRows, MiCols,
+        av1g_for_each_txb_ex(k.bsize, k.mi_row, k.mi_col, depth, lossless, fp.monochrome, ssx, ssy, MiRows, MiCols,
                           [&](int plane, int txSz, int x4, int y4, int, int) {
                               av1g_txb &t = rec->txb[n++];
                               t.coeff_off = (uint32_t)nc;

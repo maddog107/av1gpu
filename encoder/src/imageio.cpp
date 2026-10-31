@@ -243,3 +243,150 @@ bool gp_decode_cpu(const std::string &path, GpHostPlanes &out, std::string &err,
         }
     return true;
 }
+
+// ---------------------------------------------------------------------------
+// lossless input (see imageio.h)
+// ---------------------------------------------------------------------------
+// PNG samples as stored (libpng classic API without gamma / colour transforms): palette -> RGB, gray < 8 bits ->
+// 8 bits, alpha dropped (*alpha set); 16-bit samples kept.  ch = 1 (gray) or 3 (RGB).
+static bool decode_png_raw(const std::vector<uint8_t> &d, int &W, int &H, int &ch, int &bits, bool &alpha,
+                           std::vector<uint16_t> &px, std::string &err) {
+    png_structp ps = png_create_read_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
+    if (!ps) { err = "png init"; return false; }
+    png_infop pi = png_create_info_struct(ps);
+    if (!pi) { png_destroy_read_struct(&ps, nullptr, nullptr); err = "png init"; return false; }
+    if (setjmp(png_jmpbuf(ps))) { png_destroy_read_struct(&ps, &pi, nullptr); err = "png decode"; return false; }
+    PngMem m = {d.data(), d.size(), 0};
+    png_set_read_fn(ps, &m, png_mem_read);
+    png_read_info(ps, pi);
+    const int ct = png_get_color_type(ps, pi), bdp = png_get_bit_depth(ps, pi);
+    alpha = (ct & PNG_COLOR_MASK_ALPHA) != 0 || png_get_valid(ps, pi, PNG_INFO_tRNS);
+    if (ct == PNG_COLOR_TYPE_PALETTE) png_set_palette_to_rgb(ps);   // (tRNS is not expanded to alpha)
+    if ((ct == PNG_COLOR_TYPE_GRAY || ct == PNG_COLOR_TYPE_GRAY_ALPHA) && bdp < 8) png_set_expand_gray_1_2_4_to_8(ps);
+    if (ct & PNG_COLOR_MASK_ALPHA) png_set_strip_alpha(ps);
+    png_set_interlace_handling(ps);
+    png_read_update_info(ps, pi);
+    W = (int)png_get_image_width(ps, pi);
+    H = (int)png_get_image_height(ps, pi);
+    ch = png_get_channels(ps, pi);
+    bits = png_get_bit_depth(ps, pi);
+    if ((ch != 1 && ch != 3) || (bits != 8 && bits != 16)) {
+        png_destroy_read_struct(&ps, &pi, nullptr);
+        err = "png layout";
+        return false;
+    }
+    const size_t rb = png_get_rowbytes(ps, pi);
+    if (rb != (size_t)W * ch * (bits / 8)) { png_destroy_read_struct(&ps, &pi, nullptr); err = "png layout"; return false; }
+    std::vector<uint8_t> raw(rb * H);
+    std::vector<png_bytep> rows(H);
+    for (int y = 0; y < H; y++) rows[y] = raw.data() + rb * y;
+    png_read_image(ps, rows.data());
+    png_destroy_read_struct(&ps, &pi, nullptr);
+    px.resize((size_t)W * H * ch);
+    if (bits == 16)
+        for (size_t i = 0; i < px.size(); i++) px[i] = (uint16_t)(raw[2 * i] << 8 | raw[2 * i + 1]);   // PNG: big endian
+    else
+        for (size_t i = 0; i < px.size(); i++) px[i] = raw[i];
+    return true;
+}
+
+// libavif 1.4's 10 -> 16-bit full-range expansion (reformat.c: table (float)v / 1023, then (uint16_t)(0.5f + x * 65535))
+static uint16_t ll_expand10(int v) {
+    const float f = ((float)v - 0.0f) / 1023.0f;
+    return (uint16_t)(0.5f + f * 65535.0f);
+}
+
+bool gp_decode_lossless(const std::string &path, GpHostPlanes &out, bool ycgco, int *matrix, std::string &note, std::string &err) {
+    std::vector<uint8_t> d;
+    if (!gp_read_file(path, d)) { err = "read failed"; return false; }
+    note.clear();
+    int W = 0, H = 0, ch = 3, bits = 8;
+    bool alpha = false;
+    std::vector<uint16_t> px;   // W x H x ch samples
+    const GpFileKind k = gp_sniff(path);
+    if (k == GP_FILE_PNG) {
+        if (!decode_png_raw(d, W, H, ch, bits, alpha, px, err)) return false;
+    } else if (k == GP_FILE_WEBP) {
+        WebPBitstreamFeatures ft;
+        if (WebPGetFeatures(d.data(), d.size(), &ft) != VP8_STATUS_OK) { err = "webp header"; return false; }
+        alpha = ft.has_alpha != 0;
+        uint8_t *p = WebPDecodeRGB(d.data(), d.size(), &W, &H);
+        if (!p) { err = "webp decode failed"; return false; }
+        px.assign(p, p + (size_t)W * H * 3);
+        WebPFree(p);
+        if (ft.format == 1) note = "lossy WebP: lossless to its decoded RGB";
+    } else {
+        err = "unsupported input format for --lossless (PNG, WebP, JPEG)";
+        return false;
+    }
+    if (alpha) note += std::string(note.empty() ? "" : "; ") + "alpha channel ignored (not coded)";
+    // 16-bit samples: 8 or 10 significant bits, as defined by libavif's expansions
+    int depth = bits;
+    if (bits == 16) {
+        bool all257 = true;
+        for (uint16_t v : px) if (v % 257) { all257 = false; break; }
+        if (all257) {
+            for (auto &v : px) v = (uint16_t)(v / 257);
+            depth = 8;
+            note += std::string(note.empty() ? "" : "; ") + "16-bit PNG with 8 significant bits (v * 257): coded 8-bit";
+        } else {
+            size_t bad = (size_t)-1;
+            for (size_t i = 0; i < px.size() && bad == (size_t)-1; i++) {
+                const int v = (int)(((uint32_t)px[i] * 1023u + 32767u) / 65535u);
+                if (ll_expand10(v) != px[i]) bad = i;
+                else px[i] = (uint16_t)v;
+            }
+            if (bad != (size_t)-1) {
+                char b[400];
+                const size_t pix = bad / ch;
+                snprintf(b, sizeof b,
+                         "16-bit PNG holds more than 10 significant bits (sample %u at (%zu,%zu) is not v * 65535 / 1023 for a 10-bit v): "
+                         "AV1 lossless here is 8- or 10-bit, so it cannot be coded losslessly (convert to 8 bits, or encode lossy with --depth 10)",
+                         (unsigned)px[bad], pix % W, pix / W);
+                err = b;
+                return false;
+            }
+            depth = 10;
+            note += std::string(note.empty() ? "" : "; ") + "16-bit PNG with 10 significant bits: coded 10-bit";
+        }
+    }
+    const bool mono = ch == 1;
+    if (ycgco && mono) { err = "--ycgco-re needs an RGB input (this PNG is grayscale)"; return false; }
+    if (ycgco && depth != 8) {
+        err = "--ycgco-re: YCgCo-Re adds two bits, so it needs 8-bit RGB (this input has 10 significant bits: use identity / GBR)";
+        return false;
+    }
+    const int outDepth = ycgco ? 10 : depth;
+    out.W = W; out.H = H; out.mono = mono ? 1 : 0; out.yuv444 = mono ? 0 : 1; out.bitDepth = outDepth;
+    const int MiW = 2 * ((W + 7) >> 3) * 4, MiH = 2 * ((H + 7) >> 3) * 4;
+    out.aw = (MiW + 63) & ~63;
+    out.ah = (MiH + 63) & ~63;
+    *matrix = mono ? -1 : ycgco ? 16 : 0;
+    std::vector<uint16_t> pl[3];
+    const int np = mono ? 1 : 3;
+    for (int p = 0; p < np; p++) pl[p].assign((size_t)out.aw * out.ah, 0);
+    for (int y = 0; y < out.ah; y++)
+        for (int x = 0; x < out.aw; x++) {
+            const size_t s = ((size_t)std::min(y, H - 1) * W + std::min(x, W - 1)) * ch, o = (size_t)y * out.aw + x;
+            if (mono) { pl[0][o] = px[s]; continue; }
+            const int R = px[s], G = px[s + 1], B = px[s + 2];
+            if (ycgco) {   // H.273 (2024) formulas 58..61, as libavif 1.4 avifImageRGBToYUV (full range, 2 extra bits)
+                const int Co = R - B, t = B + (Co >> 1), Cg = G - t;
+                pl[0][o] = (uint16_t)(t + (Cg >> 1));
+                pl[1][o] = (uint16_t)(Cg + 512);
+                pl[2][o] = (uint16_t)(Co + 512);
+            } else {       // identity (GBR): Y = G, U = B, V = R
+                pl[0][o] = (uint16_t)G;
+                pl[1][o] = (uint16_t)B;
+                pl[2][o] = (uint16_t)R;
+            }
+        }
+    for (int p = 0; p < 3; p++) {
+        out.p[p].clear();
+        out.p16[p].clear();
+        if (p >= np) continue;
+        if (outDepth == 10) out.p16[p].swap(pl[p]);
+        else out.p[p].assign(pl[p].begin(), pl[p].end());
+    }
+    return true;
+}

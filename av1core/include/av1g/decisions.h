@@ -1,6 +1,6 @@
 /* av1g/decisions.h - the DecisionRecord: every coding decision + quantized
  * coefficients for ONE AV1 intra-only still picture (8-bit or 10-bit; 4:2:0, 4:4:4 or
- * monochrome; 64x64 superblocks, reduced_still_picture_header).  Interface version 3.
+ * monochrome; lossy or lossless; 64x64 superblocks, reduced_still_picture_header).  Interface version 4.
  *
  * Any search engine that fills this record gets (a) the exact decoder
  * reconstruction and (b) a conformant OBU stream / AVIF from av1core (av1g.h).
@@ -25,6 +25,34 @@
  *   the inverse transform's clamp ranges (rowClampRange BitDepth + 8, colClampRange
  *   Max(BitDepth + 6, 16)), Clip1 / the intra edge base values (1 << (BitDepth - 1)), and the
  *   post-filters' BitDepth scaling.  Reconstructions are uint16_t samples (av1g.h).
+ *
+ * Lossless (fp.base_q_idx = 0, v4).  The frame is CodedLossless (spec 5.9.2 / 7.12.2: qindex 0 and every
+ *   DeltaQ 0, so LosslessArray[0] = 1; there is no segmentation): every transform block of every plane is a 4x4
+ *   Walsh-Hadamard transform, and the record must have delta_q_y_dc = delta_q_u/v_dc/ac = 0, delta_q_present = 0
+ *   (not coded: base_q_idx is 0), using_qmatrix = 0, tx_mode_select = 0 (TxMode is ONLY_4X4, not coded) and the
+ *   post-filters off (loop_filter_level[] = 0, enable_cdef = 0: their syntax is not coded either).  What changes for
+ *   the blocks:
+ *     - tx_depth must be 0; the tx blocks (av1g_layout) are 4x4 in every plane: a block has bw4 x bh4 luma tx
+ *       blocks and (bw4 >> ssx) x (bh4 >> ssy) per chroma plane (at least 1 x 1), raster order per plane;
+ *     - tx_type: no transform type is coded (spec transform_type: base_q_idx = 0), engines write DCT_DCT for
+ *       luma (the backend rejects anything else for a nonzero tx block) and the backend derives DCT_DCT for chroma;
+ *     - CfL is allowed only when the chroma block is 4x4 (get_plane_residual_size( MiSize, 1 ) = BLOCK_4X4, spec
+ *       9.3 uv_mode cdf, libaom is_cfl_allowed): 4:2:0 luma blocks 4x4, 4x8, 8x4 and 8x8, 4:4:4 only 4x4
+ *       (av1g_cfl_allowed_ex in av1g/blockinfo.h);
+ *     - coefficients are levels as always; qindex 0 has dc_q = ac_q = 4, so a level is a WHT coefficient (the
+ *       spec's inverse WHT starts with >> 2).  av1g_fwht4x4() in av1g/dsp.h gives levels whose reconstruction
+ *       is exactly the residual.  Conformance (spec 7.12.3): the inverse WHT outputs must fit 1 + BitDepth bits
+ *       signed (true residuals do); av1g_encode() checks it like the lossy range checks (AV1G_ERR_RANGE).
+ *   The reconstruction equals the source exactly when every non-skip tx block carries the WHT of (source -
+ *   prediction) and skip blocks are only used where the prediction already equals the source.
+ *
+ * Colour description (fp.color_description, v4).  0: the sequence header and the AVIF nclx box carry the default
+ *   colour description, BT.709 primaries / sRGB transfer / BT.601 matrix (1/13/6), full range.  1: they carry
+ *   fp.color_primaries / transfer_characteristics / matrix_coefficients (CICP, ITU-T H.273), full range.  The
+ *   matrix only describes the planes to the application (e.g. 0 = identity: Y/U/V hold G/B/R; 16 = YCgCo-Re);
+ *   it does not change any decoding process.  matrix_coefficients 0 needs 4:4:4 (spec: MC_IDENTITY requires
+ *   subsampling_x = subsampling_y = 0, so not monochrome either).  With 1/13/0 the spec's color_config omits
+ *   color_range (implied full).
  *
  * Coordinates.  mi_row/mi_col are in units of 4 luma samples.  MiCols =
  *   2*((width+7)>>3), MiRows = 2*((height+7)>>3): the coded area is the picture
@@ -66,7 +94,8 @@
  *                  0 = residual coded (a tx block may still be all-zero)
  *   tx_depth       0..min(2, Max_Tx_Depth[bsize]); luma tx size =
  *                  Max_Tx_Size_Rect[bsize] split tx_depth times (Split_Tx_Size).
- *                  Must be 0 when fp.tx_mode_select == 0 or bsize == 4x4.
+ *                  Must be 0 when fp.tx_mode_select == 0 or bsize == 4x4 (so always in
+ *                  lossless frames, whose tx blocks are all 4x4).
  *                  Intra blocks use ONE luma tx size for the whole block; chroma
  *                  always uses the largest size for the chroma block (<= 32x32;
  *                  4:2:0: one tx block per plane, 4:4:4: 64-sample block sides are
@@ -75,7 +104,7 @@
  *   angle_delta_y  -3..3; must be 0 unless y_mode is directional (V_PRED..D67_PRED)
  *                  and bsize >= 8x8 (by size enum: not 4x4/4x8/8x4)
  *   uv_mode        0..12 or AV1G_UV_CFL_PRED (13).  CFL only if max(bw,bh) <= 32
- *                  (luma block size, both formats).  Ignored (write 0) when the block
+ *                  (luma block size, both formats; lossless frames: see "Lossless").  Ignored (write 0) when the block
  *                  carries no chroma (monochrome, or 4:2:0 sub-8x8 blocks at even
  *                  mi_row/mi_col: chroma of a 4xN / Nx4 pair is coded with the LAST
  *                  (odd row/col) block and covers the union area).  In 4:4:4 every
@@ -144,14 +173,15 @@
  *   are filtered at full resolution: chroma edges on every 4x4 (the chroma filters are still
  *   at most 6 taps), CDEF on 8x8 chroma blocks with the luma direction.
  *
- * Frame-level decisions are in av1g_frame_params.  Lossless (base_q_idx 0), loop
- * restoration, segmentation, delta-lf, palette, intra block copy, 4:2:2 and bit depths
- * other than 8 and 10 are not supported.
+ * Frame-level decisions are in av1g_frame_params.  Loop restoration, segmentation, delta-lf,
+ * palette, intra block copy, 4:2:2, limited range and bit depths other than 8 and 10 are not
+ * supported.
  *
  * Versions.  2 added fp.chroma_format (formerly reserved[0]), 3 fp.bit_depth (formerly
- * reserved[1] of v2).  av1g_encode() accepts version 1 and 2 records unchanged: their reserved
- * bytes are 0, i.e. 4:2:0 / 8-bit.  New fields are taken from reserved[] (which must be 0) so
- * the struct layout stays fixed.
+ * reserved[1] of v2), 4 lossless frames (base_q_idx 0, formerly invalid) and the colour description
+ * (fp.color_description .. matrix_coefficients, formerly reserved[0..3] of v3).  av1g_encode() accepts
+ * version 1 .. 3 records unchanged: their reserved bytes are 0, i.e. 4:2:0 / 8-bit / default colour
+ * description.  New fields are taken from reserved[] (which must be 0) so the struct layout stays fixed.
  * ==============================================================================
  */
 #ifndef AV1G_DECISIONS_H
@@ -164,7 +194,7 @@
 extern "C" {
 #endif
 
-#define AV1G_DECISIONS_VERSION 3
+#define AV1G_DECISIONS_VERSION 4
 
 /* av1g_frame_params.chroma_format */
 #define AV1G_CHROMA_420 0   /* Main profile, ssx = ssy = 1 */
@@ -203,8 +233,8 @@ typedef struct av1g_frame_params {
     uint32_t version;        /* AV1G_DECISIONS_VERSION (1 is accepted too) */
     uint32_t width, height;  /* output picture size, 1..65535 */
     uint8_t  monochrome;     /* 1: Y only (grayscale JPEG); chroma_format must be 0 */
-    uint8_t  base_q_idx;     /* 1..255 */
-    uint8_t  tx_mode_select; /* 0: TX_MODE_LARGEST, 1: TX_MODE_SELECT */
+    uint8_t  base_q_idx;     /* 1..255; 0 = lossless (v4, see "Lossless") */
+    uint8_t  tx_mode_select; /* 0: TX_MODE_LARGEST (lossless: ONLY_4X4), 1: TX_MODE_SELECT */
     uint8_t  reduced_tx_set; /* 0/1 */
     int8_t   tile_cols_log2; /* -1 = minimum legal */
     int8_t   tile_rows_log2; /* -1 = minimum legal */
@@ -235,7 +265,12 @@ typedef struct av1g_frame_params {
     uint8_t  chroma_format;  /* AV1G_CHROMA_420 / AV1G_CHROMA_444 (see "Chroma format"); 0 if monochrome */
     /* ---- v3 ---- */
     uint8_t  bit_depth;      /* 8 or 10 (see "Bit depth"); 0 = 8 (version 1 / 2 records) */
-    uint8_t  reserved[13];   /* must be 0 (future fields are taken from here) */
+    /* ---- v4 ---- */
+    uint8_t  color_description;          /* 0: default 1/13/6 (see "Colour description"); 1: the CICP values below */
+    uint8_t  color_primaries;            /* CICP ColourPrimaries (color_description = 1) */
+    uint8_t  transfer_characteristics;   /* CICP TransferCharacteristics */
+    uint8_t  matrix_coefficients;        /* CICP MatrixCoefficients: 0 identity (GBR), 6 BT.601, 16 YCgCo-Re, ... */
+    uint8_t  reserved[9];    /* must be 0 (future fields are taken from here) */
 } av1g_frame_params;
 
 typedef struct av1g_decision_record {

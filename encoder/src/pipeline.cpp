@@ -145,7 +145,14 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
     const int n = (int)in.size();
     out.assign(n, GpFrameOut());
     if (!n) return 0;
-    const GpParams &P = cfg_.P;
+    // lossless: its own search parameters (every shape and partition; J in bits * the q-0 lambda, see k_lossless.cu)
+    const bool ll = cfg_.lossless != 0;
+    GpParams Pll = cfg_.P;
+    if (ll) {
+        Pll.shapeMask = 0x3F1FFF; Pll.partMask8 = 0xF; Pll.partMaskN = 0x3FF; Pll.maxPart = 64;
+        Pll.splitBias = 1.f; Pll.lambdaMul = 1.f; Pll.pruneFlat = 0.f; Pll.pruneVar = 0.f; Pll.filterIntra = 1;
+    }
+    const GpParams &P = ll ? Pll : cfg_.P;
     cudaEventRecord(ev_[0], st);
     std::vector<GpImage> imgs(n);
     std::vector<av1f_tuneiq_frame> tiq(n);
@@ -169,16 +176,17 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
         if (f.aw < I.sbCols * 64 || f.ah < I.sbRows * 64) { err = "input planes not padded to 64"; return -1; }
         I.mono = f.mono;
         I.ssx = I.ssy = (f.yuv444 && !f.mono) ? 0 : 1;
-        I.baseQ = cfg_.qindex;
-        I.qctx = av1g_coeff_cdf_q_ctx(cfg_.qindex);
+        I.baseQ = ll ? 0 : cfg_.qindex;
+        I.qctx = av1g_coeff_cdf_q_ctx(I.baseQ);
         I.dqRes = cfg_.deltaqRes;
         I.edgeFilter = cfg_.edgeFilter;
         I.dqUDc = cfg_.dqUDc; I.dqUAc = cfg_.dqUAc; I.dqVDc = cfg_.dqVDc; I.dqVAc = cfg_.dqVAc;
-        if (cfg_.tuneIq) {
+        if (ll) I.dqUDc = I.dqUAc = I.dqVDc = I.dqVAc = 0;
+        if (cfg_.tuneIq && !ll) {
             av1f_tuneiq_frame_init(cfg_.qindex, I.ssx, I.ssy, f.mono, &tiq[i], bd);   // 4:4:4: libaom's 4:4:4 chroma delta-q / QM
             I.dqUDc = tiq[i].dq_u_dc; I.dqUAc = tiq[i].dq_u_ac; I.dqVDc = tiq[i].dq_v_dc; I.dqVAc = tiq[i].dq_v_ac;
         }
-        if (cfg_.qm != -1) {
+        if (cfg_.qm != -1 && !ll) {
             I.usingQm = 1;
             const int ly = cfg_.qm == -2 ? av1g_qm_level_allintra(cfg_.qindex) : cfg_.qm;
             const int lc = cfg_.qmUV >= 0 ? cfg_.qmUV : (cfg_.qm == -2 ? av1g_qm_level_allintra(cfg_.qindex + cfg_.dqUAc) : ly);
@@ -186,7 +194,7 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
         } else {
             I.qm[0] = I.qm[1] = I.qm[2] = 15;
         }
-        if (cfg_.tuneIq) {
+        if (cfg_.tuneIq && !ll) {
             I.usingQm = 1;
             I.qm[0] = tiq[i].qm_y; I.qm[1] = tiq[i].qm_u; I.qm[2] = tiq[i].qm_v;
         }
@@ -195,7 +203,24 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
         // tiles: minimum legal, or (cfg.tileMinMp) extra uniform tiles for large images (more entropy tiles in flight)
         {
             int tc = -1, tr = -1;
-            if (cfg_.tileMinMp > 0 && (double)f.W * f.H >= cfg_.tileMinMp * 1e6) {
+            if (ll && cfg_.llTileArea > 0) {
+                // lossless: ~ every sample is coded, so a frame has many more symbols; tiles of at most llTileArea
+                // pixels keep the per-tile entropy coders short (each tile costs ~0.1-0.4 % in size)
+                av1g_tiles t0, tt;
+                av1g_tile_layout(f.W, f.H, -1, -1, &t0);
+                tc = t0.cols_log2; tr = t0.rows_log2;
+                for (;;) {
+                    if (av1g_tile_layout(f.W, f.H, tc, tr, &tt) != AV1G_OK) break;
+                    const int tw = (int)tt.mi_col_starts[1] * 4, th = (int)tt.mi_row_starts[1] * 4;
+                    if ((double)std::min(tw, (int)f.W) * std::min(th, (int)f.H) <= cfg_.llTileArea) break;
+                    av1g_tiles tn;
+                    if (tw >= th && av1g_tile_layout(f.W, f.H, tc + 1, tr, &tn) == AV1G_OK && tn.cols > tt.cols) tc++;
+                    else if (av1g_tile_layout(f.W, f.H, tc, tr + 1, &tn) == AV1G_OK && tn.rows > tt.rows) tr++;
+                    else if (av1g_tile_layout(f.W, f.H, tc + 1, tr, &tn) == AV1G_OK && tn.cols > tt.cols) tc++;
+                    else break;
+                }
+                if (av1g_tile_layout(f.W, f.H, tc, tr, &tiles[i]) != AV1G_OK) { tc = -1; tr = -1; }
+            } else if (cfg_.tileMinMp > 0 && (double)f.W * f.H >= cfg_.tileMinMp * 1e6) {
                 av1g_tiles t0;
                 av1g_tile_layout(f.W, f.H, -1, -1, &t0);
                 tc = std::max(t0.cols_log2, cfg_.tileColsLog2);
@@ -251,7 +276,7 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
     GPCK(cudaMemsetAsync(dMaps, 0, miTotal * 5, st));
     GPCK(cudaMemsetAsync(dCtx, 0, ctxTotal * 2, st));
     std::vector<uint8_t> hSbq;
-    const bool anySbq = cfg_.deltaq && std::any_of(in.begin(), in.end(), [](const GpFrameIn &f) { return !f.sbQ.empty(); });
+    const bool anySbq = !ll && cfg_.deltaq && std::any_of(in.begin(), in.end(), [](const GpFrameIn &f) { return !f.sbQ.empty(); });
     if (anySbq) {
         GPCK(A.get(dSbq, sbqTotal));
         hSbq.assign(sbqTotal, (uint8_t)cfg_.qindex);
@@ -300,7 +325,7 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
             at += (size_t)I.cols16 * I.rows16;
         }
     }
-    if (cfg_.ssimLambda) {
+    if (cfg_.ssimLambda && !ll) {
         size_t cells = 0;
         for (int i = 0; i < n; i++) cells += (size_t)((imgs[i].MiCols + 3) / 4) * ((imgs[i].MiRows + 3) / 4);
         float *dS;
@@ -327,7 +352,7 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
         }
     }
     std::vector<int> dqResLog2(n, 0);
-    if (cfg_.vb && !anySbq) {
+    if (cfg_.vb && !anySbq && !ll) {
         // av1f GPU variance boost: per-SB qindex, legal for delta_q_res (libaom tune=iq deltaq-mode 6)
         std::vector<av1f_vb_desc> vd(n);
         for (int i = 0; i < n; i++) {
@@ -393,7 +418,7 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
     // relative to the tile origin, so every tile of every image starts at step 0.  k_recon is instantiated
     // per chroma layout: each step lists the SBs of 4:2:0 frames first, then those of 4:4:4 frames
     // (monochrome frames join the 4:4:4 group when the batch has 4:4:4 frames: one launch per step)
-    for (int i = 0; i < n; i++) {
+    for (int i = 0; i < n && !ll; i++) {   // (lossless: no wavefront)
         const GpImage &I = imgs[i];
         const av1g_tiles &T = tiles[i];
         const bool k444 = I.mono ? any444 : I.ssx == 0;
@@ -417,19 +442,50 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
         stepFlat.insert(stepFlat.end(), steps[s].begin(), steps[s].end());
     }
     stepOff.push_back((uint32_t)stepFlat.size());
-    uint32_t *dSteps;
-    GPCK(A.get(dSteps, stepFlat.size()));
-    {
+    uint32_t *dSteps = nullptr;
+    if (!ll) {
+        GPCK(A.get(dSteps, stepFlat.size()));
         size_t maxStep = 1;
         for (auto &v : steps) maxStep = std::max(maxStep, v.size());
         uint8_t *bs;
         GPCK(A.get(bs, maxStep * gp_recon_scratch_bytes()));
         B.bigScratch = bs;
+        GPCK(cudaMemcpyAsync(dSteps, stepFlat.data(), stepFlat.size() * 4, cudaMemcpyHostToDevice, st));
     }
-    GPCK(cudaMemcpyAsync(dSteps, stepFlat.data(), stepFlat.size() * 4, cudaMemcpyHostToDevice, st));
+    // lossless: per-plane 4x4 cost tables and the k_ll_cost segments (3 per image: Y, U, V; empty for monochrome chroma)
+    GpLossless L;
+    memset(&L, 0, sizeof L);
+    if (ll) {
+        std::vector<uint64_t> segStart(3 * (size_t)n + 1, 0), costOff(3 * (size_t)n, 0);
+        uint64_t tot[3] = {0, 0, 0}, thr = 0;
+        for (int i = 0; i < n; i++)
+            for (int p = 0; p < 3; p++) {
+                const GpImage &I = imgs[i];
+                const uint64_t n4 = (p && I.mono) ? 0 : (uint64_t)(I.MiCols >> (p ? I.ssx : 0)) * (I.MiRows >> (p ? I.ssy : 0));
+                const int ne = p ? LL_NE_UV : LL_NE_Y;
+                segStart[(size_t)i * 3 + p] = thr;
+                costOff[(size_t)i * 3 + p] = tot[p];
+                thr += n4 * ne;
+                tot[p] += n4 * ne;
+            }
+        segStart[3 * (size_t)n] = thr;
+        for (int p = 0; p < 3; p++) GPCK(A.get(L.cost[p], tot[p]));
+        uint64_t *dSeg, *dOff;
+        GPCK(A.get(dSeg, segStart.size()));
+        GPCK(A.get(dOff, costOff.size()));
+        GPCK(cudaMemcpyAsync(dSeg, segStart.data(), segStart.size() * 8, cudaMemcpyHostToDevice, st));
+        GPCK(cudaMemcpyAsync(dOff, costOff.data(), costOff.size() * 8, cudaMemcpyHostToDevice, st));
+        L.segStart = dSeg;
+        L.costOff = (const uint64_t(*)[3])dOff;
+        L.nSeg = 3 * n;
+        L.hostTotal = thr;
+        L.lambdaScale = 1.f;
+        L.cfl = cfg_.losslessCfl;
+    }
     cudaEventRecord(ev_[1], st);
     // ---- analysis + DP ----
-    gp_launch_analysis(B, P, shTotal, st, bd);
+    if (ll) gp_launch_ll_analysis(B, L, shTotal, cfg_.edgeFilter, P.filterIntra, st, bd);
+    else gp_launch_analysis(B, P, shTotal, st, bd);
     GPCK(cudaGetLastError());
     cudaEventRecord(ev_[2], st);
     gp_launch_dp(B, P, st, bd);
@@ -438,12 +494,16 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
     // ---- closed loop, SB wavefront ----
     // wavefront on a high-priority stream: when several encoders share the GPU, the latency-bound recon
     // CTAs (critical path) are scheduled before other encoders' analysis CTAs
-    GPCK(cudaEventRecord(evx_[0], st));
-    GPCK(cudaStreamWaitEvent(hiSt_, evx_[0], 0));
-    for (size_t s = 0; s + 1 < stepOff.size(); s++)
-        gp_launch_recon(B, P, dSteps + stepOff[s], step420[s], stepOff[s + 1] - stepOff[s] - step420[s], hiSt_, bd);
-    GPCK(cudaEventRecord(evx_[1], hiSt_));
-    GPCK(cudaStreamWaitEvent(st, evx_[1], 0));
+    if (ll) {   // lossless: decisions + levels of every SB at once (the reconstruction is the source)
+        gp_launch_ll_recon(B, L, cfg_.edgeFilter, P.filterIntra, st, bd);
+    } else {
+        GPCK(cudaEventRecord(evx_[0], st));
+        GPCK(cudaStreamWaitEvent(hiSt_, evx_[0], 0));
+        for (size_t s = 0; s + 1 < stepOff.size(); s++)
+            gp_launch_recon(B, P, dSteps + stepOff[s], step420[s], stepOff[s + 1] - stepOff[s] - step420[s], hiSt_, bd);
+        GPCK(cudaEventRecord(evx_[1], hiSt_));
+        GPCK(cudaStreamWaitEvent(st, evx_[1], 0));
+    }
     GPCK(cudaGetLastError());
     cudaEventRecord(ev_[4], st);
     t.steps = (uint32_t)steps.size();
@@ -584,12 +644,35 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
             fp.cdef_y_pri[0] = (uint8_t)cfg_.cdefYPri; fp.cdef_y_sec[0] = (uint8_t)cfg_.cdefYSec;
             fp.cdef_uv_pri[0] = (uint8_t)cfg_.cdefUVPri; fp.cdef_uv_sec[0] = (uint8_t)cfg_.cdefUVSec;
         }
+        if (ll) {   // CodedLossless: qindex 0, no delta-q / QM / tx select / post-filters (av1core rejects them)
+            fp.base_q_idx = 0;
+            fp.tx_mode_select = 0;
+            fp.delta_q_u_dc = fp.delta_q_u_ac = fp.delta_q_v_dc = fp.delta_q_v_ac = 0;
+            fp.using_qmatrix = 0; fp.qm_y = fp.qm_u = fp.qm_v = 0;
+            fp.delta_q_present = 0; fp.delta_q_res = 0;
+            memset(fp.loop_filter_level, 0, sizeof fp.loop_filter_level);
+            fp.loop_filter_sharpness = 0;
+            fp.enable_cdef = 0; fp.cdef_damping_minus_3 = 0; fp.cdef_bits = 0;
+            memset(fp.cdef_y_pri, 0, sizeof fp.cdef_y_pri); memset(fp.cdef_y_sec, 0, sizeof fp.cdef_y_sec);
+            memset(fp.cdef_uv_pri, 0, sizeof fp.cdef_uv_pri); memset(fp.cdef_uv_sec, 0, sizeof fp.cdef_uv_sec);
+            fp.enable_filter_intra = (uint8_t)P.filterIntra;
+        }
+        if (in[i].colorMatrix >= 0) {   // BT.709 primaries, sRGB transfer, the frame's matrix, full range
+            fp.color_description = 1;
+            fp.color_primaries = 1;
+            fp.transfer_characteristics = 13;
+            fp.matrix_coefficients = (uint8_t)in[i].colorMatrix;
+        }
     }
     // ---- post-filters (decoder-exact, av1core GPU kernels) on the pre-filter reconstruction ----
     std::vector<std::array<uint8_t *, 3>> dl(n);   // planes to download
     std::vector<std::array<int, 3>> dlp(n);
     for (int i = 0; i < n; i++)
         for (int p = 0; p < 3; p++) { dl[i][p] = imgs[i].rec[p]; dlp[i][p] = imgs[i].rpitch[p]; }
+    if (ll) {   // lossless: no post-filters; the reconstruction is the source
+        for (int i = 0; i < n; i++)
+            for (int p = 0; p < 3; p++) { dl[i][p] = (uint8_t *)in[i].dsrc[p]; dlp[i][p] = in[i].spitch[p]; }
+    } else
     if (cfg_.fLf >= 0) {
         // av1f: deblocking levels (+ apply) and CDEF presets / per-SB cdef_idx search, then CDEF apply
         av1f_lf_opts lo = av1f_lf_opts_default();

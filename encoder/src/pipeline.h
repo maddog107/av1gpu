@@ -48,6 +48,12 @@ struct GpConfig {
                               // code colour frames 4:4:4 (the encoder itself follows GpFrameIn::yuv444)
     int depth = 8;            // front ends: 10 = produce 10-bit input planes and code 10-bit (high_bitdepth) streams
                               // (the encoder itself follows GpFrameIn::bitDepth)
+    int lossless = 0;         // 1: lossless frames (base_q_idx 0, k_lossless.cu); qindex, the lossy search knobs (P),
+                              // QM / delta-q / tune=iq and the post-filters are not used.  edgeFilter is.
+    int losslessCfl = 1;      // lossless: try CfL on 4x4 chroma blocks
+    int llTileArea = 262144;  // lossless: uniform tiles of at most this many pixels (0: the tileMinMp rule as lossy)
+    int ycgcoRe = 0;          // front ends, lossless RGB input: YCgCo-Re (CICP matrix 16, 8-bit RGB -> 10-bit 4:4:4)
+                              // instead of identity / GBR (matrix 0)
     GpConfig();
 };
 
@@ -62,6 +68,8 @@ struct GpFrameIn {
     int spitch[3] = {0, 0, 0};
     int aw = 0, ah = 0;
     std::vector<uint8_t> sbQ;  // optional per-SB qindex target map (raster, sbRows x sbCols); legalized here
+    int colorMatrix = -1;      // CICP matrix_coefficients of the planes (0 identity / GBR, 6 BT.601, 16 YCgCo-Re; written
+                               // with BT.709 primaries and sRGB transfer, full range); -1: av1core's default (1/13/6)
 };
 
 struct GpFrameOut {

@@ -20,7 +20,8 @@ extern "C" {
 #define AV1G_OK              0
 #define AV1G_ERR_INVALID    -1  /* record violates an invariant (see out->error) */
 #define AV1G_ERR_CAPACITY   -2  /* layout arrays too small (counts written to the record) */
-#define AV1G_ERR_RANGE      -3  /* coefficients overflow inverse-transform intermediates */
+#define AV1G_ERR_RANGE      -3  /* coefficients overflow inverse-transform intermediates (lossless: residuals
+                                    outside 1 + BitDepth bits) */
 #define AV1G_ERR_INTERNAL   -4
 
 /* av1g_encode_opts.flags */
@@ -111,8 +112,8 @@ int av1g_encode(av1g_decision_record *rec, const av1g_encode_opts *opts, av1g_ou
 void av1g_output_free(av1g_output *out);
 
 /* Parse an AV1 OBU stream (Main or High profile 8- or 10-bit sequence header + one intra OBU_FRAME
- * using only the Wave-1 toolset: no deblocking/CDEF/LR/QM/delta-q/segmentation/filter-intra/
- * edge filter/palette/intrabc, 64x64 superblocks, uniform tiles) back into a
+ * using the DecisionRecord toolset: no LR/segmentation/delta-lf/palette/intrabc, 64x64 superblocks,
+ * uniform tiles; lossless frames and any colour description are accepted) back into a
  * DecisionRecord with all decisions and quantized coefficients.  Used for libaom
  * decision replay.  Free with av1g_parsed_free(). */
 typedef struct av1g_parsed {
@@ -127,7 +128,8 @@ typedef struct av1g_parsed {
 int av1g_parse(const uint8_t *obus, size_t size, av1g_parsed **out);
 void av1g_parsed_free(av1g_parsed *p);
 
-/* AVIF container (port of avif_conversion/hybrid_nvenc_libavif/avif_muxer.py).
+/* AVIF container (port of avif_conversion/hybrid_nvenc_libavif/avif_muxer.py).  av1C, pixi and the
+ * nclx colr property (primaries, transfer, matrix, full_range_flag) come from the stream's sequence header.
  * Caller frees *avif with free(). */
 int av1g_mux_avif(const uint8_t *obus, size_t obu_size, uint32_t width, uint32_t height,
                   uint8_t **avif, size_t *avif_size);

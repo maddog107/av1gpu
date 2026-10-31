@@ -40,6 +40,8 @@ if(AV1GPU_TESTS)
   add_executable(av1g_fuzz tests/fuzz.cpp)
   target_link_libraries(av1g_fuzz av1core)
   add_test(NAME fuzz_dav1d_aomdec COMMAND av1g_fuzz --seed 1 --count 200 --quiet)
+  # lossless only: closed-loop records whose reconstruction must equal their random source picture
+  add_test(NAME fuzz_lossless COMMAND av1g_fuzz --seed 1000000 --count 120 --lossless 100 --quiet)
 endif()
 
 if(NOT AV1GPU_CUDA)
@@ -104,8 +106,8 @@ target_link_libraries(av1gpu_recon PRIVATE av1f av1core_gpu gpujpegingest PNG::P
 # encoder: analysis, partition DP, wavefront reconstruction, batching
 add_library(av1gpu_encoder STATIC
   encoder/src/k_misc.cu encoder/src/k_an_a.cu encoder/src/k_an_b.cu encoder/src/k_an_c.cu encoder/src/k_an_d.cu
-  encoder/src/k_an_uv.cu $<TARGET_OBJECTS:av1gpu_recon> encoder/src/pipeline.cpp encoder/src/imageio.cpp
-  encoder/src/entropy_gpu.cpp encoder/src/entropy_dev.cu encoder/src/batch.cpp)
+  encoder/src/k_an_uv.cu $<TARGET_OBJECTS:av1gpu_recon> encoder/src/k_lossless.cu encoder/src/pipeline.cpp
+  encoder/src/imageio.cpp encoder/src/entropy_gpu.cpp encoder/src/entropy_dev.cu encoder/src/batch.cpp)
 target_include_directories(av1gpu_encoder PUBLIC encoder/src)
 target_compile_options(av1gpu_encoder PRIVATE
   $<$<COMPILE_LANGUAGE:CUDA>:--expt-relaxed-constexpr>

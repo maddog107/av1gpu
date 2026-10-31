@@ -16,6 +16,9 @@ AV1G_HD int av1g_ssx(const av1g_frame_params *fp) { return (!fp->monochrome && f
 AV1G_HD int av1g_ssy(const av1g_frame_params *fp) { return (!fp->monochrome && fp->chroma_format == AV1G_CHROMA_444) ? 0 : 1; }
 /* BitDepth of a frame (fp.bit_depth, v3): 8 or 10; 0 (version 1 / 2 records) means 8 */
 AV1G_HD int av1g_bit_depth(const av1g_frame_params *fp) { return fp->bit_depth == 10 ? 10 : 8; }
+/* Lossless frame (v4): base_q_idx 0.  av1g_encode requires every DeltaQ to be 0 then, so the frame is
+ * CodedLossless and every block Lossless (spec LosslessArray[ 0 ]; no segmentation). */
+AV1G_HD int av1g_lossless(const av1g_frame_params *fp) { return fp->base_q_idx == 0; }
 
 AV1G_HD int av1g_bw4(int bsize) { return AV1G_T(Num_4x4_Blocks_Wide)[bsize]; }
 AV1G_HD int av1g_bh4(int bsize) { return AV1G_T(Num_4x4_Blocks_High)[bsize]; }
@@ -64,6 +67,12 @@ AV1G_HD int av1g_uv_tx_size(int bsize, int ssx, int ssy) {
 /* CflAllowed for a non-lossless block */
 AV1G_HD int av1g_cfl_allowed(int bsize) {
     return av1g_bw4(bsize) <= 8 && av1g_bh4(bsize) <= 8;
+}
+/* CflAllowed of any block (spec 9.3 uv_mode cdf, libaom is_cfl_allowed): a lossless block only when its chroma
+ * block is 4x4 (get_plane_residual_size( MiSize, 1 ) == BLOCK_4X4: 4:2:0 luma 4x4 / 4x8 / 8x4 / 8x8, 4:4:4 4x4) */
+AV1G_HD int av1g_cfl_allowed_ex(int bsize, int lossless, int ssx, int ssy) {
+    if (lossless) return av1g_uv_bsize(bsize, ssx, ssy) == AV1G_BLOCK_4X4;
+    return av1g_cfl_allowed(bsize);
 }
 
 /* number of coefficients stored for a tx size (tw * th) */
@@ -172,6 +181,32 @@ AV1G_HDI int av1g_for_each_txb(int bsize, int mi_row, int mi_col, int tx_depth, 
                 int x4 = baseX4 + x, y4 = baseY4 + y;
                 if (x4 >= maxX4 || y4 >= maxY4) continue;
                 fn(plane, txSz, x4, y4, x, y);
+                n++;
+            }
+    }
+    return n;
+}
+
+/* av1g_for_each_txb of a block of a lossless (lossless != 0) or lossy frame.  Lossless (spec residual():
+ * txSz = Lossless ? TX_4X4 : get_tx_size( plane, TxSize )): every plane in 4x4 tx blocks, raster order over
+ * the plane block; tx_depth is ignored.  Lossy frames: av1g_for_each_txb unchanged. */
+template <typename F>
+AV1G_HDI int av1g_for_each_txb_ex(int bsize, int mi_row, int mi_col, int tx_depth, int lossless, int mono, int ssx, int ssy,
+                                  int mi_rows, int mi_cols, F &&fn) {
+    if (!lossless) return av1g_for_each_txb(bsize, mi_row, mi_col, tx_depth, mono, ssx, ssy, mi_rows, mi_cols, fn);
+    int n = 0;
+    const int hasChroma = av1g_has_chroma(bsize, mi_row, mi_col, mono, ssx, ssy);
+    for (int plane = 0; plane < 1 + 2 * hasChroma; plane++) {
+        const int subX = plane ? ssx : 0, subY = plane ? ssy : 0;
+        const int planeSz = plane ? av1g_uv_bsize(bsize, ssx, ssy) : bsize;
+        const int num4x4W = av1g_bw4(planeSz), num4x4H = av1g_bh4(planeSz);
+        const int baseX4 = mi_col >> subX, baseY4 = mi_row >> subY;
+        const int maxX4 = mi_cols >> subX, maxY4 = mi_rows >> subY;
+        for (int y = 0; y < num4x4H; y++)
+            for (int x = 0; x < num4x4W; x++) {
+                const int x4 = baseX4 + x, y4 = baseY4 + y;
+                if (x4 >= maxX4 || y4 >= maxY4) continue;
+                fn(plane, (int)AV1G_TX_4X4, x4, y4, x, y);
                 n++;
             }
     }

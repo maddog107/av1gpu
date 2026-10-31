@@ -11,6 +11,8 @@
  *   av1g_qm(), av1g_qm_step() quantizer-matrix weights (also for engines' forward quantizers)
  *   av1g_inv_txfm2d()         spec 7.13.3 (all 16 types, 19 sizes) + conformance
  *                             range checks (flags in *err, see AV1G_ERR_*)
+ *   av1g_inv_wht4x4()         spec 7.13.3 with Lossless = 1 (inverse WHT, 7.13.2.10) + conformance check
+ *   av1g_fwht4x4()            forward 4x4 WHT whose levels reconstruct a residual exactly (lossless engines)
  *   av1g_add_residual()       spec 7.12.3 step 3 (flips + Clip1)
  *   av1g_build_edges()        spec 7.11.2 AboveRow / LeftCol preparation
  *   av1g_predict_intra()      DC / directional / smooth* / paeth (edge filter off)
@@ -30,6 +32,7 @@
 /* conformance error flags reported by the inverse transform */
 #define AV1G_ERR_B_RANGE     1u  /* butterfly output outside r bits (7.13.2.1) */
 #define AV1G_ERR_ADST4_RANGE 2u  /* ADST4 intermediates outside range (7.13.2.6) */
+#define AV1G_ERR_WHT_RANGE   4u  /* lossless: Residual outside 1 + BitDepth bits (7.12.3) */
 
 /* sample storage type of a bit depth */
 template <int BD> struct av1g_pixel_of { typedef uint16_t type; };
@@ -63,7 +66,8 @@ AV1G_HD int av1g_get_tx_set_intra(int txSz, int reduced_tx_set) {
 }
 AV1G_HD int av1g_tx_type_in_set_intra(int set, int txType) { return AV1G_T(Tx_Type_In_Set_Intra)[set][txType]; }
 
-/* compute_tx_type() for an intra chroma tx block (spec 5.11.40, lossless excluded) */
+/* compute_tx_type() for an intra chroma tx block (spec 5.11.40, lossless excluded: lossless blocks always use
+ * DCT_DCT, i.e. the WHT) */
 AV1G_HD int av1g_chroma_tx_type(int uvTxSz, int uv_mode, int reduced_tx_set) {
     if (AV1G_T(Tx_Size_Sqr_Up)[uvTxSz] > AV1G_TX_32X32) return AV1G_DCT_DCT;
     int set = av1g_get_tx_set_intra(uvTxSz, reduced_tx_set);
@@ -442,6 +446,59 @@ AV1G_HD void av1g_inv_txfm2d(const int32_t *dq, int txSz, int txType, int32_t *r
         av1g_inv_1d(T, ck, log2H, colR, err);
         for (int i = 0; i < h; i++) res[i * w + j] = (int32_t)av1g_round2_64(T[i], 4);
     }
+}
+
+/* ------------------------------------------------------------------------- */
+/* lossless: 4x4 Walsh-Hadamard transform                                    */
+/* ------------------------------------------------------------------------- */
+/* Inverse WHT process (spec 7.13.2.10) on T[0], T[s], T[2s], T[3s] */
+AV1G_HD void av1g_iwht4(int32_t *T, int s, int shift) {
+    int32_t a = T[0] >> shift, c = T[s] >> shift, d = T[2 * s] >> shift, b = T[3 * s] >> shift;
+    a += c;
+    d -= b;
+    const int32_t e = (a - d) >> 1;
+    b = e - b;
+    c = e - c;
+    a -= b;
+    d += c;
+    T[0] = a; T[s] = b; T[2 * s] = c; T[3 * s] = d;
+}
+/* 2-D inverse transform process of a lossless 4x4 tx block (spec 7.13.3, Lossless = 1): row transforms with
+ * shift 2, the colClampRange clamp between the passes, column transforms with shift 0 (rowShift = colShift = 0).
+ * dq: Dequant (4x4 row-major; qindex 0: level * 4), res: Residual.  err |= AV1G_ERR_WHT_RANGE when a residual is
+ * not representable by a signed integer with 1 + BitDepth bits (spec 7.12.3 conformance requirement). */
+template <int BD = 8>
+AV1G_HD void av1g_inv_wht4x4(const int32_t *dq, int32_t *res, uint32_t *err) {
+    const int colR = BD + 6 > 16 ? BD + 6 : 16;
+    for (int i = 0; i < 16; i++) res[i] = dq[i];
+    for (int i = 0; i < 4; i++) av1g_iwht4(res + 4 * i, 1, 2);
+    for (int i = 0; i < 16; i++) res[i] = av1g_clip3(-(1 << (colR - 1)), (1 << (colR - 1)) - 1, res[i]);
+    for (int j = 0; j < 4; j++) av1g_iwht4(res + j, 4, 0);
+    for (int i = 0; i < 16; i++)
+        if (res[i] < -(1 << BD) || res[i] > (1 << BD) - 1) *err |= AV1G_ERR_WHT_RANGE;
+}
+/* One forward 1-D WHT (libaom av1_fwht4x4 pass): inputs x[0], x[s], x[2s], x[3s], outputs in the order the inverse
+ * reads them (T[0] = a, T[1] = c, T[2] = d, T[3] = b), so av1g_iwht4( ., 0 ) of the output is the input exactly. */
+AV1G_HD void av1g_fwht4(int32_t *x, int s) {
+    int32_t a = x[0], b = x[s], c = x[2 * s], d = x[3 * s];
+    a += b;
+    d -= c;
+    const int32_t e = (a - d) >> 1;
+    b = e - b;
+    c = e - c;
+    a -= c;
+    d += b;
+    x[0] = a; x[s] = c; x[2 * s] = d; x[3 * s] = b;
+}
+/* Forward 4x4 WHT of a residual (res: 4x4 row-major, any values) into the quantized levels of a lossless tx block
+ * (q: Quant[] row-major): columns first, then rows (the inverse runs rows first, so each forward pass is undone
+ * exactly).  At qindex 0 (dc_q = ac_q = 4) the decoder's Dequant is q * 4 and av1g_inv_wht4x4 returns res. */
+AV1G_HD void av1g_fwht4x4(const int32_t *res, int16_t *q) {
+    int32_t t[16];
+    for (int i = 0; i < 16; i++) t[i] = res[i];
+    for (int j = 0; j < 4; j++) av1g_fwht4(t + j, 4);
+    for (int i = 0; i < 4; i++) av1g_fwht4(t + 4 * i, 1);
+    for (int i = 0; i < 16; i++) q[i] = (int16_t)t[i];
 }
 
 /* Reconstruction add (spec 7.12.3 step 3). */

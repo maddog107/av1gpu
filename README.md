@@ -29,7 +29,8 @@
 > (−86 %)**, and its files are **31 % smaller than WebP** at the same quality. SVT-AV1 needs presets 4–6 on
 > all 16 threads (16–49 MP/s) for the same sizes; built with PGO, it is still 3.3× slower. On the same GPU
 > av1gpu is **7× faster than NVIDIA's own NVENC AV1 encoder**, whose files are about 28 % bigger than
-> libaom's. It also writes **4:4:4 and 10-bit** AVIFs, 4–5× faster than libaom in the same format. One
+> libaom's. It also writes **4:4:4 and 10-bit** AVIFs, 4–5× faster than libaom in the same format, and
+> **lossless** ones. One
 > prebuilt binary, no CPU farm.
 
 ## ⚡ Overview
@@ -186,6 +187,25 @@ speed. On these photos 10-bit makes files about 2 % smaller at equal quality for
 sources are 4:2:0 JPEGs; it is for sources with full-resolution colour, such as PNG screenshots and graphics.
 Details: [docs/RESULTS.md](docs/RESULTS.md#444-and-10-bit).
 
+### 💎 Lossless
+
+`--lossless` writes AVIFs that decode to exactly the input. On 47 PNGs (24 Kodak photos and 23 charts and
+screenshots, 42.7 MP), with every output checked pixel for pixel in libavif with both decoders:
+
+| Lossless encoder | Size vs the PNGs | Photos | Graphics | MP/s |
+|---|---:|---:|---:|---:|
+| **av1gpu `--lossless --ycgco-re`** | **90.6 %** | 11.99 MB | 4.82 MB | 41–43 |
+| av1gpu `--lossless` (GBR) | 108.5 % | 13.37 MB | 6.74 MB | 41–43 |
+| avifenc `-l --cicp 1/13/16` (speed 6) | 92.2 % | 12.40 MB | 4.71 MB | 8.8 |
+| avifenc `-l` (speed 6) | 116.0 % | 13.69 MB | 7.83 MB | 9.3 |
+| cwebp `-lossless` | 66.5 % | 11.34 MB | 0.98 MB | 44 |
+
+av1gpu beats libaom's lossless AVIF on size and is about 5× faster, but lossless WebP is much smaller,
+especially on graphics: av1gpu has no palette or intra block copy, the AV1 tools for flat colours and
+repeated patterns. (av1gpu's speed is for the set repeated 4×; a single pass of 42.7 MP, CUDA start-up
+included, ran at 17 MP/s. CPU encoders: 16 single-threaded processes on the same 16-vCPU host.) Details:
+[docs/RESULTS.md](docs/RESULTS.md#lossless).
+
 ### 👁️ A second metric: CVVDP
 
 <picture>
@@ -268,7 +288,8 @@ project. Before you rely on it, note:
   work but have not been run yet. Reports are welcome, especially `tests/decoder_gate.py` results.
 - Output: 8- or 10-bit (`--depth 10`), 4:2:0, 4:4:4 (`--yuv 444`) or monochrome AV1, intra only. In 4:2:0,
   4:4:4 and 4:2:2 JPEGs are downsampled; in 4:4:4, subsampled JPEGs are upsampled exactly as libjpeg-turbo
-  does. There is no 4:2:2 output, alpha, animation or lossless mode yet.
+  does. `--lossless` codes exactly (RGB as GBR or YCgCo-Re, JPEGs as their decoded YCbCr). There is no
+  4:2:2 output, alpha or animation yet.
 - Some inputs are not handled on the GPU path. The batch mode skips them and lists them on stderr, so
   you can send them to another encoder: CMYK/YCCK JPEGs, 12-bit JPEGs, images over 35.6 MP and
   unreadable files. PNG and WebP inputs are decoded on the CPU.
@@ -321,6 +342,8 @@ for CUDA start-up.
 | `--preset P` | `slow`, `base`, `fast`, `faster`, `turbo` (default), `turbo2`, `turbo3` |
 | `--small-preset P` | preset for images below 1 MP (default `base`; `none` disables) |
 | `--yuv 420` / `444` | chroma format (default `420`; `444` is AV1 High profile and keeps full-resolution colour) |
+| `--lossless` | exact (AV1 lossless). PNG/WebP RGB as GBR 4:4:4 at the source depth (as `avifenc -l`); JPEG as its decoded YCbCr at its own subsampling (4:2:2 JPEGs are refused) |
+| `--ycgco-re` | with `--lossless`: RGB as YCgCo-Re (`--cicp 1/13/16` in avifenc), 8-bit RGB → 10-bit 4:4:4; usually smaller |
 | `--depth 8` / `10` | bit depth (default 8; 16-bit PNGs keep 10 bits, 8-bit sources are scaled to the 10-bit range) |
 | `--tune iq` / `none` | libaom `tune=iq` tools: quantization matrices, variance-boost delta-q, chroma delta-q, deblocking and CDEF strength choice (default `iq`) |
 | `--cpu-entropy` | entropy-code on the CPU (produces bytes identical to the GPU coder) |

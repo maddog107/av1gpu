@@ -2,10 +2,12 @@
 // modes, angle deltas, CFL, tx sizes/types, tx-select, reduced tx set, delta-q,
 // monochrome, 4:4:4, screen-content flag, forced/extra tiles, odd sizes) through the GPU
 // symbolizer + entropy coder through av1g_gpu::run_batch_device (device arrays); streams and
-// tile bytes must equal the CPU writer's.  Batches mix 4:2:0, 4:4:4 and monochrome frames, 8-bit and 10-bit.
+// tile bytes must equal the CPU writer's.  Batches mix 4:2:0, 4:4:4 and monochrome frames, 8-bit and 10-bit, lossy and
+// lossless (av1g_fuzz's closed-loop lossless cases: real WHT levels of a random source).
 //
-//   gpu_fuzz_test --seed S --count N [--batch B] [--yuv444 P] [--depth10 P]
-//   (--yuv444: % of colour cases in 4:4:4, default 40; --depth10: % of cases 10-bit, default 40)
+//   gpu_fuzz_test --seed S --count N [--batch B] [--yuv444 P] [--depth10 P] [--lossless P]
+//   (--yuv444: % of colour cases in 4:4:4, default 40; --depth10: % of cases 10-bit, default 40; --lossless: % of the
+//   seeds that are lossless cases, own random stream as in av1g_fuzz, default 25; 0 = the previous case stream)
 #define AV1G_FUZZ_NO_MAIN
 #include "fuzz.cpp"
 #include "gpu_entropy.h"
@@ -13,7 +15,7 @@
 
 int main(int argc, char **argv) {
     uint64_t seed = 1;
-    int count = 200, batch = 40, pct444 = 40, pct10 = 40;
+    int count = 200, batch = 40, pct444 = 40, pct10 = 40, pctLL = 25;
     for (int i = 1; i < argc; i++) {
         std::string a = argv[i];
         if (a == "--seed" && i + 1 < argc) seed = strtoull(argv[++i], 0, 10);
@@ -21,8 +23,10 @@ int main(int argc, char **argv) {
         else if (a == "--batch" && i + 1 < argc) batch = atoi(argv[++i]);
         else if (a == "--yuv444" && i + 1 < argc) pct444 = atoi(argv[++i]);
         else if (a == "--depth10" && i + 1 < argc) pct10 = atoi(argv[++i]);
+        else if (a == "--lossless" && i + 1 < argc) pctLL = atoi(argv[++i]);
     }
-    int bad = 0, done = 0, tilesChecked = 0, capacityErrors = 0, orderCheck = 0, scratchAllocs = 0, n444 = 0, nMono = 0, n10 = 0;
+    int capacityReruns = 0;
+    int bad = 0, done = 0, tilesChecked = 0, capacityErrors = 0, orderCheck = 0, scratchAllocs = 0, n444 = 0, nMono = 0, n10 = 0, nLL = 0;
     uint64_t syms = 0;
     void *scratch = nullptr;
     size_t scratchBytes = 0;
@@ -36,13 +40,26 @@ int main(int argc, char **argv) {
         std::vector<const av1g_decision_record *> frames;
         for (int i = 0; i < n; i++) {
             const uint64_t cs = seed + c0 + i;
-            if (!make_case(cs, false, 300, 2, cases[i], pct444, pct10)) return 1;
+            const bool ll = is_lossless_case(cs, false, pctLL);
+            LLSource src;
+            if (ll ? !make_lossless_case(cs, 300, 2, cases[i], src, pct444, pct10) : !make_case(cs, false, 300, 2, cases[i], pct444, pct10))
+                return 1;
             n444 += cases[i].rec.fp.chroma_format == AV1G_CHROMA_444;
             n10 += av1g_bit_depth(&cases[i].rec.fp) == 10;
             nMono += cases[i].rec.fp.monochrome;
+            nLL += ll;
+            av1g_output o;
+            if (ll) {   // closed loop on the source (levels, then skip for blocks without residual)
+                av1g_encode_opts el = {0, -1};
+                std::string why;
+                if (encode_lossless_case(cases[i], src, cs, el, o, why) != AV1G_OK) {
+                    fprintf(stderr, "seed %llu: lossless: %s\n", (unsigned long long)cs, why.c_str());
+                    return 1;
+                }
+                av1g_output_free(&o);
+            }
             // make the record conformant (FIX_RANGE), then record the reference streams
             av1g_encode_opts eo = {AV1G_ENC_FIX_RANGE | AV1G_ENC_NO_RECON, -1};
-            av1g_output o;
             if (av1g_encode(&cases[i].rec, &eo, &o) != AV1G_OK) { fprintf(stderr, "seed %llu: %s\n", (unsigned long long)cs, o.error); return 1; }
             av1g_output_free(&o);
             eo.flags = AV1G_ENC_BITSTREAM_ONLY | AV1G_ENC_NO_RECON;
@@ -121,6 +138,13 @@ int main(int argc, char **argv) {
                     b.symbolCapacity = stt.symbols;  // exactly what is needed
                     continue;
                 }
+                if (stt.error == av1g_gpu::AV1G_GPU_ERR_SYMBOLS && attempt == 0) {
+                    // the default bound assumes natural images; the lossless cases' noise sources can need more (the
+                    // pipelines rerun with the reported count the same way)
+                    capacityReruns++;
+                    b.symbolCapacity = stt.symbols;
+                    continue;
+                }
                 if (stt.error) { fprintf(stderr, "batch at %llu: device error %d\n", (unsigned long long)(seed + c0), stt.error); return 2; }
                 break;
             }
@@ -179,8 +203,8 @@ int main(int argc, char **argv) {
             if (!ok) {
                 bad++;
                 const av1g_frame_params &fp = cases[i].rec.fp;
-                printf("seed %llu %ux%u mono%d 444%d bd%d txsel%d red%d sct%d: GPU MISMATCH\n", (unsigned long long)(seed + c0 + i), fp.width,
-                       fp.height, fp.monochrome, fp.chroma_format, av1g_bit_depth(&fp), fp.tx_mode_select, fp.reduced_tx_set,
+                printf("seed %llu %ux%u mono%d 444%d bd%d q%d txsel%d red%d sct%d: GPU MISMATCH\n", (unsigned long long)(seed + c0 + i), fp.width,
+                       fp.height, fp.monochrome, fp.chroma_format, av1g_bit_depth(&fp), fp.base_q_idx, fp.tx_mode_select, fp.reduced_tx_set,
                        fp.allow_screen_content_tools);
                 for (size_t t = 0; t < cpuSyms[i].size() && t < br.tileSyms[i].size(); t++) {
                     const auto &a = br.tileSyms[i][t], &b = cpuSyms[i][t];
@@ -195,10 +219,10 @@ int main(int argc, char **argv) {
         done += n;
     }
     printf("GPU FUZZ (run_batch_device, device arrays, non-blocking stream, %d scratch allocations) seeds %llu..%llu: %d cases "
-           "(%d 4:4:4, %d monochrome, %d 10-bit), %d tiles, %llu symbols, %d symbol-capacity errors reported + rerun, order check %s, "
-           "%d mismatches -> %s\n",
-           scratchAllocs, (unsigned long long)seed, (unsigned long long)(seed + count - 1), done, n444, nMono, n10, tilesChecked,
-           (unsigned long long)syms, capacityErrors, orderCheck > 0 ? "ok" : orderCheck < 0 ? "FAILED" : "not run", bad,
+           "(%d 4:4:4, %d monochrome, %d 10-bit, %d lossless), %d tiles, %llu symbols, %d symbol-capacity errors reported + rerun "
+           "(+%d reruns over the default bound), order check %s, %d mismatches -> %s\n",
+           scratchAllocs, (unsigned long long)seed, (unsigned long long)(seed + count - 1), done, n444, nMono, n10, nLL, tilesChecked,
+           (unsigned long long)syms, capacityErrors, capacityReruns, orderCheck > 0 ? "ok" : orderCheck < 0 ? "FAILED" : "not run", bad,
            bad ? "FAILED" : "PASSED");
     cudaFree(scratch);
     cudaStreamDestroy(stream);

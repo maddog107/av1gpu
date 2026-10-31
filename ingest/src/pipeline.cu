@@ -493,8 +493,9 @@ static bool dispatch(ingest_ctx *c, std::unique_ptr<Batch> b) {
     m.h8 = (int)align_up(Ho, 8);
     m.aw = (int)align_up(Wo, A);
     m.ah = (int)align_up(Ho, A);
-    // 4:4:4 output (cfg.out_444): full-size chroma planes
-    const int cfull = c->cfg.out_444 && !m.mono ? 1 : 0;
+    // 4:4:4 output (cfg.out_444 = 1): full-size chroma planes; out_444 = 2 (source format): full-size for 4:4:4
+    // JPEGs, 4:2:0 (an exact copy of the native chroma for 4:2:0 JPEGs) otherwise
+    const int cfull = !m.mono && (c->cfg.out_444 == 1 || (c->cfg.out_444 == 2 && in.sub == INGEST_SUB_444)) ? 1 : 0;
     m.chroma_full = cfull;
     m.y_pitch = m.aw;
     m.c_pitch = cfull ? m.aw : m.aw / 2;

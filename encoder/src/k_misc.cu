@@ -19,6 +19,7 @@ int gp_upload_tables_recon_444_8(const GpHostTables *);
 int gp_upload_tables_recon_420_10(const GpHostTables *);
 int gp_upload_tables_recon_444_10(const GpHostTables *);
 int gp_upload_tables_an_uv(const GpHostTables *);
+int gp_upload_tables_ll(const GpHostTables *);
 void gp_launch_an_uv(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st, int bd);
 void gp_launch_an_a(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st, int bd);
 void gp_launch_an_b(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st, int bd);
@@ -362,7 +363,7 @@ int gp_init_tables(char *err, int errlen) {
     int (*ups[])(const GpHostTables *) = {gp_upload_tables_misc, gp_upload_tables_an_a, gp_upload_tables_an_b,
                                           gp_upload_tables_an_c, gp_upload_tables_an_d, gp_upload_tables_recon,
                                           gp_upload_tables_recon_444_8, gp_upload_tables_recon_420_10,
-                                          gp_upload_tables_recon_444_10, gp_upload_tables_an_uv};
+                                          gp_upload_tables_recon_444_10, gp_upload_tables_an_uv, gp_upload_tables_ll};
     for (auto f : ups)
         if (f(&H)) { snprintf(err, errlen, "table upload failed"); return -1; }
     return 0;
