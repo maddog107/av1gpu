@@ -1,0 +1,366 @@
+-- The C compiler identification is GNU 13.3.0
+-- The CXX compiler identification is GNU 13.3.0
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: /usr/bin/cc - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /usr/bin/c++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Performing Test HAVE_X86_PLATFORM
+-- Performing Test HAVE_X86_PLATFORM - Success
+-- Performing Test HAVE_ARM_PLATFORM
+-- Performing Test HAVE_ARM_PLATFORM - Failed
+-- Looking for a ASM_NASM compiler
+-- Looking for a ASM_NASM compiler - /usr/bin/nasm
+-- The ASM_NASM compiler identification is NASM
+-- Found assembler: /usr/bin/nasm
+-- BUILD_SHARED_LIBS: ON
+-- Checking C flag support for: [-Wformat-security] - Yes
+-- Checking C flag support for: [-Wformat] - Yes
+-- Checking C flag support for: [-Wextra] - Yes
+-- Checking CXX flag support for: [-Wformat-security] - Yes
+-- Checking CXX flag support for: [-Wformat] - Yes
+-- Checking CXX flag support for: [-Wextra] - Yes
+-- Checking C flag support for: [-Wall] - Yes
+-- Checking CXX flag support for: [-Wall] - Yes
+-- Checking C flag support for: [-fstack-protector-strong] - Yes
+-- Checking CXX flag support for: [-fstack-protector-strong] - Yes
+-- Checking C flag support for: [-fno-stack-clash-protection] - Yes
+-- Checking CXX flag support for: [-fno-stack-clash-protection] - Yes
+-- Checking C flag support for: [-mno-avx] - Yes
+-- Checking CXX flag support for: [-mno-avx] - Yes
+-- Performing Test HAS_AVX512
+-- Performing Test HAS_AVX512 - Success
+-- Looking for strnlen_s
+-- Looking for strnlen_s - not found
+-- Looking for strncpy_s
+-- Looking for strncpy_s - not found
+-- Looking for strcpy_s
+-- Looking for strcpy_s - not found
+-- Looking for valgrind/valgrind.h
+-- Looking for valgrind/valgrind.h - not found
+-- Performing Test HAVE_BUILTIN_EXPECT
+-- Performing Test HAVE_BUILTIN_EXPECT - Success
+-- Performing Test HAVE_BUILTIN_ASSUME
+-- Performing Test HAVE_BUILTIN_ASSUME - Failed
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Success
+-- Found Threads: TRUE  
+-- Looking for elf_aux_info
+-- Looking for elf_aux_info - not found
+-- Checking C flag support for: [-msse2] - Yes
+-- Checking CXX flag support for: [-msse2] - Yes
+-- Checking C flag support for: [-mssse3] - Yes
+-- Checking CXX flag support for: [-mssse3] - Yes
+-- Checking C flag support for: [-msse4.1] - Yes
+-- Checking CXX flag support for: [-msse4.1] - Yes
+-- Performing Test HAS_MSSE4_2
+-- Performing Test HAS_MSSE4_2 - Success
+-- Checking C flag support for: [-mavx2] - Yes
+-- Checking CXX flag support for: [-mavx2] - Yes
+-- Checking C flag support for: [-mavx512f] - Yes
+-- Checking C flag support for: [-mavx512bw] - Yes
+-- Checking C flag support for: [-mavx512dq] - Yes
+-- Checking C flag support for: [-mavx512vl] - Yes
+-- Checking CXX flag support for: [-mavx512f] - Yes
+-- Checking CXX flag support for: [-mavx512bw] - Yes
+-- Checking CXX flag support for: [-mavx512dq] - Yes
+-- Checking CXX flag support for: [-mavx512vl] - Yes
+-- Configuring done (6.6s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/ubuntu/src/svt-build
+ninja: Entering directory `svt-build'
+[1/271] Building C object CMakeFiles/safestringlib.dir/third_party/safestringlib/ignore_handler_s.c.o
+[2/271] Building C object CMakeFiles/safestringlib.dir/third_party/safestringlib/safe_str_constraint.c.o
+[3/271] Building C object CMakeFiles/safestringlib.dir/third_party/safestringlib/strnlen_s.c.o
+[4/271] Building C object CMakeFiles/safestringlib.dir/third_party/safestringlib/strncpy_s.c.o
+[5/271] Building C object Source/Lib/C_DEFAULT/CMakeFiles/C_DEFAULT.dir/blend_a64_mask_c.c.o
+[6/271] Building C object CMakeFiles/safestringlib.dir/third_party/safestringlib/strcpy_s.c.o
+[7/271] Building C object Source/Lib/C_DEFAULT/CMakeFiles/C_DEFAULT.dir/cfl_c.c.o
+[8/271] Building C object Source/Lib/C_DEFAULT/CMakeFiles/C_DEFAULT.dir/inter_prediction_c.c.o
+[9/271] Building C object Source/Lib/C_DEFAULT/CMakeFiles/C_DEFAULT.dir/intra_prediction_c.c.o
+[10/271] Building C object Source/Lib/C_DEFAULT/CMakeFiles/C_DEFAULT.dir/filterintra_c.c.o
+[11/271] Building C object Source/Lib/C_DEFAULT/CMakeFiles/C_DEFAULT.dir/pack_unpack_c.c.o
+[12/271] Building C object Source/Lib/C_DEFAULT/CMakeFiles/C_DEFAULT.dir/compute_sad_c.c.o
+[13/271] Building C object Source/Lib/C_DEFAULT/CMakeFiles/C_DEFAULT.dir/picture_operators_c.c.o
+[14/271] Building C object Source/Lib/C_DEFAULT/CMakeFiles/C_DEFAULT.dir/encode_txb_ref_c.c.o
+[15/271] Building C object Source/Lib/C_DEFAULT/CMakeFiles/C_DEFAULT.dir/sad_av1.c.o
+[16/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/bitstream_unit.c.o
+[17/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/blend_a64_mask.c.o
+[18/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/block_structures.c.o
+[19/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/av1me.c.o
+[20/271] Building C object Source/Lib/C_DEFAULT/CMakeFiles/C_DEFAULT.dir/variance.c.o
+[21/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/cdef.c.o
+[22/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/adaptive_mv_pred.c.o
+[23/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/cabac_context_model.c.o
+[24/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/coding_unit.c.o
+[25/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/aom_dsp_rtcd.c.o
+[26/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/coefficients.c.o
+[27/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/common_utils.c.o
+[28/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/cdef_process.c.o
+[29/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/corner_detect.c.o
+[30/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/convolve.c.o
+[31/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/coding_loop.c.o
+[32/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/corner_match.c.o
+[33/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/deblocking_common.c.o
+[34/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/enc_dec_results.c.o
+[35/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/dlf_process.c.o
+[36/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/deblocking_filter.c.o
+[37/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/enc_dec_tasks.c.o
+[38/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/enc_dec_segments.c.o
+[39/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/enc_cdef.c.o
+[40/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/enc_warped_motion.c.o
+[41/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/enc_intra_prediction.c.o
+[42/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/common_dsp_rtcd.c.o
+[43/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/enc_dec_process.c.o
+[44/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/encode_context.c.o
+[45/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/ec_results.c.o
+[46/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/enc_inter_prediction.c.o
+[47/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/ec_process.c.o
+[48/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/fft.c.o
+[49/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/firstpass.c.o
+[50/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/global_motion.c.o
+[51/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/entropy_coding.c.o
+[52/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/global_me.c.o
+[53/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/global_me_cost.c.o
+[54/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/hash.c.o
+[55/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/enc_mode_config.c.o
+[56/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/initial_rc_reorder_queue.c.o
+[57/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/grainSynthesis.c.o
+[58/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/initial_rc_results.c.o
+[59/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/hash_motion.c.o
+[60/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/full_loop.c.o
+[61/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/initial_rc_process.c.o
+[62/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/me_sad_calculation.c.o
+[63/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/inter_prediction.c.o
+[64/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/mcomp.c.o
+[65/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/md_rate_estimation.c.o
+[66/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/md_process.c.o
+[67/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/intra_prediction.c.o
+[68/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/inv_transforms.c.o
+[69/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/me_results.c.o
+[70/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/me_context.c.o
+[71/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/mode_decision.c.o
+[72/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/neighbor_arrays.c.o
+[73/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/me_process.c.o
+[74/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/md_config_process.c.o
+[75/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/motion_estimation.c.o
+[76/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/noise_util.c.o
+[77/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/packetization_reorder_queue.c.o
+[78/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/packetization_process.c.o
+[79/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/pic_analysis_results.c.o
+[80/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/pass2_strategy.c.o
+[81/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/pic_buffer_desc.c.o
+[82/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/palette.c.o
+[83/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/noise_model.c.o
+[84/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/pd_queue.c.o
+[85/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/pd_reorder_queue.c.o
+[86/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/pic_analysis_process.c.o
+[87/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/pic_demux_results.c.o
+[88/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/pd_results.c.o
+[89/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/pic_manager_queue.c.o
+[90/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/pic_operators.c.o
+[91/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/pred_structure.c.o
+[92/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/pic_manager_process.c.o
+[93/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/pcs.c.o
+[94/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/ac_bias.c.o
+[95/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/ransac.c.o
+[96/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/rc_results.c.o
+[97/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/rc_aq.c.o
+[98/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/rc_crf_cqp.c.o
+[99/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/rc_tasks.c.o
+[100/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/pd_process.c.o
+[101/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/rc_process.c.o
+[102/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/rc_rtc_cbr.c.o
+[103/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/reference_object.c.o
+[104/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/rd_cost.c.o
+[105/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/rc_vbr_cbr.c.o
+[106/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/resource_coordination_results.c.o
+[107/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/resize.c.o
+[108/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/resource_coordination_process.c.o
+[109/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/rest_process.c.o
+[110/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/restoration_pick.c.o
+[111/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/segmentation_params.c.o
+[112/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/product_coding_loop.c.o
+[113/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/restoration.c.o
+[114/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/svt_malloc.c.o
+[115/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/svt_log.c.o
+[116/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/segmentation.c.o
+[117/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/sequence_control_set.c.o
+[118/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/super_res.c.o
+[119/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/svt_time.c.o
+[120/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/svt_threads.c.o
+[121/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/sys_resource_manager.c.o
+[122/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/kernel_dispatch.c.o
+[123/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/svt_psnr.c.o
+[124/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/vector.c.o
+[125/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/utility.c.o
+[126/271] Generating version header
+-- Configured version: v4.2.0
+[127/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/src_ops_process.c.o
+[128/271] Building C object Source/Lib/ASM_SSE2/CMakeFiles/ASM_SSE2.dir/compute_mean_intrin_sse2.c.o
+[129/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/warped_motion.c.o
+[130/271] Building C object Source/Lib/Globals/CMakeFiles/GLOBALS.dir/metadata_handle.c.o
+[131/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/temporal_filtering.c.o
+[132/271] Building C object Source/Lib/ASM_SSE2/CMakeFiles/ASM_SSE2.dir/convolve_2d_sse2.c.o
+[133/271] Building C object Source/Lib/Globals/CMakeFiles/GLOBALS.dir/enc_settings.c.o
+[134/271] Building C object Source/Lib/ASM_SSE2/CMakeFiles/ASM_SSE2.dir/encodetxb_sse2.c.o
+[135/271] Building C object Source/Lib/ASM_SSE2/CMakeFiles/ASM_SSE2.dir/fft_sse2.c.o
+[136/271] Building C object Source/Lib/Codec/CMakeFiles/CODEC.dir/transforms.c.o
+[137/271] Building C object Source/Lib/ASM_SSE2/CMakeFiles/ASM_SSE2.dir/highbd_subtract_sse2.c.o
+[138/271] Building C object Source/Lib/ASM_SSE2/CMakeFiles/ASM_SSE2.dir/highbd_intrapred_sse2.c.o
+[139/271] Building C object Source/Lib/ASM_SSE2/CMakeFiles/ASM_SSE2.dir/highbd_variance_sse2.c.o
+[140/271] Building C object Source/Lib/ASM_SSE2/CMakeFiles/ASM_SSE2.dir/jnt_convolve_2d_sse2.c.o
+[141/271] Building C object Source/Lib/ASM_SSE2/CMakeFiles/ASM_SSE2.dir/me_sad_calc_intrin_sse2.c.o
+[142/271] Building C object Source/Lib/ASM_SSE2/CMakeFiles/ASM_SSE2.dir/intra_pred_av1_intrin_sse2.c.o
+[143/271] Building C object Source/Lib/ASM_SSE2/CMakeFiles/ASM_SSE2.dir/dlf_intrin_sse2.c.o
+[144/271] Building C object Source/Lib/ASM_SSE2/CMakeFiles/ASM_SSE2.dir/jnt_convolve_sse2.c.o
+[145/271] Building C object Source/Lib/ASM_SSE2/CMakeFiles/ASM_SSE2.dir/convolve_sse2.c.o
+[146/271] Building ASM_NASM object Source/Lib/ASM_SSE2/CMakeFiles/ASM_SSE2.dir/aom_subpixel_8t_sse2.asm.o
+[147/271] Building C object Source/Lib/ASM_SSE2/CMakeFiles/ASM_SSE2.dir/wiener_convolve_sse2.c.o
+[148/271] Building ASM_NASM object Source/Lib/ASM_SSE2/CMakeFiles/ASM_SSE2.dir/highbd_variance_impl_sse2.asm.o
+[149/271] Building C object Source/Lib/ASM_SSE2/CMakeFiles/ASM_SSE2.dir/pack_unpack_intrin_sse2.c.o
+[150/271] Building ASM_NASM object Source/Lib/ASM_SSE2/CMakeFiles/ASM_SSE2.dir/picture_operators_sse2.asm.o
+[151/271] Building ASM_NASM object Source/Lib/ASM_SSE2/CMakeFiles/ASM_SSE2.dir/highbd_intrapred_sse2_.asm.o
+[152/271] Building ASM_NASM object Source/Lib/ASM_SSE2/CMakeFiles/ASM_SSE2.dir/subtract_sse2.asm.o
+[153/271] Building C object Source/Lib/Globals/CMakeFiles/GLOBALS.dir/enc_handle.c.o
+[154/271] Building ASM_NASM object Source/Lib/ASM_SSE2/CMakeFiles/ASM_SSE2.dir/intrapred_sse2.asm.o
+[155/271] Building C object Source/Lib/ASM_SSSE3/CMakeFiles/ASM_SSSE3.dir/aom_subpixel_8t_intrin_ssse3.c.o
+[156/271] Building C object Source/Lib/ASM_SSSE3/CMakeFiles/ASM_SSSE3.dir/highbd_convolve_2d_ssse3.c.o
+[157/271] Building C object Source/Lib/ASM_SSSE3/CMakeFiles/ASM_SSSE3.dir/highbd_convolve_ssse3.c.o
+[158/271] Building C object Source/Lib/ASM_SSSE3/CMakeFiles/ASM_SSSE3.dir/highbd_wiener_convolve_ssse3.c.o
+[159/271] Building C object Source/Lib/ASM_SSE2/CMakeFiles/ASM_SSE2.dir/pic_operators_intrin_sse2.c.o
+[160/271] Building C object Source/Lib/ASM_SSSE3/CMakeFiles/ASM_SSSE3.dir/highbd_intrapred_intrin_ssse3.c.o
+[161/271] Building C object Source/Lib/ASM_SSSE3/CMakeFiles/ASM_SSSE3.dir/intrapred_ssse3.c.o
+[162/271] Building C object Source/Lib/ASM_SSE2/CMakeFiles/ASM_SSE2.dir/variance_sse2.c.o
+[163/271] Building C object Source/Lib/ASM_SSSE3/CMakeFiles/ASM_SSSE3.dir/jnt_convolve_ssse3.c.o
+[164/271] Building ASM_NASM object Source/Lib/ASM_SSSE3/CMakeFiles/ASM_SSSE3.dir/aom_subpixel_bilinear_ssse3.asm.o
+[165/271] Building ASM_NASM object Source/Lib/ASM_SSSE3/CMakeFiles/ASM_SSSE3.dir/aom_subpixel_8t_ssse3.asm.o
+[166/271] Building C object Source/Lib/ASM_SSSE3/CMakeFiles/ASM_SSSE3.dir/av1_inv_txfm_ssse3.c.o
+[167/271] Building C object Source/Lib/ASM_SSE4_1/CMakeFiles/ASM_SSE4_1.dir/av1_convolve_scale_sse4.c.o
+[168/271] Building ASM_NASM object Source/Lib/ASM_SSE2/CMakeFiles/ASM_SSE2.dir/subpel_variance_sse2.asm.o
+[169/271] Building C object Source/Lib/ASM_SSSE3/CMakeFiles/ASM_SSSE3.dir/reconinter_ssse3.c.o
+[170/271] Building C object Source/Lib/ASM_SSSE3/CMakeFiles/ASM_SSSE3.dir/variance_impl_ssse3.c.o
+[171/271] Building C object Source/Lib/ASM_SSE4_1/CMakeFiles/ASM_SSE4_1.dir/cdef_block_sse4_1.c.o
+[172/271] Building C object Source/Lib/ASM_SSE4_1/CMakeFiles/ASM_SSE4_1.dir/corner_match_sse4.c.o
+[173/271] Building C object Source/Lib/ASM_SSE4_1/CMakeFiles/ASM_SSE4_1.dir/av1_quantize_sse4_1.c.o
+[174/271] Building C object Source/Lib/ASM_SSE4_1/CMakeFiles/ASM_SSE4_1.dir/blend_a64_mask_sse4.c.o
+[175/271] Building C object Source/Lib/ASM_SSE4_1/CMakeFiles/ASM_SSE4_1.dir/hash_sse4_2.c.o
+[176/271] Building C object Source/Lib/ASM_SSE4_1/CMakeFiles/ASM_SSE4_1.dir/cdef_sse4.c.o
+[177/271] Building C object Source/Lib/ASM_SSE4_1/CMakeFiles/ASM_SSE4_1.dir/highbd_convolve_2d_sse4.c.o
+[178/271] Building ASM_NASM object Source/Lib/ASM_SSSE3/CMakeFiles/ASM_SSSE3.dir/subpel_variance_ssse3.asm.o
+[179/271] Building C object Source/Lib/ASM_SSE4_1/CMakeFiles/ASM_SSE4_1.dir/compute_sad_intrin_sse4_1.c.o
+[180/271] Building C object Source/Lib/ASM_SSE4_1/CMakeFiles/ASM_SSE4_1.dir/encodetxb_sse4.c.o
+[181/271] Building C object Source/Lib/ASM_SSE4_1/CMakeFiles/ASM_SSE4_1.dir/intrapred_16bit_intrin_sse4_1.c.o
+[182/271] Building C object Source/Lib/ASM_SSE4_1/CMakeFiles/ASM_SSE4_1.dir/highbd_jnt_convolve_sse4.c.o
+[183/271] Building C object Source/Lib/ASM_SSE4_1/CMakeFiles/ASM_SSE4_1.dir/filterintra_sse4.c.o
+[184/271] Building C object Source/Lib/ASM_SSE4_1/CMakeFiles/ASM_SSE4_1.dir/reconinter_sse4.c.o
+[185/271] Building C object Source/Lib/ASM_SSE4_1/CMakeFiles/ASM_SSE4_1.dir/highbd_inv_txfm_sse4.c.o
+[186/271] Building C object Source/Lib/ASM_SSE4_1/CMakeFiles/ASM_SSE4_1.dir/pickrst_sse4.c.o
+[187/271] Building C object Source/Lib/ASM_SSE4_1/CMakeFiles/ASM_SSE4_1.dir/temporal_filtering_sse4_1.c.o
+[188/271] Building C object Source/Lib/ASM_SSE4_1/CMakeFiles/ASM_SSE4_1.dir/obmc_variance_sse4.c.o
+[189/271] Building C object Source/Lib/ASM_SSE4_1/CMakeFiles/ASM_SSE4_1.dir/pic_operators_intrin_sse4_1.c.o
+[190/271] Building C object Source/Lib/ASM_SSE4_1/CMakeFiles/ASM_SSE4_1.dir/warp_plane_sse4.c.o
+[191/271] Building C object Source/Lib/ASM_SSE4_1/CMakeFiles/ASM_SSE4_1.dir/selfguided_sse4.c.o
+[192/271] Building C object Source/Lib/ASM_AVX2/CMakeFiles/ASM_AVX2.dir/aom_subpixel_8t_intrin_avx2.c.o
+[193/271] Building C object Source/Lib/ASM_AVX2/CMakeFiles/ASM_AVX2.dir/blend_a64_mask_avx2.c.o
+[194/271] Building C object Source/Lib/ASM_AVX2/CMakeFiles/ASM_AVX2.dir/av1_quantize_avx2.c.o
+[195/271] Building C object Source/Lib/ASM_AVX2/CMakeFiles/ASM_AVX2.dir/cdef_avx2.c.o
+[196/271] Building C object Source/Lib/ASM_SSE4_1/CMakeFiles/ASM_SSE4_1.dir/highbd_fwd_txfm_sse4.c.o
+[197/271] Building C object Source/Lib/ASM_AVX2/CMakeFiles/ASM_AVX2.dir/av1_inv_txfm_avx2.c.o
+[198/271] Building C object Source/Lib/ASM_AVX2/CMakeFiles/ASM_AVX2.dir/cfl_avx2.c.o
+[199/271] Building C object Source/Lib/ASM_AVX2/CMakeFiles/ASM_AVX2.dir/cdef_block_avx2.c.o
+[200/271] Building C object Source/Lib/ASM_AVX2/CMakeFiles/ASM_AVX2.dir/comb_avg_sad_intrin_avx2.c.o
+[201/271] Building C object Source/Lib/ASM_AVX2/CMakeFiles/ASM_AVX2.dir/convolve_2d_avx2.c.o
+[202/271] Building C object Source/Lib/ASM_AVX2/CMakeFiles/ASM_AVX2.dir/fft_avx2.c.o
+[203/271] Building C object Source/Lib/ASM_AVX2/CMakeFiles/ASM_AVX2.dir/convolve_avx2.c.o
+[204/271] Building C object Source/Lib/ASM_AVX2/CMakeFiles/ASM_AVX2.dir/corner_match_avx2.c.o
+[205/271] Building C object Source/Lib/ASM_AVX2/CMakeFiles/ASM_AVX2.dir/encodetxb_avx2.c.o
+[206/271] Building C object Source/Lib/ASM_AVX2/CMakeFiles/ASM_AVX2.dir/highbd_convolve_2d_avx2.c.o
+[207/271] Building C object Source/Lib/ASM_AVX2/CMakeFiles/ASM_AVX2.dir/highbd_convolve_avx2.c.o
+[208/271] Building C object Source/Lib/ASM_AVX2/CMakeFiles/ASM_AVX2.dir/compute_sad_intrin_avx2.c.o
+[209/271] Building C object Source/Lib/ASM_AVX2/CMakeFiles/ASM_AVX2.dir/highbd_intra_pred_avx2.c.o
+[210/271] Building C object Source/Lib/ASM_AVX2/CMakeFiles/ASM_AVX2.dir/highbd_hadamard_avx2.c.o
+[211/271] Building C object Source/Lib/ASM_AVX2/CMakeFiles/ASM_AVX2.dir/highbd_quantize_intrin_avx2.c.o
+[212/271] Building C object Source/Lib/ASM_AVX2/CMakeFiles/ASM_AVX2.dir/highbd_jnt_convolve_avx2.c.o
+[213/271] Building C object Source/Lib/ASM_AVX2/CMakeFiles/ASM_AVX2.dir/highbd_variance_avx2.c.o
+[214/271] Building C object Source/Lib/ASM_AVX2/CMakeFiles/ASM_AVX2.dir/inter_prediction_com_avx2.c.o
+[215/271] Building C object Source/Lib/ASM_AVX2/CMakeFiles/ASM_AVX2.dir/highbd_inv_txfm_avx2.c.o
+[216/271] Building C object Source/Lib/ASM_AVX2/CMakeFiles/ASM_AVX2.dir/highbd_warp_affine_avx2.c.o
+[217/271] Building C object Source/Lib/ASM_AVX2/CMakeFiles/ASM_AVX2.dir/noise_model_avx2.c.o
+[218/271] Building C object Source/Lib/ASM_AVX2/CMakeFiles/ASM_AVX2.dir/obmc_sad_avx2.c.o
+[219/271] Building C object Source/Lib/ASM_AVX2/CMakeFiles/ASM_AVX2.dir/intra_pred_intrin_avx2.c.o
+[220/271] Building C object Source/Lib/ASM_AVX2/CMakeFiles/ASM_AVX2.dir/jnt_convolve_2d_avx2.c.o
+[221/271] Building C object Source/Lib/ASM_AVX2/CMakeFiles/ASM_AVX2.dir/highbd_fwd_txfm_avx2.c.o
+[222/271] Building C object Source/Lib/ASM_AVX2/CMakeFiles/ASM_AVX2.dir/jnt_convolve_avx2.c.o
+[223/271] Building C object Source/Lib/ASM_AVX2/CMakeFiles/ASM_AVX2.dir/palette_avx2.c.o
+[224/271] Building C object Source/Lib/ASM_AVX2/CMakeFiles/ASM_AVX2.dir/pack_unpack_intrinsic_avx2.c.o
+[225/271] Building C object Source/Lib/ASM_AVX2/CMakeFiles/ASM_AVX2.dir/obmc_variance_avx2.c.o
+[226/271] Building C object Source/Lib/ASM_AVX2/CMakeFiles/ASM_AVX2.dir/pickrst_avx2.c.o
+[227/271] Building C object Source/Lib/ASM_AVX2/CMakeFiles/ASM_AVX2.dir/restoration_pick_avx2.c.o
+[228/271] Building C object Source/Lib/ASM_AVX2/CMakeFiles/ASM_AVX2.dir/pic_operators_intrin_avx2.c.o
+[229/271] Building C object Source/Lib/ASM_AVX2/CMakeFiles/ASM_AVX2.dir/ssim_avx2.c.o
+[230/271] Building C object Source/Lib/ASM_AVX2/CMakeFiles/ASM_AVX2.dir/selfguided_avx2.c.o
+[231/271] Building C object Source/Lib/ASM_AVX2/CMakeFiles/ASM_AVX2.dir/sse_avx2.c.o
+[232/271] Building C object Source/Lib/ASM_AVX2/CMakeFiles/ASM_AVX2.dir/resize_avx2.c.o
+[233/271] Building C object Source/Lib/ASM_AVX2/CMakeFiles/ASM_AVX2.dir/temporal_filtering_avx2.c.o
+[234/271] Building C object Source/Lib/ASM_AVX2/CMakeFiles/ASM_AVX2.dir/variance_impl_avx2.c.o
+[235/271] Building C object Source/Lib/ASM_AVX2/CMakeFiles/ASM_AVX2.dir/variance_avx2.c.o
+[236/271] Building C object Source/Lib/ASM_AVX2/CMakeFiles/ASM_AVX2.dir/transforms_intrin_avx2.c.o
+[237/271] Building C object Source/Lib/ASM_AVX2/CMakeFiles/ASM_AVX2.dir/warp_plane_avx2.c.o
+[238/271] Building C object Source/Lib/ASM_AVX2/CMakeFiles/ASM_AVX2.dir/wiener_convolve_avx2.c.o
+[239/271] Building ASM_NASM object Source/Lib/ASM_AVX2/CMakeFiles/ASM_AVX2.dir/mc_avx2.asm.o
+[240/271] Building ASM_NASM object Source/Lib/ASM_AVX2/CMakeFiles/ASM_AVX2.dir/mc16_avx2.asm.o
+[241/271] Building C object Source/Lib/ASM_AVX512/CMakeFiles/ASM_AVX512.dir/cdef_avx512.c.o
+[242/271] Building C object Source/Lib/ASM_AVX512/CMakeFiles/ASM_AVX512.dir/cdef_block_avx512.c.o
+[243/271] Building C object Source/Lib/ASM_AVX512/CMakeFiles/ASM_AVX512.dir/encodetxb_avx512.c.o
+[244/271] Building C object Source/Lib/ASM_AVX512/CMakeFiles/ASM_AVX512.dir/convolve_avx512.c.o
+[245/271] Building C object Source/Lib/ASM_AVX512/CMakeFiles/ASM_AVX512.dir/convolve_2d_avx512.c.o
+[246/271] Building C object Source/Lib/ASM_AVX512/CMakeFiles/ASM_AVX512.dir/compute_sad_intrin_avx512.c.o
+[247/271] Building C object Source/Lib/ASM_AVX512/CMakeFiles/ASM_AVX512.dir/highbd_intra_pred_avx512.c.o
+[248/271] Building C object Source/Lib/ASM_AVX512/CMakeFiles/ASM_AVX512.dir/highbd_inv_txfm_avx512.c.o
+[249/271] Building C object Source/Lib/ASM_AVX512/CMakeFiles/ASM_AVX512.dir/highbd_fwd_txfm_AVX512.c.o
+[250/271] Building C object Source/Lib/ASM_AVX512/CMakeFiles/ASM_AVX512.dir/jnt_convolve_avx512.c.o
+[251/271] Building C object Source/Lib/ASM_AVX512/CMakeFiles/ASM_AVX512.dir/jnt_convolve_2d_avx512.c.o
+[252/271] Building C object Source/Lib/ASM_AVX512/CMakeFiles/ASM_AVX512.dir/pic_operators_intrin_avx512.c.o
+[253/271] Building C object Source/Lib/ASM_AVX512/CMakeFiles/ASM_AVX512.dir/variance_avx512.c.o
+[254/271] Building C object Source/App/CMakeFiles/SvtAv1EncApp.dir/app_context.c.o
+[255/271] Building C object Source/App/CMakeFiles/SvtAv1EncApp.dir/app_input_y4m.c.o
+[256/271] Building C object Source/App/CMakeFiles/SvtAv1EncApp.dir/app_config.c.o
+[257/271] Building C object Source/App/CMakeFiles/SvtAv1EncApp.dir/app_output_ivf.c.o
+[258/271] Building C object Source/Lib/ASM_AVX512/CMakeFiles/ASM_AVX512.dir/wiener_convolve_avx512.c.o
+[259/271] Building C object Source/App/CMakeFiles/SvtAv1EncApp.dir/svt_time.c.o
+[260/271] Building C object third_party/fastfeat/CMakeFiles/FASTFEAT.dir/fast.c.o
+[261/271] Building C object Source/Lib/ASM_AVX512/CMakeFiles/ASM_AVX512.dir/pickrst_avx512.c.o
+[262/271] Building C object Source/App/CMakeFiles/SvtAv1EncApp.dir/app_process_cmd.c.o
+[263/271] Building C object Source/App/CMakeFiles/SvtAv1EncApp.dir/app_main.c.o
+[264/271] Building C object third_party/fastfeat/CMakeFiles/FASTFEAT.dir/nonmax.c.o
+[265/271] Building C object third_party/fastfeat/CMakeFiles/FASTFEAT.dir/fast_9.c.o
+[266/271] Building ASM_NASM object Source/Lib/ASM_AVX2/CMakeFiles/ASM_AVX2.dir/itx_avx2.asm.o
+[267/271] Building ASM_NASM object Source/Lib/ASM_AVX2/CMakeFiles/ASM_AVX2.dir/itx16_avx2.asm.o
+[268/271] Linking C shared library /home/ubuntu/src/svt/Bin/Release/libSvtAv1Enc.so.4.2.0
+[269/271] Creating library symlink /home/ubuntu/src/svt/Bin/Release/libSvtAv1Enc.so.4 /home/ubuntu/src/svt/Bin/Release/libSvtAv1Enc.so
+[270/271] Linking C executable /home/ubuntu/src/svt/Bin/Release/SvtAv1EncApp
+[270/271] Install the project...
+-- Install configuration: "Release"
+-- Installing: /home/ubuntu/opt/lib/libSvtAv1Enc.so.4.2.0
+-- Installing: /home/ubuntu/opt/lib/libSvtAv1Enc.so.4
+-- Installing: /home/ubuntu/opt/lib/libSvtAv1Enc.so
+-- Installing: /home/ubuntu/opt/include/svt-av1/EbConfigMacros.h
+-- Installing: /home/ubuntu/opt/include/svt-av1/EbDebugMacros.h
+-- Installing: /home/ubuntu/opt/include/svt-av1/EbSvtAv1.h
+-- Installing: /home/ubuntu/opt/include/svt-av1/EbSvtAv1Enc.h
+-- Installing: /home/ubuntu/opt/include/svt-av1/EbSvtAv1ErrorCodes.h
+-- Installing: /home/ubuntu/opt/include/svt-av1/EbSvtAv1Formats.h
+-- Installing: /home/ubuntu/opt/include/svt-av1/EbSvtAv1Metadata.h
+-- Installing: /home/ubuntu/opt/lib/pkgconfig/SvtAv1Enc.pc
+-- Installing: /home/ubuntu/opt/lib/cmake/SVT-AV1/SVT-AV1-sharedTargets.cmake
+-- Installing: /home/ubuntu/opt/lib/cmake/SVT-AV1/SVT-AV1-sharedTargets-release.cmake
+-- Installing: /home/ubuntu/opt/lib/cmake/SVT-AV1/SVT-AV1Config.cmake
+-- Installing: /home/ubuntu/opt/lib/cmake/SVT-AV1/SVT-AV1ConfigVersion.cmake
+-- Installing: /home/ubuntu/opt/bin/SvtAv1EncApp
+-- Set non-toolchain portion of runtime path of "/home/ubuntu/opt/bin/SvtAv1EncApp" to ""
