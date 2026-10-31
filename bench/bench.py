@@ -41,12 +41,15 @@ go in as 8-bit sRGB: the source JPEG decoded by Pillow and the decoded output, e
 (relative colorimetric) from its own ICC profile if it has one, as SSIMULACRA2 does.  WebP takes the profile from
 the .webp file, because dwebp leaves it out of its PNG.  CVVDP maps image pixels 1:1 to display pixels; it does
 not scale an image to fit the screen.  The JOD scores (10 = no visible difference) give a second BD-rate table,
-with JOD as the quality axis and --cvvdp-min-overlap JOD instead of 2 SSIMULACRA2 points as the least overlap.
+with JOD as the quality axis and --cvvdp-min-overlap (0.05 JOD, about what 2 SSIMULACRA2 points are on libaom's
+curves) instead of 2 SSIMULACRA2 points as the least overlap.
 They also give, for --cvvdp-target (9.5 JOD by default), how many images reach that JOD within the tested
 qualities and the bits per pixel at which each one does (interpolated along its curve as in the BD-rate).
 --avifdec-codec dav1d decodes with avifdec -c dav1d (default: avifdec's own choice).
   pip install cvvdp            # CUDA PyTorch from PyPI on Linux x86-64
   bench/bench.py --images bench/images_gamut --out OUT --skip-speed --cvvdp standard_fhd
+On AWS's Deep Learning Base AMIs, LD_LIBRARY_PATH holds CUDA's own cuDNN, which breaks the one PyTorch ships: put
+torch's (.../site-packages/nvidia/cudnn/lib) first.  The run in bench/results/aws-g6-l4-cvvdp/ has the commands.
 """
 import argparse
 import concurrent.futures as cf
@@ -289,6 +292,11 @@ class Cvvdp:
         from importlib.metadata import version
         self.metric = pycvvdp.cvvdp(display_name=display, quiet=True, device=torch.device(device) if device else None)
         self.lock = threading.Lock()
+        try:  # fail now rather than score every file as None (e.g. a cuDNN that does not match torch's)
+            t = np.random.default_rng(0).integers(0, 256, (64, 64, 3), dtype=np.uint8)
+            self.metric.predict(t, t, dim_order="HWC")
+        except Exception as e:
+            sys.exit(f"cvvdp does not run on {self.metric.device}: {e}")
         m, dp, dg = self.metric, self.metric.display_photometry, self.metric.display_geometry
         dev = m.device
         self.info = dict(
@@ -487,8 +495,9 @@ def main():
                     help="also score with ColorVideoVDP on this display model (e.g. standard_fhd; needs pip install cvvdp)")
     ap.add_argument("--cvvdp-device", default="", help="torch device for CVVDP (default: cuda if available, else cpu)")
     ap.add_argument("--cvvdp-target", type=float, default=9.5, help="JOD for the bits-per-pixel-to-reach table")
-    ap.add_argument("--cvvdp-min-overlap", type=float, default=0.1,
-                    help="least JOD range two curves must share for a BD-rate (SSIMULACRA2: 2 points)")
+    ap.add_argument("--cvvdp-min-overlap", type=float, default=0.05,
+                    help="least JOD range two curves must share for a BD-rate; the default matches SSIMULACRA2's 2 "
+                         "points (libaom speed 6 spans about 35 SSIMULACRA2 points per JOD from q30 to q80)")
     a = ap.parse_args()
     a.aom_speeds = sorted({6} | {int(x) for x in a.aom_speeds.split(",")})
     a.svt_presets = [int(x) for x in a.svt_presets.split(",") if x]
