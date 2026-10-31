@@ -19,7 +19,7 @@ To time other av1gpu settings, pass a wrapper script as --av1gpu that adds the o
 avifenc 1.4 tiles automatically unless told otherwise (libavif: up to 8 tiles of at least 512 x 512 pixels,
 whatever -j is); --no-tiling passes --tilerowslog2 0 --tilecolslog2 0 for one tile per image.
 --yuv 444 and --depth 10 encode every AV1 codec in that format (avifenc -y 444 / -d 10, av1gpu --yuv 444 /
---depth 10); 10-bit outputs are decoded to 16-bit PNGs.  --avifdec-codec picks avifdec's decoder (-c, e.g. dav1d).
+--depth 10); 10-bit outputs are decoded to 16-bit PNGs.
 bench/formats.py compares the four formats.
 
 Requires: avifenc, avifdec, cwebp, dwebp, ssimulacra2 on PATH (or the --avifenc, ... options), numpy, Pillow.
@@ -564,8 +564,10 @@ def main():
     if a.avifenc_threads != 1 or a.no_tiling:
         res.update(avifenc_threads=a.avifenc_threads, avifenc_parallel=avifenc_parallel(a, os.cpu_count()),
                    no_tiling=a.no_tiling)
-    if (a.yuv, a.depth) != ("420", 8) or a.avifdec_codec:
-        res.update(yuv=a.yuv, depth=a.depth, avifdec_codec=a.avifdec_codec)
+    if (a.yuv, a.depth) != ("420", 8):
+        res.update(yuv=a.yuv, depth=a.depth)
+    if a.avifdec_codec:
+        res["avifdec_codec"] = a.avifdec_codec
     print(f"{len(files)} images, {mp:.1f} MP; avifenc tune=iq: {'yes' if tune_iq else 'no (libaom too old)'}", flush=True)
 
     if not a.skip_speed:
@@ -626,7 +628,7 @@ def write_summary(res, path):
          f"- {res['images']} images, {res['megapixels']:.1f} MP"]
     if res.get("yuv"):
         L.append(f"- AV1 encodes {res['depth']}-bit {res['yuv']}" +
-                 (f"; decoded with avifdec -c {res['avifdec_codec']}" if res["avifdec_codec"] else ""))
+                 (f"; decoded with avifdec -c {res['avifdec_codec']}" if res.get("avifdec_codec") else ""))
     if res.get("speed_workload"):
         w = res["speed_workload"]
         L.append(f"- speed runs: the set repeated {w['repeats']}x ({w['images']} images, {w['megapixels']:.0f} MP)")
