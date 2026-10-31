@@ -31,7 +31,9 @@ Requires: avifenc, avifdec, cwebp, dwebp, ssimulacra2 on PATH (or the --avifenc,
   avifenc's libaom must be 3.12 or newer for tune=iq (the comparison av1gpu was tuned against); with an
   older libaom the script falls back to libaom's default tuning and says so in the summary.
 --skip-gpu runs only the CPU codecs (useful for checking the setup on a machine without a GPU).
-Writes OUT/results.json (every measurement) and OUT/summary.md.
+Writes OUT/results.json (every measurement) and OUT/summary.md.  WebP files with an ICC profile need Pillow: dwebp
+leaves the profile out of its PNG, so the script copies it back before scoring (runs before 2026-10-31 scored
+those 13 of the size-range photos as colour-shifted; see bench/results/aws-g6-l4-cvvdp).
 
 CVVDP (optional, off by default): --cvvdp DISPLAY also scores every quality-phase file with ColorVideoVDP
 (https://github.com/gfxdisp/ColorVideoVDP, `pip install cvvdp`, PyTorch; on the GPU when torch sees one) for one
@@ -228,7 +230,15 @@ def avifenc_supports_tune_iq(a, src, work):
 
 def decode_png(a, path, png):
     if path.endswith(".webp"):
-        return run([a.dwebp, path, "-o", png]).returncode == 0
+        if run([a.dwebp, path, "-o", png]).returncode != 0:
+            return False
+        icc = file_icc(path)
+        if icc:  # dwebp leaves out the ICC profile cwebp stored; put it back so the PNG is scored in its own colours
+            from PIL import Image
+            im = Image.open(png)
+            im.load()
+            im.save(png, icc_profile=icc)
+        return True
     codec = getattr(a, "avifdec_codec", "")
     return run([a.avifdec] + (["-c", codec] if codec else []) + [path, png]).returncode == 0
 
