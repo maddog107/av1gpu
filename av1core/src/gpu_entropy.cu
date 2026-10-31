@@ -48,7 +48,9 @@ struct FrameG {
     uint32_t sbBase, nSb, tileBase, nTiles;
     int tileCols, tileRows, tileWsb, tileHsb;    // uniform tile grid
 };
-// lossless frame (base_q_idx 0, every DeltaQ 0: av1g_encode's rule): 4x4 WHT, no tx types, the lossless CfL rule
+// lossless frame (base_q_idx 0, every DeltaQ 0: av1g_encode's rule): 4x4 WHT, no tx types, the lossless CfL rule.
+// The symbolization kernels take a template flag LL: batches without lossless frames run the LL = false
+// instantiations, which compile exactly as before lossless support.
 __device__ __forceinline__ int frame_lossless(const FrameG &F) { return F.qidx == 0; }
 struct TileG {
     uint32_t frame;
@@ -95,6 +97,7 @@ __global__ void k_maps(const av1g_block *blocks, const uint32_t *blockFrame, con
         }
 }
 
+template <bool LL>
 __global__ void k_txctx(const av1g_block *blocks, const uint32_t *blockFrame, const FrameG *frames, const av1g_txb *txb,
                         const uint32_t *txbBlock, const int16_t *coeffs, uint32_t nTxb,
                         uint8_t *ctxLvl, uint8_t *ctxDc, uint16_t *txbEob, uint8_t *txbType) {
@@ -106,7 +109,7 @@ __global__ void k_txctx(const av1g_block *blocks, const uint32_t *blockFrame, co
     const av1g_txb x = txb[t];
     const int plane = x.plane, txSz = x.tx_size;
     int type = plane ? av1g_chroma_tx_type(txSz, k.uv_mode, F.reduced) : x.tx_type;
-    if (frame_lossless(F)) type = AV1G_DCT_DCT;   // lossless: compute_tx_type is DCT_DCT (the WHT) in every plane
+    if (LL && frame_lossless(F)) type = AV1G_DCT_DCT;   // lossless: compute_tx_type is DCT_DCT (the WHT) in every plane
     int eob = 0, cul = 0, dc = 0;
     if (!k.skip) {
         const int16_t *q = coeffs + F.coeffBase + x.coeff_off;
@@ -135,6 +138,7 @@ __global__ void k_txctx(const av1g_block *blocks, const uint32_t *blockFrame, co
 }
 
 // coefficient syntax of one tx block (mirror of Encoder::code_coeffs, write mode)
+template <bool LL>
 __global__ void k_txsym(const av1g_block *blocks, const uint32_t *blockFrame, const uint32_t *blockTile, const FrameG *frames,
                         const TileG *tiles, const av1g_txb *txb, const uint32_t *txbBlock,
                         const int16_t *coeffs, uint32_t nTxb, const uint8_t *ctxLvl, const uint8_t *ctxDc,
@@ -196,7 +200,7 @@ __global__ void k_txsym(const av1g_block *blocks, const uint32_t *blockFrame, co
     if (eob > 0) {
         if (plane == 0) {
             const int set = av1g_get_tx_set_intra(txSz, F.reduced);
-            if (set > 0 && F.qidx > 0) {   // transform_type: coded only for base_q_idx > 0
+            if (set > 0 && (!LL || F.qidx > 0)) {   // transform_type: coded only for base_q_idx > 0
                 const int sqr = AV1G_T(Tx_Size_Sqr)[txSz];
                 const int intraDir = k.filter_intra ? AV1G_T(Filter_Intra_Mode_To_Intra_Dir)[k.filter_intra - 1] : k.y_mode;
                 int idx = 0;
@@ -363,6 +367,7 @@ __device__ int w_derive(Walk &w, int r, int c, int bSize, int hasRows, int hasCo
     return AV1G_PARTITION_SPLIT;
 }
 
+template <bool LL>
 __device__ void w_block(Walk &w, int r, int c, int bsize) {
     if (w.cursor >= w.end) { atomicOr(&w.st->error, AV1G_GPU_ERR_ORDER); return; }
     const uint32_t bi = w.cursor++;
@@ -403,7 +408,7 @@ __device__ void w_block(Walk &w, int r, int c, int bsize) {
     if (bsize >= AV1G_BLOCK_8X8 && av1g_is_directional(k.y_mode))
         o.sym(CID(angle_delta[k.y_mode - AV1G_V_PRED]), k.angle_delta_y + 3, 7);
     if (hasChroma) {
-        if (av1g_cfl_allowed_ex(bsize, frame_lossless(F), F.ssx, F.ssy)) o.sym(CID(uv_mode_cfl_allowed[k.y_mode]), k.uv_mode, 14);
+        if (av1g_cfl_allowed_ex(bsize, LL && frame_lossless(F), F.ssx, F.ssy)) o.sym(CID(uv_mode_cfl_allowed[k.y_mode]), k.uv_mode, 14);
         else o.sym(CID(uv_mode_cfl_not_allowed[k.y_mode]), k.uv_mode, 13);
         if (k.uv_mode == AV1G_UV_CFL_PRED) {
             const int sU = k.cfl_alpha_u == 0 ? 0 : k.cfl_alpha_u < 0 ? 1 : 2;
@@ -438,6 +443,7 @@ __device__ void w_block(Walk &w, int r, int c, int bsize) {
     if (!w.syms) w.itemCount[item] = o.n;
 }
 
+template <bool LL>
 __device__ void w_partition(Walk &w, int r, int c, int bSize) {
     const FrameG &F = *w.F;
     if (r >= F.MiRows || c >= F.MiCols) return;
@@ -462,26 +468,27 @@ __device__ void w_partition(Walk &w, int r, int c, int bSize) {
     const int sub = AV1G_T(Partition_Subsize)[p][bSize];
     const int sp = AV1G_T(Partition_Subsize)[AV1G_PARTITION_SPLIT][bSize];
     switch (p) {
-    case AV1G_PARTITION_NONE: w_block(w, r, c, sub); break;
-    case AV1G_PARTITION_HORZ: w_block(w, r, c, sub); if (hasRows) w_block(w, r + half, c, sub); break;
-    case AV1G_PARTITION_VERT: w_block(w, r, c, sub); if (hasCols) w_block(w, r, c + half, sub); break;
+    case AV1G_PARTITION_NONE: w_block<LL>(w, r, c, sub); break;
+    case AV1G_PARTITION_HORZ: w_block<LL>(w, r, c, sub); if (hasRows) w_block<LL>(w, r + half, c, sub); break;
+    case AV1G_PARTITION_VERT: w_block<LL>(w, r, c, sub); if (hasCols) w_block<LL>(w, r, c + half, sub); break;
     case AV1G_PARTITION_SPLIT:
-        w_partition(w, r, c, sub); w_partition(w, r, c + half, sub);
-        w_partition(w, r + half, c, sub); w_partition(w, r + half, c + half, sub);
+        w_partition<LL>(w, r, c, sub); w_partition<LL>(w, r, c + half, sub);
+        w_partition<LL>(w, r + half, c, sub); w_partition<LL>(w, r + half, c + half, sub);
         break;
-    case AV1G_PARTITION_HORZ_A: w_block(w, r, c, sp); w_block(w, r, c + half, sp); w_block(w, r + half, c, sub); break;
-    case AV1G_PARTITION_HORZ_B: w_block(w, r, c, sub); w_block(w, r + half, c, sp); w_block(w, r + half, c + half, sp); break;
-    case AV1G_PARTITION_VERT_A: w_block(w, r, c, sp); w_block(w, r + half, c, sp); w_block(w, r, c + half, sub); break;
-    case AV1G_PARTITION_VERT_B: w_block(w, r, c, sub); w_block(w, r, c + half, sp); w_block(w, r + half, c + half, sp); break;
+    case AV1G_PARTITION_HORZ_A: w_block<LL>(w, r, c, sp); w_block<LL>(w, r, c + half, sp); w_block<LL>(w, r + half, c, sub); break;
+    case AV1G_PARTITION_HORZ_B: w_block<LL>(w, r, c, sub); w_block<LL>(w, r + half, c, sp); w_block<LL>(w, r + half, c + half, sp); break;
+    case AV1G_PARTITION_VERT_A: w_block<LL>(w, r, c, sp); w_block<LL>(w, r + half, c, sp); w_block<LL>(w, r, c + half, sub); break;
+    case AV1G_PARTITION_VERT_B: w_block<LL>(w, r, c, sub); w_block<LL>(w, r, c + half, sp); w_block<LL>(w, r + half, c + half, sp); break;
     case AV1G_PARTITION_HORZ_4:
-        for (int i = 0; i < 4; i++) if (i < 3 || r + quarter * 3 < F.MiRows) w_block(w, r + quarter * i, c, sub);
+        for (int i = 0; i < 4; i++) if (i < 3 || r + quarter * 3 < F.MiRows) w_block<LL>(w, r + quarter * i, c, sub);
         break;
     default:
-        for (int i = 0; i < 4; i++) if (i < 3 || c + quarter * 3 < F.MiCols) w_block(w, r, c + quarter * i, sub);
+        for (int i = 0; i < 4; i++) if (i < 3 || c + quarter * 3 < F.MiCols) w_block<LL>(w, r, c + quarter * i, sub);
         break;
     }
 }
 
+template <bool LL>
 __global__ void k_sbsym(const SbG *sbs, uint32_t nSb, const FrameG *frames, const TileG *tiles, const av1g_block *blocks,
                         const uint32_t *blockTxbG, const uint8_t *mMiSize, const uint8_t *mYMode, const uint8_t *mSkip,
                         const uint8_t *mTx, uint32_t *itemCount, const uint32_t *itemOff, uint32_t *syms,
@@ -510,7 +517,7 @@ __global__ void k_sbsym(const SbG *sbs, uint32_t nSb, const FrameG *frames, cons
     w.cdefDone = 0;
     w.st = st;
     if (sb.firstBlock >= sb.endBlock) { atomicOr(&st->error, AV1G_GPU_ERR_ORDER); return; }
-    w_partition(w, sb.r, sb.c, AV1G_BLOCK_64X64);
+    w_partition<LL>(w, sb.r, sb.c, AV1G_BLOCK_64X64);
     if (w.cursor != w.end) atomicOr(&st->error, AV1G_GPU_ERR_ORDER);
 }
 
@@ -1305,20 +1312,31 @@ int run_batch_device(const DevBatch &b, cudaStream_t s, void *scratch, size_t sc
     k_tiles<<<nTiles, 32, 0, s>>>(dF, dT, dSb, blocks);
     rec(1);
     k_maps<<<grid(nB, TB), TB, 0, s>>>(blocks, dBFrame, dF, nB, mMiSize, mYMode, mSkip, mTx);
-    k_txctx<<<grid(nT, TB), TB, 0, s>>>(blocks, dBFrame, dF, txb, dTxbBlock, b.coeffs, nT, cL, cD, dEob, dType);
+    bool anyLL = false;   // lossless frames in the batch: the LL instantiations (handle lossy frames too)
+    for (const FrameG &g : P.F) anyLL |= g.qidx == 0;
+    if (anyLL) k_txctx<true><<<grid(nT, TB), TB, 0, s>>>(blocks, dBFrame, dF, txb, dTxbBlock, b.coeffs, nT, cL, cD, dEob, dType);
+    else k_txctx<false><<<grid(nT, TB), TB, 0, s>>>(blocks, dBFrame, dF, txb, dTxbBlock, b.coeffs, nT, cL, cD, dEob, dType);
     rec(2);
     CK(cudaMemsetAsync(dCount + nItems, 0, 4, s));
-    k_txsym<<<grid(nT, TB), TB, 0, s>>>(blocks, dBFrame, dBTile, dF, dT, txb, dTxbBlock, b.coeffs, nT, cL, cD, dEob, dType,
+    if (anyLL) k_txsym<true><<<grid(nT, TB), TB, 0, s>>>(blocks, dBFrame, dBTile, dF, dT, txb, dTxbBlock, b.coeffs, nT, cL, cD, dEob, dType,
                                         dCount, nullptr, nullptr, nullptr, 0);
-    k_sbsym<<<grid(nSb, 32), 32, 0, s>>>(dSb, nSb, dF, dT, blocks, dBTxbG, mMiSize, mYMode, mSkip, mTx, dCount, nullptr, nullptr,
+    else k_txsym<false><<<grid(nT, TB), TB, 0, s>>>(blocks, dBFrame, dBTile, dF, dT, txb, dTxbBlock, b.coeffs, nT, cL, cD, dEob, dType,
+                                        dCount, nullptr, nullptr, nullptr, 0);
+    if (anyLL) k_sbsym<true><<<grid(nSb, 32), 32, 0, s>>>(dSb, nSb, dF, dT, blocks, dBTxbG, mMiSize, mYMode, mSkip, mTx, dCount, nullptr, nullptr,
+                                          nullptr, 0, dSt);
+    else k_sbsym<false><<<grid(nSb, 32), 32, 0, s>>>(dSb, nSb, dF, dT, blocks, dBTxbG, mMiSize, mYMode, mSkip, mTx, dCount, nullptr, nullptr,
                                           nullptr, 0, dSt);
     rec(3);
     size_t cubBytes = P.cubItems;
     CK(cub::DeviceScan::ExclusiveSum(dCub, cubBytes, dCount, dOff, (int)(nItems + 1), s));
     rec(4);
-    k_txsym<<<grid(nT, TB), TB, 0, s>>>(blocks, dBFrame, dBTile, dF, dT, txb, dTxbBlock, b.coeffs, nT, cL, cD, dEob, dType,
+    if (anyLL) k_txsym<true><<<grid(nT, TB), TB, 0, s>>>(blocks, dBFrame, dBTile, dF, dT, txb, dTxbBlock, b.coeffs, nT, cL, cD, dEob, dType,
                                         dCount, dOff, dSyms, dOff + nItems, P.symCap);
-    k_sbsym<<<grid(nSb, 32), 32, 0, s>>>(dSb, nSb, dF, dT, blocks, dBTxbG, mMiSize, mYMode, mSkip, mTx, dCount, dOff, dSyms,
+    else k_txsym<false><<<grid(nT, TB), TB, 0, s>>>(blocks, dBFrame, dBTile, dF, dT, txb, dTxbBlock, b.coeffs, nT, cL, cD, dEob, dType,
+                                        dCount, dOff, dSyms, dOff + nItems, P.symCap);
+    if (anyLL) k_sbsym<true><<<grid(nSb, 32), 32, 0, s>>>(dSb, nSb, dF, dT, blocks, dBTxbG, mMiSize, mYMode, mSkip, mTx, dCount, dOff, dSyms,
+                                          dOff + nItems, P.symCap, dSt);
+    else k_sbsym<false><<<grid(nSb, 32), 32, 0, s>>>(dSb, nSb, dF, dT, blocks, dBTxbG, mMiSize, mYMode, mSkip, mTx, dCount, dOff, dSyms,
                                           dOff + nItems, P.symCap, dSt);
     rec(5);
     k_tilerange<<<grid(nTiles, 64), 64, 0, s>>>(dT, nTiles, dF, dBTxbG, dOff, nItems, nB, P.symCap, dTb, dTe, dTq, dCapArr,
