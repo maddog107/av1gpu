@@ -314,22 +314,22 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
                 }
                 GpHostPlanes hp;
                 std::string e2;
-                if (!gp_decode_cpu(p, hp, e2, cfg.yuv444) || (double)hp.W * hp.H > 35.6e6) {
+                if (!gp_decode_cpu(p, hp, e2, cfg.yuv444, cfg.depth) || (double)hp.W * hp.H > 35.6e6) {
                     fprintf(stderr, "[av1gpu] skipped %s: %s\n", p.c_str(), e2.empty() ? "larger than 35.6 megapixels" : e2.c_str());
                     cpuFallbackA++;
                     continue;
                 }
-                const size_t ys = (size_t)hp.aw * hp.ah, cs = (size_t)hp.cw() * hp.ch();
+                const size_t ys = hp.bytes(0), cs = hp.bytes(1);   // bytes (10-bit: uint16_t samples)
                 uint8_t *d = nullptr;
                 if (cudaMallocAsync((void **)&d, ys + 2 * cs, fs) != cudaSuccess) { cpuFallbackA++; continue; }
-                cudaMemcpyAsync(d, hp.p[0].data(), ys, cudaMemcpyHostToDevice, fs);
-                cudaMemcpyAsync(d + ys, hp.p[1].data(), cs, cudaMemcpyHostToDevice, fs);
-                cudaMemcpyAsync(d + ys + cs, hp.p[2].data(), cs, cudaMemcpyHostToDevice, fs);
+                cudaMemcpyAsync(d, hp.data(0), ys, cudaMemcpyHostToDevice, fs);
+                cudaMemcpyAsync(d + ys, hp.data(1), cs, cudaMemcpyHostToDevice, fs);
+                cudaMemcpyAsync(d + ys + cs, hp.data(2), cs, cudaMemcpyHostToDevice, fs);
                 if (cudaStreamSynchronize(fs) != cudaSuccess) { cpuFallbackA++; continue; }
                 FbFrame F;
                 F.d = d;
                 F.name = base_name(p);
-                F.f.W = hp.W; F.f.H = hp.H; F.f.aw = hp.aw; F.f.ah = hp.ah; F.f.yuv444 = hp.yuv444;
+                F.f.W = hp.W; F.f.H = hp.H; F.f.aw = hp.aw; F.f.ah = hp.ah; F.f.yuv444 = hp.yuv444; F.f.bitDepth = hp.bitDepth;
                 F.f.dsrc[0] = d; F.f.dsrc[1] = d + ys; F.f.dsrc[2] = d + ys + cs;
                 F.f.spitch[0] = hp.aw; F.f.spitch[1] = F.f.spitch[2] = hp.cw();
                 std::lock_guard<std::mutex> lk(fbMu);
@@ -349,6 +349,7 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
             Job *job = new Job;
             double mpAcc = 0;
             std::vector<uint8_t *> fbHeld;
+            int fbConv = 0;   // 1 when fbHeld also holds the 10-bit conversion buffer (not a fallback image)
             {
                 std::lock_guard<std::mutex> lk(fbMu);
                 while (!fbReady.empty() && mpAcc < targetMp && (int)fin.size() < maxImgs) {
@@ -388,6 +389,12 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
                         mpAcc += im.width * (double)im.height / 1e6;
                     }
                 }
+            }
+            if (!fin.empty() && cfg.depth == 10) {
+                // --depth 10: ingest frames (8-bit JPEG samples) -> 10-bit planes; freed with the fallback planes
+                uint8_t *cb = nullptr;
+                if (gp_frames_to_10bit(fin, s, &cb, eerr)) { fprintf(stderr, "10-bit conversion: %s\n", eerr.c_str()); encFail++; delete job; return; }
+                if (cb) { fbHeld.push_back(cb); fbConv = 1; }
             }
             if (fin.empty()) {
                 delete job;
@@ -447,7 +454,7 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
             if (fin.empty()) {   // every image of this batch was small: nothing left for the main encoder
                 for (auto &b : held) ingest_release_batch(ictx, b.batch_id, s);
                 for (uint8_t *d : fbHeld) cudaFreeAsync(d, s);
-                gpuFallbackA += (int)fbHeld.size();
+                gpuFallbackA += (int)fbHeld.size() - fbConv;
                 delete job;
                 continue;
             }
@@ -455,7 +462,7 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
             const double te = now_ms() - ts;
             for (auto &b : held) ingest_release_batch(ictx, b.batch_id, s);
             for (uint8_t *d : fbHeld) cudaFreeAsync(d, s);
-            gpuFallbackA += (int)fbHeld.size();
+            gpuFallbackA += (int)fbHeld.size() - fbConv;
             {
                 std::lock_guard<std::mutex> lk2(aggMu);
                 A.encodeWall += te;
