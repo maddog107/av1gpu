@@ -662,6 +662,9 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
             fp.color_primaries = 1;
             fp.transfer_characteristics = 13;
             fp.matrix_coefficients = (uint8_t)in[i].colorMatrix;
+        } else if (in[i].colorMatrix == -2) {   // unspecified (an alpha plane: CICP does not apply), not coded
+            fp.color_description = 1;
+            fp.color_primaries = fp.transfer_characteristics = fp.matrix_coefficients = 2;
         }
     }
     // ---- post-filters (decoder-exact, av1core GPU kernels) on the pre-filter reconstruction ----
@@ -847,8 +850,37 @@ int gp_frames_to_10bit(std::vector<GpFrameIn> &frames, cudaStream_t st, uint8_t 
     return 0;
 }
 
-int gp_entropy_cpu(GpFrameOut &f, const std::vector<uint8_t> &icc, std::vector<uint8_t> &obu, std::vector<uint8_t> &avif,
-                   std::string &err) {
+GpConfig gp_alpha_config(const GpConfig &c) {
+    GpConfig a = c;
+    const int q = c.lossless ? 0 : c.alphaQindex >= 0 ? c.alphaQindex : c.qindex;
+    a.lossless = q == 0;   // lossless alpha: the lossless (monochrome) path
+    a.qindex = q == 0 ? c.qindex : q;
+    a.tuneIq = 0; a.vb = 0; a.ssimLambda = 0; a.deltaq = 0; a.qm = -1; a.qmUV = -1;
+    a.dqUDc = a.dqUAc = a.dqVDc = a.dqVAc = 0;
+    a.P.qmRnd = a.P.qmDist = 0;
+    a.Psmall.qmRnd = a.Psmall.qmDist = 0;
+    return a;
+}
+
+int gp_mux_avif(const av1g_frame_params &fp, const uint8_t *obu, size_t obuSize, const uint8_t *alphaObu, size_t alphaSize,
+                const std::vector<uint8_t> &icc, int orientation, std::vector<uint8_t> &avif, std::string &err) {
+    av1g_avif_meta meta;
+    memset(&meta, 0, sizeof meta);
+    meta.icc = icc.empty() ? nullptr : icc.data();
+    meta.icc_size = icc.size();
+    av1g_exif_orientation_to_irot_imir(orientation, &meta.irot, &meta.imir);
+    uint8_t *a = nullptr;
+    size_t an = 0;
+    if (av1g_mux_avif_alpha(obu, obuSize, alphaObu, alphaSize, fp.width, fp.height, &meta, &a, &an) != AV1G_OK) {
+        err = alphaObu ? "AVIF mux failed (alpha)" : "AVIF mux failed";
+        return -1;
+    }
+    avif.assign(a, a + an);
+    free(a);
+    return 0;
+}
+
+static int cpu_obus(GpFrameOut &f, std::vector<uint8_t> &obu, std::string &err) {
     av1g_decision_record r = f.record();
     av1g_encode_opts eo;
     eo.flags = AV1G_ENC_BITSTREAM_ONLY | AV1G_ENC_TD;
@@ -859,18 +891,17 @@ int gp_entropy_cpu(GpFrameOut &f, const std::vector<uint8_t> &icc, std::vector<u
     if (rc != AV1G_OK) { err = std::string("av1g_encode: ") + o.error; av1g_output_free(&o); return rc; }
     obu.assign(o.obu, o.obu + o.obu_size);
     av1g_output_free(&o);
-    av1g_avif_meta meta;
-    memset(&meta, 0, sizeof meta);
-    meta.icc = icc.empty() ? nullptr : icc.data();
-    meta.icc_size = icc.size();
-    av1g_exif_orientation_to_irot_imir(f.orientation, &meta.irot, &meta.imir);
-    uint8_t *a = nullptr;
-    size_t an = 0;
-    if (av1g_mux_avif_ex(obu.data() + 2, obu.size() - 2, f.fp.width, f.fp.height, &meta, &a, &an) != AV1G_OK) {
-        err = "AVIF mux failed";
-        return -1;
-    }
-    avif.assign(a, a + an);
-    free(a);
     return 0;
+}
+
+int gp_entropy_cpu(GpFrameOut &f, const std::vector<uint8_t> &icc, std::vector<uint8_t> &obu, std::vector<uint8_t> &avif,
+                   std::string &err, GpFrameOut *alpha, std::vector<uint8_t> *alphaObu) {
+    if (int rc = cpu_obus(f, obu, err)) return rc;
+    std::vector<uint8_t> ao;
+    if (alpha) {
+        if (int rc = cpu_obus(*alpha, ao, err)) return rc;
+        if (alphaObu) *alphaObu = ao;
+    }
+    return gp_mux_avif(f.fp, obu.data() + 2, obu.size() - 2, alpha ? ao.data() + 2 : nullptr, alpha ? ao.size() - 2 : 0, icc,
+                       f.orientation, avif, err);
 }

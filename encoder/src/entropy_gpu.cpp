@@ -46,33 +46,32 @@ int gp_assemble_obus(const av1g_frame_params *fp, const std::vector<std::vector<
 
 int gp_entropy_gpu(std::vector<GpFrameOut *> &frames, const std::vector<const std::vector<uint8_t> *> &icc,
                    std::vector<std::vector<uint8_t>> &obus, std::vector<std::vector<uint8_t>> &avifs, double *gpuMs,
-                   std::string &err) {
+                   std::string &err, const std::vector<GpFrameOut *> *alpha, std::vector<std::vector<uint8_t>> *alphaObus) {
     const size_t n = frames.size();
+    // the colour frames, then the alpha frames, in one GPU entropy batch
+    std::vector<int> aidx(n, -1);
     std::vector<av1g_decision_record> recs(n);
-    std::vector<const av1g_decision_record *> rp(n);
-    for (size_t i = 0; i < n; i++) { recs[i] = frames[i]->record(); rp[i] = &recs[i]; }
+    for (size_t i = 0; i < n; i++) recs[i] = frames[i]->record();
+    for (size_t i = 0; alpha && i < n && i < alpha->size(); i++)
+        if ((*alpha)[i]) { aidx[i] = (int)recs.size(); recs.push_back((*alpha)[i]->record()); }
+    std::vector<const av1g_decision_record *> rp(recs.size());
+    for (size_t i = 0; i < recs.size(); i++) rp[i] = &recs[i];
     av1g_gpu::BatchResult br;
     if (av1g_gpu::run_batch(rp, false, br, err)) return -1;
     if (gpuMs) *gpuMs = br.msUpload + br.msMaps + br.msCount + br.msScan + br.msEmit + br.msEntropy;
     obus.assign(n, {});
     avifs.assign(n, {});
+    if (alphaObus) alphaObus->assign(n, {});
+    static const std::vector<uint8_t> noIcc;
     for (size_t i = 0; i < n; i++) {
         if (gp_assemble_obus(&frames[i]->fp, br.tileBytes[i], true, obus[i], err)) return -1;
-        av1g_avif_meta meta;
-        memset(&meta, 0, sizeof meta);
-        const std::vector<uint8_t> *ic = i < icc.size() ? icc[i] : nullptr;
-        meta.icc = ic && !ic->empty() ? ic->data() : nullptr;
-        meta.icc_size = ic ? ic->size() : 0;
-        av1g_exif_orientation_to_irot_imir(frames[i]->orientation, &meta.irot, &meta.imir);
-        uint8_t *a = nullptr;
-        size_t an = 0;
-        if (av1g_mux_avif_ex(obus[i].data() + 2, obus[i].size() - 2, frames[i]->fp.width, frames[i]->fp.height, &meta, &a,
-                             &an) != AV1G_OK) {
-            err = "AVIF mux failed";
+        std::vector<uint8_t> ao;
+        if (aidx[i] >= 0 && gp_assemble_obus(&recs[aidx[i]].fp, br.tileBytes[aidx[i]], true, ao, err)) return -1;
+        const std::vector<uint8_t> *ic = i < icc.size() && icc[i] ? icc[i] : &noIcc;
+        if (gp_mux_avif(frames[i]->fp, obus[i].data() + 2, obus[i].size() - 2, ao.empty() ? nullptr : ao.data() + 2,
+                        ao.empty() ? 0 : ao.size() - 2, *ic, frames[i]->orientation, avifs[i], err))
             return -1;
-        }
-        avifs[i].assign(a, a + an);
-        free(a);
+        if (alphaObus) (*alphaObus)[i].swap(ao);
     }
     return 0;
 }

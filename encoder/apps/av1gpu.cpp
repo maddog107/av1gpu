@@ -32,7 +32,8 @@ static void usage() {
             "       av1gpu --batch LIST|DIR --outdir DIR [options]\n"
             "\n"
             "Input: JPEG (GPU decode), PNG (8 or 16 bits per sample) or WebP (CPU decode).  Output: 8-bit 4:2:0\n"
-            "(or monochrome) AVIF, 4:4:4 with --yuv 444, 10-bit with --depth 10, mathematically lossless with --lossless.\n"
+            "(or monochrome) AVIF, 4:4:4 with --yuv 444, 10-bit with --depth 10, mathematically lossless with --lossless;\n"
+            "PNG / WebP transparency as an AVIF alpha item (--alpha-quality, --no-alpha).\n"
             "Defaults: --quality 60 --tune iq --edge-filter --preset turbo --small-preset base --gpu-entropy\n"
             "\n"
             "common options:\n"
@@ -56,12 +57,24 @@ static void usage() {
             "                          10-bit images; 16-bit PNGs with 8 significant bits, v * 257, are coded 8-bit; others\n"
             "                          are rejected); grayscale PNG: monochrome.  JPEG: its decoded YCbCr planes exactly, at\n"
             "                          the JPEG's subsampling (4:2:0, 4:4:4 or gray; 4:2:2 / 4:4:0 / 4:1:1 are rejected),\n"
-            "                          BT.601 full range: lossless to the decoded JPEG, NOT smaller than the JPEG.  An\n"
-            "                          alpha channel is not coded.  --yuv / --depth cannot be combined with it.\n"
+            "                          BT.601 full range: lossless to the decoded JPEG, NOT smaller than the JPEG.  The alpha\n"
+            "                          channel is lossless too.  --yuv / --depth cannot be combined with it.\n"
             "  --ycgco-re              with --lossless: RGB as YCgCo-Re (CICP matrix 16, libavif / H.273) instead of GBR:\n"
             "                          8-bit RGB -> 10-bit 4:4:4 (2 extra bits); usually smaller than GBR for photos\n"
             "  --ll-tile-area N        with --lossless: uniform tiles of at most N pixels (default 262144; more tiles code\n"
-            "                          faster on the GPU, each costs ~0.1-0.4 %; 0: the preset's tiling)\n"
+            "                          faster on the GPU, each costs ~0.1-0.4 %%; 0: the preset's tiling)\n"
+            "  --alpha-quality Q       0..100: quality of the alpha channel; alpha quality defaults to --quality, as in avifenc\n"
+            "                          1.2+; 100 = lossless.  PNG / WebP inputs with transparency (any alpha below the maximum)\n"
+            "                          get an AVIF alpha item (straight alpha, as libavif writes it): a monochrome AV1 image at\n"
+            "                          the colour's bit depth, coded like avifenc --qalpha Q codes alpha (libavif's alpha\n"
+            "                          tuning: quantizer (100 - Q) * 63 / 100, no tune=iq tools; 100: the lossless path).\n"
+            "                          The colour under transparent pixels is kept as stored.  A fully opaque alpha channel\n"
+            "                          gets no alpha item (as avifenc).  With --qindex instead of --quality the alpha frames\n"
+            "                          use the colour's qindex.  16-bit PNG alpha is rounded to the output depth (8, or 10\n"
+            "                          with --depth 10) like avifenc does; with --lossless it must hold 8 / 10 significant\n"
+            "                          bits like the colour samples.\n"
+            "  --no-alpha              do not code the alpha channel (as before alpha support): PNG colour is composited onto\n"
+            "                          black, WebP and --lossless keep the stored RGB; a note says so\n"
             "  --cpu-entropy           entropy-code on the CPU instead of the GPU (identical bytes)\n"
             "  --batch LIST|DIR        encode every file in LIST (one path per line) or DIR; outputs <name>.avif\n"
             "  --outdir DIR            batch output directory (outputs are named <input file name>.avif)\n"
@@ -93,7 +106,17 @@ struct Opts {
     std::string in, out, batch, outdir, dumpSource;
     bool check = false, gpuEntropy = false, stats = false, devEntropy = false, checkEntropy = false, debugOutputs = false;
     bool yuvSet = false, depthSet = false;   // explicit --yuv / --depth (not combinable with --lossless)
+    int colourQuality = -1;   // the last --quality value (-1: --qindex set the colour quantizer)
+    int alphaQuality = -1;    // --alpha-quality (-1: follow --quality)
 };
+
+// alpha quality -> qindex as libavif codes alpha with libaom (tune=psnr: quantizer ((100 - Q) * 63 + 50) / 100, libaom's
+// quantizer_to_qindex); 100 -> 0 = lossless (av1gpu's lossless path: --quality 100 gives qindex 1, not lossless)
+static int alpha_qindex_for_quality(int q) {
+    if (q >= 100) return 0;
+    const int qp = ((100 - q) * 63 + 50) / 100;
+    return qp == 63 ? 255 : qp == 62 ? 249 : 4 * qp;
+}
 
 // speed presets: the speed knobs only (base = the GpConfig defaults)
 static bool apply_preset(GpConfig &cfg, const char *v) {
@@ -158,8 +181,18 @@ static bool parse(int argc, char **argv, GpConfig &cfg, Opts &o) {
             if (qv < 0 || qv > 100) { fprintf(stderr, "--quality must be 0..100\n"); return false; }
             o.qlist.assign(1, std::max(1, av1f_qindex_for_quality(qv)));
             cfg.qindex = o.qlist[0];
+            o.colourQuality = qv;
         }
+        else if (a == "--alpha-quality") {
+            const char *v = nxt();
+            char *end = nullptr;
+            const long qv = strtol(v, &end, 10);
+            if (!*v || *end || qv < 0 || qv > 100) { fprintf(stderr, "--alpha-quality must be 0..100\n"); return false; }
+            o.alphaQuality = (int)qv;
+        }
+        else if (a == "--no-alpha") cfg.alpha = 0;
         else if (a == "--qindex" || a == "--q") {
+            o.colourQuality = -1;
             o.qlist.clear();
             for (const char *s = nxt(); *s;) {
                 o.qlist.push_back(atoi(s));
@@ -296,6 +329,15 @@ static bool parse(int argc, char **argv, GpConfig &cfg, Opts &o) {
         fprintf(stderr, "--yuv / --depth cannot be combined with --lossless (the format follows the input; --ycgco-re for 10-bit 4:4:4)\n");
         return false;
     }
+    // alpha: lossless with --lossless; else --alpha-quality, or --quality (avifenc 1.2+: alpha quality = colour quality),
+    // or (--qindex) the colour's qindex
+    if (cfg.lossless && o.alphaQuality >= 0 && o.alphaQuality != 100) {
+        fprintf(stderr, "--alpha-quality cannot be set with --lossless, except to 100 (alpha is lossless)\n");
+        return false;
+    }
+    cfg.alphaQindex = cfg.lossless ? 0
+                      : o.alphaQuality >= 0 ? alpha_qindex_for_quality(o.alphaQuality)
+                      : o.colourQuality >= 0 ? alpha_qindex_for_quality(o.colourQuality) : -1;
     if (cfg.lossless) o.qlist.assign(1, cfg.qindex > 0 ? cfg.qindex : 1);   // (qindex is not used: one pass)
     if (o.qlist.empty()) o.qlist.push_back(cfg.qindex);
     for (int q : o.qlist)
@@ -315,7 +357,7 @@ static int run_single(const GpConfig &cfg, const Opts &o) {
     GpEncoder enc;
     if (enc.init(cfg, err)) { fprintf(stderr, "init: %s\n", err.c_str()); return 1; }
     const GpFileKind kind = gp_sniff(o.in);
-    GpFrameIn fin;
+    GpFrameIn fin, afin;   // afin: the alpha frame (W = 0: none)
     std::vector<uint8_t> icc;
     int orientation = 1;
     ingest_ctx *ictx = nullptr;
@@ -377,25 +419,33 @@ static int run_single(const GpConfig &cfg, const Opts &o) {
     } else {
         GpHostPlanes hp;
         int matrix = -1;
+        std::string note;
         if (cfg.lossless) {
-            std::string note;
-            if (!gp_decode_lossless(o.in, hp, cfg.ycgcoRe, &matrix, note, err)) { fprintf(stderr, "%s: %s\n", o.in.c_str(), err.c_str()); return 3; }
-            if (!note.empty()) fprintf(stderr, "%s: %s\n", o.in.c_str(), note.c_str());
-        } else if (!gp_decode_cpu(o.in, hp, err, cfg.yuv444, cfg.depth)) {
+            if (!gp_decode_lossless(o.in, hp, cfg.ycgcoRe, &matrix, note, err, cfg.alpha != 0)) { fprintf(stderr, "%s: %s\n", o.in.c_str(), err.c_str()); return 3; }
+        } else if (!gp_decode_cpu(o.in, hp, err, cfg.yuv444, cfg.depth, cfg.alpha != 0, &note)) {
             fprintf(stderr, "decode %s: %s\n", o.in.c_str(), err.c_str());
             return 3;
         }
-        const size_t ys = hp.bytes(0), cs = hp.bytes(1);   // bytes (10-bit: uint16_t samples)
-        if (cudaMalloc(&dplanes, ys + 2 * cs) != cudaSuccess) { fprintf(stderr, "cudaMalloc failed\n"); return 1; }
+        if (!note.empty()) fprintf(stderr, "%s: %s\n", o.in.c_str(), note.c_str());
+        const size_t ys = hp.bytes(0), cs = hp.bytes(1), as = hp.abytes();   // bytes (10-bit: uint16_t samples)
+        if (cudaMalloc(&dplanes, ys + 2 * cs + as) != cudaSuccess) { fprintf(stderr, "cudaMalloc failed\n"); return 1; }
         cudaMemcpy(dplanes, hp.data(0), ys, cudaMemcpyHostToDevice);
         cudaMemcpy(dplanes + ys, hp.data(1), cs, cudaMemcpyHostToDevice);
         cudaMemcpy(dplanes + ys + cs, hp.data(2), cs, cudaMemcpyHostToDevice);
+        if (as) cudaMemcpy(dplanes + ys + 2 * cs, hp.adata(), as, cudaMemcpyHostToDevice);
         fin.W = hp.W; fin.H = hp.H; fin.mono = hp.mono; fin.aw = hp.aw; fin.ah = hp.ah; fin.yuv444 = hp.yuv444; fin.bitDepth = hp.bitDepth;
         fin.colorMatrix = matrix;
         fin.dsrc[0] = dplanes; fin.spitch[0] = hp.aw;
         fin.dsrc[1] = dplanes + ys; fin.dsrc[2] = dplanes + ys + cs;
         fin.spitch[1] = fin.spitch[2] = hp.cw();
+        if (as) {   // alpha frame: monochrome, the colour's size and bit depth, unspecified colour description
+            afin.W = hp.W; afin.H = hp.H; afin.aw = hp.aw; afin.ah = hp.ah; afin.mono = 1; afin.bitDepth = hp.bitDepth;
+            afin.colorMatrix = -2;
+            afin.dsrc[0] = dplanes + ys + 2 * cs;
+            afin.spitch[0] = hp.aw;
+        }
     }
+    const bool hasAlpha = afin.W > 0;
     if (!o.dumpSource.empty()) {   // debug: the visible input planes as the encoder sees them (Y, then U, V; 10-bit: 16-bit LE)
         std::vector<uint8_t> yuv;
         const int B = fin.bitDepth == 10 ? 2 : 1;
@@ -410,109 +460,129 @@ static int run_single(const GpConfig &cfg, const Opts &o) {
     auto t1 = std::chrono::steady_clock::now();
     GpEncoder encS;
     GpEncoder *E = &enc;
+    GpConfig ccfg = cfg;   // the colour frame's configuration (small images: --small-preset)
     if (cfg.smallMp > 0 && (double)fin.W * fin.H < cfg.smallMp * 1e6) {
-        GpConfig cs = cfg;
-        cs.P = cfg.Psmall;
-        if (encS.init(cs, err)) { fprintf(stderr, "init: %s\n", err.c_str()); return 1; }
+        ccfg.P = cfg.Psmall;
+        if (encS.init(ccfg, err)) { fprintf(stderr, "init: %s\n", err.c_str()); return 1; }
         E = &encS;
     }
-    std::vector<GpFrameOut> outs;
-    GpTimes tm;
-    GpDevRecords devRec;
+    GpEncoder encA;   // alpha frame: gp_alpha_config (lossless or lossy at the alpha quality)
+    if (hasAlpha && encA.init(gp_alpha_config(ccfg), err)) { fprintf(stderr, "init: %s\n", err.c_str()); return 1; }
+    std::vector<GpFrameOut> outs, aouts;
+    GpTimes tm, tma;
+    GpDevRecords devRec, devRecA;
     if (o.devEntropy || o.checkEntropy) {
         // device-resident records -> stream-ordered GPU entropy (batch-mode path)
         std::vector<GpFrameOut> o2;
         GpTimes t2;
-        if (E->encode({fin}, o2, t2, err, 0, &devRec)) { fprintf(stderr, "encode(dev): %s\n", err.c_str()); return 1; }
+        if (E->encode({fin}, o2, t2, err, 0, &devRec) || (hasAlpha && encA.encode({afin}, o2, t2, err, 0, &devRecA))) {
+            fprintf(stderr, "encode(dev): %s\n", err.c_str());
+            return 1;
+        }
     }
     if (E->encode({fin}, outs, tm, err)) { fprintf(stderr, "encode: %s\n", err.c_str()); return 1; }
+    if (hasAlpha && encA.encode({afin}, aouts, tma, err)) { fprintf(stderr, "encode (alpha): %s\n", err.c_str()); return 1; }
     if (ictx) { ingest_release_batch(ictx, ib.batch_id, nullptr); ingest_destroy(ictx); }
     if (dplanes) cudaFree(dplanes);
     if (dconv) cudaFree(dconv);
     auto t2 = std::chrono::steady_clock::now();
     GpFrameOut &f = outs[0];
+    GpFrameOut *fa = hasAlpha ? &aouts[0] : nullptr;
     f.orientation = orientation;
-    std::vector<uint8_t> obu, avif;
+    std::vector<uint8_t> obu, aobu, avif;
     double entMs = 0;
-    if (o.gpuEntropy) {
-        std::vector<GpFrameOut *> fr = {&f};
-        std::vector<const std::vector<uint8_t> *> ic = {&icc};
-        std::vector<std::vector<uint8_t>> ob, av;
-        if (gp_entropy_gpu(fr, ic, ob, av, &entMs, err)) { fprintf(stderr, "entropy: %s\n", err.c_str()); return 1; }
-        obu = ob[0];
-        avif = av[0];
-    } else if (o.devEntropy) {
+    // device entropy of the dev records (colour, alpha) -> OBUs with a temporal delimiter
+    auto devObus = [&](GpDevRecords &R, std::vector<uint8_t> &out, double *ms) -> int {
         std::vector<std::vector<std::vector<uint8_t>>> tb;
         GpEntScratch es;
-        const int erc = gp_entropy_dev(devRec, 0, es, tb, &entMs, err);
+        const int erc = gp_entropy_dev(R, 0, es, tb, ms, err);
         gp_ent_scratch_free(es, 0);
-        if (erc || gp_assemble_obus(&devRec.fp[0], tb[0], true, obu, err)) {
+        return erc || gp_assemble_obus(&R.fp[0], tb[0], true, out, err);
+    };
+    if (o.gpuEntropy) {
+        std::vector<GpFrameOut *> fr = {&f}, al = {fa};
+        std::vector<const std::vector<uint8_t> *> ic = {&icc};
+        std::vector<std::vector<uint8_t>> ob, av, aob;
+        if (gp_entropy_gpu(fr, ic, ob, av, &entMs, err, &al, &aob)) { fprintf(stderr, "entropy: %s\n", err.c_str()); return 1; }
+        obu = ob[0];
+        aobu = aob[0];
+        avif = av[0];
+    } else if (o.devEntropy) {
+        double msA = 0;
+        if (devObus(devRec, obu, &entMs) || (hasAlpha && devObus(devRecA, aobu, &msA))) {
             fprintf(stderr, "entropy(dev): %s\n", err.c_str());
             return 1;
         }
+        entMs += msA;
         std::vector<uint8_t> o2, a2;
-        if (gp_entropy_cpu(f, icc, o2, a2, err)) { fprintf(stderr, "entropy: %s\n", err.c_str()); return 1; }
+        if (gp_entropy_cpu(f, icc, o2, a2, err, fa)) { fprintf(stderr, "entropy: %s\n", err.c_str()); return 1; }
         avif = a2;  // same OBUs (checked with --check-entropy); mux from the CPU path for brevity
-    } else if (gp_entropy_cpu(f, icc, obu, avif, err)) {
+    } else if (gp_entropy_cpu(f, icc, obu, avif, err, fa, &aobu)) {
         fprintf(stderr, "entropy: %s\n", err.c_str());
         return 1;
     }
     if (o.checkEntropy) {
-        std::vector<std::vector<std::vector<uint8_t>>> tb;
-        std::vector<uint8_t> dobu, cobu, cavif;
-        double ms2 = 0;
-        GpEntScratch es;
-        const int erc = gp_entropy_dev(devRec, 0, es, tb, &ms2, err);
-        gp_ent_scratch_free(es, 0);
-        if (erc || gp_assemble_obus(&devRec.fp[0], tb[0], true, dobu, err) ||
-            gp_entropy_cpu(f, icc, cobu, cavif, err)) {
+        std::vector<uint8_t> dobu, cobu, cavif, daobu, caobu;
+        double ms2 = 0, ms3 = 0;
+        if (devObus(devRec, dobu, &ms2) || (hasAlpha && devObus(devRecA, daobu, &ms3)) || gp_entropy_cpu(f, icc, cobu, cavif, err, fa, &caobu)) {
             fprintf(stderr, "check-entropy: %s\n", err.c_str());
             return 6;
         }
         if (dobu != cobu) { fprintf(stderr, "check-entropy: MISMATCH dev %zu bytes vs cpu %zu bytes\n", dobu.size(), cobu.size()); return 6; }
+        if (daobu != caobu) { fprintf(stderr, "check-entropy: alpha MISMATCH dev %zu bytes vs cpu %zu bytes\n", daobu.size(), caobu.size()); return 6; }
         fprintf(stderr, "check-entropy: device entropy == CPU writer (%zu bytes, %.1f ms GPU)\n", dobu.size(), ms2);
+        if (hasAlpha) fprintf(stderr, "check-entropy: alpha: device entropy == CPU writer (%zu bytes, %.1f ms GPU)\n", daobu.size(), ms3);
     }
     if (devRec.pool) gp_dev_records_free(devRec, 0);
+    if (devRecA.pool) gp_dev_records_free(devRecA, 0);
     auto t3 = std::chrono::steady_clock::now();
     if (!gp_write_file(o.out, avif.data(), avif.size()) ||
-        (o.debugOutputs && !gp_write_file(o.out + ".obu", obu.data(), obu.size()))) {
+        (o.debugOutputs && !gp_write_file(o.out + ".obu", obu.data(), obu.size())) ||
+        (o.debugOutputs && fa && !gp_write_file(o.out + ".alpha.obu", aobu.data(), aobu.size()))) {
         fprintf(stderr, "write failed\n");
         return 1;
     }
     if (o.debugOutputs) {
-        std::vector<uint8_t> yuv;
-        for (int p = 0; p < (f.fp.monochrome ? 1 : 3); p++) yuv.insert(yuv.end(), f.recon[p].begin(), f.recon[p].end());
-        if (!gp_write_file(o.out + ".recon.yuv", yuv.data(), yuv.size())) { fprintf(stderr, "write failed\n"); return 1; }
+        for (GpFrameOut *x : {&f, fa}) {
+            if (!x) continue;
+            std::vector<uint8_t> yuv;
+            for (int p = 0; p < (x->fp.monochrome ? 1 : 3); p++) yuv.insert(yuv.end(), x->recon[p].begin(), x->recon[p].end());
+            if (!gp_write_file(o.out + (x == fa ? ".alpha" : "") + ".recon.yuv", yuv.data(), yuv.size())) { fprintf(stderr, "write failed\n"); return 1; }
+        }
     }
     int rc = 0;
     if (o.check) {
-        av1g_decision_record r = f.record();
-        av1g_encode_opts eo;
-        eo.flags = 0;
-        eo.seq_level_idx = -1;
-        av1g_output ao;
-        memset(&ao, 0, sizeof ao);
-        if (av1g_encode(&r, &eo, &ao) != AV1G_OK) {
-            fprintf(stderr, "check: av1g_encode failed: %s\n", ao.error);
-            rc = 4;
-        } else {
-            const bool hbd = f.fp.bit_depth == 10;   // 10-bit: uint16_t samples in both
-            for (int p = 0; p < (f.fp.monochrome ? 1 : 3); p++) {
-                const int w = ao.recon_w[p], h = ao.recon_h[p];
-                auto at = [&](const uint8_t *b, size_t i) { return hbd ? (int)((const uint16_t *)b)[i] : (int)b[i]; };
-                for (int y = 0; y < h && !rc; y++)
-                    for (int x = 0; x < w; x++)
-                        if (at(ao.recon[p], (size_t)y * w + x) != at(f.recon[p].data(), (size_t)y * w + x)) {
-                            fprintf(stderr, "check: MISMATCH plane %d at (%d,%d): av1core %d, gpu %d\n", p, x, y,
-                                    at(ao.recon[p], (size_t)y * w + x), at(f.recon[p].data(), (size_t)y * w + x));
-                            rc = 5;
-                            break;
-                        }
-                if (rc) break;
+        for (GpFrameOut *x : {&f, fa}) {
+            if (!x || rc) continue;
+            const char *what = x == fa ? "alpha " : "";
+            av1g_decision_record r = x->record();
+            av1g_encode_opts eo;
+            eo.flags = 0;
+            eo.seq_level_idx = -1;
+            av1g_output ao;
+            memset(&ao, 0, sizeof ao);
+            if (av1g_encode(&r, &eo, &ao) != AV1G_OK) {
+                fprintf(stderr, "check: %sav1g_encode failed: %s\n", what, ao.error);
+                rc = 4;
+            } else {
+                const bool hbd = x->fp.bit_depth == 10;   // 10-bit: uint16_t samples in both
+                for (int p = 0; p < (x->fp.monochrome ? 1 : 3); p++) {
+                    const int w = ao.recon_w[p], h = ao.recon_h[p];
+                    auto at = [&](const uint8_t *b, size_t i) { return hbd ? (int)((const uint16_t *)b)[i] : (int)b[i]; };
+                    for (int y = 0; y < h && !rc; y++)
+                        for (int xx = 0; xx < w; xx++)
+                            if (at(ao.recon[p], (size_t)y * w + xx) != at(x->recon[p].data(), (size_t)y * w + xx)) {
+                                fprintf(stderr, "check: %sMISMATCH plane %d at (%d,%d): av1core %d, gpu %d\n", what, p, xx, y,
+                                        at(ao.recon[p], (size_t)y * w + xx), at(x->recon[p].data(), (size_t)y * w + xx));
+                                rc = 5;
+                                break;
+                            }
+                    if (rc) break;
+                }
+                if (!rc) fprintf(stderr, "check: %srecon identical to av1core (%zu bytes obu)\n", what, x == fa ? aobu.size() : obu.size());
             }
-            if (!rc) fprintf(stderr, "check: recon identical to av1core (%zu bytes obu)\n", obu.size());
+            av1g_output_free(&ao);
         }
-        av1g_output_free(&ao);
     }
     if (cfg.P.profile) {
         const char *nm[9] = {"luma setup", "luma pass1", "luma pass2", "luma final", "chroma edges+CfL", "chroma SATD",
@@ -528,10 +598,12 @@ static int run_single(const GpConfig &cfg, const Opts &o) {
         printf("{\"file\":\"%s\",\"w\":%d,\"h\":%d,\"q\":%d,\"bytes\":%zu,\"load_ms\":%.2f,\"gpu_total_ms\":%.2f,"
                "\"analysis_ms\":%.2f,\"dp_ms\":%.2f,\"recon_ms\":%.2f,\"pack_ms\":%.2f,\"postfilter_ms\":%.2f,\"download_ms\":%.2f,"
                "\"entropy_ms\":%.2f,\"wall_encode_ms\":%.2f,\"steps\":%u,\"blocks\":%u,\"skip\":%u,\"cfl\":%u,\"fixes\":%u,\"txsplit\":%u,"
-               "\"dev_mb\":%.1f}\n",
+               "\"dev_mb\":%.1f%s}\n",
                o.in.c_str(), f.fp.width, f.fp.height, (int)f.fp.base_q_idx, avif.size(), ms(t0, t1), tm.total, tm.analysis, tm.dp,
                tm.recon, tm.pack, tm.postfilter, tm.download, o.gpuEntropy ? entMs : ms(t2, t3), ms(t1, t2), tm.steps, tm.blocks,
-               tm.skipBlocks, tm.cflBlocks, tm.rangeFixes, tm.txSplit, tm.deviceBytes / 1048576.0);
+               tm.skipBlocks, tm.cflBlocks, tm.rangeFixes, tm.txSplit, tm.deviceBytes / 1048576.0,
+               !fa ? "" : (",\"alpha_q\":" + std::to_string((int)fa->fp.base_q_idx) + ",\"alpha_obu_bytes\":" + std::to_string(aobu.size() > 2 ? aobu.size() - 2 : 0) +
+                           ",\"alpha_gpu_total_ms\":" + std::to_string(tma.total)).c_str());
     }
     return rc;
 }

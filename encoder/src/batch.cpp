@@ -69,6 +69,7 @@ struct Agg {
     double ingestWait = 0, gpuSetup = 0, analysis = 0, dp = 0, recon = 0, pack = 0, postfilter = 0, download = 0, gpuTotal = 0;
     double entropyGpu = 0, entropyWall = 0, writeWall = 0, encodeWall = 0;
     uint64_t images = 0, pixels = 0, bytes = 0, blocks = 0, batches = 0;
+    uint64_t alphaImages = 0, alphaPixels = 0;   // images with an alpha item (their alpha frames)
     unsigned long long prof[16] = {0};
     size_t peakDev = 0;
 };
@@ -76,15 +77,20 @@ struct Agg {
 
 
 // debug / batch gate (GP_WANT_RECON): <out>.obu (temporal delimiter + sequence header + frame) and the
-// encoder's reconstruction <out>.recon.yuv (visible planes, Y then U then V) for decoder comparison
-static bool gp_write_debug(const std::string &avifPath, const GpFrameOut &o, const std::vector<uint8_t> &obu) {
+// encoder's reconstruction <out>.recon.yuv (visible planes, Y then U then V) for decoder comparison; an image with an
+// alpha item also gets <out>.alpha.obu and <out>.alpha.recon.yuv (the monochrome alpha frame)
+static bool gp_write_debug1(const std::string &base, const GpFrameOut &o, const std::vector<uint8_t> &obu) {
     std::vector<uint8_t> yuv;
     for (int p = 0; p < 3; p++) yuv.insert(yuv.end(), o.recon[p].begin(), o.recon[p].end());
     std::vector<uint8_t> td;
     const bool hasTd = obu.size() >= 2 && obu[0] == 0x12 && obu[1] == 0x00;
     if (!hasTd) { td.push_back(0x12); td.push_back(0x00); }
     td.insert(td.end(), obu.begin(), obu.end());
-    return gp_write_file(avifPath + ".recon.yuv", yuv.data(), yuv.size()) && gp_write_file(avifPath + ".obu", td.data(), td.size());
+    return gp_write_file(base + ".recon.yuv", yuv.data(), yuv.size()) && gp_write_file(base + ".obu", td.data(), td.size());
+}
+static bool gp_write_debug(const std::string &avifPath, const GpFrameOut &o, const std::vector<uint8_t> &obu,
+                           const GpFrameOut *alpha = nullptr, const std::vector<uint8_t> *alphaObu = nullptr) {
+    return gp_write_debug1(avifPath, o, obu) && (!alpha || !alphaObu || gp_write_debug1(avifPath + ".alpha", *alpha, *alphaObu));
 }
 
 const char *gp_jpeg_sub_name(int s) {
@@ -147,19 +153,38 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
     ingest_finish_submit(ictx);
     Agg A;
     int failures = 0;
-    auto emit = [&](std::vector<GpFrameOut> &outs, const std::vector<std::vector<uint8_t>> &iccs,
-                    const std::vector<int> &orients, const std::vector<std::string> &names) -> int {
+    struct Job {
+        std::vector<GpFrameOut> outs;
+        std::vector<std::vector<uint8_t>> iccs;
+        std::vector<int> orients;   // EXIF orientation per image (AVIF irot/imir)
+        std::vector<std::string> names;
+        GpDevRecords dev;   // device-resident records (gpuEntropy)
+        // alpha: per image its monochrome alpha frame (W = 0: none), encoded after the colour frames as one more
+        // batch of the job; alphaOf[i] = the image's index in aouts / adev, -1 without alpha
+        std::vector<GpFrameIn> afin;
+        std::vector<int> alphaOf;
+        std::vector<GpFrameOut> aouts;
+        GpDevRecords adev;
+    };
+    auto emit = [&](Job &j) -> int {
+        std::vector<GpFrameOut> &outs = j.outs;
+        const std::vector<std::vector<uint8_t>> &iccs = j.iccs;
+        const std::vector<int> &orients = j.orients;
+        const std::vector<std::string> &names = j.names;
         const size_t n = outs.size();
         for (size_t i = 0; i < n && i < orients.size(); i++) outs[i].orientation = orients[i];
         std::string err;  // shadows the main thread's (emit runs on the entropy thread)
-        std::vector<std::vector<uint8_t>> obus(n), avifs(n);
+        std::vector<std::vector<uint8_t>> obus(n), avifs(n), aobus(n);
+        auto alphaOut = [&](size_t i) -> GpFrameOut * {
+            return i < j.alphaOf.size() && j.alphaOf[i] >= 0 ? &j.aouts[(size_t)j.alphaOf[i]] : nullptr;
+        };
         const double te = now_ms();
         if (gpuEntropy) {
-            std::vector<GpFrameOut *> fr;
+            std::vector<GpFrameOut *> fr, al;
             std::vector<const std::vector<uint8_t> *> ic2;
-            for (size_t i = 0; i < n; i++) { fr.push_back(&outs[i]); ic2.push_back(&iccs[i]); }
+            for (size_t i = 0; i < n; i++) { fr.push_back(&outs[i]); ic2.push_back(&iccs[i]); al.push_back(alphaOut(i)); }
             double gms = 0;
-            if (gp_entropy_gpu(fr, ic2, obus, avifs, &gms, err)) { fprintf(stderr, "entropy: %s\n", err.c_str()); return -1; }
+            if (gp_entropy_gpu(fr, ic2, obus, avifs, &gms, err, &al, &aobus)) { fprintf(stderr, "entropy: %s\n", err.c_str()); return -1; }
             A.entropyGpu += gms;
         } else {
             std::atomic<size_t> next{0};
@@ -169,7 +194,7 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
                 for (;;) {
                     const size_t i = next.fetch_add(1);
                     if (i >= n) break;
-                    if (gp_entropy_cpu(outs[i], iccs[i], obus[i], avifs[i], e2)) bad++;
+                    if (gp_entropy_cpu(outs[i], iccs[i], obus[i], avifs[i], e2, alphaOut(i), &aobus[i])) bad++;
                     if (const char *rd = getenv("GP_DUMP_RECORDS")) {
                         // debug: raw DecisionRecord arrays (fp, blocks, block_txb, txb, coeffs) per image
                         const GpFrameOut &o = outs[i];
@@ -198,7 +223,7 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
             if (write) {
                 const std::string o = outdir + "/" + names[i] + suffix + ".avif";
                 if (!gp_write_file(o, avifs[i].data(), avifs[i].size())) failures++;
-                if (getenv("GP_WANT_RECON") && !gp_write_debug(o, outs[i], obus[i])) failures++;
+                if (getenv("GP_WANT_RECON") && !gp_write_debug(o, outs[i], obus[i], alphaOut(i), &aobus[i])) failures++;
             }
         }
         A.writeWall += now_ms() - tw;
@@ -210,13 +235,6 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
     const int maxImgs = getenv("GP_ENCODE_IMGS") ? atoi(getenv("GP_ENCODE_IMGS")) : 192;
     cudaStream_t es;
     cudaStreamCreateWithFlags(&es, cudaStreamNonBlocking);
-    struct Job {
-        std::vector<GpFrameOut> outs;
-        std::vector<std::vector<uint8_t>> iccs;
-        std::vector<int> orients;   // EXIF orientation per image (AVIF irot/imir)
-        std::vector<std::string> names;
-        GpDevRecords dev;   // device-resident records (gpuEntropy)
-    };
     std::mutex mu, aggMu;
     std::condition_variable cv;
     std::deque<Job *> q;
@@ -247,24 +265,29 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
                     double gms = 0;
                     if (gp_entropy_dev(j->dev, ts, escr, tb, &gms, terr)) { fprintf(stderr, "entropy: %s\n", terr.c_str()); entFail++; }
                     gp_dev_records_free(j->dev, ts);
+                    std::vector<std::vector<std::vector<uint8_t>>> atb;   // alpha frames of the job (one more entropy batch)
+                    if (j->adev.pool) {
+                        double gms2 = 0;
+                        if (gp_entropy_dev(j->adev, ts, escr, atb, &gms2, terr)) { fprintf(stderr, "entropy (alpha): %s\n", terr.c_str()); entFail++; }
+                        gp_dev_records_free(j->adev, ts);
+                        gms += gms2;
+                    }
                     const double tm = now_ms();
                     uint64_t bytes = 0;
                     int wf = 0;
                     for (size_t i = 0; i < tb.size(); i++) {
-                        std::vector<uint8_t> obu;
+                        std::vector<uint8_t> obu, aobu, av;
                         if (gp_assemble_obus(&j->dev.fp[i], tb[i], false, obu, terr)) { entFail++; continue; }
-                        av1g_avif_meta meta;
-                        memset(&meta, 0, sizeof meta);
-                        meta.icc = j->iccs[i].empty() ? nullptr : j->iccs[i].data();
-                        meta.icc_size = j->iccs[i].size();
-                        av1g_exif_orientation_to_irot_imir(j->orients[i], &meta.irot, &meta.imir);
-                        uint8_t *av = nullptr;
-                        size_t an = 0;
-                        if (av1g_mux_avif_ex(obu.data(), obu.size(), j->dev.fp[i].width, j->dev.fp[i].height, &meta, &av, &an) != AV1G_OK) { entFail++; continue; }
-                        bytes += an;
-                        if (write && !gp_write_file(outdir + "/" + j->names[i] + suffix + ".avif", av, an)) wf++;
-                        free(av);
-                        if (write && bcfg.wantRecon && i < j->outs.size() && !gp_write_debug(outdir + "/" + j->names[i] + suffix + ".avif", j->outs[i], obu)) wf++;
+                        const int ai = i < j->alphaOf.size() ? j->alphaOf[i] : -1;
+                        if (ai >= 0 && ((size_t)ai >= atb.size() || gp_assemble_obus(&j->adev.fp[ai], atb[ai], false, aobu, terr))) { entFail++; continue; }
+                        if (gp_mux_avif(j->dev.fp[i], obu.data(), obu.size(), ai >= 0 ? aobu.data() : nullptr, aobu.size(), j->iccs[i],
+                                        j->orients[i], av, terr)) { entFail++; continue; }
+                        bytes += av.size();
+                        if (write && !gp_write_file(outdir + "/" + j->names[i] + suffix + ".avif", av.data(), av.size())) wf++;
+                        if (write && bcfg.wantRecon && i < j->outs.size() &&
+                            !gp_write_debug(outdir + "/" + j->names[i] + suffix + ".avif", j->outs[i], obu,
+                                            ai >= 0 && (size_t)ai < j->aouts.size() ? &j->aouts[ai] : nullptr, &aobu))
+                            wf++;
                     }
                     std::lock_guard<std::mutex> lk2(aggMu);
                     A.entropyGpu += gms;
@@ -272,7 +295,7 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
                     A.writeWall += now_ms() - tm;
                     A.bytes += bytes;
                     failures += wf;
-                } else if (emit(j->outs, j->iccs, j->orients, j->names)) {
+                } else if (emit(*j)) {
                     entFail++;
                 }
                 delete j;
@@ -299,7 +322,7 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
     // ingest images (GPU entropy, overlapped).  The rest (giant, CMYK, ...) -> CPU avifenc (not done here).
     // (Before: serial CPU decode + single-image encode + host-path entropy after the main loop, ~0.45 s per
     // image with the GPU mostly idle.)
-    struct FbFrame { GpFrameIn f; uint8_t *d = nullptr; std::string name; };
+    struct FbFrame { GpFrameIn f, a; uint8_t *d = nullptr; std::string name; };   // a: alpha frame (W = 0: none)
     std::mutex fbMu;
     std::deque<FbFrame> fbReady;
     std::atomic<bool> ingestDrained{false}, fbDone{false};
@@ -322,19 +345,22 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
             GpHostPlanes hp;
             std::string e2, note;
             int matrix = -1;
-            const bool dec = cfg.lossless ? gp_decode_lossless(p, hp, cfg.ycgcoRe, &matrix, note, e2) : gp_decode_cpu(p, hp, e2, cfg.yuv444, cfg.depth);
+            const bool keepAlpha = cfg.alpha != 0;
+            const bool dec = cfg.lossless ? gp_decode_lossless(p, hp, cfg.ycgcoRe, &matrix, note, e2, keepAlpha)
+                                          : gp_decode_cpu(p, hp, e2, cfg.yuv444, cfg.depth, keepAlpha, &note);
             if (dec && !note.empty()) fprintf(stderr, "[av1gpu] %s: %s\n", p.c_str(), note.c_str());
             if (!dec || (double)hp.W * hp.H > 35.6e6) {
                 fprintf(stderr, "[av1gpu] skipped %s: %s\n", p.c_str(), e2.empty() ? "larger than 35.6 megapixels" : e2.c_str());
                 cpuFallbackA++;
                 return;
             }
-            const size_t ys = hp.bytes(0), cs = hp.bytes(1);   // bytes (10-bit: uint16_t samples)
+            const size_t ys = hp.bytes(0), cs = hp.bytes(1), as = hp.abytes();   // bytes (10-bit: uint16_t samples)
             uint8_t *d = nullptr;
-            if (cudaMallocAsync((void **)&d, ys + 2 * cs, fs) != cudaSuccess) { cpuFallbackA++; return; }
+            if (cudaMallocAsync((void **)&d, ys + 2 * cs + as, fs) != cudaSuccess) { cpuFallbackA++; return; }
             cudaMemcpyAsync(d, hp.data(0), ys, cudaMemcpyHostToDevice, fs);
             cudaMemcpyAsync(d + ys, hp.data(1), cs, cudaMemcpyHostToDevice, fs);
             cudaMemcpyAsync(d + ys + cs, hp.data(2), cs, cudaMemcpyHostToDevice, fs);
+            if (as) cudaMemcpyAsync(d + ys + 2 * cs, hp.adata(), as, cudaMemcpyHostToDevice, fs);
             if (cudaStreamSynchronize(fs) != cudaSuccess) { cpuFallbackA++; return; }
             FbFrame F;
             F.d = d;
@@ -343,6 +369,12 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
             F.f.mono = hp.mono; F.f.colorMatrix = matrix;
             F.f.dsrc[0] = d; F.f.dsrc[1] = d + ys; F.f.dsrc[2] = d + ys + cs;
             F.f.spitch[0] = hp.aw; F.f.spitch[1] = F.f.spitch[2] = hp.cw();
+            if (as) {   // the alpha plane: a monochrome frame of the same size and bit depth, unspecified colour description
+                F.a.W = hp.W; F.a.H = hp.H; F.a.aw = hp.aw; F.a.ah = hp.ah; F.a.mono = 1; F.a.bitDepth = hp.bitDepth;
+                F.a.colorMatrix = -2;
+                F.a.dsrc[0] = d + ys + 2 * cs;
+                F.a.spitch[0] = hp.aw;
+            }
             std::lock_guard<std::mutex> lk(fbMu);
             fbReady.push_back(F);
         };
@@ -369,8 +401,37 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
         for (auto &x : fss) cudaStreamDestroy(x);
         fbDone = true;
     });
+    // alpha frames of a job: one more GPU batch (monochrome frames, gp_alpha_config: lossless or lossy at the alpha
+    // quality), on the job's stream after its colour frames; each encoder thread creates its alpha encoders on first use
+    GpConfig acfg[2] = {gp_alpha_config(bcfg), bcfg};
+    acfg[1].P = bcfg.Psmall;
+    acfg[1] = gp_alpha_config(acfg[1]);
+    struct AlphaEncs {
+        GpEncoder *e[2] = {nullptr, nullptr};   // [0]: main preset, [1]: --small-preset
+        ~AlphaEncs() { delete e[0]; delete e[1]; }
+    };
+    auto encodeAlpha = [&](Job *j, int small, AlphaEncs &ea, cudaStream_t s, std::string &eerr) -> bool {
+        std::vector<GpFrameIn> al;
+        j->alphaOf.assign(j->afin.size(), -1);
+        for (size_t i = 0; i < j->afin.size(); i++)
+            if (j->afin[i].W) { j->alphaOf[i] = (int)al.size(); al.push_back(j->afin[i]); }
+        if (al.empty()) return true;
+        if (!ea.e[small]) {
+            ea.e[small] = new GpEncoder;
+            if (ea.e[small]->init(acfg[small], eerr)) return false;
+        }
+        GpTimes ta;
+        if (ea.e[small]->encode(al, j->aouts, ta, eerr, s, gpuEntropy ? &j->adev : nullptr)) return false;
+        std::lock_guard<std::mutex> lk2(aggMu);
+        A.analysis += ta.analysis; A.recon += ta.recon; A.gpuTotal += ta.total; A.blocks += ta.blocks;
+        A.peakDev = std::max(A.peakDev, ta.deviceBytes);
+        A.alphaImages += al.size();
+        for (auto &f : al) A.alphaPixels += (uint64_t)f.W * f.H;
+        return true;
+    };
     auto encLoop = [&](GpEncoder *E, GpEncoder *Es, cudaStream_t s) {
         std::string eerr;
+        AlphaEncs ea;
         for (;;) {
             std::vector<ingest_batch> held;
             std::vector<GpFrameIn> fin;
@@ -387,6 +448,7 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
                     job->iccs.emplace_back();
                     job->orients.push_back(1);
                     job->names.push_back(F.name);
+                    job->afin.push_back(F.a);
                     fbHeld.push_back(F.d);
                     mpAcc += F.f.W * (double)F.f.H / 1e6;
                 }
@@ -420,6 +482,7 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
                         job->iccs.emplace_back(im.icc_size > 0 ? std::vector<uint8_t>(im.icc, im.icc + im.icc_size) : std::vector<uint8_t>());
                         job->orients.push_back(im.oriented ? 1 : im.orientation);
                         job->names.push_back(base_name(paths[im.index]));
+                        job->afin.emplace_back();   // (JPEG: no alpha)
                         mpAcc += im.width * (double)im.height / 1e6;
                     }
                 }
@@ -451,19 +514,23 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
             if (cfg.lossless && std::any_of(fin.begin(), fin.end(), [](const GpFrameIn &f) { return f.bitDepth == 10; }) &&
                 std::any_of(fin.begin(), fin.end(), [](const GpFrameIn &f) { return f.bitDepth != 10; })) {
                 Job *jd = new Job;
-                std::vector<GpFrameIn> f10, f8;
+                std::vector<GpFrameIn> f10, f8, a8;
                 std::vector<std::vector<uint8_t>> i8;
                 std::vector<int> o8;
                 std::vector<std::string> n8;
                 for (size_t i = 0; i < fin.size(); i++) {
                     if (fin[i].bitDepth == 10) {
                         f10.push_back(fin[i]); jd->iccs.push_back(job->iccs[i]); jd->orients.push_back(job->orients[i]); jd->names.push_back(job->names[i]);
+                        jd->afin.push_back(job->afin[i]);
                     } else {
                         f8.push_back(fin[i]); i8.push_back(job->iccs[i]); o8.push_back(job->orients[i]); n8.push_back(job->names[i]);
+                        a8.push_back(job->afin[i]);
                     }
                 }
                 GpTimes t10;
-                if (E->encode(f10, jd->outs, t10, eerr, s, gpuEntropy ? &jd->dev : nullptr)) { fprintf(stderr, "encode: %s\n", eerr.c_str()); encFail++; delete jd; delete job; return; }
+                if (E->encode(f10, jd->outs, t10, eerr, s, gpuEntropy ? &jd->dev : nullptr) || !encodeAlpha(jd, 0, ea, s, eerr)) {
+                    fprintf(stderr, "encode: %s\n", eerr.c_str()); encFail++; delete jd; delete job; return;
+                }
                 {
                     std::lock_guard<std::mutex> lk2(aggMu);
                     A.analysis += t10.analysis; A.recon += t10.recon; A.gpuTotal += t10.total; A.blocks += t10.blocks;
@@ -472,7 +539,7 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
                     for (auto &f : f10) A.pixels += (uint64_t)f.W * f.H;
                 }
                 push(jd);
-                fin.swap(f8); job->iccs.swap(i8); job->orients.swap(o8); job->names.swap(n8);
+                fin.swap(f8); job->iccs.swap(i8); job->orients.swap(o8); job->names.swap(n8); job->afin.swap(a8);
             }
             // size-adaptive effort: small images go to a second encoder with cfg.Psmall (own job)
             if (Es && !cfg.lossless) {
@@ -489,9 +556,12 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
                         js->iccs.push_back(job->iccs[i]);
                         js->orients.push_back(job->orients[i]);
                         js->names.push_back(job->names[i]);
+                        js->afin.push_back(job->afin[i]);
                     }
                     GpTimes ts2;
-                    if (Es->encode(fs, js->outs, ts2, eerr, s, gpuEntropy ? &js->dev : nullptr)) { fprintf(stderr, "encode: %s\n", eerr.c_str()); encFail++; delete js; delete job; return; }
+                    if (Es->encode(fs, js->outs, ts2, eerr, s, gpuEntropy ? &js->dev : nullptr) || !encodeAlpha(js, 1, ea, s, eerr)) {
+                        fprintf(stderr, "encode: %s\n", eerr.c_str()); encFail++; delete js; delete job; return;
+                    }
                     {
                         std::lock_guard<std::mutex> lk2(aggMu);
                         A.analysis += ts2.analysis; A.recon += ts2.recon; A.gpuTotal += ts2.total; A.blocks += ts2.blocks;
@@ -500,16 +570,20 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
                         for (auto &f : fs) A.pixels += (uint64_t)f.W * f.H;
                     }
                     push(js);
-                    std::vector<GpFrameIn> fl;
+                    std::vector<GpFrameIn> fl, al;
                     std::vector<std::vector<uint8_t>> il;
                     std::vector<std::string> nl;
                     std::vector<int> ol;
                     for (size_t i = 0; i < fin.size(); i++)
-                        if (!isSmall[i]) { fl.push_back(fin[i]); il.push_back(job->iccs[i]); ol.push_back(job->orients[i]); nl.push_back(job->names[i]); }
+                        if (!isSmall[i]) {
+                            fl.push_back(fin[i]); il.push_back(job->iccs[i]); ol.push_back(job->orients[i]); nl.push_back(job->names[i]);
+                            al.push_back(job->afin[i]);
+                        }
                     fin.swap(fl);
                     job->iccs.swap(il);
                     job->orients.swap(ol);
                     job->names.swap(nl);
+                    job->afin.swap(al);
                 }
             }
             if (fin.empty()) {   // every image of this batch was small: nothing left for the main encoder
@@ -519,7 +593,9 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
                 delete job;
                 continue;
             }
-            if (E->encode(fin, job->outs, tm, eerr, s, gpuEntropy ? &job->dev : nullptr)) { fprintf(stderr, "encode: %s\n", eerr.c_str()); encFail++; delete job; return; }
+            if (E->encode(fin, job->outs, tm, eerr, s, gpuEntropy ? &job->dev : nullptr) || !encodeAlpha(job, 0, ea, s, eerr)) {
+                fprintf(stderr, "encode: %s\n", eerr.c_str()); encFail++; delete job; return;
+            }
             const double te = now_ms() - ts;
             for (auto &b : held) ingest_release_batch(ictx, b.batch_id, s);
             for (uint8_t *d : fbHeld) cudaFreeAsync(d, s);
@@ -587,6 +663,9 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
             "(gpu total %.1f, encode wall %.1f) | entropy wall %.1f (gpu %.1f) | write %.1f | peak dev %.0f MB\n",
             A.ingestWait, A.gpuSetup, A.analysis, A.dp, A.recon, A.pack, A.postfilter, A.download, A.gpuTotal, A.encodeWall, A.entropyWall,
             A.entropyGpu, A.writeWall, A.peakDev / 1048576.0);
+    if (A.alphaImages)
+        fprintf(stderr, "[av1gpu] alpha: %llu images with an alpha item (%.1f MP of alpha frames, %s)\n", (unsigned long long)A.alphaImages,
+                A.alphaPixels / 1e6, acfg[0].lossless ? "lossless" : ("qindex " + std::to_string(acfg[0].qindex)).c_str());
     if (cfg.P.profile) {
         // k_recon CTA-cycles per phase vs the capacity of the recon wall time (SM clock: GP_CLOCK_GHZ)
         unsigned long long tot = 0;
