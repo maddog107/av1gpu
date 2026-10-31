@@ -138,11 +138,20 @@ int main(int argc, char **argv) {
                     br.tileBytes[f].emplace_back(bytes.begin() + toff[i], bytes.begin() + toff[i + 1]);
                     br.tileSyms[f].emplace_back(hs.begin() + sb[i], hs.begin() + se[i]);
                 }
-            // one broken record per run: swapped blocks must be reported (AV1G_GPU_ERR_ORDER), not crash
-            if (c0 == 0 && n > 0 && cases[0].rec.n_blocks > 2) {
-                std::vector<av1g_block> sw(cases[0].rec.blocks, cases[0].rec.blocks + cases[0].rec.n_blocks);
+            // one broken record per run: swapped blocks must be reported (AV1G_GPU_ERR_ORDER), not crash.  The record is
+            // the first of the batch whose first and last blocks lie in different superblocks: the device validator
+            // checks the superblock order, so a swap inside a single-SB frame (tiny sizes) is not an order error it
+            // can see (the previous choice, always case 0, missed it for seeds whose case 0 is such a frame)
+            int sc = -1;
+            for (int i = 0; i < n && sc < 0; i++) {
+                const av1g_decision_record &R = cases[i].rec;
+                const av1g_block &f0 = R.blocks[0], &fl = R.blocks[R.n_blocks - 1];
+                if (R.n_blocks > 2 && ((f0.mi_row >> 4) != (fl.mi_row >> 4) || (f0.mi_col >> 4) != (fl.mi_col >> 4))) sc = i;
+            }
+            if (c0 == 0 && sc >= 0) {
+                std::vector<av1g_block> sw(cases[sc].rec.blocks, cases[sc].rec.blocks + cases[sc].rec.n_blocks);
                 std::swap(sw[0], sw.back());
-                cudaMemcpyAsync(dB + df[0].blockBase, sw.data(), sw.size() * sizeof(av1g_block), cudaMemcpyHostToDevice, stream);
+                cudaMemcpyAsync(dB + df[sc].blockBase, sw.data(), sw.size() * sizeof(av1g_block), cudaMemcpyHostToDevice, stream);
                 cudaStreamSynchronize(stream);
                 b.symbolCapacity = 0;
                 const size_t need = av1g_gpu::run_batch_device_scratch_bytes(b);

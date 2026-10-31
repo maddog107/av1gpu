@@ -160,7 +160,7 @@ int main() {
     printf("random planes: %ld SB results (3 orders), %ld boosted (TILE order), %ld differ\n", nsbTot, boosted, bad);
 
     // ---- 3. tune=iq frame decisions per chroma layout
-    long tiqBad = 0, tiqDev = 0;
+    long tiqBad = 0, tiqDev = 0, tiqDevRd = 0;
     av1f_tuneiq_frame *dt;
     cudaMalloc(&dt, 256 * sizeof(av1f_tuneiq_frame));
     for (int layout = 0; layout < 3; layout++) {   // 0: 4:2:0, 1: 4:4:4, 2: monochrome
@@ -171,7 +171,15 @@ int main() {
         for (int b = 1; b < 256; b++) {
             av1f_tuneiq_frame h;
             av1f_tuneiq_frame_init(b, ss, ss, mono, &h);
-            tiqDev += memcmp(&h, &g[b], sizeof h) != 0;
+            const av1f_tuneiq_frame &d = g[b];
+            // the decisions (integer rules) must match exactly; rdmult is double arithmetic that nvcc may contract into
+            // FMA (as in the LUT's device math above), so its device value is informational - the encoder computes
+            // the frame decisions on the host
+            tiqDev += d.base_q_idx != h.base_q_idx || d.dq_u_dc != h.dq_u_dc || d.dq_u_ac != h.dq_u_ac || d.dq_v_dc != h.dq_v_dc ||
+                      d.dq_v_ac != h.dq_v_ac || d.qm_y != h.qm_y || d.qm_u != h.qm_u || d.qm_v != h.qm_v ||
+                      d.delta_q_res != h.delta_q_res || d.lf_level != h.lf_level || d.lf_sharpness != h.lf_sharpness ||
+                      d.cdef_damping != h.cdef_damping || d.cdef_mode != h.cdef_mode;
+            tiqDevRd += d.rdmult != h.rdmult;
             int udc, uac, qmy, qmu;
             ref_set_quantizer(b, layout == 1, &udc, &uac, &qmy, &qmu);
             if (mono) udc = uac = 0;   // chroma delta-q is not coded for monochrome
@@ -184,8 +192,8 @@ int main() {
         }
     }
     cudaFree(dt);
-    printf("tune=iq frame decisions (4:2:0, 4:4:4, monochrome x 255 bases): %ld differ from libaom av1_set_quantizer, %ld device/host differ\n",
-           tiqBad, tiqDev);
+    printf("tune=iq frame decisions (4:2:0, 4:4:4, monochrome x 255 bases): %ld differ from libaom av1_set_quantizer, %ld device/host "
+           "differ (rdmult device-math: %ld differ, informational)\n", tiqBad, tiqDev, tiqDevRd);
     const bool ok = !lutBad && !bad && !tiqBad && !tiqDev;
     printf("%s\n", ok ? "PASS" : "FAIL");
     return ok ? 0 : 1;
