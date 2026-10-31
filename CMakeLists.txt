@@ -13,7 +13,7 @@ if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
   set(AV1GPU_DEFAULT_ARCHS ON)
 endif()
 
-project(av1gpu VERSION 0.1.0 LANGUAGES C CXX)
+project(av1gpu VERSION 0.2.0 LANGUAGES C CXX)
 
 option(AV1GPU_CUDA "Build the CUDA encoder" ON)
 option(AV1GPU_TESTS "Build the tests" ON)
