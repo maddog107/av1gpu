@@ -22,6 +22,7 @@
 #include <cstdio>
 #include <cstring>
 #include <fstream>
+#include <functional>
 #include <string>
 #include <thread>
 #include <vector>
@@ -618,9 +619,28 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
     std::vector<GpEncoder *> encs;
     std::vector<cudaStream_t> streams;
     std::vector<std::thread> encThreads;
+    // every return from here on (error returns too) joins the threads first: a joinable std::thread's destructor calls
+    // std::terminate.  Encoders first (they may still push to the entropy queue), then the fallback decoder, then the
+    // entropy threads once the queue is closed (they finish the jobs already queued).  No-op after the normal joins.
+    struct JoinAll {
+        std::function<void()> f;
+        ~JoinAll() { f(); }
+    } joinAll{[&]() {
+        for (auto &t : encThreads)
+            if (t.joinable()) t.join();
+        ingestDrained = true;
+        if (fbThread.joinable()) fbThread.join();
+        {
+            std::lock_guard<std::mutex> lk(mu);
+            done = true;
+        }
+        cv.notify_all();
+        for (auto &t : entThreads)
+            if (t.joinable()) t.join();
+    }};
     for (int k = 0; k < nEnc; k++) {
         GpEncoder *E = k == 0 ? &enc : new GpEncoder;
-        if (k > 0 && E->init(bcfg, err)) { fprintf(stderr, "init: %s\n", err.c_str()); ingestDrained = true; fbThread.join(); return 1; }
+        if (k > 0 && E->init(bcfg, err)) { fprintf(stderr, "init: %s\n", err.c_str()); return 1; }
         cudaStream_t s = es;
         if (k > 0) cudaStreamCreateWithFlags(&s, cudaStreamNonBlocking);
         encs.push_back(E);
@@ -632,7 +652,7 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
         cs.P = bcfg.Psmall;
         for (int k = 0; k < nEnc; k++) {
             encsSmall[k] = new GpEncoder;
-            if (encsSmall[k]->init(cs, err)) { fprintf(stderr, "init: %s\n", err.c_str()); ingestDrained = true; fbThread.join(); return 1; }
+            if (encsSmall[k]->init(cs, err)) { fprintf(stderr, "init: %s\n", err.c_str()); return 1; }
         }
     }
     for (int k = 0; k < nEnc; k++) encThreads.emplace_back(encLoop, encs[k], encsSmall[k], streams[k]);
