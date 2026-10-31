@@ -1,0 +1,20 @@
++ python3 -u /home/ubuntu/quality.py check
+check aom_s6: 99/99 same bytes as published q60, max |score diff| 0.0
+check aom_s9: 99/99 same bytes as published q60, max |score diff| 0.0
+check svt_p2: 99/99 same bytes as published q60, max |score diff| 0.0
+check svt_p4: 99/99 same bytes as published q60, max |score diff| 0.0
+check svt_p6: 99/99 same bytes as published q60, max |score diff| 0.0
+check svt_p8: 99/99 same bytes as published q60, max |score diff| 0.0
+check svt_p9: 99/99 same bytes as published q60, max |score diff| 0.0
+QUALITY_DONE check
++ python3 -u /home/ubuntu/quality.py splits A_stock_aom_s6_j2 A_stock_aom_s9_j2
+splits A_stock_aom_s6_j2: 28815308 B, mean score 75.8741
+splits A_stock_aom_s9_j2: 30864446 B, mean score 74.7023
+QUALITY_DONE splits
++ python3 -u /home/ubuntu/quality.py sweep stock aom_s6,aom_s9 2
+sweep stock_aom_s6_j2: 594 files, 2 same size as published stock; BD vs aom_s6 median +0.10% mean +0.08% (n=99); vs stock same encoder median +0.10%
+sweep stock_aom_s9_j2: 594 files, 415 same size as published stock; BD vs aom_s6 median +14.96% mean +17.16% (n=99); vs stock same encoder median +0.00%
+QUALITY_DONE sweep
++ python3 -u /home/ubuntu/quality.py sweep stock aom_s6,svt_p6,svt_p4 4 tiles
+sweep stock_aom_s6_j4_tiles: 594 files, 2 same size as published stock; BD vs aom_s6 median +0.10% mean +0.08% (n=99); vs stock same encoder median +0.10%
+sweep stock_svt_p6_j4_tiles: 594 files, 594 same size as published stock; BD vs aom_s6 median +2.07% mean +3.22% (n=99); vs stock same encoder median +0.00%

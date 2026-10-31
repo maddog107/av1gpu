@@ -108,7 +108,8 @@ sanitizer, power and version logs: `bench/results/aws-g6-l4/logs/`.
   Deep Learning Base OSS Nvidia Driver GPU AMI (Ubuntu 24.04.5, kernel 7.0.0-1014-aws, gcc 13.3, CMake 3.28).
 - **CPU:** AMD EPYC 7R13, 16 vCPUs (8 cores with SMT).
 - **Baselines:** avifenc 1.4.0 with libaom 3.13.1, both built from source, `-y 420 -j 1`, `tune=iq`; one
-  avifenc per vCPU, all 16 at once. WebP is cwebp 1.3.2 `-m 4`. Decoders: dav1d 1.4.1, aomdec 3.13.1.
+  avifenc per vCPU, all 16 at once, with avifenc's default automatic tiling (up to 8 tiles per image; see
+  [CPU builds](#cpu-builds-tuning-threads-and-tiling)). WebP is cwebp 1.3.2 `-m 4`. Decoders: dav1d 1.4.1, aomdec 3.13.1.
   Metric: libjxl v0.11.1 `ssimulacra2`.
 - **Images:** the 100 ~1 MP Open Images JPEGs of `bench/openimages_v4_validation_100.csv` ("standard"),
   and 100 Open Images JPEGs of 0.18–24 MP in `bench/openimages_v4_gamut.csv` ("size range": 20 each of
@@ -223,6 +224,75 @@ are 5 points smaller. Against av1gpu on one L4:
 - at the fast end, `turbo3` (212 MP/s, +5.4 %) beats preset 9 (183 MP/s, +9.8 %) on both counts;
 - SVT-AV1's slow presets make smaller files than any av1gpu setting measured on the L4 (preset 2: −5.1 %,
   at 4.6 MP/s). av1gpu's `--preset slow` measured −4.8 % on the development set but has not been run here.
+
+### CPU builds: tuning, threads and tiling
+
+A reviewer asked whether the CPU encoders were built tuned, and whether one `avifenc -j 1` per vCPU is the
+fastest way to use the CPU. We measured both on a c6a.4xlarge (the same EPYC 7R13, 16 vCPUs) on
+2026-10-31, with the 99 size-range photos and `bench.py`'s own timing code. Stock libaom and SVT-AV1,
+re-timed at the start and end of the session, matched the published speeds within 1 %. A second instance of
+the same type ran every encoder 7–8 % slower with the same bytes; it is kept as a replication and not used
+below. Raw results and every run: `bench/results/aws-c6a-cpu-tuning/`.
+
+- **Builds.** The published builds are CMake Release (`-O3`) with GCC 13.3. SVT-AV1's build already turns
+  on LTO by default. *Tuned* adds `-march=native` (Zen 3) and LTO to libaom, SVT-AV1 and libavif. *PGO* adds
+  SVT-AV1's own profile-guided build option, trained with avifenc on the other image set (`bench/images`),
+  never on the timing set. Every tuned and PGO file is byte-identical to the stock one, so all BD-rates
+  above still hold.
+- **Threads.** `bench.py --avifenc-threads N` runs avifenc `-j N`, 16 / N at once. libavif hands N to
+  SVT-AV1 4.2 as its parallelism level, which it caps at 6.
+- **Tiling.** avifenc 1.4 tiles automatically when no tile option is given: up to 8 tiles of at least
+  512 × 512, here 8 tiles for 56 of the 99 photos. So the CPU baselines in this section and above are tiled.
+  av1gpu uses one tile unless AV1's limits need more.
+
+Speed with each build, 16 × `-j 1` (MP/s):
+
+| Encoder | Stock | Tuned | Tuned + PGO | Fastest measured |
+|---|---:|---:|---:|---|
+| libaom speed 6 | 28.7 | 29.7 (+3.5 %) | | 31.1: tuned, 8 × `-j 2` |
+| libaom speed 9 | 186.6 | 190.6 (+2.2 %) | | tuned, 16 × `-j 1` |
+| SVT-AV1 preset 2 | 4.6 | 4.6 (+1.5 %) | 5.1 (+12.8 %) | PGO, 16 × `-j 1` |
+| SVT-AV1 preset 4 | 15.6 | 15.8 (+1.6 %) | 17.2 (+10.8 %) | 18.0: PGO, 8 × `-j 2` |
+| SVT-AV1 preset 6 | 49.4 | 50.5 (+2.3 %) | 55.2 (+11.6 %) | 55.5: PGO, 8 × `-j 2` |
+| SVT-AV1 preset 8 | 136.0 | 138.5 (+1.9 %) | 149.2 (+9.7 %) | PGO, 16 × `-j 1` |
+| SVT-AV1 preset 9 | 182.6 | 190.5 (+4.3 %) | 198.6 (+8.7 %) | PGO, 16 × `-j 1` |
+
+Splitting the 16 vCPUs differently (stock builds, MP/s):
+
+| Encoder | 16 × `-j 1` | 8 × `-j 2` | 4 × `-j 4` | 2 × `-j 8` | 1 × `-j 16` |
+|---|---:|---:|---:|---:|---:|
+| libaom speed 6 | 28.5 | 29.6 (+3.7 %) | 28.6 | 25.4 | 18.5 (−35 %) |
+| libaom speed 9 | 188.9 | 170.9 (−9.5 %) | 139.4 | 95.0 | 52.6 (−72 %) |
+| SVT-AV1 preset 4 | 15.7 | 16.3 (+3.6 %) | 15.7 | 12.7 | 8.1 (−49 %) |
+| SVT-AV1 preset 6 | 49.4 | 49.9 (+1.1 %) | 43.3 | 29.8 | 17.1 (−65 %) |
+| SVT-AV1 preset 9 | 184.5 | 152.4 (−17 %) | 100.5 | 55.7 | 28.9 (−84 %) |
+
+8 × `-j 2` gains 2–5 % for libaom speed 6 and SVT-AV1 preset 4 (three comparisons each); everywhere else
+16 × `-j 1` is fastest, and more threads per encode are always slower. SVT-AV1 writes the same files at
+every split. libaom writes slightly different files at any `-j` above 1, with the same compression
+(BD-rate +0.10 % at speed 6, +0.00 % at speed 9).
+
+**Tiling.** One tile per image (`bench.py --no-tiling`) runs at the same speed at 16 × `-j 1` (−0.7 to
++1.6 %) and makes files 0.4–0.8 % smaller at equal SSIMULACRA2 (median BD-rate against the tiled files:
+libaom speed 6 −0.52 %, speed 9 −0.81 %; SVT-AV1 presets 4, 6 and 9 −0.52, −0.52 and −0.37 %). Against an
+untiled libaom speed 6 anchor every comparison moves by about half a point:
+
+| Median BD-rate | vs libaom speed 6, avifenc default (tiled) | vs libaom speed 6, one tile |
+|---|---:|---:|
+| av1gpu default | −0.1 % | +0.5 % |
+| av1gpu `--small-preset none` | +2.1 % | +2.5 % |
+| libaom speed 9, one tile | +14.3 % | +14.7 % |
+| SVT-AV1 preset 4, one tile | −3.2 % | −2.9 % |
+| SVT-AV1 preset 6, one tile | +1.8 % | +2.6 % |
+| SVT-AV1 preset 9, one tile | +9.4 % | +9.8 % |
+| NVENC AV1 | +29.5 % | +30.3 % |
+| WebP | +45.1 % | +46.0 % |
+
+**What it means for av1gpu.** At its own file size (+0.5 % against untiled libaom speed 6), av1gpu's
+116 MP/s is 4.0× stock libaom speed 6, 3.9× the tuned build and 3.7× the tuned build at 8 × `-j 2`
+(31.1 MP/s, tiled). Interpolating between SVT-AV1 presets 4 and 6 at the same size gives 31.5 MP/s for the
+stock build (3.7×) and 35.1 MP/s with PGO (3.3×), both untiled at 16 × `-j 1`; with tiling, PGO and
+8 × `-j 2`, 32.8 MP/s (3.5×). The fastest CPU configuration we found is about 3.3× slower than one L4.
 
 ### NVENC AV1 on the same L4
 

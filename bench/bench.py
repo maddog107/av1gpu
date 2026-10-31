@@ -15,6 +15,9 @@ the BD-rate (bytes at equal SSIMULACRA2, Bjontegaard with monotone cubic interpo
 computed against libaom speed 6; the table reports the median and mean over images.  Negative = smaller.
 
 To time other av1gpu settings, pass a wrapper script as --av1gpu that adds the options, and --gpu-label.
+--avifenc-threads N runs avifenc -j N instead, with cpu_count // N encodes at once (speed and quality phases).
+avifenc 1.4 tiles automatically unless told otherwise (libavif: up to 8 tiles of at least 512 x 512 pixels,
+whatever -j is); --no-tiling passes --tilerowslog2 0 --tilecolslog2 0 for one tile per image.
 
 Requires: avifenc, avifdec, cwebp, dwebp, ssimulacra2 on PATH (or the --avifenc, ... options), numpy, Pillow.
   Ubuntu:      apt install libavif-bin webp python3-numpy python3-pil
@@ -148,9 +151,20 @@ def bd_rate(test, anchor, min_overlap=2.0):
 
 
 # ------------------------------------------------------------------------------------------- encoders
+def avifenc_threads(a):
+    return getattr(a, "avifenc_threads", 1)
+
+
+def avifenc_parallel(a, cpus):
+    """how many avifenc -j N run at once on `cpus` CPUs"""
+    return max(1, cpus // avifenc_threads(a))
+
+
 def avifenc_cmd(a, src, dst, q, speed, tune_iq, codec="aom"):
     """codec "aom": libaom at speed; "svt": SVT-AV1 at preset `speed` (avifenc -c svt, -a preset= so 11-13 work)."""
-    cmd = [a.avifenc, "-q", str(q), "-y", "420", "-j", "1", "--ignore-exif", "--ignore-xmp"]
+    cmd = [a.avifenc, "-q", str(q), "-y", "420", "-j", str(avifenc_threads(a)), "--ignore-exif", "--ignore-xmp"]
+    if getattr(a, "no_tiling", False):
+        cmd += ["--tilerowslog2", "0", "--tilecolslog2", "0"]
     if codec == "svt":
         cmd += ["-c", "svt", "-a", f"preset={speed}"] + (["-a", f"tune={a.svt_tune}"] if a.svt_tune else [])
     else:
@@ -193,7 +207,7 @@ def encode_cpu_set(a, codec, files, qualities, outdir, tune_iq):
             else:
                 dst = os.path.join(outdir, f"{base}.q{q}.webp")
                 jobs.append((src, q, dst, [a.cwebp, "-quiet", "-q", str(q), "-m", "4", "-metadata", "icc", src, "-o", dst]))
-    with cf.ThreadPoolExecutor(a.jobs) as ex:
+    with cf.ThreadPoolExecutor(a.jobs if codec == "webp" else avifenc_parallel(a, a.jobs)) as ex:
         res = list(ex.map(lambda j: (j, run(j[3]).returncode), jobs))
     return [(src, q, dst) for (src, q, dst, _), rc in res if rc == 0 and os.path.exists(dst)]
 
@@ -261,14 +275,17 @@ def cpu_speed(a, files, speed, tune_iq, mp, work, codec="aom"):
     os.makedirs(out)
     jobs = [avifenc_cmd(a, f, os.path.join(out, os.path.basename(f) + ".avif"), 60, speed, tune_iq, codec)
             for f in files]
+    par, threads = avifenc_parallel(a, os.cpu_count()), avifenc_threads(a)
     t0 = time.time()
-    with cf.ThreadPoolExecutor(os.cpu_count()) as ex:
+    with cf.ThreadPoolExecutor(par) as ex:
         rcs = list(ex.map(lambda c: run(c).returncode, jobs))
     wall = time.time() - t0
     nbytes = sum(os.path.getsize(p) for p in glob.glob(os.path.join(out, "*.avif")))
     name = f"SVT-AV1 preset {speed}" if codec == "svt" else f"libaom speed {speed}"
-    return dict(codec=f"{name}, {os.cpu_count()} parallel avifenc -j 1", images=rcs.count(0), mp=mp,
-                mp_s=mp / wall, img_s=rcs.count(0) / wall, cpu_cores=float(os.cpu_count()), wall_s=wall, bytes=nbytes)
+    tiles = ", no tiling" if getattr(a, "no_tiling", False) else ""
+    return dict(codec=f"{name}, {par} parallel avifenc -j {threads}{tiles}", images=rcs.count(0), mp=mp,
+                mp_s=mp / wall, img_s=rcs.count(0) / wall, cpu_cores=float(min(os.cpu_count(), par * threads)),
+                wall_s=wall, bytes=nbytes)
 
 
 # ------------------------------------------------------------------------------------------- main
@@ -288,6 +305,10 @@ def main():
     ap.add_argument("--aom-speeds", default="6,9", help="libaom speeds to compare (6 is the BD-rate anchor and always runs)")
     ap.add_argument("--svt-presets", default="", help="SVT-AV1 presets to compare (needs avifenc built with SVT-AV1)")
     ap.add_argument("--svt-tune", default="", help="SVT-AV1 tune= value passed through avifenc -a (default: SVT's own)")
+    ap.add_argument("--avifenc-threads", type=int, default=1,
+                    help="avifenc -j N for libaom/SVT-AV1, with cpu_count // N encodes at once (default 1)")
+    ap.add_argument("--no-tiling", action="store_true",
+                    help="one tile per image (avifenc --tilerowslog2 0 --tilecolslog2 0) instead of avifenc's automatic tiling")
     ap.add_argument("--min-mp", type=float, default=1000, help="speed runs repeat the set up to this many megapixels")
     ap.add_argument("--repeats", type=int, default=3, help="timed av1gpu runs (after one warm-up)")
     ap.add_argument("--jobs", type=int, default=os.cpu_count())
@@ -298,6 +319,8 @@ def main():
     a = ap.parse_args()
     a.aom_speeds = sorted({6} | {int(x) for x in a.aom_speeds.split(",")})
     a.svt_presets = [int(x) for x in a.svt_presets.split(",") if x]
+    if a.avifenc_threads < 1:
+        sys.exit("--avifenc-threads must be at least 1")
 
     files = sorted(f for f in glob.glob(os.path.join(a.images, "*")) if f.lower().endswith(EXTS))
     if not files:
@@ -314,6 +337,9 @@ def main():
     tune_iq = avifenc_supports_tune_iq(a, files[0], work)
     res = dict(environment=environment(a), images=len(files), megapixels=mp, avifenc_tune_iq=tune_iq,
                quality_points=a.quality, speed=[], quality={}, bd_rate={})
+    if a.avifenc_threads != 1 or a.no_tiling:
+        res.update(avifenc_threads=a.avifenc_threads, avifenc_parallel=avifenc_parallel(a, os.cpu_count()),
+                   no_tiling=a.no_tiling)
     print(f"{len(files)} images, {mp:.1f} MP; avifenc tune=iq: {'yes' if tune_iq else 'no (libaom too old)'}", flush=True)
 
     if not a.skip_speed:

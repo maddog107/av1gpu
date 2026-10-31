@@ -1,0 +1,158 @@
++ cd /home/ubuntu/src
++ P=/home/ubuntu/opt-tuned
++ Q=/home/ubuntu/opt-pgo
++ gcc --version
++ head -1
+gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0
++ cmake -S aom -B aom-tuned -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/home/ubuntu/opt-tuned -DENABLE_TESTS=0 -DENABLE_DOCS=0 -DENABLE_EXAMPLES=0 -DBUILD_SHARED_LIBS=1 -DAOM_EXTRA_C_FLAGS=-march=native -DAOM_EXTRA_CXX_FLAGS=-march=native -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON
+--- aom_configure: Detected CPU: x86_64
+Running C compiler test: unistd_check
+Running CXX compiler test: unistd_check
+Running C compiler test: fenv_check
+Checking C compiler flag support for: -std=c99
+Checking C++ compiler flag support for: -std=c++17
+Checking C compiler flag support for: -Wall
+Checking C++ compiler flag support for: -Wall
+Checking C compiler flag support for: -Wdisabled-optimization
+Checking C++ compiler flag support for: -Wdisabled-optimization
+Checking C compiler flag support for: -Wextra
+Checking C++ compiler flag support for: -Wextra
+Checking C compiler flag support for: -Wextra-semi
+Checking C++ compiler flag support for: -Wextra-semi
+Checking C compiler flag support for: -Wextra-semi-stmt
+Checking C++ compiler flag support for: -Wextra-semi-stmt
+Checking C compiler flag support for: -Wfloat-conversion
+Checking C++ compiler flag support for: -Wfloat-conversion
+Checking C compiler flag support for: -Wformat=2
+Checking C++ compiler flag support for: -Wformat=2
+Checking C compiler flag support for: -Wimplicit-function-declaration
+Checking C compiler flag support for: -Wlogical-op
+Checking C++ compiler flag support for: -Wlogical-op
+Checking C compiler flag support for: -Wmissing-declarations
+Checking C++ compiler flag support for: -Wmissing-declarations
+Checking C compiler flag support for: -Wmissing-prototypes
+Checking C compiler flag support for: -Wpointer-arith
+Checking C++ compiler flag support for: -Wpointer-arith
+Checking C compiler flag support for: -Wshadow
+Checking C++ compiler flag support for: -Wshadow
+Checking C compiler flag support for: -Wshorten-64-to-32
+Checking C++ compiler flag support for: -Wshorten-64-to-32
+Checking C compiler flag support for: -Wsign-compare
+Checking C++ compiler flag support for: -Wsign-compare
+Checking C compiler flag support for: -Wstring-conversion
+Checking C++ compiler flag support for: -Wstring-conversion
+Checking C compiler flag support for: -Wtype-limits
+Checking C++ compiler flag support for: -Wtype-limits
+Checking C compiler flag support for: -Wundef
+Checking C++ compiler flag support for: -Wundef
+Checking C compiler flag support for: -Wuninitialized
+Checking C++ compiler flag support for: -Wuninitialized
+Checking C compiler flag support for: -Wunreachable-code-aggressive
+Checking C++ compiler flag support for: -Wunreachable-code-aggressive
+Checking C compiler flag support for: -Wunused
+Checking C++ compiler flag support for: -Wunused
+Checking C compiler flag support for: -Wvla
+Checking C++ compiler flag support for: -Wvla
+Checking C++ compiler flag support for: -Wc++20-extensions
+Checking C++ compiler flag support for: -Wc++23-extensions
+Checking C compiler flag support for: -Wstack-usage=100000
+Checking C++ compiler flag support for: -Wstack-usage=240000
+Checking C compiler flag support for: -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0
+Checking C++ compiler flag support for: -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0
+Checking C compiler flag support for: -D_LARGEFILE_SOURCE
+Checking C++ compiler flag support for: -D_LARGEFILE_SOURCE
+Checking C compiler flag support for: -D_FILE_OFFSET_BITS=64
+Checking C++ compiler flag support for: -D_FILE_OFFSET_BITS=64
+Checking C compiler flag support for: -msse2
+Checking C++ compiler flag support for: -msse2
+Checking C compiler flag support for: -msse3
+Checking C++ compiler flag support for: -msse3
+Checking C compiler flag support for: -mssse3
+Checking C++ compiler flag support for: -mssse3
+Checking C compiler flag support for: -msse4.1
+Checking C++ compiler flag support for: -msse4.1
+Checking C compiler flag support for: -msse4.2
+Checking C++ compiler flag support for: -msse4.2
+Checking C compiler flag support for: -mavx2
+Checking C++ compiler flag support for: -mavx2
+Checking C compiler flag support for: -march=native
+Checking C++ compiler flag support for: -march=native
++ ninja -C aom-tuned install
++ cmake -S svt -B svt-tuned -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/home/ubuntu/opt-tuned -DBUILD_SHARED_LIBS=ON -DBUILD_TESTING=OFF -DNATIVE=ON -DSVT_AV1_LTO=ON -DCMAKE_OUTPUT_DIRECTORY=/home/ubuntu/src/svt-tuned/Bin/
++ ninja -C svt-tuned install
++ avif avif-tuned /home/ubuntu/opt-tuned /home/ubuntu/opt-tuned/lib/pkgconfig /home/ubuntu/opt-tuned /home/ubuntu/opt-tuned/lib
++ PKG_CONFIG_PATH=/home/ubuntu/opt-tuned/lib/pkgconfig
++ cmake -S libavif -B avif-tuned -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/home/ubuntu/opt-tuned -DAVIF_CODEC_AOM=SYSTEM -DAVIF_CODEC_SVT=SYSTEM -DAVIF_CODEC_DAV1D=OFF -DAVIF_BUILD_APPS=ON -DAVIF_LIBYUV=SYSTEM -DAVIF_LIBSHARPYUV=OFF -DAVIF_JPEG=SYSTEM -DAVIF_ZLIBPNG=SYSTEM -DCMAKE_PREFIX_PATH=/home/ubuntu/opt-tuned -DCMAKE_INSTALL_RPATH=/home/ubuntu/opt-tuned/lib -DCMAKE_C_FLAGS=-march=native -DCMAKE_CXX_FLAGS=-march=native -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON
++ ninja -C avif-tuned install
++ /home/ubuntu/opt-tuned/bin/avifenc --version
++ head -1
+Version: 1.4.0 (aom [enc/dec]:3.13.1, svt [enc]:v4.2.0)
++ PD=/home/ubuntu/src/svt-pgo/profile
++ cmake -S svt -B svt-pgo -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/home/ubuntu/opt-pgo -DBUILD_SHARED_LIBS=ON -DBUILD_TESTING=OFF -DNATIVE=ON -DSVT_AV1_LTO=ON -DSVT_AV1_PGO=ON -DSVT_AV1_PGO_DIR=/home/ubuntu/src/svt-pgo/profile -DCMAKE_OUTPUT_DIRECTORY=/home/ubuntu/src/svt-pgo/Bin/
++ cmake svt-pgo -DSVT_INTERNAL_PGO_GENERATE=ON -DSVT_INTERNAL_PGO_USE=OFF
++ cmake --build svt-pgo --clean-first --target SvtAv1EncApp
++ LD_LIBRARY_PATH=/home/ubuntu/src/svt-pgo/Bin
++ ldd /home/ubuntu/opt-tuned/bin/avifenc
++ grep -i svt
+	libSvtAv1Enc.so.4 => /home/ubuntu/src/svt-pgo/Bin/libSvtAv1Enc.so.4 (0x000071fa09600000)
++ LD_LIBRARY_PATH=/home/ubuntu/src/svt-pgo/Bin
++ python3 /home/ubuntu/train_pgo.py /home/ubuntu/opt-tuned/bin/avifenc /home/ubuntu/av1gpu/bench/images
+training: 100 images, 1500 encodes, 1500 ok, 142 s
+++ find /home/ubuntu/src/svt-pgo/profile -name '*.gcda'
+++ wc -l
++ echo 'profile files: 236'
+profile files: 236
+++ find /home/ubuntu/src/svt-pgo/profile -name '*.gcda'
+++ wc -l
++ test 236 -gt 0
++ cmake svt-pgo -DSVT_INTERNAL_PGO_GENERATE=OFF -DSVT_INTERNAL_PGO_USE=ON
++ cmake --build svt-pgo --clean-first --target SvtAv1EncApp
+++ grep -c -i profile /home/ubuntu/svt-pgo-use.log
++ echo 'PGO use build: 12 lines mentioning profile; first few:'
+PGO use build: 12 lines mentioning profile; first few:
++ grep -i -m5 profile /home/ubuntu/svt-pgo-use.log
+/home/ubuntu/src/svt/third_party/safestringlib/ignore_handler_s.c:48:1: warning: ‘/home/ubuntu/src/svt-pgo/profile/#home#ubuntu#src#svt-pgo#CMakeFiles#safestringlib.dir#third_party#safestringlib#ignore_handler_s.c.gcda’ profile count data file not found [-Wmissing-profile]
+/home/ubuntu/src/svt/third_party/safestringlib/strnlen_s.c:82:1: warning: ‘/home/ubuntu/src/svt-pgo/profile/#home#ubuntu#src#svt-pgo#CMakeFiles#safestringlib.dir#third_party#safestringlib#strnlen_s.c.gcda’ profile count data file not found [-Wmissing-profile]
+/home/ubuntu/src/svt/third_party/safestringlib/safe_str_constraint.c:114:1: warning: ‘/home/ubuntu/src/svt-pgo/profile/#home#ubuntu#src#svt-pgo#CMakeFiles#safestringlib.dir#third_party#safestringlib#safe_str_constraint.c.gcda’ profile count data file not found [-Wmissing-profile]
+/home/ubuntu/src/svt/third_party/safestringlib/strncpy_s.c:234:1: warning: ‘/home/ubuntu/src/svt-pgo/profile/#home#ubuntu#src#svt-pgo#CMakeFiles#safestringlib.dir#third_party#safestringlib#strncpy_s.c.gcda’ profile count data file not found [-Wmissing-profile]
+/home/ubuntu/src/svt/third_party/safestringlib/strcpy_s.c:184:1: warning: ‘/home/ubuntu/src/svt-pgo/profile/#home#ubuntu#src#svt-pgo#CMakeFiles#safestringlib.dir#third_party#safestringlib#strcpy_s.c.gcda’ profile count data file not found [-Wmissing-profile]
++ ninja -C svt-pgo install
++ avif avif-pgo /home/ubuntu/opt-pgo /home/ubuntu/opt-pgo/lib/pkgconfig:/home/ubuntu/opt-tuned/lib/pkgconfig '/home/ubuntu/opt-pgo;/home/ubuntu/opt-tuned' '/home/ubuntu/opt-pgo/lib;/home/ubuntu/opt-tuned/lib'
++ PKG_CONFIG_PATH=/home/ubuntu/opt-pgo/lib/pkgconfig:/home/ubuntu/opt-tuned/lib/pkgconfig
++ cmake -S libavif -B avif-pgo -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/home/ubuntu/opt-pgo -DAVIF_CODEC_AOM=SYSTEM -DAVIF_CODEC_SVT=SYSTEM -DAVIF_CODEC_DAV1D=OFF -DAVIF_BUILD_APPS=ON -DAVIF_LIBYUV=SYSTEM -DAVIF_LIBSHARPYUV=OFF -DAVIF_JPEG=SYSTEM -DAVIF_ZLIBPNG=SYSTEM '-DCMAKE_PREFIX_PATH=/home/ubuntu/opt-pgo;/home/ubuntu/opt-tuned' '-DCMAKE_INSTALL_RPATH=/home/ubuntu/opt-pgo/lib;/home/ubuntu/opt-tuned/lib' -DCMAKE_C_FLAGS=-march=native -DCMAKE_CXX_FLAGS=-march=native -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON
++ ninja -C avif-pgo install
++ for d in opt opt-tuned opt-pgo
++ echo '== opt'
+== opt
++ /home/ubuntu/opt/bin/avifenc --version
++ head -1
+Version: 1.4.0 (aom [enc/dec]:3.13.1, svt [enc]:v4.2.0)
++ ldd /home/ubuntu/opt/bin/avifenc
++ grep -E 'avif|aom|Svt'
+	libavif.so.16 => /home/ubuntu/opt/lib/libavif.so.16 (0x000079317b53d000)
+	libSvtAv1Enc.so.4 => /home/ubuntu/opt/lib/libSvtAv1Enc.so.4 (0x000079317a800000)
+	libaom.so.3 => /home/ubuntu/opt/lib/libaom.so.3 (0x000079317a000000)
++ for d in opt opt-tuned opt-pgo
++ echo '== opt-tuned'
+== opt-tuned
++ /home/ubuntu/opt-tuned/bin/avifenc --version
++ head -1
+Version: 1.4.0 (aom [enc/dec]:3.13.1, svt [enc]:v4.2.0)
++ ldd /home/ubuntu/opt-tuned/bin/avifenc
++ grep -E 'avif|aom|Svt'
+	libavif.so.16 => /home/ubuntu/opt-tuned/lib/libavif.so.16 (0x000078aa473f8000)
+	libSvtAv1Enc.so.4 => /home/ubuntu/opt-tuned/lib/libSvtAv1Enc.so.4 (0x000078aa46800000)
+	libaom.so.3 => /home/ubuntu/opt-tuned/lib/libaom.so.3 (0x000078aa46000000)
++ for d in opt opt-tuned opt-pgo
++ echo '== opt-pgo'
+== opt-pgo
++ /home/ubuntu/opt-pgo/bin/avifenc --version
++ head -1
+Version: 1.4.0 (aom [enc/dec]:3.13.1, svt [enc]:v4.2.0)
++ ldd /home/ubuntu/opt-pgo/bin/avifenc
++ grep -E 'avif|aom|Svt'
+	libavif.so.16 => /home/ubuntu/opt-pgo/lib/libavif.so.16 (0x00007209d5960000)
+	libSvtAv1Enc.so.4 => /home/ubuntu/opt-pgo/lib/libSvtAv1Enc.so.4 (0x00007209d4c00000)
+	libaom.so.3 => /home/ubuntu/opt-tuned/lib/libaom.so.3 (0x00007209d4400000)
++ echo BUILD_DONE
+BUILD_DONE
