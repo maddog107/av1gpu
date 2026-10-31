@@ -374,12 +374,15 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
     GPCK(cudaMemcpyAsync(B.shImgStart, shStart.data(), shStart.size() * 4, cudaMemcpyHostToDevice, st));
     GPCK(cudaMemcpyAsync(B.sbImg, sbImg.data(), nSb * 4, cudaMemcpyHostToDevice, st));
     // wavefront step lists
-    std::vector<std::vector<uint32_t>> steps;
+    std::vector<std::vector<uint32_t>> steps, steps444;
     // wavefront per tile (tiles are independent for prediction and contexts): step = col + 2 * row
-    // relative to the tile origin, so every tile of every image starts at step 0
+    // relative to the tile origin, so every tile of every image starts at step 0.  k_recon is instantiated
+    // per chroma layout: each step lists the SBs of 4:2:0 frames first, then those of 4:4:4 frames
+    // (monochrome frames join the 4:4:4 group when the batch has 4:4:4 frames: one launch per step)
     for (int i = 0; i < n; i++) {
         const GpImage &I = imgs[i];
         const av1g_tiles &T = tiles[i];
+        const bool k444 = I.mono ? any444 : I.ssx == 0;
         for (uint32_t tr = 0; tr < T.rows; tr++)
             for (uint32_t tc = 0; tc < T.cols; tc++) {
                 const int r0 = (int)T.mi_row_starts[tr] >> 4, r1 = ((int)T.mi_row_starts[tr + 1] + 15) >> 4;
@@ -387,13 +390,18 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
                 for (int r = r0; r < r1; r++)
                     for (int c = c0; c < c1; c++) {
                         const size_t s = (size_t)(c - c0) + 2 * (size_t)(r - r0);
-                        if (steps.size() <= s) steps.resize(s + 1);
-                        steps[s].push_back(I.sbBase + (uint32_t)(r * I.sbCols + c));
+                        if (steps.size() <= s) { steps.resize(s + 1); steps444.resize(s + 1); }
+                        (k444 ? steps444 : steps)[s].push_back(I.sbBase + (uint32_t)(r * I.sbCols + c));
                     }
             }
     }
-    std::vector<uint32_t> stepFlat, stepOff;
-    for (auto &v : steps) { stepOff.push_back((uint32_t)stepFlat.size()); stepFlat.insert(stepFlat.end(), v.begin(), v.end()); }
+    std::vector<uint32_t> stepFlat, stepOff, step420;   // step420[s]: SBs of the step in the 4:2:0 group
+    for (size_t s = 0; s < steps.size(); s++) {
+        step420.push_back((uint32_t)steps[s].size());
+        steps[s].insert(steps[s].end(), steps444[s].begin(), steps444[s].end());
+        stepOff.push_back((uint32_t)stepFlat.size());
+        stepFlat.insert(stepFlat.end(), steps[s].begin(), steps[s].end());
+    }
     stepOff.push_back((uint32_t)stepFlat.size());
     uint32_t *dSteps;
     GPCK(A.get(dSteps, stepFlat.size()));
@@ -419,7 +427,7 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
     GPCK(cudaEventRecord(evx_[0], st));
     GPCK(cudaStreamWaitEvent(hiSt_, evx_[0], 0));
     for (size_t s = 0; s + 1 < stepOff.size(); s++)
-        gp_launch_recon(B, P, dSteps + stepOff[s], stepOff[s + 1] - stepOff[s], hiSt_);
+        gp_launch_recon(B, P, dSteps + stepOff[s], step420[s], stepOff[s + 1] - stepOff[s] - step420[s], hiSt_);
     GPCK(cudaEventRecord(evx_[1], hiSt_));
     GPCK(cudaStreamWaitEvent(st, evx_[1], 0));
     GPCK(cudaGetLastError());

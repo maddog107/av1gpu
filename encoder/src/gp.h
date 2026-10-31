@@ -70,7 +70,6 @@ struct GpImage {
     int MiCols, MiRows;      // coded area in 4x4 units (picture padded to a multiple of 8)
     int sbCols, sbRows;
     int mono;
-    int ssx, ssy;            // chroma subsampling: 1, 1 (4:2:0, monochrome) or 0, 0 (4:4:4)
     int baseQ, qctx;         // base_q_idx, coefficient-CDF quantizer context (0..3)
     int dqRes;               // delta_q_res
     const uint8_t *sbQ;      // per-SB qindex (raster sbRows x sbCols); NULL = baseQ everywhere
@@ -96,6 +95,8 @@ struct GpImage {
     uint8_t *mYMode, *mUVMode, *mSkip, *mMiSize, *mTx;
     // per-plane 4x4 coefficient-context maps (culLevel, dcCategory); chroma (MiRows >> ssy) x (MiCols >> ssx)
     uint8_t *cLvl[3], *cDc[3];
+    // (appended, so the fields above keep their offsets and the 4:2:0 kernels their code)
+    int ssx, ssy;            // chroma subsampling: 1, 1 (4:2:0, monochrome) or 0, 0 (4:4:4)
 };
 
 // Analysis result per (shape, position).
@@ -146,9 +147,6 @@ struct GpBatch {
     uint16_t *oBlockTxb;       // [nSb * GP_MAX_LEAVES] first txb (SB-local) of each block
     av1g_txb *oTxb;            // [nSb * sbTxbCap]  (coeff_off SB-local)
     int16_t *oCoeffs;          // [nSb * sbCoefCap]
-    uint32_t sbTxbCap, sbCoefCap;  // per-SB output slots: GP_MAX_TXB / GP_SB_COEFFS, or the _444 sizes when the
-                                   // batch has a 4:4:4 frame
-    int any420, any444;        // the batch has 4:2:0 / 4:4:4 colour frames (chroma kernels per layout)
     uint32_t *stats;           // [16] counters
     // optional external screener: per shape [nblocks][extTopK] candidates, index extOff[s * nimg + img] + local
     const void *extCand[GP_NSHAPES];
@@ -157,6 +155,10 @@ struct GpBatch {
     unsigned long long *prof;  // [16] k_recon phase cycles (GpParams::profile)
     uint32_t *sbCyc;           // [nSb] k_recon cycles per SB (profile only, may be null)
     void *bigScratch;          // [max CTAs per wavefront step] x GP_RC_BIG_BYTES (k_recon)
+    // (appended, so the fields above keep their offsets)
+    uint32_t sbTxbCap, sbCoefCap;  // per-SB output slots: GP_MAX_TXB / GP_SB_COEFFS, or the _444 sizes when the
+                                   // batch has a 4:4:4 frame
+    int any420, any444;        // the batch has 4:2:0 / 4:4:4 colour frames (chroma kernels per layout)
 };
 
 #endif

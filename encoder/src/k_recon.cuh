@@ -9,10 +9,13 @@
 //           transform (av1core dsp.h) + reconstruction
 //   chroma  SATD screening of the 13 UV modes with real edges -> top uvK + CfL (least-squares alpha
 //           from the reconstructed luma) -> exact RD of U+V -> final quantization + reconstruction
-//           (4:2:0 or 4:4:4 per image: GpImage::ssx/ssy; 4:4:4 blocks with a 64-sample side have
-//           several chroma tx blocks per plane, decided on the first one, then coded in raster order)
+//           (4:2:0 or 4:4:4: the kernel and its chroma helpers are instantiated per subsampling SS - 1 for
+//           4:2:0 (and monochrome), 0 for 4:4:4 - so the 4:2:0 code has no runtime layout checks; 4:4:4
+//           blocks with a 64-sample side have several chroma tx blocks per plane, decided on the first
+//           one, then coded in raster order)
 //   record  av1g_block / av1g_txb / coefficients into the SB's output slots, maps + contexts
 #pragma once
+#include <cstddef>
 #include "dev_tx.cuh"
 #include "k_analysis.cuh"
 #include "rc_inv.cuh"
@@ -73,10 +76,12 @@ struct RcShared {
     RcBigScr *bigG;                 // this CTA's global big scratch: one RcBigScr per warp (W5)
     int16_t *bigQ;                  // kept levels of big chroma RD tasks [RC_BIGQ_MAX][32 * 32] (W3)
     uint32_t bdm[3][18];            // BlockDecoded bitmask: row yy+1, bit xx+1 (yy, xx in -1..16)
-    uint8_t ea[3][AV1G_EDGE_LEN], el[3][AV1G_EDGE_LEN];
+    __align__(16) uint8_t ea[3][AV1G_EDGE_LEN];   // 16-byte aligned rows: rc_prepare_edges copies them in 16-byte words
+    __align__(16) uint8_t el[3][AV1G_EDGE_LEN];
     int dcv[3];
     // intra edge filter: per-warp prepared (filtered / upsampled) edges of the candidate being evaluated
-    uint8_t wea[RC_NW][AV1G_EDGE_LEN], wel[RC_NW][AV1G_EDGE_LEN];
+    __align__(16) uint8_t wea[RC_NW][AV1G_EDGE_LEN];
+    __align__(16) uint8_t wel[RC_NW][AV1G_EDGE_LEN];
     int wup[RC_NW][2];
     int ft[3], hvL[3], hvA[3], px[3], py[3], mx[3], my[3];
     int edgeFilter;
@@ -161,9 +166,10 @@ __device__ int cta_inverse_add(int W, int H, RcShared &S, int16_t *q, int txSz, 
 
 // ---------------------------------------------------------------------------
 // coefficient contexts from the 4x4 maps (mirror of av1core k_txsym)
+template <int SS>   // chroma subsampling (1: 4:2:0, 0: 4:4:4); plane 0 does not depend on it
 __device__ __forceinline__ void txb_ctx(const GpImage &I, int plane, int txSz, int x4, int y4, int bsize, const TileBox &tb,
                                         int *skipCtx, int *dcCtx) {
-    const int subX = plane ? I.ssx : 0, subY = plane ? I.ssy : 0;
+    const int subX = plane ? SS : 0, subY = plane ? SS : 0;
     const int stride = I.MiCols >> subX;
     const int maxX4 = I.MiCols >> subX, maxY4 = I.MiRows >> subY;
     const uint8_t *L = I.cLvl[plane], *D = I.cDc[plane];
@@ -184,7 +190,7 @@ __device__ __forceinline__ void txb_ctx(const GpImage &I, int plane, int txSz, i
             else *skipCtx = 6;
         }
     } else {
-        const int ub = av1g_uv_bsize(bsize, I.ssx, I.ssy);
+        const int ub = av1g_uv_bsize(bsize, SS, SS);
         const int bw = bw_px(ub), bh = bh_px(ub);
         int above = 0, left = 0;
         for (int i = 0; i < w4; i++)
@@ -223,12 +229,19 @@ __device__ __forceinline__ int luma_mode(int c) { return c >= 128 ? AV1G_DC_PRED
 __device__ __forceinline__ int intra_dir(int c) { return c >= 128 ? AV1G_T(Filter_Intra_Mode_To_Intra_Dir)[c - 128] : cand_mode(c); }
 
 // warp: prepare the edge-filtered edges of (plane, candidate) into this warp's slot (lane 0)
+static_assert(AV1G_EDGE_LEN % 16 == 0 && offsetof(RcShared, ea) % 16 == 0 && offsetof(RcShared, el) % 16 == 0 &&
+              offsetof(RcShared, wea) % 16 == 0 && offsetof(RcShared, wel) % 16 == 0, "edge buffers must be 16-byte aligned");
 __device__ __forceinline__ void rc_prepare_edges(RcShared &S, int plane, int c, bool cfl, int lw, int lh) {
     const int warp = threadIdx.x >> 5;
     const int m = cand_mode(c);
     if (cfl || !S.edgeFilter || !av1g_is_directional(m)) return;
     if ((threadIdx.x & 31) == 0) {
-        for (int k = 0; k < AV1G_EDGE_LEN; k++) { S.wea[warp][k] = S.ea[plane][k]; S.wel[warp][k] = S.el[plane][k]; }
+        // copy in 16-byte words (same bytes): nvcc's vectorization of the byte loop depends on the surrounding
+        // code; compiled byte by byte it cost the closed loop ~5 % (measured on an L4)
+        const uint4 *sa = reinterpret_cast<const uint4 *>(S.ea[plane]), *sl = reinterpret_cast<const uint4 *>(S.el[plane]);
+        uint4 *da = reinterpret_cast<uint4 *>(S.wea[warp]), *dl = reinterpret_cast<uint4 *>(S.wel[warp]);
+#pragma unroll
+        for (int k = 0; k < AV1G_EDGE_LEN / 16; k++) { da[k] = sa[k]; dl[k] = sl[k]; }
         int ua = 0, ul = 0;
         av1g_edge_prepare(pangle_of(m, cand_delta(c)), lw, lh, S.ft[plane], S.hvL[plane], S.hvA[plane], S.px[plane], S.py[plane],
                           S.mx[plane], S.my[plane], S.wea[warp] + AV1G_EDGE_OFF, S.wel[warp] + AV1G_EDGE_OFF, &ua, &ul);
@@ -457,6 +470,7 @@ __device__ void rc_write_pred(int W, int H, const RcShared &S, int plane, int c,
 }
 
 // record a finished tx block: txb entry, coefficients, context maps, BlockDecoded.  Returns eob.
+template <int SS>
 __device__ int rc_record_txb(int W, int H, RcShared &S, const GpBatch &B, uint32_t sb, const GpImage &I, int plane, int txSz, int txType,
                              int x4, int y4, int sbr4, int sbc4) {
     const TxR T(W, H);
@@ -483,7 +497,7 @@ __device__ int rc_record_txb(int W, int H, RcShared &S, const GpBatch &B, uint32
     int16_t *oc = B.oCoeffs + (size_t)sb * B.sbCoefCap + cOff;
     for (int i = tid; i < T.n; i += RC_NT) oc[i] = S.qfin[i];
     // context maps (eob == 0 -> 0, the same as the decoder's skip / all-zero handling)
-    const int stride = I.MiCols >> (plane ? I.ssx : 0), rows = I.MiRows >> (plane ? I.ssy : 0);
+    const int stride = I.MiCols >> (plane ? SS : 0), rows = I.MiRows >> (plane ? SS : 0);
     const int w4 = W >> 2, h4 = H >> 2;
     for (int k = tid; k < w4 * h4; k += RC_NT) {
         const int yy = y4 + k / w4, xx = x4 + k % w4;
@@ -511,10 +525,11 @@ __device__ int rc_record_txb(int W, int H, RcShared &S, const GpBatch &B, uint32
 
 // edges of a tx block from the reconstruction, built by threads tid0 .. tid0+nt-1; then one thread
 // records the edge-filter inputs and the DC value.  Callers __syncthreads() afterwards.
+template <int SS>
 __device__ __forceinline__ void rc_edges(RcShared &S, const GpImage &I, int plane, int px, int py, int lw, int lh, int haveL,
                                          int haveA, int haveAR, int haveBL, int mi_row, int mi_col, int tid0, int nt,
                                          int blkA = -1, int blkL = -1) {
-    const int maxX = ((I.MiCols * 4) >> (plane ? I.ssx : 0)) - 1, maxY = ((I.MiRows * 4) >> (plane ? I.ssy : 0)) - 1;
+    const int maxX = ((I.MiCols * 4) >> (plane ? SS : 0)) - 1, maxY = ((I.MiRows * 4) >> (plane ? SS : 0)) - 1;
     uint8_t *A = S.ea[plane] + AV1G_EDGE_OFF, *L = S.el[plane] + AV1G_EDGE_OFF;
     const int t = (int)threadIdx.x - tid0;
     if (t < 0 || t >= nt) return;
@@ -530,7 +545,7 @@ __device__ __forceinline__ void rc_edges(RcShared &S, const GpImage &I, int plan
         S.dcv[plane] = av1g_dc_value(A, L, haveL, haveA, lw, lh);
         S.hvL[plane] = haveL; S.hvA[plane] = haveA; S.px[plane] = px; S.py[plane] = py; S.mx[plane] = maxX; S.my[plane] = maxY;
         S.ft[plane] = I.edgeFilter ? av1g_get_filter_type(plane, mi_row, mi_col, blkA >= 0 ? blkA : haveA, blkL >= 0 ? blkL : haveL,
-                                                          I.mYMode, I.mUVMode, I.MiCols, I.ssx, I.ssy) : 0;
+                                                          I.mYMode, I.mUVMode, I.MiCols, SS, SS) : 0;
     }
 }
 
@@ -557,10 +572,10 @@ __device__ __noinline__ void rc_luma(int W, int H, RcShared &S, const GpBatch &B
     const int haveAR0 = (S.bdm[0][sbr4 - 1 + 1] >> (sbc4 + stepX + 1)) & 1;
     const int haveBL0 = (S.bdm[0][sbr4 + stepY + 1] >> (sbc4 - 1 + 1)) & 1;
     *outTxDepth = 0;
-    rc_edges(S, I, 0, x, y, T.lw, T.lh, availL, availU, haveAR0, haveBL0, y >> 2, x >> 2, 0, 64);
+    rc_edges<1>(S, I, 0, x, y, T.lw, T.lh, availL, availU, haveAR0, haveBL0, y >> 2, x >> 2, 0, 64);
     const GpBlockRes &br = B.blk[I.shOff[bsize] + (uint32_t)(y / H) * I.shNbx[bsize] + x / W];
     int skipCtx, dcCtx;
-    txb_ctx(I, 0, txSz, x >> 2, y >> 2, bsize, tb, &skipCtx, &dcCtx);
+    txb_ctx<1>(I, 0, txSz, x >> 2, y >> 2, bsize, tb, &skipCtx, &dcCtx);
     const int mi_row = y >> 2, mi_col = x >> 2;
     const int am = AV1G_T(Intra_Mode_Context)[availU ? I.mYMode[(size_t)(mi_row - 1) * I.MiCols + mi_col] : AV1G_DC_PRED];
     const int lm = AV1G_T(Intra_Mode_Context)[availL ? I.mYMode[(size_t)mi_row * I.MiCols + mi_col - 1] : AV1G_DC_PRED];
@@ -806,11 +821,11 @@ __device__ __noinline__ void rc_luma(int W, int H, RcShared &S, const GpBatch &B
                 const int sr4 = (ys >> 2) & 15, sc4 = (xs >> 2) & 15;
                 const int hAR = (S.bdm[0][sr4 - 1 + 1] >> (sc4 + (Ws >> 2) + 1)) & 1;
                 const int hBL = (S.bdm[0][sr4 + (Hs >> 2) + 1] >> (sc4 - 1 + 1)) & 1;
-                rc_edges(S, I, 0, xs, ys, Ts.lw, Ts.lh, availL || ix > 0, availU || iy > 0, hAR, hBL, y >> 2, x >> 2, 0, 64, availU,
+                rc_edges<1>(S, I, 0, xs, ys, Ts.lw, Ts.lh, availL || ix > 0, availU || iy > 0, hAR, hBL, y >> 2, x >> 2, 0, 64, availU,
                          availL);
                 __syncthreads();
                 int sCtx, dCtx;
-                txb_ctx(I, 0, txSub, xs >> 2, ys >> 2, bsize, tb, &sCtx, &dCtx);
+                txb_ctx<1>(I, 0, txSub, xs >> 2, ys >> 2, bsize, tb, &sCtx, &dCtx);
                 EvalIn es = e;
                 es.txSz = txSub; es.skipCtx = sCtx; es.dcCtx = dCtx; es.intraDir = intra_dir(bestC);
                 const uint8_t *srcS = I.src[0] + (size_t)ys * I.spitch[0] + xs;
@@ -862,7 +877,7 @@ __device__ __noinline__ void rc_luma(int W, int H, RcShared &S, const GpBatch &B
                                                       av1g_qm(I.usingQm, I.qm[0], 0, txSub, tSel), dstS, I.rpitch[0]);
                     if (fixes && tid == 0) atomicAdd(&B.stats[3], 1u);
                 }
-                eobAny |= rc_record_txb(Ws, Hs, S, B, sb, I, 0, txSub, tSel, xs >> 2, ys >> 2, sr4, sc4);
+                eobAny |= rc_record_txb<1>(Ws, Hs, S, B, sb, I, 0, txSub, tSel, xs >> 2, ys >> 2, sr4, sc4);
             }
         if (J1 < limit) {
             txDepth = 1;
@@ -872,7 +887,7 @@ __device__ __noinline__ void rc_luma(int W, int H, RcShared &S, const GpBatch &B
             // depth 0 wins: drop the trial's tx records, rebuild the block's edges and levels
             __syncthreads();
             if (tid == 0) { S.nTxb = nTxb0; S.nCoef = nCoef0; }
-            rc_edges(S, I, 0, x, y, T.lw, T.lh, availL, availU, haveAR0, haveBL0, y >> 2, x >> 2, 0, 64);
+            rc_edges<1>(S, I, 0, x, y, T.lw, T.lh, availL, availU, haveAR0, haveBL0, y >> 2, x >> 2, 0, 64);
             __syncthreads();
             for (int i = tid; i < nLv; i += RC_NT) S.qfin[i] = keep0[i];
             if (tid == 0) S.finEob = eob0;
@@ -889,7 +904,7 @@ __device__ __noinline__ void rc_luma(int W, int H, RcShared &S, const GpBatch &B
             const int fixes = cta_inverse_add(W, H, S, S.qfin, txSz, bestT, e.dcQ, e.acQ, e.qm, dst, I.rpitch[0]);
             if (fixes && tid == 0) atomicAdd(&B.stats[3], 1u);
         }
-        *outEob = rc_record_txb(W, H, S, B, sb, I, 0, txSz, bestT, x >> 2, y >> 2, sbr4, sbc4);
+        *outEob = rc_record_txb<1>(W, H, S, B, sb, I, 0, txSz, bestT, x >> 2, y >> 2, sbr4, sbc4);
     }
     rc_tick(B, P, 3);  // final quant + prediction + inverse + record
     *outMode = luma_mode(bestC);
@@ -902,12 +917,13 @@ __device__ __noinline__ void rc_luma(int W, int H, RcShared &S, const GpBatch &B
 // CfL, exact RD) uses the first tx block of each plane - the only one in 4:2:0 and for 4:4:4 blocks up to
 // 32x32; 4:4:4 blocks with a 64-sample side (no CfL) code their further tx blocks after it in raster
 // order, each predicted from the reconstruction of the previous ones (closed loop, as the decoder does).
+template <int SS>
 __device__ __noinline__ void rc_chroma(int W, int H, RcShared &S, const GpBatch &B, const GpParams &P, uint32_t sb, const GpImage &I, int bsize,
                           int mi_row, int mi_col, int yMode, int yTxDepth, int availUC, int availLC, const TileBox &tb, const BlockQ &bq,
                           float lambda, const float *C, int *outUv, int *outDuv, int *outAu, int *outAv, int *outEobU, int *outEobV) {
     const TxR T(W, H);
     const int tid = threadIdx.x;
-    const int ssx = I.ssx, ssy = I.ssy;
+    constexpr int ssx = SS, ssy = SS;
     const int txSz = av1g_uv_tx_size(bsize, ssx, ssy);
     const int cx = (mi_col >> ssx) * 4, cy = (mi_row >> ssy) * 4;     // chroma pixels (4:2:0 sub-8x8: the 8x8 area)
     const int x4 = cx >> 2, y4 = cy >> 2;
@@ -917,7 +933,7 @@ __device__ __noinline__ void rc_chroma(int W, int H, RcShared &S, const GpBatch 
         const int pl = tid < 64 ? 1 : 2;
         const int haveAR = (S.bdm[pl][sbr4 - 1 + 1] >> (sbc4 + stepX + 1)) & 1;
         const int haveBL = (S.bdm[pl][sbr4 + stepY + 1] >> (sbc4 - 1 + 1)) & 1;
-        rc_edges(S, I, pl, cx, cy, T.lw, T.lh, availLC, availUC, haveAR, haveBL, mi_row, mi_col, pl == 1 ? 0 : 64, 64);
+        rc_edges<SS>(S, I, pl, cx, cy, T.lw, T.lh, availLC, availUC, haveAR, haveBL, mi_row, mi_col, pl == 1 ? 0 : 64, 64);
     }
     if (tid < 32) S.satd[tid] = 0.f;
     const uint8_t *srcU = I.src[1] + (size_t)cy * I.spitch[1] + cx;
@@ -1105,8 +1121,8 @@ __device__ __noinline__ void rc_chroma(int W, int H, RcShared &S, const GpBatch 
     }
     __syncthreads();
     int skipCtxU, dcCtxU, skipCtxV, dcCtxV;
-    txb_ctx(I, 1, txSz, x4, y4, bsize, tb, &skipCtxU, &dcCtxU);
-    txb_ctx(I, 2, txSz, x4, y4, bsize, tb, &skipCtxV, &dcCtxV);
+    txb_ctx<SS>(I, 1, txSz, x4, y4, bsize, tb, &skipCtxU, &dcCtxU);
+    txb_ctx<SS>(I, 2, txSz, x4, y4, bsize, tb, &skipCtxV, &dcCtxV);
     EvalIn e;
     e.txSz = txSz; e.plane = 1; e.dcQ = bq.dcQ[1]; e.acQ = bq.acQ[1];
     e.rnd = P.rndC; e.zbin = P.zbinC; e.skipCtx = skipCtxU; e.dcCtx = dcCtxU; e.reduced = 0; e.C = C;
@@ -1174,7 +1190,7 @@ __device__ __noinline__ void rc_chroma(int W, int H, RcShared &S, const GpBatch 
     const int uvTxType = av1g_chroma_tx_type(txSz, bestUv, 0);
     // chroma tx blocks per plane: 1 (4:2:0, and 4:4:4 up to 32x32), 2 or 4 for 4:4:4 blocks with a 64-sample side
     const int ub = av1g_uv_bsize(bsize, ssx, ssy);
-    const int nTxX = max(1, bw_px(ub) / W), nTxY = max(1, bh_px(ub) / H);
+    const int nTxX = SS ? 1 : max(1, bw_px(ub) / W), nTxY = SS ? 1 : max(1, bh_px(ub) / H);
     const int cCols4 = I.MiCols >> ssx, cRows4 = I.MiRows >> ssy;
     int eobs[2] = {0, 0};
     for (int pl = 1; pl <= 2; pl++) {
@@ -1191,9 +1207,9 @@ __device__ __noinline__ void rc_chroma(int W, int H, RcShared &S, const GpBatch 
         for (int ty = 0; ty < nTxY; ty++)
             for (int tx = 0; tx < nTxX; tx++) {
                 const int ox = tx * W, oy = ty * H;   // offset inside the chroma block
-                if (x4 + (ox >> 2) >= cCols4 || y4 + (oy >> 2) >= cRows4) continue;   // outside the coded area: not coded
+                if (!SS && (x4 + (ox >> 2) >= cCols4 || y4 + (oy >> 2) >= cRows4)) continue;   // outside the coded area: not coded
                 uint8_t *dst = I.rec[pl] + (size_t)(cy + oy) * I.rpitch[pl] + cx + ox;
-                if (tx == 0 && ty == 0) {
+                if (SS || (tx == 0 && ty == 0)) {
                     int kept = -1;
                     const bool bigC = rc_big(W, H);
                     for (int t = 0; t < S.nTask && t < (bigC ? RC_BIGQ_MAX : RC_TASKQ_MAX); t++)
@@ -1215,11 +1231,11 @@ __device__ __noinline__ void rc_chroma(int W, int H, RcShared &S, const GpBatch 
                     const int r4 = sbr4 + (oy >> 2), c4 = sbc4 + (ox >> 2);   // SB-relative, plane 4x4 units
                     const int haveAR = (S.bdm[pl][r4 - 1 + 1] >> (c4 + (W >> 2) + 1)) & 1;
                     const int haveBL = (S.bdm[pl][r4 + (H >> 2) + 1] >> (c4 - 1 + 1)) & 1;
-                    rc_edges(S, I, pl, cx + ox, cy + oy, T.lw, T.lh, availLC || tx > 0, availUC || ty > 0, haveAR, haveBL, mi_row, mi_col,
+                    rc_edges<SS>(S, I, pl, cx + ox, cy + oy, T.lw, T.lh, availLC || tx > 0, availUC || ty > 0, haveAR, haveBL, mi_row, mi_col,
                              0, 64, availUC, availLC);
                     __syncthreads();
                     int sc, dc;
-                    txb_ctx(I, pl, txSz, x4 + (ox >> 2), y4 + (oy >> 2), bsize, tb, &sc, &dc);
+                    txb_ctx<SS>(I, pl, txSz, x4 + (ox >> 2), y4 + (oy >> 2), bsize, tb, &sc, &dc);
                     EvalIn et = ee;
                     et.skipCtx = sc; et.dcCtx = dc;
                     const uint8_t *so = s + (size_t)oy * I.spitch[pl] + ox;
@@ -1230,7 +1246,7 @@ __device__ __noinline__ void rc_chroma(int W, int H, RcShared &S, const GpBatch 
                     const int fixes = cta_inverse_add(W, H, S, S.qfin, txSz, uvTxType, ee.dcQ, ee.acQ, ee.qm, dst, I.rpitch[pl]);
                     if (fixes && tid == 0) atomicAdd(&B.stats[3], 1u);
                 }
-                eobs[pl - 1] |= rc_record_txb(W, H, S, B, sb, I, pl, txSz, uvTxType, x4 + (ox >> 2), y4 + (oy >> 2), sbr4 + (oy >> 2),
+                eobs[pl - 1] |= rc_record_txb<SS>(W, H, S, B, sb, I, pl, txSz, uvTxType, x4 + (ox >> 2), y4 + (oy >> 2), sbr4 + (oy >> 2),
                                               sbc4 + (ox >> 2));
             }
     }
@@ -1244,6 +1260,9 @@ __device__ __noinline__ void rc_chroma(int W, int H, RcShared &S, const GpBatch 
 }
 
 // ---------------------------------------------------------------------------
+// SS: chroma subsampling of the frames in sbList (1: 4:2:0 and monochrome, 0: 4:4:4 - monochrome frames may be
+// in either list, they have no chroma); gp_launch_recon launches one instantiation per layout
+template <int SS>
 __global__ void __launch_bounds__(RC_NT, 4) k_recon(GpBatch B, GpParams P, const uint32_t *sbList) {
     __shared__ RcShared S;
     const uint32_t sb = sbList[blockIdx.x];
@@ -1262,7 +1281,7 @@ __global__ void __launch_bounds__(RC_NT, 4) k_recon(GpBatch B, GpParams P, const
     // clear_block_decoded_flags (spec): one thread per (plane, row) word
     if (tid < 3 * 18) {
         const int p = tid / 18, yy = tid % 18 - 1;
-        const int subX = p ? I.ssx : 0, subY = p ? I.ssy : 0;
+        const int subX = p ? SS : 0, subY = p ? SS : 0;
         const int sbW4 = (miColEnd - sbc * 16) >> subX, sbH4 = (miRowEnd - sbr * 16) >> subY;
         uint32_t w = 0;
         for (int xx = -1; xx <= 16; xx++) {
@@ -1289,9 +1308,9 @@ __global__ void __launch_bounds__(RC_NT, 4) k_recon(GpBatch B, GpParams P, const
         const int x = sbx + lf.x4 * 4, y = sby + lf.y4 * 4;
         const int mi_row = y >> 2, mi_col = x >> 2;
         int availU, availL, availUC, availLC;
-        av1g_block_avail(bsize, mi_row, mi_col, I.mono, I.ssx, I.ssy, tb.y0 >> 2, miRowEnd, tb.x0 >> 2, miColEnd, &availU, &availL,
+        av1g_block_avail(bsize, mi_row, mi_col, I.mono, SS, SS, tb.y0 >> 2, miRowEnd, tb.x0 >> 2, miColEnd, &availU, &availL,
                          &availUC, &availLC);
-        const int hasChroma = av1g_has_chroma(bsize, mi_row, mi_col, I.mono, I.ssx, I.ssy);
+        const int hasChroma = av1g_has_chroma(bsize, mi_row, mi_col, I.mono, SS, SS);
         const uint32_t firstTxb = (uint32_t)S.nTxb;
         const float lambdaB = lambda * ssim_scale(I, x, y, bw_px(bsize), bh_px(bsize));
         int yMode = 0, yDelta = 0, eobY = 0, yFi = 0, yTxDepth = 0;
@@ -1299,8 +1318,8 @@ __global__ void __launch_bounds__(RC_NT, 4) k_recon(GpBatch B, GpParams P, const
 rc_luma(AV1G_T(Tx_Width)[txSz], AV1G_T(Tx_Height)[txSz], S, B, P, sb, I, bsize, x, y, availU, availL, tb, bq, lambdaB, C, &yMode, &yDelta, &eobY, &yFi, &yTxDepth);
         int uv = 0, duv = 0, aU = 0, aV = 0, eobU = 0, eobV = 0;
         if (hasChroma) {
-            const int uvTx = av1g_uv_tx_size(bsize, I.ssx, I.ssy);
-rc_chroma(AV1G_T(Tx_Width)[uvTx], AV1G_T(Tx_Height)[uvTx], S, B, P, sb, I, bsize, mi_row, mi_col, yMode, yTxDepth, availUC, availLC, tb, bq, lambdaB * P.lambdaCMul, C, &uv, &duv, &aU, &aV, &eobU, &eobV);
+            const int uvTx = av1g_uv_tx_size(bsize, SS, SS);
+rc_chroma<SS>(AV1G_T(Tx_Width)[uvTx], AV1G_T(Tx_Height)[uvTx], S, B, P, sb, I, bsize, mi_row, mi_col, yMode, yTxDepth, availUC, availLC, tb, bq, lambdaB * P.lambdaCMul, C, &uv, &duv, &aU, &aV, &eobU, &eobV);
         }
         const int skip = (eobY == 0 && eobU == 0 && eobV == 0) ? 1 : 0;
         // maps

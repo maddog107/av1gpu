@@ -29,7 +29,9 @@ void gp_launch_analysis(const GpBatch &B, const GpParams &P, const uint32_t *shT
 void gp_launch_ssim_map(const uint8_t *y, int pitch, int MiCols, int MiRows, float *out, double *sum, cudaStream_t st);
 void gp_launch_var16(const uint8_t *y, int pitch, int MiCols, int MiRows, float *out, cudaStream_t st);
 void gp_launch_dp(const GpBatch &B, const GpParams &P, cudaStream_t st);
-void gp_launch_recon(const GpBatch &B, const GpParams &P, const uint32_t *dSbList, uint32_t n, cudaStream_t st);
+// one wavefront step: the first n420 SBs of dSbList belong to 4:2:0 / monochrome frames, the next n444 to 4:4:4 frames
+// (monochrome frames of batches with 4:4:4 frames may be in the second group)
+void gp_launch_recon(const GpBatch &B, const GpParams &P, const uint32_t *dSbList, uint32_t n420, uint32_t n444, cudaStream_t st);
 void gp_launch_pack(const GpBatch &B, const GpPackOff *dOff, av1g_block *oB, uint32_t *oBT, av1g_txb *oT, int16_t *oC,
                     const GpPackAux &aux, cudaStream_t st);
 // cdef_idx of every block from the per-SB map (av1f search); frames with cdefOn[f] == 0 keep 0
