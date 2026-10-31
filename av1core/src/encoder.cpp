@@ -1138,10 +1138,14 @@ void write_headers(const av1g_frame_params *fp, const TileInfo &tiles, int level
     const int cp = fp->color_description ? fp->color_primaries : 1;
     const int tc = fp->color_description ? fp->transfer_characteristics : 13;
     const int mc = fp->color_description ? fp->matrix_coefficients : 6;
-    seq.put(1, 1);          // color_description_present_flag
-    seq.put(cp, 8);         // color_primaries
-    seq.put(tc, 8);         // transfer_characteristics
-    seq.put(mc, 8);         // matrix_coefficients
+    // 2/2/2 (unspecified, e.g. an AVIF alpha plane) is what an absent description means: not coded (as libaom does)
+    const int cdp = !(cp == 2 && tc == 2 && mc == 2);
+    seq.put(cdp, 1);        // color_description_present_flag
+    if (cdp) {
+        seq.put(cp, 8);     // color_primaries
+        seq.put(tc, 8);     // transfer_characteristics
+        seq.put(mc, 8);     // matrix_coefficients
+    }
     if (mono || !(cp == 1 && tc == 13 && mc == 0))
         seq.put(1, 1);      // color_range = full (BT.709 / sRGB / identity: not coded, implied 1, 4:4:4)
     if (!mono) {            // subsampling_x/y follow from seq_profile (Main 1/1, High 0/0)
@@ -1588,8 +1592,8 @@ void Encoder::parse(const uint8_t *obus, size_t n) {
             F.monochrome = (uint8_t)sq.mono;
             F.chroma_format = (uint8_t)(sq.profile == 1 ? AV1G_CHROMA_444 : AV1G_CHROMA_420);
             F.bit_depth = (uint8_t)(sq.hbd ? 10 : 8);
-            // colour description: kept when present and not the default 1/13/6 (re-encodes identically)
-            if (sq.colorDesc && !(sq.cp == 1 && sq.tc == 13 && sq.mc == 6)) {
+            // colour description: kept unless it is the default 1/13/6 (re-encodes identically; an absent one is 2/2/2)
+            if (!(sq.cp == 1 && sq.tc == 13 && sq.mc == 6)) {
                 NEED(!(sq.mc == 0 && sq.mono), "identity matrix in a monochrome stream not supported");
                 F.color_description = 1;
                 F.color_primaries = (uint8_t)sq.cp;

@@ -147,6 +147,19 @@ typedef struct av1g_avif_meta {
 } av1g_avif_meta;
 int av1g_mux_avif_ex(const uint8_t *obus, size_t obu_size, uint32_t width, uint32_t height, const av1g_avif_meta *meta,
                      uint8_t **avif, size_t *avif_size);
+/* AVIF with an alpha auxiliary image (straight alpha, i.e. not premultiplied), laid out as libavif 1.4 writes it:
+ *   item 1  the colour image, exactly as av1g_mux_avif_ex writes it (the primary item);
+ *   item 2  alpha_obus: an AV1 stream with mono_chrome = 1 and color_range = 1 (full), of the colour stream's size and
+ *           bit depth (AVIF section 4), as an 'av01' item with the properties ispe (shared with item 1), av1C, pixi
+ *           (one channel), auxC "urn:mpeg:mpegB:cicp:systems:auxiliary:alpha" and the colour item's irot / imir
+ *           (libavif 1.4 associates the transformative properties with the alpha item too); no colr (CICP and ICC do
+ *           not apply to alpha: the AVIF spec says to omit it);
+ *   iref    'auxl' from item 2 to item 1 (no 'prem': the colour is not premultiplied);
+ *   mdat    the alpha payload first, then the colour payload (libavif's order).
+ * Identical properties are stored once.  alpha_obus = NULL: byte-identical to av1g_mux_avif_ex.  AV1G_ERR_INVALID when
+ * a stream has no reduced still-picture sequence header or the alpha stream does not fit the rules above. */
+int av1g_mux_avif_alpha(const uint8_t *obus, size_t obu_size, const uint8_t *alpha_obus, size_t alpha_size, uint32_t width,
+                        uint32_t height, const av1g_avif_meta *meta, uint8_t **avif, size_t *avif_size);
 /* EXIF orientation (1..8, JEITA CP-3451C) -> irot/imir, exactly as libavif
  * (avifImageExtractExifOrientationToIrotImir); 1 or invalid -> -1/-1. */
 void av1g_exif_orientation_to_irot_imir(int orientation, int32_t *irot, int32_t *imir);

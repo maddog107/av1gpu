@@ -42,6 +42,10 @@ if(AV1GPU_TESTS)
   add_test(NAME fuzz_dav1d_aomdec COMMAND av1g_fuzz --seed 1 --count 200 --quiet)
   # lossless only: closed-loop records whose reconstruction must equal their random source picture
   add_test(NAME fuzz_lossless COMMAND av1g_fuzz --seed 1000000 --count 120 --lossless 100 --quiet)
+  # AVIF with an alpha auxiliary image: box layout (libavif 1.4's), item payloads decoded by dav1d + aomdec
+  add_executable(avif_alpha_test tests/avif_alpha_test.cpp)
+  target_link_libraries(avif_alpha_test av1core)
+  add_test(NAME avif_alpha COMMAND avif_alpha_test)
 endif()
 
 if(NOT AV1GPU_CUDA)

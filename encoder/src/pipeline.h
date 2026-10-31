@@ -54,8 +54,19 @@ struct GpConfig {
     int llTileArea = 262144;  // lossless: uniform tiles of at most this many pixels (0: the tileMinMp rule as lossy)
     int ycgcoRe = 0;          // front ends, lossless RGB input: YCgCo-Re (CICP matrix 16, 8-bit RGB -> 10-bit 4:4:4)
                               // instead of identity / GBR (matrix 0)
+    int alpha = 1;            // front ends: PNG / WebP transparency is coded as an AVIF alpha item (monochrome frames
+                              // encoded with gp_alpha_config(); 0 = --no-alpha: not coded, as before)
+    int alphaQindex = -1;     // alpha frames: 0 = lossless, 1..255 = qindex; -1 = the colour frames' qindex
     GpConfig();
 };
+
+// Encoder configuration for the alpha frames of images encoded with `colour` (monochrome frames at the colour's bit
+// depth): lossless when colour.lossless or alphaQindex == 0 (the lossless path, as libavif's alpha quality 100);
+// otherwise lossy at alphaQindex (or colour.qindex) with libavif's alpha tuning, tune=psnr: no tune=iq frame decisions,
+// QM, variance boost / delta-q or SSIM lambda (libavif: libaom's SSIM / IQ tunings ring on alpha); the speed preset (P)
+// and the deblocking / CDEF choice stay the colour's.  The front ends use it with the main preset for every image (also
+// below --small-mp: --small-preset applies to the colour frames only).
+GpConfig gp_alpha_config(const GpConfig &colour);
 
 // One input frame: device planes, padded (edge replicated) to aw x ah (multiples of 64); chroma
 // (aw/2 x ah/2, or aw x ah with yuv444).
@@ -69,7 +80,8 @@ struct GpFrameIn {
     int aw = 0, ah = 0;
     std::vector<uint8_t> sbQ;  // optional per-SB qindex target map (raster, sbRows x sbCols); legalized here
     int colorMatrix = -1;      // CICP matrix_coefficients of the planes (0 identity / GBR, 6 BT.601, 16 YCgCo-Re; written
-                               // with BT.709 primaries and sRGB transfer, full range); -1: av1core's default (1/13/6)
+                               // with BT.709 primaries and sRGB transfer, full range); -1: av1core's default (1/13/6);
+                               // -2: unspecified 2/2/2 (no colour description in the sequence header: AVIF alpha frames)
 };
 
 struct GpFrameOut {
@@ -122,13 +134,20 @@ int gp_frames_to_10bit(std::vector<GpFrameIn> &frames, cudaStream_t st, uint8_t 
 
 // Entropy coding.  CPU: av1core's writer (av1g_encode, bitstream only).  GPU: av1core GPU entropy
 // (symbolize + od_ec on the GPU) + OBU assembly.  Both produce identical bytes.
-// obu gets [TD] + sequence header + frame; avif the AVIF file (icc may be empty).
+// obu gets [TD] + sequence header + frame; avif the AVIF file (icc may be empty).  alpha (optional, per frame, may be
+// NULL): the frame's alpha frame, coded into alphaObuWithTd and muxed as the AVIF's alpha item (av1g_mux_avif_alpha).
 int gp_entropy_cpu(GpFrameOut &f, const std::vector<uint8_t> &icc, std::vector<uint8_t> &obuWithTd,
-                   std::vector<uint8_t> &avif, std::string &err);
+                   std::vector<uint8_t> &avif, std::string &err, GpFrameOut *alpha = nullptr,
+                   std::vector<uint8_t> *alphaObuWithTd = nullptr);
 int gp_assemble_obus(const av1g_frame_params *fp, const std::vector<std::vector<uint8_t>> &tileData, bool td,
                      std::vector<uint8_t> &obu, std::string &err);
 int gp_entropy_gpu(std::vector<GpFrameOut *> &frames, const std::vector<const std::vector<uint8_t> *> &icc,
                    std::vector<std::vector<uint8_t>> &obuWithTd, std::vector<std::vector<uint8_t>> &avif, double *gpuMs,
-                   std::string &err);
+                   std::string &err, const std::vector<GpFrameOut *> *alpha = nullptr,
+                   std::vector<std::vector<uint8_t>> *alphaObuWithTd = nullptr);
+// AVIF file of one image from its colour OBUs and optional alpha OBUs (no temporal delimiter; alpha may be NULL), the
+// ICC profile (may be empty) and the EXIF orientation (irot / imir, on both items).
+int gp_mux_avif(const av1g_frame_params &fp, const uint8_t *obu, size_t obuSize, const uint8_t *alphaObu, size_t alphaSize,
+                const std::vector<uint8_t> &icc, int orientation, std::vector<uint8_t> &avif, std::string &err);
 
 #endif

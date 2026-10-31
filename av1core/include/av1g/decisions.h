@@ -52,7 +52,9 @@
  *   matrix only describes the planes to the application (e.g. 0 = identity: Y/U/V hold G/B/R; 16 = YCgCo-Re);
  *   it does not change any decoding process.  matrix_coefficients 0 needs 4:4:4 (spec: MC_IDENTITY requires
  *   subsampling_x = subsampling_y = 0, so not monochrome either).  With 1/13/0 the spec's color_config omits
- *   color_range (implied full).
+ *   color_range (implied full).  2/2/2 (all unspecified, e.g. an AVIF alpha plane, whose CICP does not apply) is
+ *   written as color_description_present_flag = 0, which means 2/2/2 (as libaom writes it); av1g_parse() reads an
+ *   absent description back as color_description = 1 with 2/2/2.
  *
  * Coordinates.  mi_row/mi_col are in units of 4 luma samples.  MiCols =
  *   2*((width+7)>>3), MiRows = 2*((height+7)>>3): the coded area is the picture
