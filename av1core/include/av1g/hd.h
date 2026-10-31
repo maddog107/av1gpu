@@ -4,9 +4,11 @@
  * AV1G_TABLE   defines a constant lookup table twice when compiled as CUDA: a host
  *              copy (name_host) and a device copy (name_dev).  Plain C/C++ builds
  *              only get the host copy.
- *              The device copy is not `const`: Clang/LLVM would otherwise put it in
- *              the 64 KB constant bank (.const), which these tables overflow.
- *              nvcc already emits non-__constant__ __device__ data in .global.
+ *              With Clang as the CUDA compiler the device copy is not `const`: Clang
+ *              puts const __device__ data with a constant initializer in the 64 KB
+ *              constant bank (.const), which these tables overflow (ptxas: "too much
+ *              global constant data").  nvcc keeps them const in .global and reads
+ *              them through the read-only data cache.
  * AV1G_T(n)    selects the right copy at the use site (device pass vs host pass).
  */
 #ifndef AV1G_HD_H
@@ -15,9 +17,14 @@
 #if defined(__CUDACC__)
 #define AV1G_HD __host__ __device__ __forceinline__
 #define AV1G_HDI __host__ __device__ inline
+#if defined(__clang__) && !defined(__NVCC__)
+#define AV1G_DEV_CONST
+#else
+#define AV1G_DEV_CONST const
+#endif
 #define AV1G_TABLE(T, name, dims, ...)                 \
     static const T name##_host dims = __VA_ARGS__;     \
-    static __device__ T name##_dev dims = __VA_ARGS__;
+    static __device__ AV1G_DEV_CONST T name##_dev dims = __VA_ARGS__;
 #else
 #define AV1G_HD static inline
 #define AV1G_HDI static inline
