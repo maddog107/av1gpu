@@ -1,0 +1,14 @@
+99 images, 477.7 MP; speed workload 297 images, 1433 MP
+04:30:46 NT       stock_aom_s6_j1            28.78 MP/s    49.8 s    86537268 B  ok=297  det=True  same_as_stock_j1=True
+04:31:37 NT       stock_aom_s6_j1_notiles    28.56 MP/s    50.2 s    86339859 B  ok=297  det=True  same_as_stock_j1=False
+04:31:44 NT       stock_aom_s9_j1           185.71 MP/s     7.7 s    92580096 B  ok=297  det=True  same_as_stock_j1=True
+04:31:52 NT       stock_aom_s9_j1_notiles   188.71 MP/s     7.6 s    92220066 B  ok=297  det=True  same_as_stock_j1=False
+04:33:25 NT       stock_svt_p4_j1            15.52 MP/s    92.3 s   109761972 B  ok=297  det=True  same_as_stock_j1=True
+04:34:56 NT       stock_svt_p4_j1_notiles    15.62 MP/s    91.8 s   109470795 B  ok=297  det=True  same_as_stock_j1=False
+04:35:25 NT       stock_svt_p6_j1            49.46 MP/s    29.0 s   112772220 B  ok=297  det=True  same_as_stock_j1=True
+04:35:54 NT       stock_svt_p6_j1_notiles    49.67 MP/s    28.8 s   112487496 B  ok=297  det=True  same_as_stock_j1=False
+04:36:02 NT       stock_svt_p9_j1           182.39 MP/s     7.9 s   117104919 B  ok=297  det=True  same_as_stock_j1=True
+04:36:10 NT       stock_svt_p9_j1_notiles   183.09 MP/s     7.8 s   116913939 B  ok=297  det=True  same_as_stock_j1=False
+04:37:00 NT       stock_aom_s6_j2_notiles    28.88 MP/s    49.6 s    86323818 B  ok=297  det=True  same_as_stock_j1=False
+04:38:28 NT       stock_svt_p4_j2_notiles    16.40 MP/s    87.4 s   109470795 B  ok=297  det=True  same_as_stock_j1=False
+PHASE_DONE notiles
