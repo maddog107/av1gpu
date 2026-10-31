@@ -1,9 +1,10 @@
 // gpu_postfilter_test - GPU deblocking + CDEF (av1g/gpu_postfilter.h) against the decoder.
 //
-//   gpu_postfilter_test --seed S --count N [--yuv444 P]
+//   gpu_postfilter_test --seed S --count N [--yuv444 P] [--depth10 P]
 //                                                     random records (fuzzer generator, ~half
 //                                                     with deblocking and/or CDEF, P % of the
-//                                                     colour cases 4:4:4): GPU output
+//                                                     colour cases 4:4:4, --depth10 % 10-bit,
+//                                                     default 40; 16-bit samples): GPU output
 //                                                     == dav1d output frame, and == the CPU
 //                                                     av1g_postfilter on the padded area
 //   gpu_postfilter_test --obu F.obu --yuv F.yuv [--iters K]
@@ -21,14 +22,17 @@
 #define CKX(x) do { cudaError_t e_ = (cudaError_t)(x); if (e_ != cudaSuccess) { fprintf(stderr, "CUDA %s at %s\n", cudaGetErrorString(e_), #x); exit(3); } } while (0)
 
 struct GpuRun {
-    std::vector<uint8_t> out[3];  // padded CdefFrame (or deblocked frame when CDEF is off)
+    std::vector<uint8_t> out[3];  // padded CdefFrame (or deblocked frame when CDEF is off); 10-bit: uint16_t samples
     int w[3] = {0, 0, 0}, h[3] = {0, 0, 0};
+    int bps = 1;                  // bytes per sample
     double msMaps = 0, msDeblock = 0, msDir = 0, msCdef = 0;
 };
 
 // pre: padded pre-filter planes (av1g_encode with AV1G_ENC_PREFILTER_RECON)
 static void gpu_postfilter(const av1g_decision_record &rec, const av1g_output &pre, int iters, GpuRun &g) {
     const int np = rec.fp.monochrome ? 1 : 3;
+    const int B = av1g_bit_depth(&rec.fp) == 10 ? 2 : 1;
+    g.bps = B;
     av1g_block *dBlocks = nullptr;
     void *dScratch = nullptr;
     uint8_t *dIn[3] = {nullptr, nullptr, nullptr}, *dWork[3] = {nullptr, nullptr, nullptr}, *dOut[3] = {nullptr, nullptr, nullptr};
@@ -41,7 +45,7 @@ static void gpu_postfilter(const av1g_decision_record &rec, const av1g_output &p
         g.w[p] = (int)pre.recon_w[p];
         g.h[p] = (int)pre.recon_h[p];
         st[p] = g.w[p];
-        const size_t n = (size_t)g.w[p] * g.h[p];
+        const size_t n = (size_t)g.w[p] * g.h[p] * B;
         CKX(cudaMalloc(&dIn[p], n));
         CKX(cudaMalloc(&dWork[p], n));
         CKX(cudaMalloc(&dOut[p], n));
@@ -52,7 +56,7 @@ static void gpu_postfilter(const av1g_decision_record &rec, const av1g_output &p
     std::vector<double> tm[4];
     av1g_pf_frame f;
     for (int it = 0; it < iters; it++) {
-        for (int p = 0; p < np; p++) CKX(cudaMemcpyAsync(dWork[p], dIn[p], (size_t)g.w[p] * g.h[p], cudaMemcpyDeviceToDevice, 0));
+        for (int p = 0; p < np; p++) CKX(cudaMemcpyAsync(dWork[p], dIn[p], (size_t)g.w[p] * g.h[p] * B, cudaMemcpyDeviceToDevice, 0));
         CKX(cudaEventRecord(e[0], 0));
         CKX(av1g_gpu_pf_prepare(&rec.fp, dBlocks, rec.n_blocks, dScratch, &f, 0));
         for (int p = 0; p < np; p++) { f.plane[p] = dWork[p]; f.stride[p] = st[p]; }
@@ -77,7 +81,7 @@ static void gpu_postfilter(const av1g_decision_record &rec, const av1g_output &p
     auto med = [](std::vector<double> v) { std::sort(v.begin(), v.end()); return v[v.size() / 2]; };
     g.msMaps = med(tm[0]); g.msDeblock = med(tm[1]); g.msDir = med(tm[2]); g.msCdef = med(tm[3]);
     for (int p = 0; p < np; p++) {
-        g.out[p].resize((size_t)g.w[p] * g.h[p]);
+        g.out[p].resize((size_t)g.w[p] * g.h[p] * B);
         CKX(cudaMemcpy(g.out[p].data(), f.enableCdef ? dOut[p] : dWork[p], g.out[p].size(), cudaMemcpyDeviceToHost));
         cudaFree(dIn[p]); cudaFree(dWork[p]); cudaFree(dOut[p]);
     }
@@ -86,33 +90,34 @@ static void gpu_postfilter(const av1g_decision_record &rec, const av1g_output &p
     cudaFree(dScratch);
 }
 
-// cropped GPU planes vs a decoder's I420 / I444 frame
+// cropped GPU planes vs a decoder's I420 / I444 frame (10-bit: 16-bit little-endian samples on both sides)
 static bool cmp_cropped(const GpuRun &g, const av1g_decision_record &rec, const std::vector<uint8_t> &yuv, std::string &why) {
     const int W = (int)rec.fp.width, H = (int)rec.fp.height, np = rec.fp.monochrome ? 1 : 3;
-    const int ssx = av1g_ssx(&rec.fp), ssy = av1g_ssy(&rec.fp);
+    const int ssx = av1g_ssx(&rec.fp), ssy = av1g_ssy(&rec.fp), B = g.bps;
     size_t off = 0;
     for (int p = 0; p < np; p++) {
         const int w = p ? (W + ssx) >> ssx : W, h = p ? (H + ssy) >> ssy : H;
         for (int y = 0; y < h; y++) {
-            if (off + (size_t)(y + 1) * w > yuv.size()) { why = "decoder frame too small"; return false; }
-            const uint8_t *a = g.out[p].data() + (size_t)y * g.w[p], *b = yuv.data() + off + (size_t)y * w;
-            if (memcmp(a, b, w)) {
+            if (off + (size_t)(y + 1) * w * B > yuv.size()) { why = "decoder frame too small"; return false; }
+            const uint8_t *a = g.out[p].data() + (size_t)y * g.w[p] * B, *b = yuv.data() + off + (size_t)y * w * B;
+            if (memcmp(a, b, (size_t)w * B)) {
                 int x = 0;
-                while (a[x] == b[x]) x++;
+                auto smp = [&](const uint8_t *r, int i) { return B == 2 ? r[2 * i] | r[2 * i + 1] << 8 : r[i]; };
+                while (smp(a, x) == smp(b, x)) x++;
                 char m[160];
-                snprintf(m, sizeof m, "plane %d x %d y %d: gpu %d decoder %d", p, x, y, a[x], b[x]);
+                snprintf(m, sizeof m, "plane %d x %d y %d: gpu %d decoder %d", p, x, y, smp(a, x), smp(b, x));
                 why = m;
                 return false;
             }
         }
-        off += (size_t)w * h;
+        off += (size_t)w * h * B;
     }
     return true;
 }
 
 int main(int argc, char **argv) {
     uint64_t seed = 1;
-    int count = 100, iters = 1, pct444 = 40;
+    int count = 100, iters = 1, pct444 = 40, pct10 = 40;
     std::string obuPath, yuvPath, tmp = default_out_dir("av1g_gpu_pf");
     for (int i = 1; i < argc; i++) {
         std::string a = argv[i];
@@ -123,6 +128,7 @@ int main(int argc, char **argv) {
         else if (a == "--yuv") yuvPath = nx();
         else if (a == "--iters") iters = atoi(nx().c_str());
         else if (a == "--yuv444") pct444 = atoi(nx().c_str());
+        else if (a == "--depth10") pct10 = atoi(nx().c_str());
         else { fprintf(stderr, "unknown arg %s\n", a.c_str()); return 2; }
     }
     if (!obuPath.empty()) {  // ---- real stream ----
@@ -148,17 +154,20 @@ int main(int argc, char **argv) {
         return ok ? 0 : 1;
     }
     mkdir(tmp.c_str(), 0755);
-    int bad = 0, withPf = 0, n444 = 0, pf444 = 0;
+    int bad = 0, withPf = 0, n444 = 0, pf444 = 0, n10 = 0, pf10 = 0;
     for (int ci = 0; ci < count; ci++) {
         const uint64_t cs = seed + ci;
         FuzzCase fc;
-        if (!make_case(cs, false, 300, 2, fc, pct444)) return 1;
+        if (!make_case(cs, false, 300, 2, fc, pct444, pct10)) return 1;
         av1g_decision_record &rec = fc.rec;
         const bool pf = rec.fp.loop_filter_level[0] || rec.fp.loop_filter_level[1] || rec.fp.enable_cdef;
         const bool is444 = rec.fp.chroma_format == AV1G_CHROMA_444;
+        const bool is10 = av1g_bit_depth(&rec.fp) == 10;
         withPf += pf;
         n444 += is444;
         pf444 += pf && is444;
+        n10 += is10;
+        pf10 += pf && is10;
         av1g_encode_opts e1 = {AV1G_ENC_FIX_RANGE | AV1G_ENC_TD, -1};
         av1g_output o;
         if (av1g_encode(&rec, &e1, &o) != AV1G_OK) { printf("seed %llu: encode error %s\n", (unsigned long long)cs, o.error); bad++; continue; }
@@ -179,25 +188,32 @@ int main(int argc, char **argv) {
             uint8_t *pp[3] = {nullptr, nullptr, nullptr};
             int st[3] = {0, 0, 0};
             for (int p = 0; p < np; p++) {
-                cpu[p].assign(pre.recon[p], pre.recon[p] + (size_t)pre.recon_w[p] * pre.recon_h[p]);
+                cpu[p].assign(pre.recon[p], pre.recon[p] + (size_t)pre.recon_w[p] * pre.recon_h[p] * g.bps);
                 pp[p] = cpu[p].data();
                 st[p] = (int)pre.recon_w[p];
             }
-            av1g_postfilter(&rec, pp, st);
+            if (is10) {
+                uint16_t *p16[3] = {(uint16_t *)pp[0], (uint16_t *)pp[1], (uint16_t *)pp[2]};
+                av1g_postfilter16(&rec, p16, st);
+            } else {
+                av1g_postfilter(&rec, pp, st);
+            }
             for (int p = 0; p < np; p++)
                 if (cpu[p] != g.out[p]) { ok = false; why = "padded area differs from CPU av1g_postfilter, plane " + std::to_string(p); }
         }
         if (!ok) {
             bad++;
-            printf("seed %llu %ux%u%s lf=%d/%d/%d/%d cdef=%d: MISMATCH %s\n", (unsigned long long)cs, rec.fp.width, rec.fp.height,
-                   is444 ? " 444" : rec.fp.monochrome ? " mono" : "",
+            printf("seed %llu %ux%u%s%s lf=%d/%d/%d/%d cdef=%d: MISMATCH %s\n", (unsigned long long)cs, rec.fp.width, rec.fp.height,
+                   is444 ? " 444" : rec.fp.monochrome ? " mono" : "", is10 ? " 10bit" : "",
                    rec.fp.loop_filter_level[0], rec.fp.loop_filter_level[1], rec.fp.loop_filter_level[2], rec.fp.loop_filter_level[3],
                    rec.fp.enable_cdef, why.c_str());
         }
         av1g_output_free(&o);
         av1g_output_free(&pre);
     }
-    printf("GPU POSTFILTER seeds %llu..%llu: %d cases (%d with deblocking/CDEF; 4:4:4: %d, %d with deblocking/CDEF), %d mismatches -> %s\n",
-           (unsigned long long)seed, (unsigned long long)(seed + count - 1), count, withPf, n444, pf444, bad, bad ? "FAILED" : "PASSED");
+    printf("GPU POSTFILTER seeds %llu..%llu: %d cases (%d with deblocking/CDEF; 4:4:4: %d, %d with deblocking/CDEF; 10-bit: %d, %d with "
+           "deblocking/CDEF), %d mismatches -> %s\n",
+           (unsigned long long)seed, (unsigned long long)(seed + count - 1), count, withPf, n444, pf444, n10, pf10, bad,
+           bad ? "FAILED" : "PASSED");
     return bad ? 1 : 0;
 }

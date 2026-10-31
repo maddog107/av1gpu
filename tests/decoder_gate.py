@@ -5,13 +5,15 @@ Encodes every image in a directory with `av1gpu --batch ... --debug-outputs`, so
 <name>.avif.obu (temporal delimiter + OBUs) and <name>.avif.recon.yuv (the encoder's own reconstruction).
 Every .obu is then decoded with dav1d and aomdec, and both decoders must reproduce the encoder's
 reconstruction byte for byte (monochrome: aomdec's extra neutral chroma planes are ignored).  The chroma
-format of every stream is read from its sequence header (seq_profile 0: 4:2:0 / monochrome, 1: 4:4:4)
+format and bit depth of every stream are read from its sequence header (seq_profile 0: 4:2:0 / monochrome,
+1: 4:4:4; high_bitdepth: 10 bits, 16-bit little-endian samples in the reconstruction and from both decoders)
 and the reconstruction must have exactly that format's plane sizes; --expect-format 420|444 also
-requires every colour image to be coded in that format (e.g. with `-- --yuv 444`).
+requires every colour image to be coded in that format (e.g. with `-- --yuv 444`), --expect-depth 8|10 every
+image in that bit depth (e.g. with `-- --depth 10`).
 A run passes only with N/N.
 
   tests/decoder_gate.py --bin build/av1gpu --images DIR [--q 120,60] [--jobs 4] [--keep DIR] [--expect-format 444]
-                        [-- <av1gpu options>]
+                        [--expect-depth 10] [-- <av1gpu options>]
 
 Decoders come from PATH, or from $AV1G_DAV1D / $AV1G_AOMDEC.  Exit status 0 only if every encoded image passed.
 Images the batch path does not encode (unsupported inputs) are reported separately.
@@ -33,8 +35,8 @@ EXTS = (".jpg", ".jpeg", ".jfif", ".png", ".webp")
 
 
 def seq_info(obu):
-    """(format, width, height) from the reduced still-picture sequence header of an OBU stream:
-    format '420', '444' or 'mono'; None if it cannot be read."""
+    """(format, width, height, bit depth) from the reduced still-picture sequence header of an OBU stream:
+    format '420', '444' or 'mono', bit depth 8 or 10; None if it cannot be read."""
     pos = 0
     while pos < len(obu):
         h = obu[pos]
@@ -67,21 +69,23 @@ def seq_info(obu):
             wb, hb = f(4) + 1, f(4) + 1
             w, hgt = f(wb) + 1, f(hb) + 1
             f(6)        # use_128x128_superblock .. enable_restoration
-            if f(1):    # high_bitdepth
+            depth = 10 if f(1) else 8   # high_bitdepth (twelve_bit is only coded in the Professional profile)
+            if profile == 2:
                 return None
             mono = 0 if profile == 1 else f(1)
             fmt = "mono" if mono else "444" if profile == 1 else "420" if profile == 0 else None
-            return fmt, w, hgt
+            return fmt, w, hgt, depth
         pos += size
     return None
 
 
-def plane_bytes(fmt, w, h):
+def plane_bytes(fmt, w, h, depth=8):
+    b = 2 if depth > 8 else 1
     if fmt == "mono":
-        return w * h
+        return w * h * b
     if fmt == "444":
-        return 3 * w * h
-    return w * h + 2 * ((w + 1) // 2) * ((h + 1) // 2)
+        return 3 * w * h * b
+    return (w * h + 2 * ((w + 1) // 2) * ((h + 1) // 2)) * b
 
 
 def check_one(avif, workdir):
@@ -95,16 +99,20 @@ def check_one(avif, workdir):
     if si is None:
         return dict(res, dav1d=False, aomdec=False, err="unreadable sequence header")
     res["format"] = si[0]
+    res["depth"] = si[3]
     if len(want) != plane_bytes(*si):
-        return dict(res, dav1d=False, aomdec=False, err=f"recon has {len(want)} bytes, {si[0]} {si[1]}x{si[2]} needs {plane_bytes(*si)}")
+        return dict(res, dav1d=False, aomdec=False,
+                    err=f"recon has {len(want)} bytes, {si[0]} {si[3]}-bit {si[1]}x{si[2]} needs {plane_bytes(*si)}")
     with tempfile.TemporaryDirectory(dir=workdir) as td:
         r = subprocess.run([DAV1D, "-q", "-i", obu, "--demuxer", "section5", "-o", f"{td}/d.yuv"], capture_output=True)
         got = open(f"{td}/d.yuv", "rb").read() if os.path.exists(f"{td}/d.yuv") else b""
         res["dav1d"] = r.returncode == 0 and got == want
         r = subprocess.run([AOMDEC, "--rawvideo", "-o", f"{td}/a.yuv", obu], capture_output=True)
         got = open(f"{td}/a.yuv", "rb").read() if os.path.exists(f"{td}/a.yuv") else b""
-        if len(got) > len(want) and got[len(want):].count(0x80) == len(got) - len(want):
-            got = got[:len(want)]   # monochrome: aomdec appends neutral chroma
+        neutral = b"\x80" if si[3] == 8 else (512).to_bytes(2, "little")   # monochrome: aomdec appends neutral chroma
+        extra = got[len(want):]
+        if len(got) > len(want) and si[0] == "mono" and extra == neutral * (len(extra) // len(neutral)):
+            got = got[:len(want)]
         res["aomdec"] = r.returncode == 0 and got == want
     return res
 
@@ -118,6 +126,7 @@ def main():
     ap.add_argument("--keep", help="keep outputs in this directory instead of a temporary one")
     ap.add_argument("--json", help="write a summary here")
     ap.add_argument("--expect-format", choices=("420", "444"), help="every colour image must be coded in this format")
+    ap.add_argument("--expect-depth", type=int, choices=(8, 10), help="every image must be coded with this bit depth")
     argv = sys.argv[1:]
     cut = argv.index("--") if "--" in argv else len(argv)
     a = ap.parse_args(argv[:cut])
@@ -144,10 +153,15 @@ def main():
             for r in results:
                 if r.get("format") not in (a.expect_format, "mono", None):
                     r.update(dav1d=False, aomdec=False, err=f"coded {r['format']}, expected {a.expect_format}")
+        if a.expect_depth:
+            for r in results:
+                if r.get("depth") not in (a.expect_depth, None):
+                    r.update(dav1d=False, aomdec=False, err=f"coded {r['depth']}-bit, expected {a.expect_depth}")
         bad = [r for r in results if not (r.get("dav1d") and r.get("aomdec"))]
         formats = {}
         for r in results:
-            formats[r.get("format")] = formats.get(r.get("format"), 0) + 1
+            k = r.get("format") if r.get("depth", 8) == 8 else f"{r.get('format')} {r.get('depth')}-bit"
+            formats[k] = formats.get(k, 0) + 1
         run = dict(q=q, rc=p.returncode, wall_s=round(time.time() - t0, 1), batch=line.strip(), n_encoded=len(avifs),
                    n_pass=len(results) - len(bad), n_not_encoded=len(files) - len(avifs), formats=formats,
                    bytes=sum(r.get("bytes", 0) for r in results), failures=bad)
