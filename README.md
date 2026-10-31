@@ -29,9 +29,8 @@
 > (−86 %)**, and its files are **31 % smaller than WebP** at the same quality. SVT-AV1 needs presets 4–6 on
 > all 16 threads (16–49 MP/s) for the same sizes; built with PGO, it is still 3.3× slower. On the same GPU
 > av1gpu is **7× faster than NVIDIA's own NVENC AV1 encoder**, whose files are about 28 % bigger than
-> libaom's. It also writes **4:4:4 and 10-bit** AVIFs, 4–5× faster than libaom in the same format, and
-> **lossless** ones. One
-> prebuilt binary, no CPU farm.
+> libaom's. It also writes **4:4:4, 10-bit, lossless and transparent** AVIFs (4:4:4 and 10-bit 4–5× faster
+> than libaom in the same format). One prebuilt binary, no CPU farm.
 
 ## ⚡ Overview
 
@@ -206,6 +205,27 @@ repeated patterns. (av1gpu's speed is for the set repeated 4×; a single pass of
 included, ran at 17 MP/s. CPU encoders: 16 single-threaded processes on the same 16-vCPU host.) Details:
 [docs/RESULTS.md](docs/RESULTS.md#lossless).
 
+### 🪟 Transparency
+
+PNG and WebP files with transparency get an AVIF alpha channel: a second, monochrome AV1 image, laid out as
+libavif writes it, and decoded with exact alpha by libavif with both dav1d and libaom. Alpha quality follows
+`--quality` by default, as in avifenc 1.2+; `--alpha-quality 100` (or `--lossless`) keeps it exact. Files
+without transparency are unchanged, byte for byte. On 39 test PNGs (logos, icons, stickers, UI elements,
+masked photos, charts):
+
+| Encoder | Total | Alpha part | Alpha | MP/s |
+|---|---:|---:|---|---:|
+| av1gpu default (q60, alpha q60) | 697 KB | 90 KB | 50.2 dB | 27 |
+| av1gpu `--alpha-quality 100` | 1,087 KB | 480 KB | exact | 25 |
+| avifenc `--qalpha 100` (its default 4:4:4) | 1,274 KB | 528 KB | exact | 12 |
+| avifenc `-y 420 --qalpha 100` | 1,208 KB | 528 KB | exact | |
+| av1gpu `--lossless` | 7.72 MB | 486 KB | exact | 26 |
+| avifenc `-l` | 7.96 MB | 528 KB | exact | 8.2 |
+| cwebp `-lossless` | 4.75 MB | | exact | 27 |
+
+Exact alpha comes out about 9 % smaller than libaom's. The lossy colour rows are not matched for quality
+(the alpha rows are). Details: [docs/RESULTS.md](docs/RESULTS.md#transparency).
+
 ### 👁️ A second metric: CVVDP
 
 <picture>
@@ -288,8 +308,8 @@ project. Before you rely on it, note:
   work but have not been run yet. Reports are welcome, especially `tests/decoder_gate.py` results.
 - Output: 8- or 10-bit (`--depth 10`), 4:2:0, 4:4:4 (`--yuv 444`) or monochrome AV1, intra only. In 4:2:0,
   4:4:4 and 4:2:2 JPEGs are downsampled; in 4:4:4, subsampled JPEGs are upsampled exactly as libjpeg-turbo
-  does. `--lossless` codes exactly (RGB as GBR or YCgCo-Re, JPEGs as their decoded YCbCr). There is no
-  4:2:2 output, alpha or animation yet.
+  does. `--lossless` codes exactly (RGB as GBR or YCgCo-Re, JPEGs as their decoded YCbCr). PNG and WebP
+  transparency becomes an AVIF alpha channel. There is no 4:2:2 output or animation.
 - Some inputs are not handled on the GPU path. The batch mode skips them and lists them on stderr, so
   you can send them to another encoder: CMYK/YCCK JPEGs, 12-bit JPEGs, images over 35.6 MP and
   unreadable files. PNG and WebP inputs are decoded on the CPU.
@@ -344,6 +364,8 @@ for CUDA start-up.
 | `--yuv 420` / `444` | chroma format (default `420`; `444` is AV1 High profile and keeps full-resolution colour) |
 | `--lossless` | exact (AV1 lossless). PNG/WebP RGB as GBR 4:4:4 at the source depth (as `avifenc -l`); JPEG as its decoded YCbCr at its own subsampling (4:2:2 JPEGs are refused) |
 | `--ycgco-re` | with `--lossless`: RGB as YCgCo-Re (`--cicp 1/13/16` in avifenc), 8-bit RGB → 10-bit 4:4:4; usually smaller |
+| `--alpha-quality Q` | quality of the alpha channel of PNG/WebP files with transparency: defaults to `--quality`, as in avifenc 1.2+; `100` is lossless (also with `--lossless`) |
+| `--no-alpha` | drop transparency as before alpha support (PNG colour composited onto black) |
 | `--depth 8` / `10` | bit depth (default 8; 16-bit PNGs keep 10 bits, 8-bit sources are scaled to the 10-bit range) |
 | `--tune iq` / `none` | libaom `tune=iq` tools: quantization matrices, variance-boost delta-q, chroma delta-q, deblocking and CDEF strength choice (default `iq`) |
 | `--cpu-entropy` | entropy-code on the CPU (produces bytes identical to the GPU coder) |
@@ -360,7 +382,7 @@ The encoder needs about 1 GB of GPU memory with these settings, and the JPEG dec
 `GP_INGEST_DECODER=1` forces the CPU-entropy-decode + GPU-IDCT JPEG path on GPUs without a hardware
 JPEG engine. av1gpu also falls back to that path automatically.
 
-AVIF files carry the source's ICC profile. EXIF orientation is signalled with `irot`/`imir` rather
+AVIF files made from JPEGs carry the source's ICC profile (PNG and WebP profiles are not read yet). EXIF orientation is signalled with `irot`/`imir` rather
 than by rotating pixels.
 
 [examples/](examples/) has a directory converter with an avifenc fallback for skipped files, and an

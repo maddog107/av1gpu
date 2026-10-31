@@ -436,6 +436,60 @@ intra block copy. On lossless JPEG input (the size-range photos) av1gpu ran at 4
 is limited by the GPU entropy coder (about 126 ms for a Kodak image). The rate estimate behind the mode
 choices uses default-CDF costs, so it is approximate.
 
+### Transparency
+
+PNG and WebP inputs with transparency (any alpha below the maximum) get an AVIF alpha item (2026-10-31), laid
+out as libavif 1.4 writes it:
+- **The alpha item:** a second `av01` item holding a monochrome, full-range AV1 image at the colour's size and
+  bit depth. It has its own av1C and one-channel pixi, shares the ispe, and carries `auxC` with
+  `urn:mpeg:mpegB:cicp:systems:auxiliary:alpha` and an `auxl` reference to the colour item.
+- **Straight alpha:** no `prem`. The RGB under transparent pixels is kept as stored.
+- **Orientation:** `irot`/`imir` go on both items.
+- **Opaque alpha:** a fully opaque alpha channel gets no alpha item, as with avifenc.
+
+Alpha quality defaults to `--quality` through libavif's alpha mapping (q60 → qindex 100), as avifenc does since
+libavif 1.2, without the tune=iq tools; `--alpha-quality 100` and `--lossless` use the lossless path. Alpha
+frames are encoded as an extra GPU batch next to each batch's colour frames. 16-bit alpha is rounded to 8 bits
+in 8-bit mode, kept at 10 bits with `--depth 10`, and must hold 8 or 10 significant bits with `--lossless`.
+
+**Tests** (L4, libavif 1.4.0 `avifdec` with `-c aom` and `-c dav1d`). The test set is 39 generated PNGs plus 4
+extras: logos with soft edges, icons with shadows, photo stickers, UI controls, a mostly transparent HUD,
+8 Kodak photos with masks, charts, and edge cases (fully transparent, 1 × 1, palette + tRNS, gray + alpha,
+16-bit, opaque files, WebP with and without alpha).
+- `avifdec --info` shows an alpha item for exactly the 38 files with transparency.
+- Decoded alpha equals the encoder's own reconstruction in every configuration. Decoder gates pass in dav1d
+  and aomdec, colour and alpha, for the default, `--alpha-quality 80` and `100`, `--lossless`, `--depth 10`
+  and `--yuv 444`.
+- Alpha equals the source exactly in 38/38 files with `--alpha-quality 100` (also at 10 bits and in
+  4:4:4) and in 37/37 with `--lossless`, which also gives exact RGB everywhere, under transparent pixels too.
+- Default lossy alpha: PSNR 49.8 dB, mean absolute error 0.21; worst file 35.5 dB. `--alpha-quality 80`:
+  53.6 dB.
+- Files without transparency (bench and size-range JPEGs; opaque PNG/WebP in every mode) and `--no-alpha` are
+  byte-identical to before. Speed on the size-range set is unchanged within noise (114.9 vs 114.4 MP/s
+  pooled over 36 runs each).
+
+| Encoder (39 PNGs, 10.1 MP) | Total bytes | Colour | Alpha | Alpha PSNR | MP/s |
+|---|---:|---:|---:|---|---:|
+| av1gpu default (q60, alpha q60) | 697,115 | 591,335 | 90,312 | 50.2 dB | 27.1 |
+| av1gpu `--alpha-quality 100` | 1,086,862 | 591,335 | 480,059 | exact | 24.9 |
+| av1gpu `--lossless` | 7,723,961 | 7,222,941 | 485,582 | exact | 26.4 |
+| avifenc default (4:4:4, qalpha 60) | 846,207 | 730,647 | 99,452 | 50.9 dB | 14.4 |
+| avifenc `--qalpha 100` | 1,274,328 | 730,647 | 527,573 | exact | 12.1 |
+| avifenc `-y 420 --qalpha 100` | 1,208,036 | 664,317 | 527,573 | exact | |
+| avifenc `-l` | 7,963,112 | 7,419,431 | 527,573 | exact | 8.2 |
+| cwebp default (q75, lossless alpha) | 1,059,014 | | | exact | 62.7 |
+| cwebp `-lossless` | 4,754,430 | | | exact | 27.4 |
+
+The lossy colour columns are not matched for quality. The exact alpha planes are directly comparable:
+av1gpu's are about 9 % smaller than libaom's. Speeds are for the set repeated 20× (202 MP); av1gpu
+without alpha (`--no-alpha`) runs at 29.9 MP/s on it. Mostly small images keep the GPU less busy than
+the photo sets.
+
+**Fixed along the way.** In 8-bit mode, 16-bit PNGs without a gAMA or sRGB chunk were read as linear light by
+libpng's simplified API and came out brightened (mid-grey 30000/65535 became 179 instead of 117). They are now
+read as sRGB-encoded, as libavif and Pillow read them. 8-bit PNGs and the 10-bit and lossless paths are
+unaffected. PNG and WebP ICC profiles and EXIF orientation are still not read.
+
 ### CVVDP: a second metric
 
 SSIMULACRA2 does not model screen size or viewing distance, so the same size-range files were also scored
