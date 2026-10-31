@@ -1,0 +1,8 @@
+av1gpu   files   594 compared   594 identical   594 mismatched 0 extra q [] missing 0
+aom_s6   files   594 compared   594 identical   594 mismatched 0 extra q [] missing 0
+aom_s9   files   594 compared   594 identical   594 mismatched 0 extra q [] missing 0
+webp     files   594 compared   594 identical   594 mismatched 0 extra q [] missing 0
+svt_p4   files   594 compared   594 identical   594 mismatched 0 extra q [] missing 0
+svt_p6   files   594 compared   594 identical   594 mismatched 0 extra q [] missing 0
+svt_p9   files   594 compared   594 identical   594 mismatched 0 extra q [] missing 0
+nvenc    files   594 compared   594 identical   594 mismatched 0 extra q [] missing 0

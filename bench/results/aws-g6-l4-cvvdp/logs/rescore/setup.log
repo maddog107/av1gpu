@@ -1,0 +1,331 @@
++ export DEBIAN_FRONTEND=noninteractive
++ DEBIAN_FRONTEND=noninteractive
++ L=/home/ubuntu/results/setup
++ mkdir -p /home/ubuntu/results/setup /home/ubuntu/src /home/ubuntu/opt /home/ubuntu/av1gpu
++ sudo apt-get update -q
++ sudo apt-get install -yq cmake ninja-build pkg-config libjpeg-turbo8-dev libpng-dev libwebp-dev webp python3-numpy python3-pil python3-venv nasm yasm git build-essential libhwy-dev libbrotli-dev liblcms2-dev libgif-dev libyuv-dev libdav1d-dev xz-utils
++ tar -xzf /home/ubuntu/av1gpu.tar.gz -C /home/ubuntu/av1gpu
++ cd /home/ubuntu/av1gpu
++ python3 bench/fetch_images.py --manifest bench/openimages_v4_gamut.csv --out /home/ubuntu/images_all
++ python3 -m venv /home/ubuntu/venv
++ mkdir -p /home/ubuntu/f81
++ cmake -S /home/ubuntu/av1gpu -B /home/ubuntu/av1gpu/build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CUDA_ARCHITECTURES=native -DCMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc -DAV1GPU_TESTS=OFF
++ cd /home/ubuntu/src
++ git clone -q --depth 1 -b v0.11.1 https://github.com/libjxl/libjxl
++ wait
++ set -e
++ cd /home/ubuntu/src
++ git clone -q --depth 1 -b v3.13.1 https://aomedia.googlesource.com/aom
++ curl -sL https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n8.1-latest-linux64-gpl-8.1.tar.xz
++ tar xJ -C /home/ubuntu/f81 --strip-components=1
+Note: switching to '794a5dcf0d54f9f0b20d288a12e87afb91d20dfc'.
+
+You are in 'detached HEAD' state. You can look around, make experimental
+changes and commit them, and you can discard any commits you make in this
+state without impacting any branches by switching back to a branch.
+
+If you want to create a new branch to retain commits you create, you may
+do so (now or later) by using -c with the switch command. Example:
+
+  git switch -c <new-branch-name>
+
+Or undo this operation with:
+
+  git switch -
+
+Turn off this advice by setting config variable advice.detachedHead to false
+
++ cmake -S libjxl -B jxl-build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DJPEGXL_ENABLE_DEVTOOLS=ON -DJPEGXL_FORCE_SYSTEM_HWY=ON -DJPEGXL_FORCE_SYSTEM_BROTLI=ON -DJPEGXL_FORCE_SYSTEM_LCMS2=ON -DJPEGXL_ENABLE_SKCMS=OFF -DJPEGXL_ENABLE_JPEGLI=OFF -DJPEGXL_ENABLE_SJPEG=OFF
++ mkdir -p /home/ubuntu/images_gamut
+++ cat /home/ubuntu/photos99.txt
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/037774ce28834ba2_tiny.jpg /home/ubuntu/images_gamut/037774ce28834ba2_tiny.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/06593b76585ed9a5_small.jpg /home/ubuntu/images_gamut/06593b76585ed9a5_small.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/0af4d66572273aaf_typical.jpg /home/ubuntu/images_gamut/0af4d66572273aaf_typical.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/0c39de851b8c906a_typical.jpg /home/ubuntu/images_gamut/0c39de851b8c906a_typical.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/0cf2daca3f1c50e1_large.jpg /home/ubuntu/images_gamut/0cf2daca3f1c50e1_large.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/1068f4f5ac7e8d01_typical.jpg /home/ubuntu/images_gamut/1068f4f5ac7e8d01_typical.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/16aaa6421eaf9905_huge.jpg /home/ubuntu/images_gamut/16aaa6421eaf9905_huge.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/1782dce735b551c4_typical.jpg /home/ubuntu/images_gamut/1782dce735b551c4_typical.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/2287cba126a77fed_huge.jpg /home/ubuntu/images_gamut/2287cba126a77fed_huge.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/2476a0e45c7da3de_small.jpg /home/ubuntu/images_gamut/2476a0e45c7da3de_small.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/25d19e868909e5e2_huge.jpg /home/ubuntu/images_gamut/25d19e868909e5e2_huge.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/25f594629a440ce8_large.jpg /home/ubuntu/images_gamut/25f594629a440ce8_large.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/270ca40915180b43_tiny.jpg /home/ubuntu/images_gamut/270ca40915180b43_tiny.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/2e67ed20c61dfe3e_typical.jpg /home/ubuntu/images_gamut/2e67ed20c61dfe3e_typical.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/2e785b26c20e7e3a_tiny.jpg /home/ubuntu/images_gamut/2e785b26c20e7e3a_tiny.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/2f7fde1527d592e5_small.jpg /home/ubuntu/images_gamut/2f7fde1527d592e5_small.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/3065cbd41a1ad905_typical.jpg /home/ubuntu/images_gamut/3065cbd41a1ad905_typical.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/34da64f7fecdfa2a_huge.jpg /home/ubuntu/images_gamut/34da64f7fecdfa2a_huge.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/370f7c330a75892f_large.jpg /home/ubuntu/images_gamut/370f7c330a75892f_large.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/3879c92c11164a6a_large.jpg /home/ubuntu/images_gamut/3879c92c11164a6a_large.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/3c353054856daa8e_typical.jpg /home/ubuntu/images_gamut/3c353054856daa8e_typical.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/3fe04f7604431846_tiny.jpg /home/ubuntu/images_gamut/3fe04f7604431846_tiny.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/479b1ea3d61d4035_small.jpg /home/ubuntu/images_gamut/479b1ea3d61d4035_small.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/49a7d4072520bce9_typical.jpg /home/ubuntu/images_gamut/49a7d4072520bce9_typical.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/4bbc8bd3085f9e02_large.jpg /home/ubuntu/images_gamut/4bbc8bd3085f9e02_large.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/4cfd020b97be68d5_tiny.jpg /home/ubuntu/images_gamut/4cfd020b97be68d5_tiny.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/4d1e8704fa4bc4e5_small.jpg /home/ubuntu/images_gamut/4d1e8704fa4bc4e5_small.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/4eab8ba62499e7b9_huge.jpg /home/ubuntu/images_gamut/4eab8ba62499e7b9_huge.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/501b1ad04408c3f4_large.jpg /home/ubuntu/images_gamut/501b1ad04408c3f4_large.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/547faad424854128_tiny.jpg /home/ubuntu/images_gamut/547faad424854128_tiny.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/5b0f60b3eb777154_huge.jpg /home/ubuntu/images_gamut/5b0f60b3eb777154_huge.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/5e8cdd2bc708dbfc_small.jpg /home/ubuntu/images_gamut/5e8cdd2bc708dbfc_small.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/5ec353bbf3a3f2f5_tiny.jpg /home/ubuntu/images_gamut/5ec353bbf3a3f2f5_tiny.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/6057c6daef8fc78a_typical.jpg /home/ubuntu/images_gamut/6057c6daef8fc78a_typical.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/66ce30dc11941998_tiny.jpg /home/ubuntu/images_gamut/66ce30dc11941998_tiny.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/6b1467a43bd1c705_typical.jpg /home/ubuntu/images_gamut/6b1467a43bd1c705_typical.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/6b5935e540d042bd_large.jpg /home/ubuntu/images_gamut/6b5935e540d042bd_large.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/6dc7fd759d8440f3_large.jpg /home/ubuntu/images_gamut/6dc7fd759d8440f3_large.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/6e0bd79b44facceb_large.jpg /home/ubuntu/images_gamut/6e0bd79b44facceb_large.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/702052e78273386d_tiny.jpg /home/ubuntu/images_gamut/702052e78273386d_tiny.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/72496a1a66a3d206_small.jpg /home/ubuntu/images_gamut/72496a1a66a3d206_small.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/75b5f85e46fcfcb1_typical.jpg /home/ubuntu/images_gamut/75b5f85e46fcfcb1_typical.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/75f04ab8f4fd7ea3_huge.jpg /home/ubuntu/images_gamut/75f04ab8f4fd7ea3_huge.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/780bfa6cb4af7d8f_huge.jpg /home/ubuntu/images_gamut/780bfa6cb4af7d8f_huge.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/78ff6bce63837be6_small.jpg /home/ubuntu/images_gamut/78ff6bce63837be6_small.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/81f84f0b4da76d1d_large.jpg /home/ubuntu/images_gamut/81f84f0b4da76d1d_large.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/835fd85e4d1dacde_small.jpg /home/ubuntu/images_gamut/835fd85e4d1dacde_small.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/8780ab51c2329849_huge.jpg /home/ubuntu/images_gamut/8780ab51c2329849_huge.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/8788284a8b3aa6c1_large.jpg /home/ubuntu/images_gamut/8788284a8b3aa6c1_large.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/8c67f6e6c2ca8a6d_typical.jpg /home/ubuntu/images_gamut/8c67f6e6c2ca8a6d_typical.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/92a594bfb7613b85_huge.jpg /home/ubuntu/images_gamut/92a594bfb7613b85_huge.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/94aaae43e2524534_tiny.jpg /home/ubuntu/images_gamut/94aaae43e2524534_tiny.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/957cfe1a4839d118_tiny.jpg /home/ubuntu/images_gamut/957cfe1a4839d118_tiny.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/9635278c951776ee_large.jpg /home/ubuntu/images_gamut/9635278c951776ee_large.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/99fc31df576a0af7_small.jpg /home/ubuntu/images_gamut/99fc31df576a0af7_small.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/9bbf8af223aa423f_huge.jpg /home/ubuntu/images_gamut/9bbf8af223aa423f_huge.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/9e0291261be01177_small.jpg /home/ubuntu/images_gamut/9e0291261be01177_small.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/a1a0cb5d7ff4ea34_tiny.jpg /home/ubuntu/images_gamut/a1a0cb5d7ff4ea34_tiny.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/a239a24eddebdbba_huge.jpg /home/ubuntu/images_gamut/a239a24eddebdbba_huge.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/a8cbf71967aba819_tiny.jpg /home/ubuntu/images_gamut/a8cbf71967aba819_tiny.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/a995f0296bf0aff9_tiny.jpg /home/ubuntu/images_gamut/a995f0296bf0aff9_tiny.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/aa8e2b1c612805d3_small.jpg /home/ubuntu/images_gamut/aa8e2b1c612805d3_small.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/ab2fdc612955287d_large.jpg /home/ubuntu/images_gamut/ab2fdc612955287d_large.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/ad75e45e4b701b5c_typical.jpg /home/ubuntu/images_gamut/ad75e45e4b701b5c_typical.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/b0c4e3247203d631_typical.jpg /home/ubuntu/images_gamut/b0c4e3247203d631_typical.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/b0caf2f4a9628298_huge.jpg /home/ubuntu/images_gamut/b0caf2f4a9628298_huge.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/b1aa6e8182e3f22f_huge.jpg /home/ubuntu/images_gamut/b1aa6e8182e3f22f_huge.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/b25bd1f30abe88bc_large.jpg /home/ubuntu/images_gamut/b25bd1f30abe88bc_large.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/b27f7d163382d46b_small.jpg /home/ubuntu/images_gamut/b27f7d163382d46b_small.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/b2fef7eca1352b4a_small.jpg /home/ubuntu/images_gamut/b2fef7eca1352b4a_small.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/b8b257759bd16b1e_small.jpg /home/ubuntu/images_gamut/b8b257759bd16b1e_small.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/bc21a2090ce5df8f_small.jpg /home/ubuntu/images_gamut/bc21a2090ce5df8f_small.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/bc80b847a0985dd4_small.jpg /home/ubuntu/images_gamut/bc80b847a0985dd4_small.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/bd1dbbc9508f71f6_small.jpg /home/ubuntu/images_gamut/bd1dbbc9508f71f6_small.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/bd4ff3b451c3ba6b_large.jpg /home/ubuntu/images_gamut/bd4ff3b451c3ba6b_large.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/c17e9c4a4d71d238_typical.jpg /home/ubuntu/images_gamut/c17e9c4a4d71d238_typical.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/c2b1417e3d59c3f4_small.jpg /home/ubuntu/images_gamut/c2b1417e3d59c3f4_small.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/c2b9ea7fa6acb336_huge.jpg /home/ubuntu/images_gamut/c2b9ea7fa6acb336_huge.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/c2cc34a1a8667c02_tiny.jpg /home/ubuntu/images_gamut/c2cc34a1a8667c02_tiny.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/c6952770be3b1fb1_tiny.jpg /home/ubuntu/images_gamut/c6952770be3b1fb1_tiny.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/ca12d94f3a1dca2c_large.jpg /home/ubuntu/images_gamut/ca12d94f3a1dca2c_large.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/caab750516644ab1_huge.jpg /home/ubuntu/images_gamut/caab750516644ab1_huge.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/cf493062fb197e53_huge.jpg /home/ubuntu/images_gamut/cf493062fb197e53_huge.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/d4c7b30f6b66e4a1_large.jpg /home/ubuntu/images_gamut/d4c7b30f6b66e4a1_large.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/d952f6ca796cc51c_typical.jpg /home/ubuntu/images_gamut/d952f6ca796cc51c_typical.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/daf6f2eccfd7743b_typical.jpg /home/ubuntu/images_gamut/daf6f2eccfd7743b_typical.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/dce6a047a1e3fbee_huge.jpg /home/ubuntu/images_gamut/dce6a047a1e3fbee_huge.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/dd519c2ee4a76db8_typical.jpg /home/ubuntu/images_gamut/dd519c2ee4a76db8_typical.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/df28dcbd0a84d456_huge.jpg /home/ubuntu/images_gamut/df28dcbd0a84d456_huge.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/dffb1cea132cdffb_tiny.jpg /home/ubuntu/images_gamut/dffb1cea132cdffb_tiny.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/e72fd1fd98da81db_small.jpg /home/ubuntu/images_gamut/e72fd1fd98da81db_small.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/e9e99ead530de1de_large.jpg /home/ubuntu/images_gamut/e9e99ead530de1de_large.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/ea86c9930a2b5346_typical.jpg /home/ubuntu/images_gamut/ea86c9930a2b5346_typical.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/eab7df87e7fc3317_large.jpg /home/ubuntu/images_gamut/eab7df87e7fc3317_large.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/f0656ef9af634733_tiny.jpg /home/ubuntu/images_gamut/f0656ef9af634733_tiny.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/fa7294ff486dc283_huge.jpg /home/ubuntu/images_gamut/fa7294ff486dc283_huge.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/fb7ec599dea70a4a_typical.jpg /home/ubuntu/images_gamut/fb7ec599dea70a4a_typical.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/fe00a8d898a01166_large.jpg /home/ubuntu/images_gamut/fe00a8d898a01166_large.jpg
++ for f in $(cat ~/photos99.txt)
++ ln -f /home/ubuntu/images_all/ffb9d9c4c74837ac_tiny.jpg /home/ubuntu/images_gamut/ffb9d9c4c74837ac_tiny.jpg
++ ls /home/ubuntu/images_gamut
++ wc -l
++ echo FETCH_DONE
+Note: switching to 'd772e334cc724105040382a977ebb10dfd393293'.
+
+You are in 'detached HEAD' state. You can look around, make experimental
+changes and commit them, and you can discard any commits you make in this
+state without impacting any branches by switching back to a branch.
+
+If you want to create a new branch to retain commits you create, you may
+do so (now or later) by using -c with the switch command. Example:
+
+  git switch -c <new-branch-name>
+
+Or undo this operation with:
+
+  git switch -
+
+Turn off this advice by setting config variable advice.detachedHead to false
+
++ cmake -S aom -B aom-build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/home/ubuntu/opt -DENABLE_TESTS=0 -DENABLE_DOCS=0 -DENABLE_EXAMPLES=0 -DBUILD_SHARED_LIBS=1
++ /home/ubuntu/venv/bin/pip install -q --upgrade pip
++ /home/ubuntu/venv/bin/pip install cvvdp
++ ninja -C aom-build -j 6 install
++ sudo cp /home/ubuntu/f81/bin/ffmpeg /home/ubuntu/f81/bin/ffprobe /usr/local/bin/
++ /usr/local/bin/ffmpeg -version
++ head -1
++ ninja -C jxl-build -j 4 ssimulacra2
++ cmake --build /home/ubuntu/av1gpu/build -j 6
++ git clone -q --depth 1 -b v4.2.0 https://gitlab.com/AOMediaCodec/SVT-AV1.git svt
+Note: switching to '9292ec8e32bce26f781f277ec8739b53426c4300'.
+
+You are in 'detached HEAD' state. You can look around, make experimental
+changes and commit them, and you can discard any commits you make in this
+state without impacting any branches by switching back to a branch.
+
+If you want to create a new branch to retain commits you create, you may
+do so (now or later) by using -c with the switch command. Example:
+
+  git switch -c <new-branch-name>
+
+Or undo this operation with:
+
+  git switch -
+
+Turn off this advice by setting config variable advice.detachedHead to false
+
++ cmake -S svt -B svt-build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/home/ubuntu/opt -DBUILD_SHARED_LIBS=ON -DBUILD_TESTING=OFF
++ ninja -C svt-build -j 6 install
++ echo 'exit 0'
++ echo 'pip exit 0'
++ git clone -q --depth 1 -b v1.4.0 https://github.com/AOMediaCodec/libavif
+Note: switching to 'd145e1a32af2915779b27e3b0521b6db08dd6bb8'.
+
+You are in 'detached HEAD' state. You can look around, make experimental
+changes and commit them, and you can discard any commits you make in this
+state without impacting any branches by switching back to a branch.
+
+If you want to create a new branch to retain commits you create, you may
+do so (now or later) by using -c with the switch command. Example:
+
+  git switch -c <new-branch-name>
+
+Or undo this operation with:
+
+  git switch -
+
+Turn off this advice by setting config variable advice.detachedHead to false
+
++ PKG_CONFIG_PATH=/home/ubuntu/opt/lib/pkgconfig
++ cmake -S libavif -B avif-build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/home/ubuntu/opt -DAVIF_CODEC_AOM=SYSTEM -DAVIF_CODEC_SVT=SYSTEM -DAVIF_CODEC_DAV1D=SYSTEM -DAVIF_BUILD_APPS=ON -DAVIF_LIBYUV=SYSTEM -DAVIF_LIBSHARPYUV=OFF -DAVIF_JPEG=SYSTEM -DAVIF_ZLIBPNG=SYSTEM -DCMAKE_PREFIX_PATH=/home/ubuntu/opt -DCMAKE_INSTALL_RPATH=/home/ubuntu/opt/lib
++ ninja -C avif-build install
++ echo 'exit 0'
++ echo 'exit 0'
++ cp /home/ubuntu/src/jxl-build/tools/ssimulacra2 /home/ubuntu/opt/bin/
++ printf '#!/bin/sh\nexport GP_ENCODERS=4\nexec %s "$@"\n' /home/ubuntu/av1gpu/build/av1gpu
++ chmod +x /home/ubuntu/w4.sh
++ tail -2 /home/ubuntu/results/setup/av1gpu.log /home/ubuntu/results/setup/jxl.log /home/ubuntu/results/setup/avif.log /home/ubuntu/results/setup/pip.log /home/ubuntu/results/setup/fetch.log
+tail: option used in invalid context -- 2
++ ls -la /home/ubuntu/opt/bin /home/ubuntu/av1gpu/build/av1gpu
+-rwxrwxr-x 1 ubuntu ubuntu 46214472 Oct 31 08:08 /home/ubuntu/av1gpu/build/av1gpu
+
+/home/ubuntu/opt/bin:
+total 1488
+drwxrwxr-x 2 ubuntu ubuntu   4096 Oct 31 08:08 .
+drwxrwxr-x 5 ubuntu ubuntu   4096 Oct 31 08:07 ..
+-rwxr-xr-x 1 ubuntu ubuntu 113864 Oct 31 08:07 SvtAv1EncApp
+-rwxr-xr-x 1 ubuntu ubuntu  95360 Oct 31 08:07 avifdec
+-rwxr-xr-x 1 ubuntu ubuntu 133192 Oct 31 08:07 avifenc
+-rwxr-xr-x 1 ubuntu ubuntu 504792 Oct 31 08:07 avifgainmaputil
+-rwxrwxr-x 1 ubuntu ubuntu 657784 Oct 31 08:08 ssimulacra2
++ echo SETUP_DONE
+SETUP_DONE

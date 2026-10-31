@@ -1,0 +1,24 @@
++ cd /home/ubuntu/av1gpu
++ P=/home/ubuntu/venv/bin/python
++ export LD_LIBRARY_PATH=/home/ubuntu/venv/lib/python3.12/site-packages/nvidia/cudnn/lib:/usr/local/cuda-13.2/lib:/usr/local/cuda-13.2/lib64:/usr/local/cuda-13.2:/usr/local/cuda-13.2/targets/x86_64-linux/lib/:/usr/local/cuda-13.2/extras/CUPTI/lib64:/opt/amazon/openmpi/lib:/usr/local/lib:/usr/lib
++ LD_LIBRARY_PATH=/home/ubuntu/venv/lib/python3.12/site-packages/nvidia/cudnn/lib:/usr/local/cuda-13.2/lib:/usr/local/cuda-13.2/lib64:/usr/local/cuda-13.2:/usr/local/cuda-13.2/targets/x86_64-linux/lib/:/usr/local/cuda-13.2/extras/CUPTI/lib64:/opt/amazon/openmpi/lib:/usr/local/lib:/usr/lib
++ ph p1_start
+++ date -u +%FT%TZ
++ echo 'PHASE p1_start 2026-10-31T06:52:24Z'
++ /home/ubuntu/venv/bin/python bench/bench.py --images /home/ubuntu/images_gamut --out /home/ubuntu/results/p1 --av1gpu /home/ubuntu/w4.sh --avifenc /home/ubuntu/opt/bin/avifenc --avifdec /home/ubuntu/opt/bin/avifdec --ssimulacra2 /home/ubuntu/opt/bin/ssimulacra2 --skip-speed --aom-speeds 6,9 --svt-presets 4,6,9 --svt-tune 3 --avifdec-codec dav1d --cvvdp standard_fhd --keep
++ /home/ubuntu/venv/bin/python /home/ubuntu/nvenc_encode.py /home/ubuntu/nv/q 18,25,32,38,44,50
+++ date -u +%FT%TZ
++ echo 'PHASE nvenc_enc_p1_done 2026-10-31T06:58:22Z'
++ echo 'bench exit 0'
++ ph p1_bench_done
+++ date -u +%FT%TZ
++ echo 'PHASE p1_bench_done 2026-10-31T07:20:45Z'
++ wait
++ /home/ubuntu/venv/bin/python /home/ubuntu/nvenc_score.py /home/ubuntu/av1gpu /home/ubuntu/nv/q /home/ubuntu/results/nvenc_p1.json standard_fhd
++ ph p1_nvenc_score_done
+++ date -u +%FT%TZ
++ echo 'PHASE p1_nvenc_score_done 2026-10-31T07:24:18Z'
++ /home/ubuntu/venv/bin/python /home/ubuntu/bytes_check.py /home/ubuntu/av1gpu /home/ubuntu/results/p1/files /home/ubuntu/nv/q /home/ubuntu/results/bytes_p1.json
++ ph p1_done
+++ date -u +%FT%TZ
++ echo 'PHASE p1_done 2026-10-31T07:24:19Z'

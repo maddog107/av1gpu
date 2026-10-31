@@ -1,0 +1,15 @@
+$ ~/venv/bin/python ~/nvenc_shift2.py 3fe04f7604431846_tiny.jpg 72496a1a66a3d206_small.jpg 037774ce28834ba2_tiny.jpg
+# PSNR (dB) of the source against the NVENC CQ18 decode, per horizontal quarter (top/../bottom), at row offset 0 (as
+# scored) and 1; the first two photos have odd heights (427, 509), the third an even one (392)
+3fe04f7604431846_tiny.jpg
+  Y: off0 40.3/42.2/39.2/42.0   off1 15.4/20.6/19.8/20.1
+  Cb: off0 26.6/28.1/27.5/32.3   off1 25.8/26.9/26.0/30.5
+  Cr: off0 25.1/28.0/28.4/30.1   off1 24.4/27.0/27.2/29.0
+72496a1a66a3d206_small.jpg
+  Y: off0 47.0/46.5/45.5/44.2   off1 21.4/21.4/20.8/20.8
+  Cb: off0 29.6/29.6/28.2/27.9   off1 29.1/29.1/27.8/27.5
+  Cr: off0 32.6/32.6/30.8/29.8   off1 32.1/32.0/30.3/29.3
+037774ce28834ba2_tiny.jpg
+  Y: off0 49.3/48.3/47.5/46.6   off1 21.8/18.1/17.3/17.2
+  Cb: off0 45.5/45.2/42.8/39.6   off1 41.7/41.1/39.4/38.3
+  Cr: off0 45.8/46.6/46.1/42.1   off1 42.9/43.8/43.7/41.0

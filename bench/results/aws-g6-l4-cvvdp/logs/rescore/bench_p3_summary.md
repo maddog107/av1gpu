@@ -1,0 +1,144 @@
+# av1gpu benchmark
+
+- GPU: NVIDIA L4, 595.112.07, 23034 MiB, 72.00 W
+- CPU: AMD EPYC 7R13 Processor (16 logical CPUs)
+- avifenc 1.4.0 (dav1d [dec]:1.4.1, aom [enc/dec]:3.13.1, svt [enc]:v4.2.0); tune=iq: yes
+- cwebp 1.3.2
+- 4 images, 25.3 MP
+
+## Compression (BD-rate on SSIMULACRA2, per image; negative = smaller files at equal quality)
+
+| Codec | vs | images | median | mean |
+|---|---|---:|---:|---:|
+| av1gpu | aom_s6 | 4 | -1.0% | -0.0% |
+| aom_s9 | aom_s6 | 4 | +14.4% | +16.2% |
+| svt_p4 | aom_s6 | 4 | -3.8% | -3.7% |
+| svt_p6 | aom_s6 | 4 | +1.1% | +2.1% |
+| svt_p9 | aom_s6 | 4 | +7.2% | +8.5% |
+| webp | aom_s6 | 3 | +85.3% | +308.5% |
+| av1gpu | webp | 3 | -46.1% | -55.0% |
+| aom_s6 | webp | 3 | -46.0% | -56.9% |
+| aom_s9 | webp | 3 | -39.5% | -51.9% |
+| svt_p4 | webp | 2 | -44.7% | -44.7% |
+| svt_p6 | webp | 2 | -41.9% | -41.9% |
+| svt_p9 | webp | 2 | -38.0% | -38.0% |
+
+## BD-rate vs libaom s6 by image size (median; images in brackets)
+
+| Codec | < 1 MP | 1-5 MP | 5-10 MP | >= 10 MP |
+|---|---:|---:|---:|---:|
+| av1gpu | — | — | -1.0% (4) | — |
+| aom_s9 | — | — | +14.4% (4) | — |
+| svt_p4 | — | — | -3.8% (4) | — |
+| svt_p6 | — | — | +1.1% (4) | — |
+| svt_p9 | — | — | +7.2% (4) | — |
+| webp | — | — | +85.3% (3) | — |
+
+## CVVDP
+
+- cvvdp 0.5.7 (parameters 0.5.7), torch 2.15.0+cu132 (CUDA 13.2) on NVIDIA L4
+- display `standard_fhd`: 24-inch FullHD monitor, peak luminance 200 cd/m^2, viewed under office light levels (250 lux), seen from 2 x display height; 1920 x 1080, 200 cd/m^2, contrast 1000:1, 250 lux, 0.6 m, 37.8 pixels per degree; EOTF sRGB
+- inputs: 8-bit sRGB (ICC profiles converted with LittleCMS, relative colorimetric), 1:1 pixel mapping
+
+## Compression (BD-rate on CVVDP JOD, per image; negative = smaller files at equal quality) (curves must share 0.05 JOD)
+
+| Codec | vs | images | median | mean |
+|---|---|---:|---:|---:|
+| av1gpu | aom_s6 | 4 | +5.8% | +5.8% |
+| aom_s9 | aom_s6 | 4 | +15.2% | +16.2% |
+| svt_p4 | aom_s6 | 4 | -1.1% | -1.4% |
+| svt_p6 | aom_s6 | 4 | +1.3% | +2.7% |
+| svt_p9 | aom_s6 | 4 | +6.7% | +8.7% |
+| webp | aom_s6 | 4 | +55.0% | +56.4% |
+| av1gpu | webp | 4 | -30.4% | -31.5% |
+| aom_s6 | webp | 4 | -35.2% | -35.3% |
+| aom_s9 | webp | 4 | -24.7% | -25.5% |
+| svt_p4 | webp | 4 | -35.3% | -35.9% |
+| svt_p6 | webp | 4 | -32.2% | -33.2% |
+| svt_p9 | webp | 4 | -28.3% | -29.3% |
+
+## BD-rate on CVVDP JOD vs libaom s6 by image size (median; images in brackets)
+
+| Codec | < 1 MP | 1-5 MP | 5-10 MP | >= 10 MP |
+|---|---:|---:|---:|---:|
+| av1gpu | — | — | +5.8% (4) | — |
+| aom_s9 | — | — | +15.2% (4) | — |
+| svt_p4 | — | — | -1.1% (4) | — |
+| svt_p6 | — | — | +1.3% (4) | — |
+| svt_p9 | — | — | +6.7% (4) | — |
+| webp | — | — | +55.0% (4) | — |
+
+## Bits per pixel to reach 9.5 JOD
+
+Interpolated per image within the tested qualities. The last column is over the 4 images that every codec reaches.
+
+| Codec | images reaching | median bpp | median bpp, common images |
+|---|---:|---:|---:|
+| av1gpu | 4/4 | 0.302 | 0.302 |
+| aom_s6 | 4/4 | 0.284 | 0.284 |
+| aom_s9 | 4/4 | 0.332 | 0.332 |
+| svt_p4 | 4/4 | 0.279 | 0.279 |
+| svt_p6 | 4/4 | 0.282 | 0.282 |
+| svt_p9 | 4/4 | 0.295 | 0.295 |
+| webp | 4/4 | 0.442 | 0.442 |
+
+## Mean scores per quality point
+
+| Codec | q | images | MB | mean SSIMULACRA2 | mean JOD | images >= 9.5 JOD |
+|---|---:|---:|---:|---:|---:|---:|
+| av1gpu | 30 | 4 | 0.18 | 43.39 | 8.693 | 0 |
+| av1gpu | 40 | 4 | 0.28 | 56.23 | 8.963 | 0 |
+| av1gpu | 50 | 4 | 0.44 | 67.02 | 9.229 | 1 |
+| av1gpu | 60 | 4 | 0.66 | 73.22 | 9.400 | 1 |
+| av1gpu | 70 | 4 | 0.98 | 78.11 | 9.552 | 2 |
+| av1gpu | 80 | 4 | 1.66 | 83.39 | 9.730 | 4 |
+| av1gpu | 85 | 4 | 2.04 | 85.25 | 9.794 | 4 |
+| av1gpu | 90 | 4 | 2.96 | 88.03 | 9.889 | 4 |
+| aom_s6 | 30 | 4 | 0.24 | 51.97 | 8.896 | 0 |
+| aom_s6 | 40 | 4 | 0.36 | 63.13 | 9.152 | 1 |
+| aom_s6 | 50 | 4 | 0.60 | 71.56 | 9.392 | 1 |
+| aom_s6 | 60 | 4 | 0.91 | 77.09 | 9.560 | 3 |
+| aom_s6 | 70 | 4 | 1.35 | 81.20 | 9.683 | 4 |
+| aom_s6 | 80 | 4 | 2.12 | 85.50 | 9.810 | 4 |
+| aom_s6 | 85 | 4 | 2.51 | 86.99 | 9.854 | 4 |
+| aom_s6 | 90 | 4 | 3.36 | 88.91 | 9.912 | 4 |
+| aom_s9 | 30 | 4 | 0.27 | 50.65 | 8.873 | 0 |
+| aom_s9 | 40 | 4 | 0.41 | 62.32 | 9.129 | 1 |
+| aom_s9 | 50 | 4 | 0.66 | 71.25 | 9.382 | 1 |
+| aom_s9 | 60 | 4 | 1.00 | 76.45 | 9.535 | 1 |
+| aom_s9 | 70 | 4 | 1.46 | 80.63 | 9.662 | 4 |
+| aom_s9 | 80 | 4 | 2.25 | 85.04 | 9.799 | 4 |
+| aom_s9 | 85 | 4 | 2.65 | 86.53 | 9.847 | 4 |
+| aom_s9 | 90 | 4 | 3.47 | 88.65 | 9.908 | 4 |
+| svt_p4 | 30 | 4 | 0.30 | 59.92 | 9.073 | 1 |
+| svt_p4 | 40 | 4 | 0.49 | 69.33 | 9.312 | 1 |
+| svt_p4 | 50 | 4 | 0.75 | 75.12 | 9.493 | 1 |
+| svt_p4 | 60 | 4 | 1.20 | 80.16 | 9.640 | 4 |
+| svt_p4 | 70 | 4 | 1.67 | 83.53 | 9.745 | 4 |
+| svt_p4 | 80 | 4 | 2.35 | 86.81 | 9.842 | 4 |
+| svt_p4 | 85 | 4 | 3.13 | 88.74 | 9.903 | 4 |
+| svt_p4 | 90 | 4 | 3.75 | 90.00 | 9.940 | 4 |
+| svt_p6 | 30 | 4 | 0.32 | 59.91 | 9.083 | 1 |
+| svt_p6 | 40 | 4 | 0.53 | 69.48 | 9.326 | 1 |
+| svt_p6 | 50 | 4 | 0.79 | 75.26 | 9.506 | 1 |
+| svt_p6 | 60 | 4 | 1.24 | 80.18 | 9.643 | 4 |
+| svt_p6 | 70 | 4 | 1.71 | 83.46 | 9.747 | 4 |
+| svt_p6 | 80 | 4 | 2.39 | 86.55 | 9.838 | 4 |
+| svt_p6 | 85 | 4 | 3.15 | 88.52 | 9.899 | 4 |
+| svt_p6 | 90 | 4 | 3.75 | 89.79 | 9.938 | 4 |
+| svt_p9 | 30 | 4 | 0.35 | 60.60 | 9.095 | 1 |
+| svt_p9 | 40 | 4 | 0.57 | 69.73 | 9.338 | 1 |
+| svt_p9 | 50 | 4 | 0.84 | 75.40 | 9.516 | 1 |
+| svt_p9 | 60 | 4 | 1.26 | 79.54 | 9.628 | 4 |
+| svt_p9 | 70 | 4 | 1.73 | 82.97 | 9.730 | 4 |
+| svt_p9 | 80 | 4 | 2.43 | 86.24 | 9.830 | 4 |
+| svt_p9 | 85 | 4 | 3.17 | 88.37 | 9.893 | 4 |
+| svt_p9 | 90 | 4 | 3.81 | 89.75 | 9.936 | 4 |
+| webp | 50 | 4 | 0.50 | 47.61 | 9.038 | 0 |
+| webp | 60 | 4 | 0.57 | 50.22 | 9.121 | 1 |
+| webp | 70 | 4 | 0.67 | 52.92 | 9.206 | 1 |
+| webp | 80 | 4 | 0.98 | 57.91 | 9.400 | 1 |
+| webp | 90 | 4 | 2.11 | 64.88 | 9.714 | 4 |
+| webp | 95 | 4 | 3.82 | 68.04 | 9.879 | 4 |
+| webp | 98 | 4 | 4.93 | 68.83 | 9.918 | 4 |
+| webp | 100 | 4 | 5.36 | 69.16 | 9.930 | 4 |
