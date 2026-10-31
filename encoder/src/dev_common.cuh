@@ -1,6 +1,7 @@
 // device-side tables and helpers (included once, by kernels.cu).
 #pragma once
 #include <cuda_runtime.h>
+#include <stdio.h>
 #include <stdint.h>
 #include "av1g/hd.h"
 #include "av1g/enums_gen.h"
@@ -48,7 +49,22 @@ static __device__ float g_avgYMode[13];
 static __device__ float g_avgPart[5][10];   // [bsl 1..4][partition]
 static __device__ float g_avgSkip0;         // skip = 0, averaged over contexts
 
+#if defined(__clang__)
+// Clang's GlobalOpt marks never-stored internal __device__ arrays constant, and NVPTX
+// then emits them as .const (~150 KB of g_fwd+g_fwdT+g_cost vs a 64 KB hardware cap).
+// A live device store keeps them in .global, matching nvcc.
+#define GP_KEEP_DEVICE_TABLES_GLOBAL(name)                                                        \
+    __global__ void __attribute__((used)) name##_keep_global(int i, float v) {                    \
+        g_fwd[i] = v;                                                                             \
+        g_fwdT[i] = v;                                                                            \
+        g_cost[0][i] = v;                                                                         \
+    }
+#else
+#define GP_KEEP_DEVICE_TABLES_GLOBAL(name)
+#endif
+
 #define GP_DEFINE_TABLE_UPLOAD(name)                                                              \
+    GP_KEEP_DEVICE_TABLES_GLOBAL(name)                                                            \
     int name(const GpHostTables *h) {                                                             \
         cudaError_t e = cudaSuccess;                                                              \
         if (e == cudaSuccess) e = cudaMemcpyToSymbol(g_fwd, h->fwd, sizeof h->fwd);               \
@@ -60,6 +76,7 @@ static __device__ float g_avgSkip0;         // skip = 0, averaged over contexts
         if (e == cudaSuccess) e = cudaMemcpyToSymbol(g_avgYMode, h->avgYMode, sizeof h->avgYMode); \
         if (e == cudaSuccess) e = cudaMemcpyToSymbol(g_avgPart, h->avgPart, sizeof h->avgPart);   \
         if (e == cudaSuccess) e = cudaMemcpyToSymbol(g_avgSkip0, &h->avgSkip0, sizeof h->avgSkip0); \
+        if (e != cudaSuccess) fprintf(stderr, "%s: %s\n", #name, cudaGetErrorString(e));           \
         return e == cudaSuccess ? 0 : -1;                                                         \
     }
 
