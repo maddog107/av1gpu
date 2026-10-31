@@ -1,7 +1,9 @@
 // gpu_postfilter_test - GPU deblocking + CDEF (av1g/gpu_postfilter.h) against the decoder.
 //
-//   gpu_postfilter_test --seed S --count N            random records (fuzzer generator, ~half
-//                                                     with deblocking and/or CDEF): GPU output
+//   gpu_postfilter_test --seed S --count N [--yuv444 P]
+//                                                     random records (fuzzer generator, ~half
+//                                                     with deblocking and/or CDEF, P % of the
+//                                                     colour cases 4:4:4): GPU output
 //                                                     == dav1d output frame, and == the CPU
 //                                                     av1g_postfilter on the padded area
 //   gpu_postfilter_test --obu F.obu --yuv F.yuv [--iters K]
@@ -84,12 +86,13 @@ static void gpu_postfilter(const av1g_decision_record &rec, const av1g_output &p
     cudaFree(dScratch);
 }
 
-// cropped GPU planes vs a decoder's I420 frame
+// cropped GPU planes vs a decoder's I420 / I444 frame
 static bool cmp_cropped(const GpuRun &g, const av1g_decision_record &rec, const std::vector<uint8_t> &yuv, std::string &why) {
     const int W = (int)rec.fp.width, H = (int)rec.fp.height, np = rec.fp.monochrome ? 1 : 3;
+    const int ssx = av1g_ssx(&rec.fp), ssy = av1g_ssy(&rec.fp);
     size_t off = 0;
     for (int p = 0; p < np; p++) {
-        const int w = p ? (W + 1) >> 1 : W, h = p ? (H + 1) >> 1 : H;
+        const int w = p ? (W + ssx) >> ssx : W, h = p ? (H + ssy) >> ssy : H;
         for (int y = 0; y < h; y++) {
             if (off + (size_t)(y + 1) * w > yuv.size()) { why = "decoder frame too small"; return false; }
             const uint8_t *a = g.out[p].data() + (size_t)y * g.w[p], *b = yuv.data() + off + (size_t)y * w;
@@ -109,7 +112,7 @@ static bool cmp_cropped(const GpuRun &g, const av1g_decision_record &rec, const 
 
 int main(int argc, char **argv) {
     uint64_t seed = 1;
-    int count = 100, iters = 1;
+    int count = 100, iters = 1, pct444 = 40;
     std::string obuPath, yuvPath, tmp = default_out_dir("av1g_gpu_pf");
     for (int i = 1; i < argc; i++) {
         std::string a = argv[i];
@@ -119,6 +122,7 @@ int main(int argc, char **argv) {
         else if (a == "--obu") obuPath = nx();
         else if (a == "--yuv") yuvPath = nx();
         else if (a == "--iters") iters = atoi(nx().c_str());
+        else if (a == "--yuv444") pct444 = atoi(nx().c_str());
         else { fprintf(stderr, "unknown arg %s\n", a.c_str()); return 2; }
     }
     if (!obuPath.empty()) {  // ---- real stream ----
@@ -144,13 +148,17 @@ int main(int argc, char **argv) {
         return ok ? 0 : 1;
     }
     mkdir(tmp.c_str(), 0755);
-    int bad = 0, withPf = 0;
+    int bad = 0, withPf = 0, n444 = 0, pf444 = 0;
     for (int ci = 0; ci < count; ci++) {
         const uint64_t cs = seed + ci;
         FuzzCase fc;
-        if (!make_case(cs, false, 300, 2, fc)) return 1;
+        if (!make_case(cs, false, 300, 2, fc, pct444)) return 1;
         av1g_decision_record &rec = fc.rec;
-        withPf += rec.fp.loop_filter_level[0] || rec.fp.loop_filter_level[1] || rec.fp.enable_cdef;
+        const bool pf = rec.fp.loop_filter_level[0] || rec.fp.loop_filter_level[1] || rec.fp.enable_cdef;
+        const bool is444 = rec.fp.chroma_format == AV1G_CHROMA_444;
+        withPf += pf;
+        n444 += is444;
+        pf444 += pf && is444;
         av1g_encode_opts e1 = {AV1G_ENC_FIX_RANGE | AV1G_ENC_TD, -1};
         av1g_output o;
         if (av1g_encode(&rec, &e1, &o) != AV1G_OK) { printf("seed %llu: encode error %s\n", (unsigned long long)cs, o.error); bad++; continue; }
@@ -181,14 +189,15 @@ int main(int argc, char **argv) {
         }
         if (!ok) {
             bad++;
-            printf("seed %llu %ux%u lf=%d/%d/%d/%d cdef=%d: MISMATCH %s\n", (unsigned long long)cs, rec.fp.width, rec.fp.height,
+            printf("seed %llu %ux%u%s lf=%d/%d/%d/%d cdef=%d: MISMATCH %s\n", (unsigned long long)cs, rec.fp.width, rec.fp.height,
+                   is444 ? " 444" : rec.fp.monochrome ? " mono" : "",
                    rec.fp.loop_filter_level[0], rec.fp.loop_filter_level[1], rec.fp.loop_filter_level[2], rec.fp.loop_filter_level[3],
                    rec.fp.enable_cdef, why.c_str());
         }
         av1g_output_free(&o);
         av1g_output_free(&pre);
     }
-    printf("GPU POSTFILTER seeds %llu..%llu: %d cases (%d with deblocking/CDEF), %d mismatches -> %s\n", (unsigned long long)seed,
-           (unsigned long long)(seed + count - 1), count, withPf, bad, bad ? "FAILED" : "PASSED");
+    printf("GPU POSTFILTER seeds %llu..%llu: %d cases (%d with deblocking/CDEF; 4:4:4: %d, %d with deblocking/CDEF), %d mismatches -> %s\n",
+           (unsigned long long)seed, (unsigned long long)(seed + count - 1), count, withPf, n444, pf444, bad, bad ? "FAILED" : "PASSED");
     return bad ? 1 : 0;
 }

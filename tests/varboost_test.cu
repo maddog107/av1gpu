@@ -2,6 +2,9 @@
 //  1. LUT: device double math == host for every base 1..255 and variance 0..1023
 //  2. random planes (smooth / noisy / flat mixes), random sizes and tilings, all three rounding
 //     orders: GPU sb_var / sb_target / sb_qindex == host loops
+//  3. tune=iq frame decisions (av1f_tuneiq_frame_init) for 4:2:0, 4:4:4 and monochrome, every base qindex:
+//     device == host, and the chroma delta-q / QM levels == libaom v3.13.1 av1_set_quantizer() as
+//     transcribed below (4:4:4: chroma AC delta-q +clamp(q/2, 0, 24), DC 0, aom_get_qmlevel_444_chroma)
 // (libaom equivalence of the model itself is shown by py/validate_tuneiq.py on real encodes, and
 //  py/check_varboost_gpu.py runs this kernel on the dev images against the Python model.)
 #include <cstdio>
@@ -14,6 +17,34 @@
 extern "C" int av1f_vb_build_luts_device(uint8_t *d_luts, int strength, cudaStream_t s);
 
 static uint64_t rng = 0x9E3779B97F4A7C15ull;
+
+__global__ void k_tuneiq(int ss, int mono, av1f_tuneiq_frame *out) {
+    const int b = blockIdx.x * blockDim.x + threadIdx.x;
+    if (b < 256) av1f_tuneiq_frame_init(b, ss, ss, mono, &out[b]);
+}
+// libaom v3.13.1 (av1/encoder/av1_quantize.c av1_set_quantizer, all-intra, tune=iq, enable_chroma_deltaq = 1;
+// av1/common/quant_common.h aom_get_qmlevel_allintra / aom_get_qmlevel_444_chroma), written out independently
+static int ref_clamp(int v, int lo, int hi) { return v < lo ? lo : v > hi ? hi : v; }
+static int ref_qm_allintra(int q) {
+    const int l = q <= 40 ? 10 : q <= 100 ? 9 : q <= 160 ? 8 : q <= 200 ? 7 : q <= 220 ? 6 : q <= 240 ? 5 : 4;
+    return ref_clamp(l, 2, 10);
+}
+static int ref_qm_444_chroma(int q) {
+    int l;
+    if (q <= 12) l = 10; else if (q <= 24) l = 9; else if (q <= 32) l = 8; else if (q <= 36) l = 7; else if (q <= 44) l = 6;
+    else if (q <= 48) l = 5; else if (q <= 56) l = 4; else if (q <= 88) l = 3; else l = 2;
+    return ref_clamp(l, 2, 10);
+}
+static void ref_set_quantizer(int base, bool is444, int *udc, int *uac, int *qmy, int *qmu) {
+    int dc = 0, ac = 0;
+    if (base) {
+        if (!is444) dc = ac = -ref_clamp(base / 2 - 14, 0, 16);   // 4:2:0
+        else ac = ref_clamp(base / 2, 0, 24);                     // 4:4:4 (DC stays 0)
+    }
+    *udc = dc; *uac = ac;
+    *qmy = ref_qm_allintra(base);
+    *qmu = is444 ? ref_qm_444_chroma(base + ac) : ref_qm_allintra(base + ac);
+}
 static uint32_t rnd() { rng ^= rng << 13; rng ^= rng >> 7; rng ^= rng << 17; return (uint32_t)rng; }
 
 int main() {
@@ -127,7 +158,35 @@ int main() {
         }
     }
     printf("random planes: %ld SB results (3 orders), %ld boosted (TILE order), %ld differ\n", nsbTot, boosted, bad);
-    const bool ok = !lutBad && !bad;
+
+    // ---- 3. tune=iq frame decisions per chroma layout
+    long tiqBad = 0, tiqDev = 0;
+    av1f_tuneiq_frame *dt;
+    cudaMalloc(&dt, 256 * sizeof(av1f_tuneiq_frame));
+    for (int layout = 0; layout < 3; layout++) {   // 0: 4:2:0, 1: 4:4:4, 2: monochrome
+        const int ss = layout == 1 ? 0 : 1, mono = layout == 2;
+        k_tuneiq<<<1, 256>>>(ss, mono, dt);
+        std::vector<av1f_tuneiq_frame> g(256);
+        cudaMemcpy(g.data(), dt, 256 * sizeof(av1f_tuneiq_frame), cudaMemcpyDeviceToHost);
+        for (int b = 1; b < 256; b++) {
+            av1f_tuneiq_frame h;
+            av1f_tuneiq_frame_init(b, ss, ss, mono, &h);
+            tiqDev += memcmp(&h, &g[b], sizeof h) != 0;
+            int udc, uac, qmy, qmu;
+            ref_set_quantizer(b, layout == 1, &udc, &uac, &qmy, &qmu);
+            if (mono) udc = uac = 0;   // chroma delta-q is not coded for monochrome
+            const bool okq = h.dq_u_dc == udc && h.dq_v_dc == udc && h.dq_u_ac == uac && h.dq_v_ac == uac && h.qm_y == qmy &&
+                             (mono || (h.qm_u == qmu && h.qm_v == qmu));
+            if (!okq && tiqBad < 4)
+                printf("  tune=iq layout %d base %d: dq %d/%d qm %d/%d vs libaom dq %d/%d qm %d/%d\n", layout, b, h.dq_u_dc, h.dq_u_ac,
+                       h.qm_y, h.qm_u, udc, uac, qmy, qmu);
+            tiqBad += !okq;
+        }
+    }
+    cudaFree(dt);
+    printf("tune=iq frame decisions (4:2:0, 4:4:4, monochrome x 255 bases): %ld differ from libaom av1_set_quantizer, %ld device/host differ\n",
+           tiqBad, tiqDev);
+    const bool ok = !lutBad && !bad && !tiqBad && !tiqDev;
     printf("%s\n", ok ? "PASS" : "FAIL");
     return ok ? 0 : 1;
 }

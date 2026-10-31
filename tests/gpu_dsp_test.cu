@@ -3,7 +3,7 @@
 // host results for random inputs:
 //   1. dequant + 2-D inverse transform (all 19 sizes x 16 types) + conformance flags
 //   2. intra prediction (13 modes x angle deltas, all tx sizes, random edges/availability)
-//   3. CFL
+//   3. CFL (4:2:0 and 4:4:4 luma sampling, incl. clamping at MaxLumaW / MaxLumaH)
 //   4. od_ec range coder + CDF adaptation (one thread per stream; M4 building block)
 // Small memory footprint (< 64 MB).  Not a benchmark.
 #include <cstdio>
@@ -36,7 +36,8 @@ __global__ void k_itx(const ItxCase *cs, const int16_t *q, int32_t *res, uint32_
 }
 
 // ---------------- 2./3. prediction + CFL ----------------
-struct PredCase { int mode, delta, log2W, log2H, haveLeft, haveAbove, haveAR, haveBL, x, y, maxX, maxY, cfl, alpha, edgeFilter, filterType, fiMode; };
+struct PredCase { int mode, delta, log2W, log2H, haveLeft, haveAbove, haveAR, haveBL, x, y, maxX, maxY, cfl, alpha, edgeFilter, filterType, fiMode;
+                  int ss, lumaCutW, lumaCutH; };   // CfL: subsampling (1: 4:2:0, 0: 4:4:4), MaxLumaW/H reduction in 4-sample units
 #define PW 160
 __host__ __device__ void pred_case(const PredCase &c, const uint8_t *plane, const uint8_t *luma, uint8_t *out) {
     uint8_t ea[AV1G_EDGE_LEN], el[AV1G_EDGE_LEN];
@@ -50,7 +51,8 @@ __host__ __device__ void pred_case(const PredCase &c, const uint8_t *plane, cons
         int txSz = -1;
         for (int t = 0; t < 19; t++)
             if (AV1G_T(Tx_Width_Log2)[t] == c.log2W && AV1G_T(Tx_Height_Log2)[t] == c.log2H) txSz = t;
-        av1g_cfl_predict(out, PW, luma, 2 * PW, c.x, c.y, txSz, 1, 1, 2 * (c.x + (1 << c.log2W)), 2 * (c.y + (1 << c.log2H)), c.alpha);
+        const int maxLumaW = ((c.x + (1 << c.log2W)) << c.ss) - 4 * c.lumaCutW, maxLumaH = ((c.y + (1 << c.log2H)) << c.ss) - 4 * c.lumaCutH;
+        av1g_cfl_predict(out, PW, luma, 2 * PW, c.x, c.y, txSz, c.ss, c.ss, maxLumaW, maxLumaH, c.alpha);
     }
 }
 __global__ void k_pred(const PredCase *cs, const uint8_t *plane, const uint8_t *luma, uint8_t *out, int n) {
@@ -140,7 +142,7 @@ int main() {
         std::vector<uint8_t> planes((size_t)n * PW * PW), luma((size_t)4 * PW * PW);
         for (auto &v : planes) v = (uint8_t)rnd();
         for (auto &v : luma) v = (uint8_t)rnd();
-        int ncfl = 0;
+        int ncfl = 0, ncfl444 = 0;
         for (int i = 0; i < n; i++) {
             PredCase &c = cs[i];
             int t = rnd() % 19;
@@ -159,7 +161,15 @@ int main() {
             c.filterType = rnd() & 1;
             c.fiMode = (c.mode == AV1G_DC_PRED && c.log2W <= 5 && c.log2H <= 5 && (rnd() & 1)) ? (int)(rnd() % 5) : -1;
             c.cfl = (c.log2W <= 5 && c.log2H <= 5 && (rnd() % 3 == 0)) ? 1 : 0;
-            if (c.cfl) { c.mode = AV1G_DC_PRED; c.delta = 0; c.alpha = (int)(rnd() % 33) - 16; c.fiMode = -1; ncfl++; }
+            c.ss = 1; c.lumaCutW = c.lumaCutH = 0;
+            if (c.cfl) {
+                c.mode = AV1G_DC_PRED; c.delta = 0; c.alpha = (int)(rnd() % 33) - 16; c.fiMode = -1; ncfl++;
+                c.ss = (int)(rnd() & 1);
+                ncfl444 += !c.ss;
+                // MaxLumaW/H can end before the chroma block (the last luma tx block lies outside the frame)
+                if (rnd() % 3 == 0) c.lumaCutW = (int)(rnd() % (((1 << c.log2W) << c.ss) / 4));
+                if (rnd() % 3 == 0) c.lumaCutH = (int)(rnd() % (((1 << c.log2H) << c.ss) / 4));
+            }
         }
         std::vector<uint8_t> hout(planes.size()), dout(planes.size());
         for (int i = 0; i < n; i++) pred_case(cs[i], &planes[(size_t)i * PW * PW], luma.data(), &hout[(size_t)i * PW * PW]);
@@ -174,7 +184,8 @@ int main() {
         CK(cudaMemcpy(dout.data(), dout_, planes.size(), cudaMemcpyDeviceToHost));
         int bad = 0;
         for (int i = 0; i < n; i++) bad += memcmp(&hout[(size_t)i * PW * PW], &dout[(size_t)i * PW * PW], PW * PW) != 0;
-        printf("2/3. intra prediction (incl. edge filter/upsampling, filter intra) + CFL: %d cases (%d CFL), %d host/device mismatches\n", n, ncfl, bad);
+        printf("2/3. intra prediction (incl. edge filter/upsampling, filter intra) + CFL: %d cases (%d CFL, %d of them 4:4:4), %d host/device mismatches\n",
+               n, ncfl, ncfl444, bad);
         failures += bad;
         cudaFree(dcs); cudaFree(dp); cudaFree(dl); cudaFree(dout_);
     }
