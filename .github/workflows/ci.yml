@@ -30,5 +30,7 @@ jobs:
           DEBIAN_FRONTEND=noninteractive apt-get install -y cmake ninja-build pkg-config g++ \
             libjpeg-turbo8-dev libpng-dev libwebp-dev
       - run: cmake -S . -B build -G Ninja -DCMAKE_CUDA_ARCHITECTURES="75;120"
-      - run: cmake --build build -j 2    # k_recon.cu needs about 4 GB per compile; -j 4 ran out of memory
+      # -j 1: one k_recon translation unit (with CUDA 12.8, at 10 bits) and any other CUDA compile beside it
+      # ran the 16 GB runner out of memory
+      - run: cmake --build build -j 1
       - run: build/av1gpu --help
