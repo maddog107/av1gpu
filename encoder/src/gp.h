@@ -163,4 +163,20 @@ struct GpBatch {
     int any420, any444;        // the batch has 4:2:0 / 4:4:4 colour frames (chroma kernels per layout)
 };
 
+// Lossless analysis (k_lossless.cu): per-plane 4x4 cost tables (uint16, 1/16 bit, position-major:
+// cost[p][costOff[img][p] + pos * NE_p + entry], pos = y4 * (MiCols >> ssx) + x4).
+#define LL_NCAND_Y 66    // 61 (mode, angle delta) candidates + 5 filter-intra modes
+#define LL_NCAND_UV 61
+#define LL_NE_Y 93       // cost entries: candidates x the above-right / below-left availabilities they depend on
+#define LL_NE_UV 88
+struct GpLossless {
+    uint16_t *cost[3];
+    const uint64_t (*costOff)[3];   // [nimg][3] (device)
+    const uint64_t *segStart;       // [nSeg + 1] first k_ll_cost thread of each (image, plane) segment, 3 per image
+    int nSeg;
+    uint64_t hostTotal;             // segStart[nSeg]
+    float lambdaScale;              // J = bits * gp_lambda(0, 1) * lambdaScale (k_dp's lambda units)
+    int cfl;                        // try CfL (4x4 chroma blocks)
+};
+
 #endif

@@ -44,4 +44,11 @@ void gp_launch_pack(const GpBatch &B, const GpPackOff *dOff, av1g_block *oB, uin
 void gp_launch_set_cdef(av1g_block *blocks, uint32_t nB, const uint32_t *blockFrame, const uint32_t *frameSbBase,
                         const int *frameSbCols, const int *cdefOn, const int8_t *sbCdef, cudaStream_t st);
 
+// lossless (GpConfig::lossless, k_lossless.cu): cost tables + per-shape J (then gp_launch_dp), and the per-SB
+// decisions + levels (no wavefront: the reconstruction is the source).  edgeFilter: enable_intra_edge_filter,
+// fiOn: enable_filter_intra.
+void gp_launch_ll_analysis(const GpBatch &B, const GpLossless &L, const uint32_t *shTotal, int edgeFilter, int fiOn, cudaStream_t st,
+                           int bd);
+void gp_launch_ll_recon(const GpBatch &B, const GpLossless &L, int edgeFilter, int fiOn, cudaStream_t st, int bd);
+
 #endif

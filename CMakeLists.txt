@@ -96,7 +96,7 @@ target_link_libraries(gpujpegingest PUBLIC CUDA::cudart_static ${AV1GPU_NVJPEG} 
 # encoder: analysis, partition DP, wavefront reconstruction, batching
 add_library(av1gpu_encoder STATIC
   encoder/src/k_misc.cu encoder/src/k_an_a.cu encoder/src/k_an_b.cu encoder/src/k_an_c.cu encoder/src/k_an_d.cu
-  encoder/src/k_an_uv.cu encoder/src/k_recon.cu encoder/src/pipeline.cpp encoder/src/imageio.cpp
+  encoder/src/k_an_uv.cu encoder/src/k_recon.cu encoder/src/k_lossless.cu encoder/src/pipeline.cpp encoder/src/imageio.cpp
   encoder/src/entropy_gpu.cpp encoder/src/entropy_dev.cu encoder/src/batch.cpp)
 target_include_directories(av1gpu_encoder PUBLIC encoder/src)
 target_compile_options(av1gpu_encoder PRIVATE
