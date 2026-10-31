@@ -84,7 +84,9 @@ typedef struct ingest_config {
   int decoder;            /* 0 (default) auto: baseline JPEGs -> nvJPEG on the GPU's hardware JPEG engine
                              (NVJPG), everything else -> CPU entropy decode + GPU IDCT; 1: CPU path only */
   int hw_batch;           /* max images per nvJPEG hardware call (default 32) */
-  int out_444;            /* 0 (default): 4:2:0 output; 1: full-resolution chroma (4:4:4 output) */
+  int out_444;            /* 0 (default): 4:2:0 output; 1: full-resolution chroma (4:4:4 output); 2: the source's
+                             format: 4:4:4 JPEGs full-resolution chroma, the rest 4:2:0 (4:2:0 JPEGs: the native
+                             chroma samples exactly, plus edge replication; lossless encoding) */
   int64_t pinned_bytes;   /* pinned staging arena (default 512 MiB) */
   int64_t batch_pixels;   /* luma pixels per batch, small/regular classes (default 16e6) */
   double max_mp;          /* fallback above this (default 35.6) */

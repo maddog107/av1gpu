@@ -30,6 +30,19 @@ struct GpHostPlanes {
 };
 bool gp_decode_cpu(const std::string &path, GpHostPlanes &out, std::string &err, bool yuv444 = false, int bitDepth = 8);
 
+// Lossless input (av1gpu --lossless): the PNG / WebP samples themselves, no colour conversion, gamma or chroma
+// downsampling, padded to multiples of 64 by edge replication.
+//   RGB (PNG RGB / palette, WebP): 4:4:4 planes, identity / GBR (Y = G, U = B, V = R; CICP matrix 0) at the source
+//     depth, or with ycgco YCgCo-Re (matrix 16, libavif 1.4 / H.273 formulas: Co = R - B, t = B + (Co >> 1),
+//     Cg = G - t, Y = t + (Cg >> 1); U = Cg + 512, V = Co + 512) in 10 bits from 8-bit RGB.
+//   gray (PNG gray): monochrome Y = gray (matrix left at the default).
+//   16-bit PNG samples are accepted when they hold 8 bits (every sample = 257 v: coded 8-bit) or 10 bits (every
+//     sample = libavif's 10 -> 16-bit expansion (uint16)(0.5f + v / 1023.0f * 65535.0f), as avifdec writes it:
+//     coded 10-bit); anything else cannot be represented losslessly (AV1 here: 8 or 10 bits) and is rejected.
+// An alpha channel is ignored (not coded; a note is returned).  *matrix receives the CICP matrix to signal (0, 16 or
+// -1 for the default), *note a human-readable remark (may be empty).
+bool gp_decode_lossless(const std::string &path, GpHostPlanes &out, bool ycgco, int *matrix, std::string &note, std::string &err);
+
 bool gp_read_file(const std::string &path, std::vector<uint8_t> &data);
 bool gp_write_file(const std::string &path, const uint8_t *d, size_t n);
 

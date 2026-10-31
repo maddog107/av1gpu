@@ -87,6 +87,18 @@ static bool gp_write_debug(const std::string &avifPath, const GpFrameOut &o, con
     return gp_write_file(avifPath + ".recon.yuv", yuv.data(), yuv.size()) && gp_write_file(avifPath + ".obu", td.data(), td.size());
 }
 
+const char *gp_jpeg_sub_name(int s) {
+    switch (s) {
+        case INGEST_SUB_420: return "4:2:0";
+        case INGEST_SUB_444: return "4:4:4";
+        case INGEST_SUB_422: return "4:2:2";
+        case INGEST_SUB_440: return "4:4:0";
+        case INGEST_SUB_411: return "4:1:1";
+        case INGEST_SUB_GRAY: return "gray";
+        default: return "non-standard sampling";
+    }
+}
+
 const char *gp_fallback_reason(int r) {
     switch (r) {
         case INGEST_FB_READ_ERROR: return "read error";
@@ -124,7 +136,7 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
     ic.pinned_bytes = 256ll << 20;
     if (getenv("GP_INGEST_DECODER")) ic.decoder = atoi(getenv("GP_INGEST_DECODER"));   // 1 = CPU entropy decode + GPU IDCT (no nvJPEG/NVJPG)
     if (getenv("GP_INGEST_HWBATCH")) ic.hw_batch = atoi(getenv("GP_INGEST_HWBATCH"));
-    ic.out_444 = cfg.yuv444;   // --yuv 444: full-resolution chroma planes
+    ic.out_444 = cfg.lossless ? 2 : cfg.yuv444;   // --yuv 444: full-resolution chroma planes; --lossless: the JPEG's own format
     char eb[256] = {0};
     const double t0 = now_ms(), c0 = cpu_ms();
     ingest_ctx *ictx = ingest_create(&ic, eb, sizeof eb);
@@ -313,8 +325,11 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
                     continue;
                 }
                 GpHostPlanes hp;
-                std::string e2;
-                if (!gp_decode_cpu(p, hp, e2, cfg.yuv444, cfg.depth) || (double)hp.W * hp.H > 35.6e6) {
+                std::string e2, note;
+                int matrix = -1;
+                const bool dec = cfg.lossless ? gp_decode_lossless(p, hp, cfg.ycgcoRe, &matrix, note, e2) : gp_decode_cpu(p, hp, e2, cfg.yuv444, cfg.depth);
+                if (dec && !note.empty()) fprintf(stderr, "[av1gpu] %s: %s\n", p.c_str(), note.c_str());
+                if (!dec || (double)hp.W * hp.H > 35.6e6) {
                     fprintf(stderr, "[av1gpu] skipped %s: %s\n", p.c_str(), e2.empty() ? "larger than 35.6 megapixels" : e2.c_str());
                     cpuFallbackA++;
                     continue;
@@ -330,6 +345,7 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
                 F.d = d;
                 F.name = base_name(p);
                 F.f.W = hp.W; F.f.H = hp.H; F.f.aw = hp.aw; F.f.ah = hp.ah; F.f.yuv444 = hp.yuv444; F.f.bitDepth = hp.bitDepth;
+                F.f.mono = hp.mono; F.f.colorMatrix = matrix;
                 F.f.dsrc[0] = d; F.f.dsrc[1] = d + ys; F.f.dsrc[2] = d + ys + cs;
                 F.f.spitch[0] = hp.aw; F.f.spitch[1] = F.f.spitch[2] = hp.cw();
                 std::lock_guard<std::mutex> lk(fbMu);
@@ -378,6 +394,12 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
                     held.push_back(b);
                     for (int i = 0; i < b.n_images; i++) {
                         const ingest_image &im = b.images[i];
+                        if (cfg.lossless && im.src_sub != INGEST_SUB_420 && im.src_sub != INGEST_SUB_444 && im.src_sub != INGEST_SUB_GRAY) {
+                            fprintf(stderr, "[av1gpu] skipped %s: --lossless keeps a JPEG's YCbCr planes, AV1 can only do that for 4:2:0, "
+                                            "4:4:4 and gray JPEGs (this one is %s)\n", paths[im.index].c_str(), gp_jpeg_sub_name(im.src_sub));
+                            cpuFallbackA++;
+                            continue;
+                        }
                         GpFrameIn f;
                         f.W = im.width; f.H = im.height; f.mono = im.mono; f.aw = im.aw; f.ah = im.ah; f.yuv444 = im.chroma_full;
                         f.dsrc[0] = b.pool + im.y_off; f.spitch[0] = im.y_pitch;
@@ -390,7 +412,7 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
                     }
                 }
             }
-            if (!fin.empty() && cfg.depth == 10) {
+            if (!fin.empty() && cfg.depth == 10 && !cfg.lossless) {
                 // --depth 10: ingest frames (8-bit JPEG samples) -> 10-bit planes; freed with the fallback planes
                 uint8_t *cb = nullptr;
                 if (gp_frames_to_10bit(fin, s, &cb, eerr)) { fprintf(stderr, "10-bit conversion: %s\n", eerr.c_str()); encFail++; delete job; return; }
@@ -413,8 +435,35 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
             }
             GpTimes tm;
             const double ts = now_ms();
+            // lossless batches may mix 8- and 10-bit frames (16-bit PNGs, --ycgco-re): the 10-bit ones get their own encode
+            if (cfg.lossless && std::any_of(fin.begin(), fin.end(), [](const GpFrameIn &f) { return f.bitDepth == 10; }) &&
+                std::any_of(fin.begin(), fin.end(), [](const GpFrameIn &f) { return f.bitDepth != 10; })) {
+                Job *jd = new Job;
+                std::vector<GpFrameIn> f10, f8;
+                std::vector<std::vector<uint8_t>> i8;
+                std::vector<int> o8;
+                std::vector<std::string> n8;
+                for (size_t i = 0; i < fin.size(); i++) {
+                    if (fin[i].bitDepth == 10) {
+                        f10.push_back(fin[i]); jd->iccs.push_back(job->iccs[i]); jd->orients.push_back(job->orients[i]); jd->names.push_back(job->names[i]);
+                    } else {
+                        f8.push_back(fin[i]); i8.push_back(job->iccs[i]); o8.push_back(job->orients[i]); n8.push_back(job->names[i]);
+                    }
+                }
+                GpTimes t10;
+                if (E->encode(f10, jd->outs, t10, eerr, s, gpuEntropy ? &jd->dev : nullptr)) { fprintf(stderr, "encode: %s\n", eerr.c_str()); encFail++; delete jd; delete job; return; }
+                {
+                    std::lock_guard<std::mutex> lk2(aggMu);
+                    A.analysis += t10.analysis; A.recon += t10.recon; A.gpuTotal += t10.total; A.blocks += t10.blocks;
+                    A.peakDev = std::max(A.peakDev, t10.deviceBytes);
+                    A.images += f10.size();
+                    for (auto &f : f10) A.pixels += (uint64_t)f.W * f.H;
+                }
+                push(jd);
+                fin.swap(f8); job->iccs.swap(i8); job->orients.swap(o8); job->names.swap(n8);
+            }
             // size-adaptive effort: small images go to a second encoder with cfg.Psmall (own job)
-            if (Es) {
+            if (Es && !cfg.lossless) {
                 std::vector<int> sm;
                 for (size_t i = 0; i < fin.size(); i++)
                     if ((double)fin[i].W * fin[i].H < bcfg.smallMp * 1e6) sm.push_back((int)i);

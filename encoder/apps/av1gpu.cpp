@@ -32,7 +32,7 @@ static void usage() {
             "       av1gpu --batch LIST|DIR --outdir DIR [options]\n"
             "\n"
             "Input: JPEG (GPU decode), PNG (8 or 16 bits per sample) or WebP (CPU decode).  Output: 8-bit 4:2:0\n"
-            "(or monochrome) AVIF, 4:4:4 with --yuv 444, 10-bit with --depth 10.\n"
+            "(or monochrome) AVIF, 4:4:4 with --yuv 444, 10-bit with --depth 10, mathematically lossless with --lossless.\n"
             "Defaults: --quality 60 --tune iq --edge-filter --preset turbo --small-preset base --gpu-entropy\n"
             "\n"
             "common options:\n"
@@ -49,6 +49,19 @@ static void usage() {
             "                          --yuv 444); 16-bit PNGs are converted to YCbCr at full precision and rounded to 10 bits,\n"
             "                          8-bit sources (JPEG, PNG, WebP) are rescaled to 10 bits like libavif does for 8-bit\n"
             "                          input (full range: Y * 1023 / 255, chroma (C - 128) * 1023 / 255 + 512)\n"
+            "  --lossless              lossless AVIF (AV1 lossless: qindex 0, 4x4 Walsh-Hadamard, no post-filters); the\n"
+            "                          quality / preset / tune options do not apply.  PNG / WebP (RGB): identity / GBR 4:4:4\n"
+            "                          (CICP matrix 0, as avifenc -l) at the source depth: 8 bits, or 10 bits for 16-bit\n"
+            "                          PNGs that hold 10 significant bits (samples = v * 65535 / 1023, as avifdec writes\n"
+            "                          10-bit images; 16-bit PNGs with 8 significant bits, v * 257, are coded 8-bit; others\n"
+            "                          are rejected); grayscale PNG: monochrome.  JPEG: its decoded YCbCr planes exactly, at\n"
+            "                          the JPEG's subsampling (4:2:0, 4:4:4 or gray; 4:2:2 / 4:4:0 / 4:1:1 are rejected),\n"
+            "                          BT.601 full range: lossless to the decoded JPEG, NOT smaller than the JPEG.  An\n"
+            "                          alpha channel is not coded.  --yuv / --depth cannot be combined with it.\n"
+            "  --ycgco-re              with --lossless: RGB as YCgCo-Re (CICP matrix 16, libavif / H.273) instead of GBR:\n"
+            "                          8-bit RGB -> 10-bit 4:4:4 (2 extra bits); usually smaller than GBR for photos\n"
+            "  --ll-tile-area N        with --lossless: uniform tiles of at most N pixels (default 262144; more tiles code\n"
+            "                          faster on the GPU, each costs ~0.1-0.4 %; 0: the preset's tiling)\n"
             "  --cpu-entropy           entropy-code on the CPU instead of the GPU (identical bytes)\n"
             "  --batch LIST|DIR        encode every file in LIST (one path per line) or DIR; outputs <name>.avif\n"
             "  --outdir DIR            batch output directory (outputs are named <input file name>.avif)\n"
@@ -79,6 +92,7 @@ struct Opts {
     bool nameQ = false;       // --name-q: add .q<Q> to batch output names even for a single q
     std::string in, out, batch, outdir, dumpSource;
     bool check = false, gpuEntropy = false, stats = false, devEntropy = false, checkEntropy = false, debugOutputs = false;
+    bool yuvSet = false, depthSet = false;   // explicit --yuv / --depth (not combinable with --lossless)
 };
 
 // speed presets: the speed knobs only (base = the GpConfig defaults)
@@ -213,14 +227,20 @@ static bool parse(int argc, char **argv, GpConfig &cfg, Opts &o) {
             if (!strcmp(v, "444")) cfg.yuv444 = 1;
             else if (!strcmp(v, "420")) cfg.yuv444 = 0;
             else { fprintf(stderr, "unknown --yuv %s (420, 444)\n", v); return false; }
+            o.yuvSet = true;
         }
         else if (a == "--depth") {
             const char *v = nxt();
             if (!strcmp(v, "10")) cfg.depth = 10;
             else if (!strcmp(v, "8")) cfg.depth = 8;
             else { fprintf(stderr, "unknown --depth %s (8, 10)\n", v); return false; }
+            o.depthSet = true;
         }
         else if (a == "--dump-source") o.dumpSource = nxt();
+        else if (a == "--lossless") cfg.lossless = 1;
+        else if (a == "--ycgco-re") cfg.ycgcoRe = 1;
+        else if (a == "--no-lossless-cfl") cfg.losslessCfl = 0;
+        else if (a == "--ll-tile-area") cfg.llTileArea = atoi(nxt());
         else if (a == "--tuneiq-frame") cfg.tuneIq = atoi(nxt());
         else if (a == "--vb") cfg.vb = atoi(nxt());
         else if (a == "--ssim-lambda") cfg.ssimLambda = atoi(nxt());
@@ -271,6 +291,12 @@ static bool parse(int argc, char **argv, GpConfig &cfg, Opts &o) {
     } else {
         cfg.smallMp = 0;
     }
+    if (cfg.ycgcoRe && !cfg.lossless) { fprintf(stderr, "--ycgco-re needs --lossless\n"); return false; }
+    if (cfg.lossless && (o.yuvSet || o.depthSet)) {
+        fprintf(stderr, "--yuv / --depth cannot be combined with --lossless (the format follows the input; --ycgco-re for 10-bit 4:4:4)\n");
+        return false;
+    }
+    if (cfg.lossless) o.qlist.assign(1, cfg.qindex > 0 ? cfg.qindex : 1);   // (qindex is not used: one pass)
     if (o.qlist.empty()) o.qlist.push_back(cfg.qindex);
     for (int q : o.qlist)
         if (q < 1 || q > 255) { fprintf(stderr, "qindex must be 1..255\n"); return false; }
@@ -283,6 +309,7 @@ static bool parse(int argc, char **argv, GpConfig &cfg, Opts &o) {
 // ---------------------------------------------------------------------------
 // single image
 const char *gp_fallback_reason(int r);   // batch.cpp
+const char *gp_jpeg_sub_name(int s);     // batch.cpp
 static int run_single(const GpConfig &cfg, const Opts &o) {
     std::string err;
     GpEncoder enc;
@@ -303,7 +330,7 @@ static int run_single(const GpConfig &cfg, const Opts &o) {
         ic.max_wait_ms = 0;
         ic.activity = 0;
         ic.pinned_bytes = 256ll << 20;   // D round 2: > 6000 px sides go to the CPU route (coefficients staged in this arena)
-        ic.out_444 = cfg.yuv444;
+        ic.out_444 = cfg.lossless ? 2 : cfg.yuv444;   // lossless: the JPEG's own format (4:2:0 / 4:4:4)
         if (getenv("GP_INGEST_DECODER")) ic.decoder = atoi(getenv("GP_INGEST_DECODER"));   // 1: CPU entropy decode + GPU IDCT
         char eb[256] = {0};
         ictx = ingest_create(&ic, eb, sizeof eb);
@@ -320,6 +347,16 @@ static int run_single(const GpConfig &cfg, const Opts &o) {
             return 3;
         }
         const ingest_image &im = ib.images[0];
+        if (cfg.lossless && im.src_sub != INGEST_SUB_420 && im.src_sub != INGEST_SUB_444 && im.src_sub != INGEST_SUB_GRAY) {
+            fprintf(stderr, "%s: --lossless keeps a JPEG's decoded YCbCr planes, which AV1 can only do for 4:2:0, 4:4:4 and gray "
+                            "JPEGs (this one is %s)\n", o.in.c_str(), gp_jpeg_sub_name(im.src_sub));
+            ingest_release_batch(ictx, ib.batch_id, nullptr);
+            ingest_destroy(ictx);
+            return 3;
+        }
+        if (cfg.lossless)
+            fprintf(stderr, "%s: lossless to the decoded JPEG (its %s YCbCr planes, BT.601 full range): not smaller than the JPEG\n",
+                    o.in.c_str(), gp_jpeg_sub_name(im.src_sub));
         fin.W = im.width; fin.H = im.height; fin.mono = im.mono; fin.yuv444 = im.chroma_full;
         fin.aw = im.aw; fin.ah = im.ah;
         fin.dsrc[0] = ib.pool + im.y_off; fin.spitch[0] = im.y_pitch;
@@ -329,7 +366,7 @@ static int run_single(const GpConfig &cfg, const Opts &o) {
         }
         if (im.icc_size > 0) icc.assign(im.icc, im.icc + im.icc_size);
         if (!im.oriented) orientation = im.orientation;
-        if (cfg.depth == 10) {   // 8-bit JPEG samples -> 10-bit planes (libavif's full-range rescaling)
+        if (cfg.depth == 10 && !cfg.lossless) {   // 8-bit JPEG samples -> 10-bit planes (libavif's full-range rescaling)
             std::vector<GpFrameIn> v = {fin};
             if (gp_frames_to_10bit(v, 0, &dconv, err) || cudaDeviceSynchronize() != cudaSuccess) {
                 fprintf(stderr, "10-bit conversion: %s\n", err.c_str());
@@ -339,13 +376,22 @@ static int run_single(const GpConfig &cfg, const Opts &o) {
         }
     } else {
         GpHostPlanes hp;
-        if (!gp_decode_cpu(o.in, hp, err, cfg.yuv444, cfg.depth)) { fprintf(stderr, "decode %s: %s\n", o.in.c_str(), err.c_str()); return 3; }
+        int matrix = -1;
+        if (cfg.lossless) {
+            std::string note;
+            if (!gp_decode_lossless(o.in, hp, cfg.ycgcoRe, &matrix, note, err)) { fprintf(stderr, "%s: %s\n", o.in.c_str(), err.c_str()); return 3; }
+            if (!note.empty()) fprintf(stderr, "%s: %s\n", o.in.c_str(), note.c_str());
+        } else if (!gp_decode_cpu(o.in, hp, err, cfg.yuv444, cfg.depth)) {
+            fprintf(stderr, "decode %s: %s\n", o.in.c_str(), err.c_str());
+            return 3;
+        }
         const size_t ys = hp.bytes(0), cs = hp.bytes(1);   // bytes (10-bit: uint16_t samples)
         if (cudaMalloc(&dplanes, ys + 2 * cs) != cudaSuccess) { fprintf(stderr, "cudaMalloc failed\n"); return 1; }
         cudaMemcpy(dplanes, hp.data(0), ys, cudaMemcpyHostToDevice);
         cudaMemcpy(dplanes + ys, hp.data(1), cs, cudaMemcpyHostToDevice);
         cudaMemcpy(dplanes + ys + cs, hp.data(2), cs, cudaMemcpyHostToDevice);
-        fin.W = hp.W; fin.H = hp.H; fin.mono = 0; fin.aw = hp.aw; fin.ah = hp.ah; fin.yuv444 = hp.yuv444; fin.bitDepth = hp.bitDepth;
+        fin.W = hp.W; fin.H = hp.H; fin.mono = hp.mono; fin.aw = hp.aw; fin.ah = hp.ah; fin.yuv444 = hp.yuv444; fin.bitDepth = hp.bitDepth;
+        fin.colorMatrix = matrix;
         fin.dsrc[0] = dplanes; fin.spitch[0] = hp.aw;
         fin.dsrc[1] = dplanes + ys; fin.dsrc[2] = dplanes + ys + cs;
         fin.spitch[1] = fin.spitch[2] = hp.cw();
@@ -483,7 +529,7 @@ static int run_single(const GpConfig &cfg, const Opts &o) {
                "\"analysis_ms\":%.2f,\"dp_ms\":%.2f,\"recon_ms\":%.2f,\"pack_ms\":%.2f,\"postfilter_ms\":%.2f,\"download_ms\":%.2f,"
                "\"entropy_ms\":%.2f,\"wall_encode_ms\":%.2f,\"steps\":%u,\"blocks\":%u,\"skip\":%u,\"cfl\":%u,\"fixes\":%u,\"txsplit\":%u,"
                "\"dev_mb\":%.1f}\n",
-               o.in.c_str(), f.fp.width, f.fp.height, cfg.qindex, avif.size(), ms(t0, t1), tm.total, tm.analysis, tm.dp,
+               o.in.c_str(), f.fp.width, f.fp.height, (int)f.fp.base_q_idx, avif.size(), ms(t0, t1), tm.total, tm.analysis, tm.dp,
                tm.recon, tm.pack, tm.postfilter, tm.download, o.gpuEntropy ? entMs : ms(t2, t3), ms(t1, t2), tm.steps, tm.blocks,
                tm.skipBlocks, tm.cflBlocks, tm.rangeFixes, tm.txSplit, tm.deviceBytes / 1048576.0);
     }
