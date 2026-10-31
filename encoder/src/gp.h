@@ -79,9 +79,11 @@ struct GpImage {
     const float *ssimLog;    // per 16x16 cell: log of the normalised tune=iq SSIM rdmult scale (NULL = off)
     int cols16, rows16;
     const float *var16;      // per 16x16 cell: max per-pixel variance of its 8x8 blocks (flat pruning; NULL = off)
-    const uint8_t *src[3];   // source planes, padded (replicated) to aw x ah (chroma (aw >> ssx) x (ah >> ssy))
+    const uint8_t *src[3];   // source planes, padded (replicated) to aw x ah (chroma (aw >> ssx) x (ah >> ssy));
+                             // 10-bit batches: uint16_t samples, pitches in samples (gp_src<BD>() / gp_rec<BD>(); the
+                             // bit depth is a kernel template parameter, not a field: GpImage keeps its 8-bit layout)
     int spitch[3];
-    uint8_t *rec[3];         // reconstruction planes, same geometry
+    uint8_t *rec[3];         // reconstruction planes, same geometry and sample type
     int rpitch[3];
     int aw, ah;
     // tiles (mi units; [n] = MiCols / MiRows)

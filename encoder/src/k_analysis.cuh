@@ -8,13 +8,13 @@
 #pragma once
 #include "dev_tx.cuh"
 
-template <int W, int H>
+template <int W, int H, typename P = uint8_t>
 struct ASmem {
     int16_t res[W * H];
     float tmp[TxD<W, H>::th * TxD<W, H>::TS];
     int16_t q[TxD<W, H>::n];
-    uint8_t ea[AV1G_EDGE_LEN], el[AV1G_EDGE_LEN];
-    uint8_t pa[AV1G_EDGE_LEN], pl[AV1G_EDGE_LEN];   // edge-filter prepared edges (RD stage)
+    P ea[AV1G_EDGE_LEN], el[AV1G_EDGE_LEN];
+    P pa[AV1G_EDGE_LEN], pl[AV1G_EDGE_LEN];   // edge-filter prepared edges (RD stage)
     int up[2];
     float satd[32];
     int cand[32];
@@ -43,16 +43,17 @@ __device__ __forceinline__ int pangle_of(int mode, int delta) {
 }
 
 // prediction of pixel (i, j) for candidate c, edges A/L, dc value dcv
-__device__ __forceinline__ int pred_px(int c, int i, int j, int lw, int lh, const uint8_t *A, const uint8_t *L, int dcv) {
+template <typename P>
+__device__ __forceinline__ int pred_px(int c, int i, int j, int lw, int lh, const P *A, const P *L, int dcv) {
     const int m = cand_mode(c);
     if (m == AV1G_DC_PRED) return dcv;
     return av1g_pred_pixel(m, pangle_of(m, cand_delta(c)), i, j, lw, lh, A, L);
 }
 
 // SATD of candidates cands[c0..c1) (all 4x4 sub-blocks), accumulated into satd[]
-template <int W, int H>
-__device__ __forceinline__ void warp_screen(const uint8_t *src, int sp, const int *cands, int c0, int c1, float *satd,
-                                            const uint8_t *A, const uint8_t *L, int dcv, int sub = 1) {
+template <int W, int H, typename P>
+__device__ __forceinline__ void warp_screen(const P *src, int sp, const int *cands, int c0, int c1, float *satd,
+                                            const P *A, const P *L, int dcv, int sub = 1) {
     typedef TxD<W, H> T;
     const int lane = threadIdx.x & 31;
     constexpr int nsx = W / 4, nsub0 = (W / 4) * (H / 4);
@@ -78,9 +79,9 @@ __device__ __forceinline__ void warp_screen(const uint8_t *src, int sp, const in
 
 // residual of candidate c into res (W x H), returns sum r^2 (all lanes).  With the intra edge filter,
 // directional candidates use edges prepared by lane 0 into pa/pl (filter type 0: neighbour modes unknown).
-template <int W, int H>
-__device__ __forceinline__ float warp_residual(const uint8_t *src, int sp, int c, int16_t *res, const uint8_t *A,
-                                               const uint8_t *L, int dcv, uint8_t *pa = nullptr, uint8_t *pl = nullptr,
+template <int W, int H, int BD = 8, typename P>
+__device__ __forceinline__ float warp_residual(const P *src, int sp, int c, int16_t *res, const P *A,
+                                               const P *L, int dcv, P *pa = nullptr, P *pl = nullptr,
                                                int *up = nullptr, int edgeFilter = 0, int haveL = 0, int haveA = 0, int x = 0,
                                                int y = 0, int maxX = 0, int maxY = 0) {
     typedef TxD<W, H> T;
@@ -90,8 +91,8 @@ __device__ __forceinline__ float warp_residual(const uint8_t *src, int sp, int c
     if (ef) {
         if (lane == 0) {
             for (int k = 0; k < AV1G_EDGE_LEN; k++) { pa[k] = A[k - AV1G_EDGE_OFF]; pl[k] = L[k - AV1G_EDGE_OFF]; }
-            av1g_edge_prepare(pangle_of(m, cand_delta(c)), T::lw, T::lh, 0, haveL, haveA, x, y, maxX, maxY, pa + AV1G_EDGE_OFF,
-                              pl + AV1G_EDGE_OFF, &up[0], &up[1]);
+            av1g_edge_prepare<BD>(pangle_of(m, cand_delta(c)), T::lw, T::lh, 0, haveL, haveA, x, y, maxX, maxY, pa + AV1G_EDGE_OFF,
+                                  pl + AV1G_EDGE_OFF, &up[0], &up[1]);
         }
         __syncwarp();
     }
@@ -109,13 +110,15 @@ __device__ __forceinline__ float warp_residual(const uint8_t *src, int sp, int c
     return warp_sum(e);
 }
 
-template <int W, int H, int BS, int NW>
+// BD: bit depth of the batch (distortions and lambda in native units, see gp_lambda)
+template <int W, int H, int BS, int NW, int BD = 8>
 __global__ void __launch_bounds__(NW * 32, (W * H <= 64 ? 768 : 512) / (NW * 32)) k_analysis(GpBatch B, GpParams P, uint32_t nTotal) {
     typedef TxD<W, H> T;
-    __shared__ ASmem<W, H> smem[NW];
+    typedef av1g_pixel_t(BD) Px;
+    __shared__ ASmem<W, H, Px> smem[NW];
     const int warp = threadIdx.x >> 5, lane = threadIdx.x & 31;
-    ASmem<W, H> &S = smem[warp];
-    uint8_t *A = S.ea + AV1G_EDGE_OFF, *L = S.el + AV1G_EDGE_OFF;
+    ASmem<W, H, Px> &S = smem[warp];
+    Px *A = S.ea + AV1G_EDGE_OFF, *L = S.el + AV1G_EDGE_OFF;
     const uint32_t *starts = B.shImgStart + (size_t)BS * (B.nimg + 1);
     constexpr int txSz = W == H ? (W == 4 ? AV1G_TX_4X4 : W == 8 ? AV1G_TX_8X8 : W == 16 ? AV1G_TX_16X16 : W == 32 ? AV1G_TX_32X32 : AV1G_TX_64X64)
                        : (W == 4 && H == 8) ? AV1G_TX_4X8 : (W == 8 && H == 4) ? AV1G_TX_8X4 : (W == 8 && H == 16) ? AV1G_TX_8X16
@@ -146,13 +149,13 @@ __global__ void __launch_bounds__(NW * 32, (W * H <= 64 ? 768 : 512) / (NW * 32)
         const int haveAR = ol_decoded(x + W, y - 1, x, y, 0, tb);
         const int haveBL = ol_decoded(x - 1, y + H, x, y, 0, tb);
         const int maxX = I.MiCols * 4 - 1, maxY = I.MiRows * 4 - 1;
-        const uint8_t *src = I.src[0] + (size_t)y * I.spitch[0] + x;
+        const Px *src = gp_src<BD>(I, 0) + (size_t)y * I.spitch[0] + x;
         const int sp = I.spitch[0];
         const int qidx = sb_qindex(I, x, y);
-        const float lambda = gp_lambda(qidx, P.lambdaMul) * ssim_scale(I, x, y, W, H);
+        const float lambda = gp_lambda<BD>(qidx, P.lambdaMul) * ssim_scale(I, x, y, W, H);
         const float lamS = P.satdLambda * sqrtf(lambda);
         const float *C = g_cost[I.qctx];
-        if (prune_flat(I, P, x, y, W, H, qidx)) {
+        if (prune_flat<BD>(I, P, x, y, W, H, qidx)) {
             if (lane == 0) { out.J = GP_INF; out.ncand = 0; }
             __syncwarp();
             continue;
@@ -167,16 +170,16 @@ __global__ void __launch_bounds__(NW * 32, (W * H <= 64 ? 768 : 512) / (NW * 32)
             s1 = warp_sum(s1);
             s2 = warp_sum(s2);
             const float var = s2 / (W * H) - (s1 / (W * H)) * (s1 / (W * H));
-            const float st = av1g_ac_q(qidx) / 8.f;
+            const float st = av1g_ac_q<BD>(qidx) / 8.f;
             if (var > P.pruneVar * st * st) {
                 if (lane == 0) { out.J = GP_INF; out.ncand = 0; }
                 __syncwarp();
                 continue;
             }
         }
-        build_edges_par(I.src[0], sp, x, y, T::lw, T::lh, haveLeft, haveAbove, haveAR, haveBL, maxX, maxY, A, L, lane, 32);
+        build_edges_par<BD>(gp_src<BD>(I, 0), sp, x, y, T::lw, T::lh, haveLeft, haveAbove, haveAR, haveBL, maxX, maxY, A, L, lane, 32);
         __syncwarp();
-        if (lane == 0) S.dcv = av1g_dc_value(A, L, haveLeft, haveAbove, T::lw, T::lh);
+        if (lane == 0) S.dcv = av1g_dc_value<BD>(A, L, haveLeft, haveAbove, T::lw, T::lh);
         __syncwarp();
         const int dcv = S.dcv;
         const GpExtCand *ext = (const GpExtCand *)B.extCand[BS];
@@ -247,7 +250,7 @@ __global__ void __launch_bounds__(NW * 32, (W * H <= 64 ? 768 : 512) / (NW * 32)
         const float overhead = (hasC ? P.uvOverheadBits : 0.f) + g_avgSkip0;
         EvalIn e;
         e.txSz = txSz; e.plane = 0;
-        e.dcQ = av1g_dc_q(qidx); e.acQ = av1g_ac_q(qidx);
+        e.dcQ = av1g_dc_q<BD>(qidx); e.acQ = av1g_ac_q<BD>(qidx);
         e.rnd = P.rnd; e.zbin = P.zbin;
         e.skipCtx = 0; e.dcCtx = 0; e.reduced = 0; e.C = C;
         e.qmDist = P.qmDist; e.qmRnd = P.qmRnd;
@@ -256,26 +259,26 @@ __global__ void __launch_bounds__(NW * 32, (W * H <= 64 ? 768 : 512) / (NW * 32)
         for (int k = 0; k < K; k++) {
             if (top[k] < 0) break;
             const int c = S.cand[top[k]];
-            e.resEnergy = warp_residual<W, H>(src, sp, c, S.res, A, L, dcv, S.pa, S.pl, S.up, I.edgeFilter, haveLeft, haveAbove, x, y, maxX, maxY);
+            e.resEnergy = warp_residual<W, H, BD>(src, sp, c, S.res, A, L, dcv, S.pa, S.pl, S.up, I.edgeFilter, haveLeft, haveAbove, x, y, maxX, maxY);
             e.txType = AV1G_DCT_DCT;
             e.intraDir = cand_mode(c);
             e.qm = av1g_qm(I.usingQm, I.qm[0], 0, txSz, AV1G_DCT_DCT);
             EvalOut o;
-            warp_eval<W, H>(S.res, S.tmp, S.q, e, o);
+            warp_eval<W, H, BD>(S.res, S.tmp, S.q, e, o);
             const float J = o.D + lambda * (o.R + mbits(c) + overhead);
             if (J < bestJ) { bestJ = J; bestK = k; }
         }
         // ---- tx-type search for the winner ----
         if (P.txSearch && set != AV1G_TX_SET_DCTONLY) {
             const int c = S.cand[top[bestK]];
-            e.resEnergy = warp_residual<W, H>(src, sp, c, S.res, A, L, dcv, S.pa, S.pl, S.up, I.edgeFilter, haveLeft, haveAbove, x, y, maxX, maxY);
+            e.resEnergy = warp_residual<W, H, BD>(src, sp, c, S.res, A, L, dcv, S.pa, S.pl, S.up, I.edgeFilter, haveLeft, haveAbove, x, y, maxX, maxY);
             e.intraDir = cand_mode(c);
             for (int t = 1; t < 16; t++) {
                 if (!av1g_tx_type_in_set_intra(set, t)) continue;
                 e.txType = t;
                 e.qm = av1g_qm(I.usingQm, I.qm[0], 0, txSz, t);
                 EvalOut o;
-                warp_eval<W, H>(S.res, S.tmp, S.q, e, o);
+                warp_eval<W, H, BD>(S.res, S.tmp, S.q, e, o);
                 const float J = o.D + lambda * (o.R + mbits(c) + overhead);
                 if (J < bestJ) { bestJ = J; bestTx = t; }
             }

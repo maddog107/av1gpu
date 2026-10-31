@@ -6,6 +6,7 @@
 #include "gpu_entropy.h"
 #include "internal.h"
 #include "av1g/av1g.h"
+#include "av1g/blockinfo.h"
 #include "av1g/levels_gen.h"
 
 #include <cstring>
@@ -45,7 +46,7 @@ void write_headers(const av1g_frame_params *fp, const av1g::TileInfo &tiles, int
     seq.put(0, 1);
     seq.put(fp->enable_cdef, 1);
     seq.put(0, 1);
-    seq.put(0, 1);
+    seq.put(av1g_bit_depth(fp) == 10, 1);   // high_bitdepth (10-bit; twelve_bit only in the Professional profile)
     if (!high) seq.put(mono, 1);   // mono_chrome is not coded in the High profile
     seq.put(1, 1);
     seq.put(1, 8);

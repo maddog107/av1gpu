@@ -17,6 +17,7 @@ __device__ __forceinline__ float dp_blockJ(const GpBatch &B, const GpImage &I, i
 
 struct DpNode { float J; int8_t p; };
 
+template <int BD = 8>
 __global__ void k_dp(GpBatch B, GpParams P) {
     const uint32_t sb = blockIdx.x * blockDim.x + threadIdx.x;
     if (sb >= B.nSb) return;
@@ -24,7 +25,7 @@ __global__ void k_dp(GpBatch B, GpParams P) {
     const uint32_t local = sb - I.sbBase;
     const int sbx = (int)(local % I.sbCols) * 64, sby = (int)(local / I.sbCols) * 64;
     const int FW = I.MiCols * 4, FH = I.MiRows * 4;
-    const float lambda = gp_lambda(sb_qindex(I, sbx, sby), P.lambdaMul);
+    const float lambda = gp_lambda<BD>(sb_qindex(I, sbx, sby), P.lambdaMul);
     DpNode node[85];
     const int lvBase[4] = {0, 1, 5, 21};
     for (int L = 3; L >= 0; L--) {

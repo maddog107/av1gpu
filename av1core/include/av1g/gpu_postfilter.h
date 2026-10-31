@@ -12,7 +12,10 @@
  *   av1g_gpu_cdef(&f, d_out, out_stride, stream);              // CdefFrame (separate buffers)
  *
  * Strength searches: av1g_gpu_cdef_dir() depends only on the deblocked luma, so run it once
- * and call av1g_gpu_cdef() per candidate set (change f.cdefYPri[] etc. / f.cdefIdx). */
+ * and call av1g_gpu_cdef() per candidate set (change f.cdefYPri[] etc. / f.cdefIdx).
+ *
+ * 10-bit frames (fp.bit_depth = 10, f.bitDepth): the planes and d_out are uint16_t sample buffers
+ * passed as uint8_t pointers, strides in samples. */
 #ifndef AV1G_GPU_POSTFILTER_H
 #define AV1G_GPU_POSTFILTER_H
 

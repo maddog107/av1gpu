@@ -25,6 +25,9 @@
  *             plane, libaom's joint greedy preset search, no strength halving; ~1.8 ms/MP,
  *             -0.42 % BD vs libaom's choice)
  *   cdef_damping -2 additionally searches the damping (sync API only).
+ * 10-bit frames (fp.bit_depth = 10): d_recon / d_src are uint16_t planes (strides in samples); the search follows
+ * libaom's high-bitdepth rules (CDEF SSE >> 2 * (BitDepth - 8) per SB and plane, 10-bit level-from-Q fit,
+ * rdmult / 16), so its tables and RD decisions are on the 8-bit scale.
  * Distortion: SSE (8-bit samples, libaom) or a variance-masked SSE (AV1F_DIST_VARW, a cheap
  * SSIMULACRA2 proxy - not better than SSE for CDEF); a caller with its own perceptual per-SB
  * loss can choose presets with av1f_cdef_select_tables() below.

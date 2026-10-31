@@ -28,6 +28,7 @@ static __device__ __forceinline__ int find_image(const av1f_vb_desc *d, int n, u
     return lo;
 }
 
+template <int BD>   // bit depth of every descriptor of the call
 __global__ void __launch_bounds__(256) k_sb_stats(const av1f_vb_desc *desc, int n, uint32_t total, const uint8_t *luts,
                                                   uint32_t *sb_var, uint8_t *sb_target) {
     __shared__ unsigned v[4][64];
@@ -42,6 +43,23 @@ __global__ void __launch_bounds__(256) k_sb_stats(const av1f_vb_desc *desc, int 
         const int cols = ((((d.width + 7) >> 3) * 8) + 63) >> 6;
         const uint32_t local = sb - d.sb_off;
         const int r = local / cols, c = local % cols;
+        if (BD == 10) {   // 16-byte loads of 8 uint16_t samples; aom_highbd_10_variance8x8 rounding
+            const uint16_t *p = (const uint16_t *)d.y + (size_t)(r * 64 + (t >> 3) * 8) * d.pitch + c * 64 + (t & 7) * 8;
+            int s = 0;
+            unsigned q = 0;   // 64 * 1023^2 < 2^32
+#pragma unroll
+            for (int k = 0; k < 8; k++) {
+                const uint4 w = *reinterpret_cast<const uint4 *>(p + (size_t)k * d.pitch);
+                const unsigned ww[4] = {w.x, w.y, w.z, w.w};
+#pragma unroll
+                for (int b = 0; b < 4; b++) {
+                    const int x0 = ww[b] & 0xFFFF, x1 = ww[b] >> 16;
+                    s += x0 + x1;
+                    q += x0 * x0 + x1 * x1;
+                }
+            }
+            v[g][t] = av1f_var8x8_from_sums_10(s, q);
+        } else {
         const uint8_t *p = d.y + (size_t)(r * 64 + (t >> 3) * 8) * d.pitch + c * 64 + (t & 7) * 8;
         int s = 0;
         unsigned q = 0;
@@ -56,6 +74,7 @@ __global__ void __launch_bounds__(256) k_sb_stats(const av1f_vb_desc *desc, int 
             }
         }
         v[g][t] = av1f_var8x8_from_sums(s, q);
+        }
         base = d.base_q_idx;
     }
     __syncthreads();
@@ -124,11 +143,13 @@ __global__ void k_sb_round(const av1f_vb_desc *desc, int n, const uint8_t *targe
 
 // The LUT is computed on the HOST: libaom evaluates log2() with glibc, CUDA's log2 differs by up to
 // 1 ulp and flipped 2 of 783k (base, variance, strength) entries at a target-q tie in testing.
-extern "C" int av1f_vb_build_luts(uint8_t *d_luts, int strength, cudaStream_t s) {
+extern "C" int av1f_vb_build_luts(uint8_t *d_luts, int strength, cudaStream_t s) { return av1f_vb_build_luts_bd(d_luts, strength, 8, s); }
+extern "C" int av1f_vb_build_luts_bd(uint8_t *d_luts, int strength, int bd, cudaStream_t s) {
     static thread_local std::vector<uint8_t> h;
     h.resize(256 * 1024);
     for (int b = 0; b < 256; b++)
-        for (int v = 0; v < 1024; v++) h[b * 1024 + v] = (uint8_t)(b == 0 ? 0 : av1f_varboost_qindex(b, (unsigned)v, strength));
+        for (int v = 0; v < 1024; v++)
+            h[b * 1024 + v] = (uint8_t)(b == 0 ? 0 : av1f_varboost_qindex(b, (unsigned)v, strength, bd == 10 ? 10 : 8));
     cudaError_t e = cudaMemcpyAsync(d_luts, h.data(), h.size(), cudaMemcpyHostToDevice, s);
     if (!e) e = cudaStreamSynchronize(s);  // h is reused by the next call
     return (int)e;
@@ -142,12 +163,17 @@ extern "C" int av1f_vb_build_luts_device(uint8_t *d_luts, int strength, cudaStre
 
 extern "C" int av1f_varboost(const av1f_vb_desc *d_desc, int n, uint32_t total, const uint8_t *d_luts, int order,
                              uint32_t *d_sb_var, uint8_t *d_sb_target, uint8_t *d_sb_qindex, cudaStream_t s) {
+    return av1f_varboost_bd(d_desc, n, total, d_luts, order, 8, d_sb_var, d_sb_target, d_sb_qindex, s);
+}
+extern "C" int av1f_varboost_bd(const av1f_vb_desc *d_desc, int n, uint32_t total, const uint8_t *d_luts, int order, int bd,
+                                uint32_t *d_sb_var, uint8_t *d_sb_target, uint8_t *d_sb_qindex, cudaStream_t s) {
     uint8_t *tgt = d_sb_target;
     if (!tgt) {
         cudaError_t e = cudaMallocAsync(&tgt, total, s);
         if (e) return (int)e;
     }
-    k_sb_stats<<<(total + 3) / 4, 256, 0, s>>>(d_desc, n, total, d_luts, d_sb_var, tgt);
+    if (bd == 10) k_sb_stats<10><<<(total + 3) / 4, 256, 0, s>>>(d_desc, n, total, d_luts, d_sb_var, tgt);
+    else k_sb_stats<8><<<(total + 3) / 4, 256, 0, s>>>(d_desc, n, total, d_luts, d_sb_var, tgt);
     k_sb_round<<<n, 128, 0, s>>>(d_desc, n, tgt, d_sb_qindex, order);
     if (!d_sb_target) cudaFreeAsync(tgt, s);
     return (int)cudaGetLastError();
@@ -155,12 +181,16 @@ extern "C" int av1f_varboost(const av1f_vb_desc *d_desc, int n, uint32_t total, 
 
 extern "C" int av1f_varboost_host(const uint8_t *y, int pitch, int width, int height, int base, int tcl2, int trl2, int order,
                                   int strength, uint32_t *sb_var, uint8_t *sb_target, uint8_t *sb_qindex) {
+    return av1f_varboost_host_bd(y, pitch, width, height, base, tcl2, trl2, order, strength, 8, sb_var, sb_target, sb_qindex);
+}
+extern "C" int av1f_varboost_host_bd(const void *y, int pitch, int width, int height, int base, int tcl2, int trl2, int order,
+                                     int strength, int bd, uint32_t *sb_var, uint8_t *sb_target, uint8_t *sb_qindex) {
     const uint32_t nsb = av1f_vb_num_sbs(width, height);
     const int rows = (int)(nsb / (uint32_t)((((width + 7) >> 3) * 8 + 63) >> 6));
     uint8_t *dy, *dl, *dt, *dq;
     uint32_t *dv;
     av1f_vb_desc *dd;
-    const size_t bytes = (size_t)pitch * rows * 64;
+    const size_t bytes = (size_t)pitch * rows * 64 * (bd == 10 ? 2 : 1);
     cudaMalloc(&dy, bytes);
     cudaMalloc(&dl, 256 * 1024);
     cudaMalloc(&dt, nsb);
@@ -168,10 +198,10 @@ extern "C" int av1f_varboost_host(const uint8_t *y, int pitch, int width, int he
     cudaMalloc(&dv, 4 * nsb);
     cudaMalloc(&dd, sizeof(av1f_vb_desc));
     cudaMemcpy(dy, y, bytes, cudaMemcpyHostToDevice);
-    av1f_vb_desc d = {dy, pitch, width, height, base, tcl2, trl2, 0};
+    av1f_vb_desc d = {dy, pitch, width, height, base, tcl2, trl2, 0, bd == 10 ? 10 : 8};
     cudaMemcpy(dd, &d, sizeof d, cudaMemcpyHostToDevice);
-    av1f_vb_build_luts(dl, strength, 0);
-    int rc = av1f_varboost(dd, 1, nsb, dl, order, dv, dt, dq, 0);
+    av1f_vb_build_luts_bd(dl, strength, bd, 0);
+    int rc = av1f_varboost_bd(dd, 1, nsb, dl, order, bd == 10 ? 10 : 8, dv, dt, dq, 0);
     cudaDeviceSynchronize();
     if (!rc) rc = (int)cudaGetLastError();
     if (sb_var) cudaMemcpy(sb_var, dv, 4 * nsb, cudaMemcpyDeviceToHost);

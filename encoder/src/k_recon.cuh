@@ -14,6 +14,10 @@
 //           blocks with a 64-sample side have several chroma tx blocks per plane, decided on the first
 //           one, then coded in raster order)
 //   record  av1g_block / av1g_txb / coefficients into the SB's output slots, maps + contexts
+//
+// Bit depth: the kernel and every helper touching samples are templates on BD (8 or 10; samples
+// av1g_pixel_t(BD)); the 8-bit instantiations are the 8-bit code.  Distortions are in native units with a
+// native-unit lambda (gp_lambda<BD>).
 #pragma once
 #include <cstddef>
 #include "dev_tx.cuh"
@@ -70,18 +74,20 @@ __device__ __forceinline__ int16_t *rc_bestq(RcUnion &u, int w) { return (int16_
 __device__ __forceinline__ const int16_t *rc_cflL(const RcUnion &u) { return (const int16_t *)((const char *)&u + RC_TAIL_OFF); }
 __device__ __forceinline__ int16_t *rc_cflLw(RcUnion &u) { return (int16_t *)((char *)&u + RC_TAIL_OFF); }
 
+template <int BD>
 struct RcShared {
+    typedef av1g_pixel_t(BD) Px;
     RcUnion u;
     int16_t qfin[32 * 32];
     RcBigScr *bigG;                 // this CTA's global big scratch: one RcBigScr per warp (W5)
     int16_t *bigQ;                  // kept levels of big chroma RD tasks [RC_BIGQ_MAX][32 * 32] (W3)
     uint32_t bdm[3][18];            // BlockDecoded bitmask: row yy+1, bit xx+1 (yy, xx in -1..16)
-    __align__(16) uint8_t ea[3][AV1G_EDGE_LEN];   // 16-byte aligned rows: rc_prepare_edges copies them in 16-byte words
-    __align__(16) uint8_t el[3][AV1G_EDGE_LEN];
+    __align__(16) Px ea[3][AV1G_EDGE_LEN];   // 16-byte aligned rows: rc_prepare_edges copies them in 16-byte words
+    __align__(16) Px el[3][AV1G_EDGE_LEN];
     int dcv[3];
     // intra edge filter: per-warp prepared (filtered / upsampled) edges of the candidate being evaluated
-    __align__(16) uint8_t wea[RC_NW][AV1G_EDGE_LEN];
-    __align__(16) uint8_t wel[RC_NW][AV1G_EDGE_LEN];
+    __align__(16) Px wea[RC_NW][AV1G_EDGE_LEN];
+    __align__(16) Px wel[RC_NW][AV1G_EDGE_LEN];
     int wup[RC_NW][2];
     int ft[3], hvL[3], hvA[3], px[3], py[3], mx[3], my[3];
     int edgeFilter;
@@ -106,8 +112,9 @@ struct RcShared {
 // exact inverse transform + reconstruction (CTA-wide), mirrors av1g_inv_txfm2d / av1g_add_residual.
 // q may be modified (halved) when the coefficients violate the conformance ranges
 // (= AV1G_ENC_FIX_RANGE).  Returns the number of halvings (all threads).
-__device__ int cta_inverse_add(int W, int H, RcShared &S, int16_t *q, int txSz, int txType, int dcQ, int acQ, const uint8_t *qm,
-                               uint8_t *dst, int pitch) {
+template <int BD>
+__device__ int cta_inverse_add(int W, int H, RcShared<BD> &S, int16_t *q, int txSz, int txType, int dcQ, int acQ, const uint8_t *qm,
+                               av1g_pixel_t(BD) *dst, int pitch) {
     const TxR T(W, H);
     const int tid = threadIdx.x;
     const int den = av1g_dq_denom(txSz);
@@ -122,7 +129,7 @@ __device__ int cta_inverse_add(int W, int H, RcShared &S, int16_t *q, int txSz, 
         // W4: register-resident templated 1-D transforms (rc_inv.cuh), same arithmetic as av1g_inv_1d
         uint32_t err = 0;
         switch (T.lw) {
-#define RC_ROWS(LW) for (int i = tid; i < H; i += RC_NT) err |= rci::row<LW>(i, T.th, T.tw, q, dcQ, acQ, qm, den, rect, rk, rowShift, res)
+#define RC_ROWS(LW) for (int i = tid; i < H; i += RC_NT) err |= rci::row<LW, BD>(i, T.th, T.tw, q, dcQ, acQ, qm, den, rect, rk, rowShift, res)
         case 2: RC_ROWS(2); break;
         case 3: RC_ROWS(3); break;
         case 4: RC_ROWS(4); break;
@@ -157,8 +164,8 @@ __device__ int cta_inverse_add(int W, int H, RcShared &S, int16_t *q, int txSz, 
     for (int p = tid; p < W * H; p += RC_NT) {
         const int i = p / W, j = p % W;
         const int xx = flr ? W - 1 - j : j, yy = fud ? H - 1 - i : i;
-        uint8_t *d = dst + yy * pitch + xx;
-        *d = (uint8_t)av1g_clip1((int)*d + res[i * W + j]);
+        av1g_pixel_t(BD) *d = dst + yy * pitch + xx;
+        *d = (av1g_pixel_t(BD))av1g_clip1<BD>((int)*d + res[i * W + j]);
     }
     __syncthreads();
     return fixes;
@@ -209,11 +216,12 @@ __device__ __forceinline__ void txb_ctx(const GpImage &I, int plane, int txSz, i
 
 // prediction of one pixel: mode candidate c (or CfL with alpha when cfl), plane edges.  slot >= 0:
 // directional modes use the edges prepared (intra edge filter) by warp `slot`.
-__device__ __forceinline__ int rc_pred(const RcShared &S, int plane, int c, bool cfl, int alpha, int i, int j, int lw, int lh,
+template <int BD>
+__device__ __forceinline__ int rc_pred(const RcShared<BD> &S, int plane, int c, bool cfl, int alpha, int i, int j, int lw, int lh,
                                        int cw, int slot = -1) {
     if (cfl) {
         const int v = rc_cflL(S.u)[i * cw + j];
-        return av1g_clip1(S.dcv[plane] + av1g_round2signed(alpha * (v - S.cflAvg), 6));
+        return av1g_clip1<BD>(S.dcv[plane] + av1g_round2signed(alpha * (v - S.cflAvg), 6));
     }
     const int m = cand_mode(c);
     if (m == AV1G_DC_PRED) return S.dcv[plane];
@@ -229,9 +237,12 @@ __device__ __forceinline__ int luma_mode(int c) { return c >= 128 ? AV1G_DC_PRED
 __device__ __forceinline__ int intra_dir(int c) { return c >= 128 ? AV1G_T(Filter_Intra_Mode_To_Intra_Dir)[c - 128] : cand_mode(c); }
 
 // warp: prepare the edge-filtered edges of (plane, candidate) into this warp's slot (lane 0)
-static_assert(AV1G_EDGE_LEN % 16 == 0 && offsetof(RcShared, ea) % 16 == 0 && offsetof(RcShared, el) % 16 == 0 &&
-              offsetof(RcShared, wea) % 16 == 0 && offsetof(RcShared, wel) % 16 == 0, "edge buffers must be 16-byte aligned");
-__device__ __forceinline__ void rc_prepare_edges(RcShared &S, int plane, int c, bool cfl, int lw, int lh) {
+static_assert(AV1G_EDGE_LEN % 16 == 0 && offsetof(RcShared<8>, ea) % 16 == 0 && offsetof(RcShared<8>, el) % 16 == 0 &&
+              offsetof(RcShared<8>, wea) % 16 == 0 && offsetof(RcShared<8>, wel) % 16 == 0, "edge buffers must be 16-byte aligned");
+static_assert(offsetof(RcShared<10>, ea) % 16 == 0 && offsetof(RcShared<10>, el) % 16 == 0 && offsetof(RcShared<10>, wea) % 16 == 0 &&
+              offsetof(RcShared<10>, wel) % 16 == 0, "edge buffers must be 16-byte aligned");
+template <int BD>
+__device__ __forceinline__ void rc_prepare_edges(RcShared<BD> &S, int plane, int c, bool cfl, int lw, int lh) {
     const int warp = threadIdx.x >> 5;
     const int m = cand_mode(c);
     if (cfl || !S.edgeFilter || !av1g_is_directional(m)) return;
@@ -241,10 +252,10 @@ __device__ __forceinline__ void rc_prepare_edges(RcShared &S, int plane, int c, 
         const uint4 *sa = reinterpret_cast<const uint4 *>(S.ea[plane]), *sl = reinterpret_cast<const uint4 *>(S.el[plane]);
         uint4 *da = reinterpret_cast<uint4 *>(S.wea[warp]), *dl = reinterpret_cast<uint4 *>(S.wel[warp]);
 #pragma unroll
-        for (int k = 0; k < AV1G_EDGE_LEN / 16; k++) { da[k] = sa[k]; dl[k] = sl[k]; }
+        for (int k = 0; k < AV1G_EDGE_LEN * (int)sizeof(av1g_pixel_t(BD)) / 16; k++) { da[k] = sa[k]; dl[k] = sl[k]; }
         int ua = 0, ul = 0;
-        av1g_edge_prepare(pangle_of(m, cand_delta(c)), lw, lh, S.ft[plane], S.hvL[plane], S.hvA[plane], S.px[plane], S.py[plane],
-                          S.mx[plane], S.my[plane], S.wea[warp] + AV1G_EDGE_OFF, S.wel[warp] + AV1G_EDGE_OFF, &ua, &ul);
+        av1g_edge_prepare<BD>(pangle_of(m, cand_delta(c)), lw, lh, S.ft[plane], S.hvL[plane], S.hvA[plane], S.px[plane], S.py[plane],
+                              S.mx[plane], S.my[plane], S.wea[warp] + AV1G_EDGE_OFF, S.wel[warp] + AV1G_EDGE_OFF, &ua, &ul);
         S.wup[warp][0] = ua;
         S.wup[warp][1] = ul;
     }
@@ -252,8 +263,9 @@ __device__ __forceinline__ void rc_prepare_edges(RcShared &S, int plane, int c, 
 }
 
 // warp: residual of (plane, cand/cfl) for a W x H tx block into res; returns sum r^2
-__device__ float rc_residual(int W, int H, RcShared &S, int plane, int c, bool cfl, int alpha, const uint8_t *src, int sp,
-                             int16_t *res, uint8_t *fiBuf = nullptr) {
+template <int BD>
+__device__ float rc_residual(int W, int H, RcShared<BD> &S, int plane, int c, bool cfl, int alpha, const av1g_pixel_t(BD) *src, int sp,
+                             int16_t *res, av1g_pixel_t(BD) *fiBuf = nullptr) {
     const TxR T(W, H);
     const int lane = threadIdx.x & 31;
     const int slot = threadIdx.x >> 5;
@@ -261,7 +273,7 @@ __device__ float rc_residual(int W, int H, RcShared &S, int plane, int c, bool c
     if (plane == 0 && is_fi(c)) {
         // recursive filter-intra prediction (spec 7.11.2.3), lane 0, into fiBuf (stride W)
         if (lane == 0)
-            av1g_predict_filter_intra(c - 128, T.lw, T.lh, S.ea[0] + AV1G_EDGE_OFF, S.el[0] + AV1G_EDGE_OFF, fiBuf, W);
+            av1g_predict_filter_intra<BD>(c - 128, T.lw, T.lh, S.ea[0] + AV1G_EDGE_OFF, S.el[0] + AV1G_EDGE_OFF, fiBuf, W);
         __syncwarp();
         for (int p = lane; p < W * H; p += 32) {
             const int i = p / W, j = p % W;
@@ -285,7 +297,9 @@ __device__ float rc_residual(int W, int H, RcShared &S, int plane, int c, bool c
 
 // final quantization of (plane, cand, txType) into S.qfin by warp 0 with distortion and rate (S.finEob, S.finD, S.finR):
 // the tx-size search compares J; everything else uses the CTA-wide rc_final_quant below (levels only)
-__device__ void rc_final_quant_rd(int W, int H, RcShared &S, const EvalIn &e, int plane, int c, bool cfl, int alpha, const uint8_t *src, int sp) {
+template <int BD>
+__device__ void rc_final_quant_rd(int W, int H, RcShared<BD> &S, const EvalIn &e, int plane, int c, bool cfl, int alpha,
+                                  const av1g_pixel_t(BD) *src, int sp) {
     const int warp = threadIdx.x >> 5;
     const bool big = rc_big(W, H);
     if (warp == 0) {
@@ -293,9 +307,9 @@ __device__ void rc_final_quant_rd(int W, int H, RcShared &S, const EvalIn &e, in
         int16_t *res = big ? BG.res : S.u.w[0].res;
         float *tmp = big ? BG.tmp : S.u.w[0].tmp;
         EvalIn ee = e;
-        ee.resEnergy = rc_residual(W, H, S, plane, c, cfl, alpha, src, sp, res, (uint8_t *)tmp);
+        ee.resEnergy = rc_residual<BD>(W, H, S, plane, c, cfl, alpha, src, sp, res, (av1g_pixel_t(BD) *)tmp);
         EvalOut o;
-        warp_eval_rt(res, tmp, S.qfin, ee, o, W, H);
+        warp_eval_rt<BD>(res, tmp, S.qfin, ee, o, W, H);
         if ((threadIdx.x & 31) == 0) { S.finEob = o.eob; S.finD = o.D; S.finR = o.R; }
     }
     __syncthreads();
@@ -376,7 +390,9 @@ __device__ __forceinline__ int rc_chunks(int outs, int lanesPerChunk) { return m
 
 // residual (whole CTA, edges prepared by warp 0 into slot 0) -> forward transform -> levels into S.qfin, S.finEob.
 // res (and the prepared slot-0 edges) stay valid for rc_write_from_res / rc_write_pred.
-__device__ void rc_final_quant(int W, int H, RcShared &S, const EvalIn &e, int plane, int c, bool cfl, int alpha, const uint8_t *src, int sp) {
+template <int BD>
+__device__ void rc_final_quant(int W, int H, RcShared<BD> &S, const EvalIn &e, int plane, int c, bool cfl, int alpha,
+                               const av1g_pixel_t(BD) *src, int sp) {
     const TxR T(W, H);
     const int tid = threadIdx.x;
     const bool big = rc_big(W, H);
@@ -384,13 +400,13 @@ __device__ void rc_final_quant(int W, int H, RcShared &S, const EvalIn &e, int p
     int16_t *res = big ? BG.res : S.u.w[0].res;
     float *tmp = big ? BG.tmp : S.u.w[0].tmp;
     if (plane == 0 && is_fi(c)) {
-        if (tid < 32) rc_residual(W, H, S, plane, c, cfl, alpha, src, sp, res, (uint8_t *)tmp);
+        if (tid < 32) rc_residual<BD>(W, H, S, plane, c, cfl, alpha, src, sp, res, (av1g_pixel_t(BD) *)tmp);
     } else {
-        if (tid < 32) rc_prepare_edges(S, plane, c, cfl, T.lw, T.lh);
+        if (tid < 32) rc_prepare_edges<BD>(S, plane, c, cfl, T.lw, T.lh);
         __syncthreads();
         for (int p = tid; p < W * H; p += RC_NT) {
             const int i = p / W, j = p % W;
-            res[p] = (int16_t)((int)src[i * sp + j] - rc_pred(S, plane, c, cfl, alpha, i, j, T.lw, T.lh, W, 0));
+            res[p] = (int16_t)((int)src[i * sp + j] - rc_pred<BD>(S, plane, c, cfl, alpha, i, j, T.lw, T.lh, W, 0));
         }
     }
     __syncthreads();
@@ -445,33 +461,35 @@ __device__ void rc_final_quant(int W, int H, RcShared &S, const EvalIn &e, int p
 
 // reconstruction base = prediction = src - residual (the residual of the final candidate is exact:
 // res = src - pred in integers), instead of evaluating the prediction again (CTA)
-__device__ void rc_write_from_res(int W, int H, const uint8_t *src, int sp, const int16_t *res, uint8_t *dst, int pitch) {
+template <typename Px>
+__device__ void rc_write_from_res(int W, int H, const Px *src, int sp, const int16_t *res, Px *dst, int pitch) {
     for (int p = threadIdx.x; p < W * H; p += RC_NT) {
         const int i = p / W, j = p % W;
-        dst[i * pitch + j] = (uint8_t)((int)src[i * sp + j] - (int)res[p]);
+        dst[i * pitch + j] = (Px)((int)src[i * sp + j] - (int)res[p]);
     }
     __syncthreads();
 }
 
 // write prediction into the reconstruction (CTA)
-__device__ void rc_write_pred(int W, int H, const RcShared &S, int plane, int c, bool cfl, int alpha, uint8_t *dst, int pitch) {
+template <int BD>
+__device__ void rc_write_pred(int W, int H, const RcShared<BD> &S, int plane, int c, bool cfl, int alpha, av1g_pixel_t(BD) *dst, int pitch) {
     const TxR T(W, H);
     if (plane == 0 && is_fi(c)) {
         if (threadIdx.x == 0)
-            av1g_predict_filter_intra(c - 128, T.lw, T.lh, S.ea[0] + AV1G_EDGE_OFF, S.el[0] + AV1G_EDGE_OFF, dst, pitch);
+            av1g_predict_filter_intra<BD>(c - 128, T.lw, T.lh, S.ea[0] + AV1G_EDGE_OFF, S.el[0] + AV1G_EDGE_OFF, dst, pitch);
         __syncthreads();
         return;
     }
     for (int p = threadIdx.x; p < W * H; p += RC_NT) {
         const int i = p / W, j = p % W;
-        dst[i * pitch + j] = (uint8_t)rc_pred(S, plane, c, cfl, alpha, i, j, T.lw, T.lh, W, 0);
+        dst[i * pitch + j] = (av1g_pixel_t(BD))rc_pred<BD>(S, plane, c, cfl, alpha, i, j, T.lw, T.lh, W, 0);
     }
     __syncthreads();
 }
 
 // record a finished tx block: txb entry, coefficients, context maps, BlockDecoded.  Returns eob.
-template <int SS>
-__device__ int rc_record_txb(int W, int H, RcShared &S, const GpBatch &B, uint32_t sb, const GpImage &I, int plane, int txSz, int txType,
+template <int SS, int BD>
+__device__ int rc_record_txb(int W, int H, RcShared<BD> &S, const GpBatch &B, uint32_t sb, const GpImage &I, int plane, int txSz, int txType,
                              int x4, int y4, int sbr4, int sbc4) {
     const TxR T(W, H);
     const int tid = threadIdx.x;
@@ -525,15 +543,15 @@ __device__ int rc_record_txb(int W, int H, RcShared &S, const GpBatch &B, uint32
 
 // edges of a tx block from the reconstruction, built by threads tid0 .. tid0+nt-1; then one thread
 // records the edge-filter inputs and the DC value.  Callers __syncthreads() afterwards.
-template <int SS>
-__device__ __forceinline__ void rc_edges(RcShared &S, const GpImage &I, int plane, int px, int py, int lw, int lh, int haveL,
+template <int SS, int BD>
+__device__ __forceinline__ void rc_edges(RcShared<BD> &S, const GpImage &I, int plane, int px, int py, int lw, int lh, int haveL,
                                          int haveA, int haveAR, int haveBL, int mi_row, int mi_col, int tid0, int nt,
                                          int blkA = -1, int blkL = -1) {
     const int maxX = ((I.MiCols * 4) >> (plane ? SS : 0)) - 1, maxY = ((I.MiRows * 4) >> (plane ? SS : 0)) - 1;
-    uint8_t *A = S.ea[plane] + AV1G_EDGE_OFF, *L = S.el[plane] + AV1G_EDGE_OFF;
+    av1g_pixel_t(BD) *A = S.ea[plane] + AV1G_EDGE_OFF, *L = S.el[plane] + AV1G_EDGE_OFF;
     const int t = (int)threadIdx.x - tid0;
     if (t < 0 || t >= nt) return;
-    build_edges_par(I.rec[plane], I.rpitch[plane], px, py, lw, lh, haveL, haveA, haveAR, haveBL, maxX, maxY, A, L, t, nt);
+    build_edges_par<BD>(gp_rec<BD>(I, plane), I.rpitch[plane], px, py, lw, lh, haveL, haveA, haveAR, haveBL, maxX, maxY, A, L, t, nt);
     // the group of nt threads is warp-aligned (nt = 32 or 64): sync the warps of the group
     // named barrier ids must be immediates: with a register id ptxas reserves all 16 hardware barriers
     // (EIATTR_NUM_BARRIERS 16), which limits k_recon to ONE resident CTA per SM instead of 4
@@ -542,7 +560,7 @@ __device__ __forceinline__ void rc_edges(RcShared &S, const GpImage &I, int plan
     else if (plane == 1) asm volatile("bar.sync 2, %0;" ::"r"(nt));
     else asm volatile("bar.sync 3, %0;" ::"r"(nt));
     if (t == 0) {
-        S.dcv[plane] = av1g_dc_value(A, L, haveL, haveA, lw, lh);
+        S.dcv[plane] = av1g_dc_value<BD>(A, L, haveL, haveA, lw, lh);
         S.hvL[plane] = haveL; S.hvA[plane] = haveA; S.px[plane] = px; S.py[plane] = py; S.mx[plane] = maxX; S.my[plane] = maxY;
         S.ft[plane] = I.edgeFilter ? av1g_get_filter_type(plane, mi_row, mi_col, blkA >= 0 ? blkA : haveA, blkL >= 0 ? blkL : haveL,
                                                           I.mYMode, I.mUVMode, I.MiCols, SS, SS) : 0;
@@ -561,7 +579,8 @@ __device__ __forceinline__ void rc_tick(const GpBatch &B, const GpParams &P, int
 
 // ---------------------------------------------------------------------------
 // luma of one block (tx size = block size, tx_depth 0)
-__device__ __noinline__ void rc_luma(int W, int H, RcShared &S, const GpBatch &B, const GpParams &P, uint32_t sb, const GpImage &I, int bsize, int x,
+template <int BD>
+__device__ __noinline__ void rc_luma(int W, int H, RcShared<BD> &S, const GpBatch &B, const GpParams &P, uint32_t sb, const GpImage &I, int bsize, int x,
                         int y, int availU, int availL, const TileBox &tb, const BlockQ &bq, float lambda, const float *C,
                         int *outMode, int *outDelta, int *outEob, int *outFi, int *outTxDepth) {
     const TxR T(W, H);
@@ -572,7 +591,8 @@ __device__ __noinline__ void rc_luma(int W, int H, RcShared &S, const GpBatch &B
     const int haveAR0 = (S.bdm[0][sbr4 - 1 + 1] >> (sbc4 + stepX + 1)) & 1;
     const int haveBL0 = (S.bdm[0][sbr4 + stepY + 1] >> (sbc4 - 1 + 1)) & 1;
     *outTxDepth = 0;
-    rc_edges<1>(S, I, 0, x, y, T.lw, T.lh, availL, availU, haveAR0, haveBL0, y >> 2, x >> 2, 0, 64);
+    typedef av1g_pixel_t(BD) Px;
+    rc_edges<1, BD>(S, I, 0, x, y, T.lw, T.lh, availL, availU, haveAR0, haveBL0, y >> 2, x >> 2, 0, 64);
     const GpBlockRes &br = B.blk[I.shOff[bsize] + (uint32_t)(y / H) * I.shNbx[bsize] + x / W];
     int skipCtx, dcCtx;
     txb_ctx<1>(I, 0, txSz, x >> 2, y >> 2, bsize, tb, &skipCtx, &dcCtx);
@@ -595,8 +615,8 @@ __device__ __noinline__ void rc_luma(int W, int H, RcShared &S, const GpBatch &B
     e.rnd = P.rnd; e.zbin = P.zbin; e.skipCtx = skipCtx; e.dcCtx = dcCtx; e.reduced = 0; e.C = C;
     e.intraDir = 0; e.txType = 0; e.qm = 0; e.resEnergy = 0;
     e.qmDist = P.qmDist; e.qmRnd = P.qmRnd;
-    const uint8_t *src = I.src[0] + (size_t)y * I.spitch[0] + x;
-    const uint8_t *srcP[3] = {src, src, src};
+    const Px *src = gp_src<BD>(I, 0) + (size_t)y * I.spitch[0] + x;
+    const Px *srcP[3] = {src, src, src};
     const int spP[3] = {I.spitch[0], I.spitch[0], I.spitch[0]};
     const int nc = max(1, min((int)br.ncand, P.Krecheck));
     const int set = av1g_get_tx_set_intra(txSz, 0);
@@ -625,9 +645,9 @@ __device__ __noinline__ void rc_luma(int W, int H, RcShared &S, const GpBatch &B
             ee.txType = S.taskT[t];
             ee.intraDir = intra_dir(c);
             ee.qm = av1g_qm(I.usingQm, I.qm[0], 0, txSz, ee.txType);
-            ee.resEnergy = shared ? sharedResE : rc_residual(W, H, S, 0, c, false, 0, src, I.spitch[0], res, (uint8_t *)tmp);
+            ee.resEnergy = shared ? sharedResE : rc_residual<BD>(W, H, S, 0, c, false, 0, src, I.spitch[0], res, (Px *)tmp);
             EvalOut o;
-            warp_eval_rt(res, tmp, q, ee, o, W, H);
+            warp_eval_rt<BD>(res, tmp, q, ee, o, W, H);
             const float J = o.D + lambda * (o.R + mbits(c));
             if ((tid & 31) == 0) S.taskJ[t] = J;
             if (!big) {
@@ -714,12 +734,12 @@ __device__ __noinline__ void rc_luma(int W, int H, RcShared &S, const GpBatch &B
                 if (!big && !is_fi(bestC)) {
                     // shared residual of bestC: edges by warp 0 (slot 0), residual by the CTA; energy with the
                     // lane order of rc_residual (warp 0) so EvalIn.resEnergy is bit-identical
-                    if (tid < 32) rc_prepare_edges(S, 0, bestC, false, T.lw, T.lh);
+                    if (tid < 32) rc_prepare_edges<BD>(S, 0, bestC, false, T.lw, T.lh);
                     __syncthreads();
                     int16_t *res = S.u.w[0].res;
                     for (int p = tid; p < W * H; p += RC_NT) {
                         const int i = p / W, j = p % W;
-                        res[p] = (int16_t)((int)src[i * I.spitch[0] + j] - rc_pred(S, 0, bestC, false, 0, i, j, T.lw, T.lh, W, 0));
+                        res[p] = (int16_t)((int)src[i * I.spitch[0] + j] - rc_pred<BD>(S, 0, bestC, false, 0, i, j, T.lw, T.lh, W, 0));
                     }
                     __syncthreads();
                     if (W == 64 || H == 64) {   // only the 64-point distortion uses the energy (never in pass 2)
@@ -765,14 +785,14 @@ __device__ __noinline__ void rc_luma(int W, int H, RcShared &S, const GpBatch &B
         for (int i = tid; i < W * H; i += RC_NT) S.qfin[i] = rc_bestq(S.u, bestW)[i];
         if (tid == 0) S.finEob = S.bestEw[bestW];
         if (!trySplit && sharedResC == bestC) predRes = S.u.w[0].res;
-        else if (tid < 32) rc_prepare_edges(S, 0, bestC, false, T.lw, T.lh);
+        else if (tid < 32) rc_prepare_edges<BD>(S, 0, bestC, false, T.lw, T.lh);
         __syncthreads();
         J0 = S.bestJw[bestW];
     } else if (trySplit) {
-        rc_final_quant_rd(W, H, S, e, 0, bestC, false, 0, src, I.spitch[0]);
+        rc_final_quant_rd<BD>(W, H, S, e, 0, bestC, false, 0, src, I.spitch[0]);
         J0 = S.finD + lambda * (S.finR + mbits(bestC));
     } else {
-        rc_final_quant(W, H, S, e, 0, bestC, false, 0, src, I.spitch[0]);
+        rc_final_quant<BD>(W, H, S, e, 0, bestC, false, 0, src, I.spitch[0]);
         predRes = big ? S.bigG->res : S.u.w[0].res;
         J0 = 0.f;   // only the tx-size trial uses it
     }
@@ -821,20 +841,20 @@ __device__ __noinline__ void rc_luma(int W, int H, RcShared &S, const GpBatch &B
                 const int sr4 = (ys >> 2) & 15, sc4 = (xs >> 2) & 15;
                 const int hAR = (S.bdm[0][sr4 - 1 + 1] >> (sc4 + (Ws >> 2) + 1)) & 1;
                 const int hBL = (S.bdm[0][sr4 + (Hs >> 2) + 1] >> (sc4 - 1 + 1)) & 1;
-                rc_edges<1>(S, I, 0, xs, ys, Ts.lw, Ts.lh, availL || ix > 0, availU || iy > 0, hAR, hBL, y >> 2, x >> 2, 0, 64, availU,
-                         availL);
+                rc_edges<1, BD>(S, I, 0, xs, ys, Ts.lw, Ts.lh, availL || ix > 0, availU || iy > 0, hAR, hBL, y >> 2, x >> 2, 0, 64, availU,
+                                availL);
                 __syncthreads();
                 int sCtx, dCtx;
                 txb_ctx<1>(I, 0, txSub, xs >> 2, ys >> 2, bsize, tb, &sCtx, &dCtx);
                 EvalIn es = e;
                 es.txSz = txSub; es.skipCtx = sCtx; es.dcCtx = dCtx; es.intraDir = intra_dir(bestC);
-                const uint8_t *srcS = I.src[0] + (size_t)ys * I.spitch[0] + xs;
+                const Px *srcS = gp_src<BD>(I, 0) + (size_t)ys * I.spitch[0] + xs;
                 int tSel;
                 float Jk;
                 if (bigS) {   // 32x32 sub blocks of a 64x64: DCT only, warp 0 into S.qfin
                     es.txType = AV1G_DCT_DCT;
                     es.qm = av1g_qm(I.usingQm, I.qm[0], 0, txSub, AV1G_DCT_DCT);
-                    rc_final_quant_rd(Ws, Hs, S, es, 0, bestC, false, 0, srcS, I.spitch[0]);
+                    rc_final_quant_rd<BD>(Ws, Hs, S, es, 0, bestC, false, 0, srcS, I.spitch[0]);
                     tSel = AV1G_DCT_DCT;
                     Jk = S.finD + lambda * S.finR;
                 } else {
@@ -846,9 +866,9 @@ __device__ __noinline__ void rc_luma(int W, int H, RcShared &S, const GpBatch &B
                         EvalIn ee = es;
                         ee.txType = types[ti];
                         ee.qm = av1g_qm(I.usingQm, I.qm[0], 0, txSub, ee.txType);
-                        ee.resEnergy = rc_residual(Ws, Hs, S, 0, bestC, false, 0, srcS, I.spitch[0], res, (uint8_t *)tmp);
+                        ee.resEnergy = rc_residual<BD>(Ws, Hs, S, 0, bestC, false, 0, srcS, I.spitch[0], res, (Px *)tmp);
                         EvalOut o;
-                        warp_eval_rt(res, tmp, q, ee, o, Ws, Hs);
+                        warp_eval_rt<BD>(res, tmp, q, ee, o, Ws, Hs);
                         const float J = o.D + lambda * o.R;
                         if (J < myJ) {   // warp-uniform
                             __syncwarp();
@@ -866,18 +886,18 @@ __device__ __noinline__ void rc_luma(int W, int H, RcShared &S, const GpBatch &B
                     if (tid == 0) S.finEob = S.taskE[bw];
                     tSel = S.taskT[bw];
                     Jk = S.taskJ[bw];
-                    if (tid < 32) rc_prepare_edges(S, 0, bestC, false, Ts.lw, Ts.lh);
+                    if (tid < 32) rc_prepare_edges<BD>(S, 0, bestC, false, Ts.lw, Ts.lh);
                     __syncthreads();
                 }
                 J1 += Jk;
-                uint8_t *dstS = I.rec[0] + (size_t)ys * I.rpitch[0] + xs;
-                rc_write_pred(Ws, Hs, S, 0, bestC, false, 0, dstS, I.rpitch[0]);
+                Px *dstS = gp_rec<BD>(I, 0) + (size_t)ys * I.rpitch[0] + xs;
+                rc_write_pred<BD>(Ws, Hs, S, 0, bestC, false, 0, dstS, I.rpitch[0]);
                 if (S.finEob > 0) {
                     const int fixes = cta_inverse_add(Ws, Hs, S, S.qfin, txSub, tSel, e.dcQ, e.acQ,
                                                       av1g_qm(I.usingQm, I.qm[0], 0, txSub, tSel), dstS, I.rpitch[0]);
                     if (fixes && tid == 0) atomicAdd(&B.stats[3], 1u);
                 }
-                eobAny |= rc_record_txb<1>(Ws, Hs, S, B, sb, I, 0, txSub, tSel, xs >> 2, ys >> 2, sr4, sc4);
+                eobAny |= rc_record_txb<1, BD>(Ws, Hs, S, B, sb, I, 0, txSub, tSel, xs >> 2, ys >> 2, sr4, sc4);
             }
         if (J1 < limit) {
             txDepth = 1;
@@ -887,24 +907,24 @@ __device__ __noinline__ void rc_luma(int W, int H, RcShared &S, const GpBatch &B
             // depth 0 wins: drop the trial's tx records, rebuild the block's edges and levels
             __syncthreads();
             if (tid == 0) { S.nTxb = nTxb0; S.nCoef = nCoef0; }
-            rc_edges<1>(S, I, 0, x, y, T.lw, T.lh, availL, availU, haveAR0, haveBL0, y >> 2, x >> 2, 0, 64);
+            rc_edges<1, BD>(S, I, 0, x, y, T.lw, T.lh, availL, availU, haveAR0, haveBL0, y >> 2, x >> 2, 0, 64);
             __syncthreads();
             for (int i = tid; i < nLv; i += RC_NT) S.qfin[i] = keep0[i];
             if (tid == 0) S.finEob = eob0;
-            if (tid < 32) rc_prepare_edges(S, 0, bestC, false, T.lw, T.lh);
+            if (tid < 32) rc_prepare_edges<BD>(S, 0, bestC, false, T.lw, T.lh);
             __syncthreads();
         }
     }
     *outTxDepth = txDepth;
     if (txDepth == 0) {
-        uint8_t *dst = I.rec[0] + (size_t)y * I.rpitch[0] + x;
+        Px *dst = gp_rec<BD>(I, 0) + (size_t)y * I.rpitch[0] + x;
         if (predRes) rc_write_from_res(W, H, src, I.spitch[0], predRes, dst, I.rpitch[0]);
-        else rc_write_pred(W, H, S, 0, bestC, false, 0, dst, I.rpitch[0]);
+        else rc_write_pred<BD>(W, H, S, 0, bestC, false, 0, dst, I.rpitch[0]);
         if (S.finEob > 0) {
             const int fixes = cta_inverse_add(W, H, S, S.qfin, txSz, bestT, e.dcQ, e.acQ, e.qm, dst, I.rpitch[0]);
             if (fixes && tid == 0) atomicAdd(&B.stats[3], 1u);
         }
-        *outEob = rc_record_txb<1>(W, H, S, B, sb, I, 0, txSz, bestT, x >> 2, y >> 2, sbr4, sbc4);
+        *outEob = rc_record_txb<1, BD>(W, H, S, B, sb, I, 0, txSz, bestT, x >> 2, y >> 2, sbr4, sbc4);
     }
     rc_tick(B, P, 3);  // final quant + prediction + inverse + record
     *outMode = luma_mode(bestC);
@@ -917,8 +937,8 @@ __device__ __noinline__ void rc_luma(int W, int H, RcShared &S, const GpBatch &B
 // CfL, exact RD) uses the first tx block of each plane - the only one in 4:2:0 and for 4:4:4 blocks up to
 // 32x32; 4:4:4 blocks with a 64-sample side (no CfL) code their further tx blocks after it in raster
 // order, each predicted from the reconstruction of the previous ones (closed loop, as the decoder does).
-template <int SS>
-__device__ __noinline__ void rc_chroma(int W, int H, RcShared &S, const GpBatch &B, const GpParams &P, uint32_t sb, const GpImage &I, int bsize,
+template <int SS, int BD>
+__device__ __noinline__ void rc_chroma(int W, int H, RcShared<BD> &S, const GpBatch &B, const GpParams &P, uint32_t sb, const GpImage &I, int bsize,
                           int mi_row, int mi_col, int yMode, int yTxDepth, int availUC, int availLC, const TileBox &tb, const BlockQ &bq,
                           float lambda, const float *C, int *outUv, int *outDuv, int *outAu, int *outAv, int *outEobU, int *outEobV) {
     const TxR T(W, H);
@@ -929,15 +949,16 @@ __device__ __noinline__ void rc_chroma(int W, int H, RcShared &S, const GpBatch 
     const int x4 = cx >> 2, y4 = cy >> 2;
     const int sbr4 = (mi_row & 15) >> ssy, sbc4 = (mi_col & 15) >> ssx;
     const int stepX = W >> 2, stepY = H >> 2;
+    typedef av1g_pixel_t(BD) Px;
     {
         const int pl = tid < 64 ? 1 : 2;
         const int haveAR = (S.bdm[pl][sbr4 - 1 + 1] >> (sbc4 + stepX + 1)) & 1;
         const int haveBL = (S.bdm[pl][sbr4 + stepY + 1] >> (sbc4 - 1 + 1)) & 1;
-        rc_edges<SS>(S, I, pl, cx, cy, T.lw, T.lh, availLC, availUC, haveAR, haveBL, mi_row, mi_col, pl == 1 ? 0 : 64, 64);
+        rc_edges<SS, BD>(S, I, pl, cx, cy, T.lw, T.lh, availLC, availUC, haveAR, haveBL, mi_row, mi_col, pl == 1 ? 0 : 64, 64);
     }
     if (tid < 32) S.satd[tid] = 0.f;
-    const uint8_t *srcU = I.src[1] + (size_t)cy * I.spitch[1] + cx;
-    const uint8_t *srcV = I.src[2] + (size_t)cy * I.spitch[2] + cx;
+    const Px *srcU = gp_src<BD>(I, 1) + (size_t)cy * I.spitch[1] + cx;
+    const Px *srcV = gp_src<BD>(I, 2) + (size_t)cy * I.spitch[2] + cx;
     const bool cflOk = P.cfl && av1g_cfl_allowed(bsize);
     const float lamS = P.satdLambda * sqrtf(lambda);
     auto uvbits = [&](int m) -> float {
@@ -965,7 +986,7 @@ __device__ __noinline__ void rc_chroma(int W, int H, RcShared &S, const GpBatch 
                 for (int xx = 0; xx < bw_px(bsize); xx += lw)
                     if (mi_col + (xx >> 2) < I.MiCols && mi_row + (yy >> 2) < I.MiRows) { maxLumaW = mi_col * 4 + xx + lw; maxLumaH = mi_row * 4 + yy + lh; }
         }
-        const uint8_t *luma = I.rec[0];
+        const Px *luma = gp_rec<BD>(I, 0);
         const int lp = I.rpitch[0];
         int sum = 0;
         for (int p = tid; p < W * H; p += RC_NT) {
@@ -1022,7 +1043,7 @@ __device__ __noinline__ void rc_chroma(int W, int H, RcShared &S, const GpBatch 
                     const int s = pl == 0 ? srcU[i * I.spitch[1] + j] : srcV[i * I.spitch[2] + j];
                     for (int k = 0; k < 3; k++) {
                         const int a = max(-16, min(16, S.cflAlpha[pl] + k - 1));
-                        const int pr = av1g_clip1(S.dcv[pl + 1] + av1g_round2signed(a * l, 6));
+                        const int pr = av1g_clip1<BD>(S.dcv[pl + 1] + av1g_round2signed(a * l, 6));
                         const float d = (float)(s - pr);
                         sse[pl][k] += d * d;
                     }
@@ -1074,12 +1095,12 @@ __device__ __noinline__ void rc_chroma(int W, int H, RcShared &S, const GpBatch 
             const int rr = it % (nc * nsub);
             const int ci = c0 + rr / nsub, sbk = rr % nsub;
             const int sx = (sbk % nsx) * 4, sy = (sbk / nsx) * 4;
-            const uint8_t *s = pl == 1 ? srcU : srcV;
+            const Px *s = pl == 1 ? srcU : srcV;
             const int sp = I.spitch[pl];
             int d[16];
             for (int i = 0; i < 4; i++)
                 for (int j = 0; j < 4; j++)
-                    d[i * 4 + j] = (int)s[(sy + i) * sp + sx + j] - rc_pred(S, pl, S.uvc[ci], false, 0, sy + i, sx + j, T.lw, T.lh, W);
+                    d[i * 4 + j] = (int)s[(sy + i) * sp + sx + j] - rc_pred<BD>(S, pl, S.uvc[ci], false, 0, sy + i, sx + j, T.lw, T.lh, W);
             atomicAdd(&S.satd[ci], hadamard4_abs(d));
         }
         __syncthreads();
@@ -1145,9 +1166,9 @@ __device__ __noinline__ void rc_chroma(int W, int H, RcShared &S, const GpBatch 
             ee.dcCtx = pl == 1 ? dcCtxU : dcCtxV;
             ee.txType = S.taskT[t];
             ee.qm = av1g_qm(I.usingQm, I.qm[pl], pl, txSz, ee.txType);
-            ee.resEnergy = rc_residual(W, H, S, pl, c, cfl, cfl ? S.cflAlpha[pl - 1] : 0, pl == 1 ? srcU : srcV, I.spitch[pl], res);
+            ee.resEnergy = rc_residual<BD>(W, H, S, pl, c, cfl, cfl ? S.cflAlpha[pl - 1] : 0, pl == 1 ? srcU : srcV, I.spitch[pl], res);
             EvalOut o;
-            warp_eval_rt(res, tmp, qq, ee, o, W, H);
+            warp_eval_rt<BD>(res, tmp, qq, ee, o, W, H);
             if (!big && t < RC_TASKQ_MAX) {   // keep the levels: the final of the winner reuses them
                 int16_t *dq = rc_taskq(S.u, t);
                 for (int i = tid & 31; i < W * H; i += 32) dq[i] = qq[i];
@@ -1203,12 +1224,12 @@ __device__ __noinline__ void rc_chroma(int W, int H, RcShared &S, const GpBatch 
         ee.qm = av1g_qm(I.usingQm, I.qm[pl], pl, txSz, uvTxType);
         const int alpha = cfl ? S.cflAlpha[pl - 1] : 0;
         const int c = cfl ? 255 : bestUvC;
-        const uint8_t *s = pl == 1 ? srcU : srcV;
+        const Px *s = pl == 1 ? srcU : srcV;
         for (int ty = 0; ty < nTxY; ty++)
             for (int tx = 0; tx < nTxX; tx++) {
                 const int ox = tx * W, oy = ty * H;   // offset inside the chroma block
                 if (!SS && (x4 + (ox >> 2) >= cCols4 || y4 + (oy >> 2) >= cRows4)) continue;   // outside the coded area: not coded
-                uint8_t *dst = I.rec[pl] + (size_t)(cy + oy) * I.rpitch[pl] + cx + ox;
+                Px *dst = gp_rec<BD>(I, pl) + (size_t)(cy + oy) * I.rpitch[pl] + cx + ox;
                 if (SS || (tx == 0 && ty == 0)) {
                     int kept = -1;
                     const bool bigC = rc_big(W, H);
@@ -1218,11 +1239,11 @@ __device__ __noinline__ void rc_chroma(int W, int H, RcShared &S, const GpBatch 
                         if (bigC) for (int i = tid; i < T.n; i += RC_NT) S.qfin[i] = S.bigQ[kept * 1024 + i];
                         else for (int i = tid; i < W * H; i += RC_NT) S.qfin[i] = rc_taskq(S.u, kept)[i];
                         if (tid == 0) S.finEob = S.taskE[kept];
-                        if (tid < 32) rc_prepare_edges(S, pl, c, cfl, T.lw, T.lh);
+                        if (tid < 32) rc_prepare_edges<BD>(S, pl, c, cfl, T.lw, T.lh);
                         __syncthreads();
-                        rc_write_pred(W, H, S, pl, c, cfl, alpha, dst, I.rpitch[pl]);
+                        rc_write_pred<BD>(W, H, S, pl, c, cfl, alpha, dst, I.rpitch[pl]);
                     } else {
-                        rc_final_quant(W, H, S, ee, pl, c, cfl, alpha, s, I.spitch[pl]);
+                        rc_final_quant<BD>(W, H, S, ee, pl, c, cfl, alpha, s, I.spitch[pl]);
                         rc_write_from_res(W, H, s, I.spitch[pl], rc_big(W, H) ? S.bigG->res : S.u.w[0].res, dst, I.rpitch[pl]);
                     }
                 } else {
@@ -1231,23 +1252,23 @@ __device__ __noinline__ void rc_chroma(int W, int H, RcShared &S, const GpBatch 
                     const int r4 = sbr4 + (oy >> 2), c4 = sbc4 + (ox >> 2);   // SB-relative, plane 4x4 units
                     const int haveAR = (S.bdm[pl][r4 - 1 + 1] >> (c4 + (W >> 2) + 1)) & 1;
                     const int haveBL = (S.bdm[pl][r4 + (H >> 2) + 1] >> (c4 - 1 + 1)) & 1;
-                    rc_edges<SS>(S, I, pl, cx + ox, cy + oy, T.lw, T.lh, availLC || tx > 0, availUC || ty > 0, haveAR, haveBL, mi_row, mi_col,
-                             0, 64, availUC, availLC);
+                    rc_edges<SS, BD>(S, I, pl, cx + ox, cy + oy, T.lw, T.lh, availLC || tx > 0, availUC || ty > 0, haveAR, haveBL, mi_row,
+                                     mi_col, 0, 64, availUC, availLC);
                     __syncthreads();
                     int sc, dc;
                     txb_ctx<SS>(I, pl, txSz, x4 + (ox >> 2), y4 + (oy >> 2), bsize, tb, &sc, &dc);
                     EvalIn et = ee;
                     et.skipCtx = sc; et.dcCtx = dc;
-                    const uint8_t *so = s + (size_t)oy * I.spitch[pl] + ox;
-                    rc_final_quant(W, H, S, et, pl, c, cfl, alpha, so, I.spitch[pl]);
+                    const Px *so = s + (size_t)oy * I.spitch[pl] + ox;
+                    rc_final_quant<BD>(W, H, S, et, pl, c, cfl, alpha, so, I.spitch[pl]);
                     rc_write_from_res(W, H, so, I.spitch[pl], rc_big(W, H) ? S.bigG->res : S.u.w[0].res, dst, I.rpitch[pl]);
                 }
                 if (S.finEob > 0) {
                     const int fixes = cta_inverse_add(W, H, S, S.qfin, txSz, uvTxType, ee.dcQ, ee.acQ, ee.qm, dst, I.rpitch[pl]);
                     if (fixes && tid == 0) atomicAdd(&B.stats[3], 1u);
                 }
-                eobs[pl - 1] |= rc_record_txb<SS>(W, H, S, B, sb, I, pl, txSz, uvTxType, x4 + (ox >> 2), y4 + (oy >> 2), sbr4 + (oy >> 2),
-                                              sbc4 + (ox >> 2));
+                eobs[pl - 1] |= rc_record_txb<SS, BD>(W, H, S, B, sb, I, pl, txSz, uvTxType, x4 + (ox >> 2), y4 + (oy >> 2), sbr4 + (oy >> 2),
+                                                  sbc4 + (ox >> 2));
             }
     }
     rc_tick(B, P, 7);  // chroma final quant + recon
@@ -1261,10 +1282,11 @@ __device__ __noinline__ void rc_chroma(int W, int H, RcShared &S, const GpBatch 
 
 // ---------------------------------------------------------------------------
 // SS: chroma subsampling of the frames in sbList (1: 4:2:0 and monochrome, 0: 4:4:4 - monochrome frames may be
-// in either list, they have no chroma); gp_launch_recon launches one instantiation per layout
-template <int SS>
+// in either list, they have no chroma); gp_launch_recon launches one instantiation per layout.  BD: bit depth of
+// the batch.
+template <int SS, int BD>
 __global__ void __launch_bounds__(RC_NT, 4) k_recon(GpBatch B, GpParams P, const uint32_t *sbList) {
-    __shared__ RcShared S;
+    __shared__ RcShared<BD> S;
     const uint32_t sb = sbList[blockIdx.x];
     const GpImage &I = B.img[B.sbImg[sb]];
     const uint32_t local = sb - I.sbBase;
@@ -1275,7 +1297,7 @@ __global__ void __launch_bounds__(RC_NT, 4) k_recon(GpBatch B, GpParams P, const
     const int miRowEnd = tb.y1 >> 2, miColEnd = tb.x1 >> 2;
     const long long sbT0 = clock64();
     if (P.poisonSmem) {   // debug: uninitialised shared-memory reads become a fixed pattern (0x7F7F levels)
-        for (int i = tid; i < (int)(sizeof(RcShared) / 4); i += RC_NT) ((uint32_t *)&S)[i] = 0x7F7F7F7Fu;
+        for (int i = tid; i < (int)(sizeof(RcShared<BD>) / 4); i += RC_NT) ((uint32_t *)&S)[i] = 0x7F7F7F7Fu;
         __syncthreads();
     }
     // clear_block_decoded_flags (spec): one thread per (plane, row) word
@@ -1297,8 +1319,8 @@ __global__ void __launch_bounds__(RC_NT, 4) k_recon(GpBatch B, GpParams P, const
     const int nLeaves = B.leafCountW[sb];
     if (tid == 0) { S.nTxb = 0; S.nCoef = 0; S.edgeFilter = I.edgeFilter; S.bigG = (RcBigScr *)((char *)B.bigScratch + (size_t)blockIdx.x * RC_CTA_BIG_BYTES); S.bigQ = (int16_t *)(S.bigG + RC_NW); }
     const int qidx = sb_qindex(I, sbx, sby);
-    const BlockQ bq = block_q(I, qidx);
-    const float lambda = gp_lambda(qidx, P.lambdaMul);
+    const BlockQ bq = block_q<BD>(I, qidx);
+    const float lambda = gp_lambda<BD>(qidx, P.lambdaMul);
     const float *C = g_cost[I.qctx];
     __syncthreads();
     rc_tick(B, P, -1);
@@ -1315,11 +1337,11 @@ __global__ void __launch_bounds__(RC_NT, 4) k_recon(GpBatch B, GpParams P, const
         const float lambdaB = lambda * ssim_scale(I, x, y, bw_px(bsize), bh_px(bsize));
         int yMode = 0, yDelta = 0, eobY = 0, yFi = 0, yTxDepth = 0;
         const int txSz = AV1G_T(Max_Tx_Size_Rect)[bsize];
-rc_luma(AV1G_T(Tx_Width)[txSz], AV1G_T(Tx_Height)[txSz], S, B, P, sb, I, bsize, x, y, availU, availL, tb, bq, lambdaB, C, &yMode, &yDelta, &eobY, &yFi, &yTxDepth);
+rc_luma<BD>(AV1G_T(Tx_Width)[txSz], AV1G_T(Tx_Height)[txSz], S, B, P, sb, I, bsize, x, y, availU, availL, tb, bq, lambdaB, C, &yMode, &yDelta, &eobY, &yFi, &yTxDepth);
         int uv = 0, duv = 0, aU = 0, aV = 0, eobU = 0, eobV = 0;
         if (hasChroma) {
             const int uvTx = av1g_uv_tx_size(bsize, SS, SS);
-rc_chroma<SS>(AV1G_T(Tx_Width)[uvTx], AV1G_T(Tx_Height)[uvTx], S, B, P, sb, I, bsize, mi_row, mi_col, yMode, yTxDepth, availUC, availLC, tb, bq, lambdaB * P.lambdaCMul, C, &uv, &duv, &aU, &aV, &eobU, &eobV);
+rc_chroma<SS, BD>(AV1G_T(Tx_Width)[uvTx], AV1G_T(Tx_Height)[uvTx], S, B, P, sb, I, bsize, mi_row, mi_col, yMode, yTxDepth, availUC, availLC, tb, bq, lambdaB * P.lambdaCMul, C, &uv, &duv, &aU, &aV, &eobU, &eobV);
         }
         const int skip = (eobY == 0 && eobU == 0 && eobV == 0) ? 1 : 0;
         // maps

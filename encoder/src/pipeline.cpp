@@ -88,6 +88,7 @@ GpEncoder::~GpEncoder() {
         if (e) cudaEventDestroy(e);
     if (hiSt_) cudaStreamDestroy(hiSt_);
     if (vbLuts_) cudaFree(vbLuts_);
+    if (vbLuts10_) cudaFree(vbLuts10_);
 }
 
 int GpEncoder::init(const GpConfig &cfg, std::string &err) {
@@ -154,6 +155,10 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
     std::vector<uint32_t> sbImg;
     std::vector<av1g_tiles> tiles(n);
     std::vector<std::array<int, 2>> tileReq(n);
+    // bit depth of the batch: every frame the same (the kernels are instantiated per bit depth)
+    const int bd = in[0].bitDepth == 10 ? 10 : 8, bps = bd == 8 ? 1 : 2;
+    for (int i = 0; i < n; i++)
+        if ((in[i].bitDepth == 10 ? 10 : 8) != bd) { err = "frames of different bit depths in one batch"; return -1; }
     for (int i = 0; i < n; i++) {
         const GpFrameIn &f = in[i];
         GpImage &I = imgs[i];
@@ -170,7 +175,7 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
         I.edgeFilter = cfg_.edgeFilter;
         I.dqUDc = cfg_.dqUDc; I.dqUAc = cfg_.dqUAc; I.dqVDc = cfg_.dqVDc; I.dqVAc = cfg_.dqVAc;
         if (cfg_.tuneIq) {
-            av1f_tuneiq_frame_init(cfg_.qindex, I.ssx, I.ssy, f.mono, &tiq[i]);   // 4:4:4: libaom's 4:4:4 chroma delta-q / QM
+            av1f_tuneiq_frame_init(cfg_.qindex, I.ssx, I.ssy, f.mono, &tiq[i], bd);   // 4:4:4: libaom's 4:4:4 chroma delta-q / QM
             I.dqUDc = tiq[i].dq_u_dc; I.dqUAc = tiq[i].dq_u_ac; I.dqVDc = tiq[i].dq_v_dc; I.dqVAc = tiq[i].dq_v_ac;
         }
         if (cfg_.qm != -1) {
@@ -233,7 +238,7 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
     bool any444 = false, any420 = false;
     for (int i = 0; i < n; i++) {
         const GpImage &I = imgs[i];
-        planeBytes += (size_t)in[i].aw * in[i].ah + 2 * (size_t)(in[i].aw >> I.ssx) * (in[i].ah >> I.ssy);
+        planeBytes += ((size_t)in[i].aw * in[i].ah + 2 * (size_t)(in[i].aw >> I.ssx) * (in[i].ah >> I.ssy)) * bps;
         miTotal += (size_t)I.MiCols * I.MiRows;
         ctxTotal += (size_t)I.MiCols * I.MiRows + 2 * (size_t)(I.MiCols >> I.ssx) * (I.MiRows >> I.ssy);
         sbqTotal += (size_t)I.sbCols * I.sbRows;
@@ -255,7 +260,8 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
         size_t pr = 0, pm = 0, pc = 0, pq = 0;
         for (int i = 0; i < n; i++) {
             GpImage &I = imgs[i];
-            const size_t ysz = (size_t)in[i].aw * in[i].ah, csz = (size_t)(in[i].aw >> I.ssx) * (in[i].ah >> I.ssy);
+            // bytes (10-bit: 2 per sample); the pitches are in samples
+            const size_t ysz = (size_t)in[i].aw * in[i].ah * bps, csz = (size_t)(in[i].aw >> I.ssx) * (in[i].ah >> I.ssy) * bps;
             I.rec[0] = dRec + pr; I.rpitch[0] = in[i].aw;
             I.rec[1] = dRec + pr + ysz; I.rpitch[1] = in[i].aw >> I.ssx;
             I.rec[2] = dRec + pr + ysz + csz; I.rpitch[2] = in[i].aw >> I.ssx;
@@ -290,7 +296,7 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
             GpImage &I = imgs[i];
             I.cols16 = (I.MiCols + 3) / 4; I.rows16 = (I.MiRows + 3) / 4;
             I.var16 = dV + at;
-            gp_launch_var16(in[i].dsrc[0], in[i].spitch[0], I.MiCols, I.MiRows, dV + at, st);
+            gp_launch_var16(in[i].dsrc[0], in[i].spitch[0], I.MiCols, I.MiRows, dV + at, st, bd);
             at += (size_t)I.cols16 * I.rows16;
         }
     }
@@ -306,7 +312,7 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
             GpImage &I = imgs[i];
             I.cols16 = (I.MiCols + 3) / 4; I.rows16 = (I.MiRows + 3) / 4;
             I.ssimLog = dS + at;
-            gp_launch_ssim_map(in[i].dsrc[0], in[i].spitch[0], I.MiCols, I.MiRows, dS + at, dSum + i, st);
+            gp_launch_ssim_map(in[i].dsrc[0], in[i].spitch[0], I.MiCols, I.MiRows, dS + at, dSum + i, st, bd);
             at += (size_t)I.cols16 * I.rows16;
         }
         if (getenv("GP_DEBUG_SSIM")) {
@@ -330,12 +336,20 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
             vd[i].width = I.W; vd[i].height = I.H; vd[i].base_q_idx = cfg_.qindex;
             vd[i].tile_cols_log2 = tiles[i].cols_log2; vd[i].tile_rows_log2 = tiles[i].rows_log2;
             vd[i].sb_off = I.sbBase;
+            vd[i].bit_depth = bd;
         }
         av1f_vb_desc *dVd;
         GPCK(A.get(dVd, n));
         GPCK(A.get(dSbq, sbqTotal));
         GPCK(cudaMemcpyAsync(dVd, vd.data(), n * sizeof(av1f_vb_desc), cudaMemcpyHostToDevice, st));
-        GPCK((cudaError_t)av1f_varboost(dVd, n, (uint32_t)sbqTotal, vbLuts_, cfg_.vbOrder, nullptr, nullptr, dSbq, st));
+        if (bd == 10 && !vbLuts10_) {   // 10-bit LUTs on first use (libaom's 10-bit q tables)
+            GPCK(cudaMalloc(&vbLuts10_, 256 * 1024));
+            if (av1f_vb_build_luts_bd(vbLuts10_, cfg_.vbStrength, 10, st)) { err = "av1f_vb_build_luts_bd failed"; A.release(); return -1; }
+        }
+        if (bd == 10)
+            GPCK((cudaError_t)av1f_varboost_bd(dVd, n, (uint32_t)sbqTotal, vbLuts10_, cfg_.vbOrder, 10, nullptr, nullptr, dSbq, st));
+        else
+            GPCK((cudaError_t)av1f_varboost(dVd, n, (uint32_t)sbqTotal, vbLuts_, cfg_.vbOrder, nullptr, nullptr, dSbq, st));
         const int res = av1f_delta_q_res(cfg_.qindex);
         for (int i = 0; i < n; i++) {
             imgs[i].sbQ = dSbq + imgs[i].sbBase;
@@ -415,10 +429,10 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
     GPCK(cudaMemcpyAsync(dSteps, stepFlat.data(), stepFlat.size() * 4, cudaMemcpyHostToDevice, st));
     cudaEventRecord(ev_[1], st);
     // ---- analysis + DP ----
-    gp_launch_analysis(B, P, shTotal, st);
+    gp_launch_analysis(B, P, shTotal, st, bd);
     GPCK(cudaGetLastError());
     cudaEventRecord(ev_[2], st);
-    gp_launch_dp(B, P, st);
+    gp_launch_dp(B, P, st, bd);
     GPCK(cudaGetLastError());
     cudaEventRecord(ev_[3], st);
     // ---- closed loop, SB wavefront ----
@@ -427,7 +441,7 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
     GPCK(cudaEventRecord(evx_[0], st));
     GPCK(cudaStreamWaitEvent(hiSt_, evx_[0], 0));
     for (size_t s = 0; s + 1 < stepOff.size(); s++)
-        gp_launch_recon(B, P, dSteps + stepOff[s], step420[s], stepOff[s + 1] - stepOff[s] - step420[s], hiSt_);
+        gp_launch_recon(B, P, dSteps + stepOff[s], step420[s], stepOff[s + 1] - stepOff[s] - step420[s], hiSt_, bd);
     GPCK(cudaEventRecord(evx_[1], hiSt_));
     GPCK(cudaStreamWaitEvent(st, evx_[1], 0));
     GPCK(cudaGetLastError());
@@ -532,6 +546,7 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
         fp.width = (uint32_t)I.W; fp.height = (uint32_t)I.H;
         fp.monochrome = (uint8_t)I.mono;
         fp.chroma_format = (uint8_t)(!I.mono && !I.ssx ? AV1G_CHROMA_444 : AV1G_CHROMA_420);
+        fp.bit_depth = (uint8_t)bd;
         fp.base_q_idx = (uint8_t)cfg_.qindex;
         fp.tx_mode_select = (uint8_t)(P.txSizeSearch ? 1 : 0);
         fp.reduced_tx_set = 0;
@@ -547,7 +562,12 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
         if (cfg_.lfMode) {
             // libaom LPF_PICK_FROM_Q (key frame, 8-bit): ROUND_POWER_OF_TWO(acq * 17563 - 421574, 18), times lfMul
             int lv = cfg_.lfLevel;
-            if (cfg_.lfMode == 1) {
+            if (cfg_.lfMode == 1 && bd == 10) {
+                // 10 bits: libaom's high-bitdepth fit ROUND_POWER_OF_TWO(acq * 20723 + 4060632, 20) - 4 (key frame)
+                const int acq = av1g_ac_q<10>(cfg_.qindex);
+                const long v = (((long)acq * 20723 + 4060632 + (1 << 19)) >> 20) - 4;
+                lv = (int)lrintf((float)v * cfg_.lfMul);
+            } else if (cfg_.lfMode == 1) {
                 const int acq = av1g_ac_q(cfg_.qindex);
                 const long v = ((long)acq * 17563 - 421574 + (1 << 17)) >> 18;
                 lv = (int)lrintf((float)v * cfg_.lfMul);
@@ -625,7 +645,7 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
                 GPCK(cudaMemcpyAsync(pf.cdefIdx, dSbc + I.sbBase, (size_t)I.sbCols * I.sbRows, cudaMemcpyDeviceToDevice, st));
                 for (int p = 0; p < 3; p++) { pf.plane[p] = I.rec[p]; pf.stride[p] = I.rpitch[p]; }
                 uint8_t *co;
-                const size_t ysz = (size_t)I.aw * I.ah, csz = (size_t)(I.aw >> I.ssx) * (I.ah >> I.ssy);
+                const size_t ysz = (size_t)I.aw * I.ah * bps, csz = (size_t)(I.aw >> I.ssx) * (I.ah >> I.ssy) * bps;
                 GPCK(A.get(co, ysz + 2 * csz));
                 uint8_t *op[3] = {co, co + ysz, co + ysz + csz};
                 const int os[3] = {I.aw, I.aw >> I.ssx, I.aw >> I.ssx};
@@ -654,7 +674,7 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
         GPCK((cudaError_t)av1g_gpu_deblock(&f, st));
         if (fp.enable_cdef) {
             uint8_t *co;
-            const size_t ysz = (size_t)I.aw * I.ah, csz = (size_t)(I.aw >> I.ssx) * (I.ah >> I.ssy);
+            const size_t ysz = (size_t)I.aw * I.ah * bps, csz = (size_t)(I.aw >> I.ssx) * (I.ah >> I.ssy) * bps;
             GPCK(A.get(co, ysz + 2 * csz));
             uint8_t *op[3] = {co, co + ysz, co + ysz + csz};
             const int os[3] = {I.aw, I.aw >> I.ssx, I.aw >> I.ssx};
@@ -683,8 +703,9 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
         const int np = !cfg_.wantRecon ? 0 : I.mono ? 1 : 3;
         for (int p = 0; p < np; p++) {
             const int w = p ? (I.W + I.ssx) >> I.ssx : I.W, h = p ? (I.H + I.ssy) >> I.ssy : I.H;
-            o.recon[p].resize((size_t)w * h);
-            if (gp_pinned().stage2d(o.recon[p].data(), w, dl[i][p], dlp[i][p], w, h, st)) GPCK(cudaErrorUnknown);
+            o.recon[p].resize((size_t)w * h * bps);
+            if (gp_pinned().stage2d(o.recon[p].data(), (size_t)w * bps, dl[i][p], (size_t)dlp[i][p] * bps, (size_t)w * bps, h, st))
+                GPCK(cudaErrorUnknown);
         }
     }
     cudaEventRecord(ev_[7], st);
@@ -712,6 +733,37 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
 }
 
 // ---------------------------------------------------------------------------
+int gp_frames_to_10bit(std::vector<GpFrameIn> &frames, cudaStream_t st, uint8_t **buf, std::string &err) {
+    *buf = nullptr;
+    size_t total = 0;
+    auto planeBytes = [](const GpFrameIn &f, int p) -> size_t {
+        const int s = (p && !f.yuv444) ? 1 : 0;
+        return ((size_t)(f.aw >> s) * (f.ah >> s) * 2 + 255) & ~(size_t)255;
+    };
+    for (const GpFrameIn &f : frames)
+        if (f.bitDepth != 10)
+            for (int p = 0; p < (f.mono ? 1 : 3); p++) total += planeBytes(f, p);
+    if (!total) return 0;
+    uint8_t *d = nullptr;
+    GPCK(cudaMallocAsync((void **)&d, total, st));
+    size_t at = 0;
+    for (GpFrameIn &f : frames) {
+        if (f.bitDepth == 10) continue;
+        for (int p = 0; p < (f.mono ? 1 : 3); p++) {
+            const int s = (p && !f.yuv444) ? 1 : 0, w = f.aw >> s, h = f.ah >> s;
+            uint16_t *o = (uint16_t *)(d + at);
+            gp_launch_to10(f.dsrc[p], f.spitch[p], o, w, w, h, p > 0, st);
+            f.dsrc[p] = (const uint8_t *)o;
+            f.spitch[p] = w;
+            at += planeBytes(f, p);
+        }
+        f.bitDepth = 10;
+    }
+    GPCK(cudaGetLastError());
+    *buf = d;
+    return 0;
+}
+
 int gp_entropy_cpu(GpFrameOut &f, const std::vector<uint8_t> &icc, std::vector<uint8_t> &obu, std::vector<uint8_t> &avif,
                    std::string &err) {
     av1g_decision_record r = f.record();

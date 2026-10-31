@@ -16,11 +16,11 @@ int gp_upload_tables_an_c(const GpHostTables *);
 int gp_upload_tables_an_d(const GpHostTables *);
 int gp_upload_tables_recon(const GpHostTables *);
 int gp_upload_tables_an_uv(const GpHostTables *);
-void gp_launch_an_uv(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st);
-void gp_launch_an_a(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st);
-void gp_launch_an_b(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st);
-void gp_launch_an_c(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st);
-void gp_launch_an_d(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st);
+void gp_launch_an_uv(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st, int bd);
+void gp_launch_an_a(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st, int bd);
+void gp_launch_an_b(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st, int bd);
+void gp_launch_an_c(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st, int bd);
+void gp_launch_an_d(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st, int bd);
 
 // ---------------------------------------------------------------------------
 // pack: per-SB output slots -> DecisionRecord arrays (decode order, one CTA per SB)
@@ -69,7 +69,11 @@ void gp_launch_set_cdef(av1g_block *blocks, uint32_t nB, const uint32_t *blockFr
 
 // tune=iq SSIM rdmult factors per 16x16 (libaom av1_set_mb_ssim_rdmult_scaling): log of the factor;
 // k_ssim_norm subtracts the frame mean of the logs (= divide by the geometric mean).
-__global__ void k_ssim_cells(const uint8_t *y, int pitch, int MiCols, int MiRows, int cols16, int rows16, float *out,
+// Per-pixel 8x8 variance as av1_get_perpixel_variance: 8 bits aom_variance8x8 (against the flat 128 reference:
+// the same as against 0); 10 bits aom_highbd_10_variance8x8 against AV1_HIGH_VAR_OFFS_10 (flat 512) with its
+// rounding to 8-bit scale: sse = ROUND_POWER_OF_TWO(sum d^2, 4), sum = ROUND_POWER_OF_TWO(sum d, 2), var >= 0.
+template <int BD>
+__global__ void k_ssim_cells(const av1g_pixel_t(BD) *y, int pitch, int MiCols, int MiRows, int cols16, int rows16, float *out,
                              double *sum) {
     const int cell = blockIdx.x * blockDim.x + threadIdx.x;
     if (cell >= cols16 * rows16) return;
@@ -77,15 +81,31 @@ __global__ void k_ssim_cells(const uint8_t *y, int pitch, int MiCols, int MiRows
     double var = 0.0, nv = 0.0;
     for (int mr = row * 4; mr < MiRows && mr < (row + 1) * 4; mr += 2)
         for (int mc = col * 4; mc < MiCols && mc < (col + 1) * 4; mc += 2) {
-            int s = 0;
-            unsigned sse = 0;
-            for (int i = 0; i < 8; i++)
-                for (int j = 0; j < 8; j++) {
-                    const int p = y[(size_t)(mr * 4 + i) * pitch + mc * 4 + j];
-                    s += p;
-                    sse += (unsigned)(p * p);
-                }
-            const unsigned v = sse - (unsigned)(((int64_t)s * s) / 64);
+            unsigned v;
+            if (BD == 8) {
+                int s = 0;
+                unsigned sse = 0;
+                for (int i = 0; i < 8; i++)
+                    for (int j = 0; j < 8; j++) {
+                        const int p = y[(size_t)(mr * 4 + i) * pitch + mc * 4 + j];
+                        s += p;
+                        sse += (unsigned)(p * p);
+                    }
+                v = sse - (unsigned)(((int64_t)s * s) / 64);
+            } else {
+                int64_t s = 0;
+                uint64_t q = 0;
+                for (int i = 0; i < 8; i++)
+                    for (int j = 0; j < 8; j++) {
+                        const int d = (int)y[(size_t)(mr * 4 + i) * pitch + mc * 4 + j] - (128 << (BD - 8));
+                        s += d;
+                        q += (uint32_t)(d * d);
+                    }
+                const uint32_t sse = (uint32_t)((q + 8) >> 4);
+                const int sm = (int)((s + 2) >> 2);
+                const int64_t vv = (int64_t)sse - ((int64_t)sm * sm) / 64;
+                v = vv >= 0 ? (unsigned)vv : 0u;
+            }
             var += (double)((v + 32) >> 6);
             nv += 1.0;
         }
@@ -99,8 +119,9 @@ __global__ void k_ssim_norm(float *out, int n, const double *sum) {
     const int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i < n) out[i] -= (float)(*sum / n);
 }
-// per 16x16 cell: max over its 8x8 blocks of the per-pixel source variance (flat pruning)
-__global__ void k_var16(const uint8_t *y, int pitch, int MiCols, int MiRows, int cols16, int rows16, float *out) {
+// per 16x16 cell: max over its 8x8 blocks of the per-pixel source variance (flat pruning; native units)
+template <typename Px>
+__global__ void k_var16(const Px *y, int pitch, int MiCols, int MiRows, int cols16, int rows16, float *out) {
     const int cell = blockIdx.x * blockDim.x + threadIdx.x;
     if (cell >= cols16 * rows16) return;
     const int row = cell / cols16, col = cell % cols16;
@@ -109,7 +130,7 @@ __global__ void k_var16(const uint8_t *y, int pitch, int MiCols, int MiRows, int
         for (int bx = 0; bx < 2; bx++) {
             const int py = row * 16 + by * 8, px = col * 16 + bx * 8;
             if (py >= MiRows * 4 || px >= MiCols * 4) continue;
-            int s = 0, s2 = 0;
+            int s = 0, s2 = 0;   // 10 bits: 64 * 1023^2 < 2^31
             for (int i = 0; i < 8; i++)
                 for (int j = 0; j < 8; j++) {
                     const int p = y[(size_t)(py + i) * pitch + px + j];
@@ -120,28 +141,56 @@ __global__ void k_var16(const uint8_t *y, int pitch, int MiCols, int MiRows, int
         }
     out[cell] = mx;
 }
-void gp_launch_var16(const uint8_t *y, int pitch, int MiCols, int MiRows, float *out, cudaStream_t st) {
+void gp_launch_var16(const uint8_t *y, int pitch, int MiCols, int MiRows, float *out, cudaStream_t st, int bd) {
     const int cols16 = (MiCols + 3) / 4, rows16 = (MiRows + 3) / 4, n = cols16 * rows16;
-    k_var16<<<(n + 127) / 128, 128, 0, st>>>(y, pitch, MiCols, MiRows, cols16, rows16, out);
+    if (bd == 10) k_var16<<<(n + 127) / 128, 128, 0, st>>>((const uint16_t *)y, pitch, MiCols, MiRows, cols16, rows16, out);
+    else k_var16<<<(n + 127) / 128, 128, 0, st>>>(y, pitch, MiCols, MiRows, cols16, rows16, out);
 }
-void gp_launch_ssim_map(const uint8_t *y, int pitch, int MiCols, int MiRows, float *out, double *sum, cudaStream_t st) {
+void gp_launch_ssim_map(const uint8_t *y, int pitch, int MiCols, int MiRows, float *out, double *sum, cudaStream_t st, int bd) {
     const int cols16 = (MiCols + 3) / 4, rows16 = (MiRows + 3) / 4, n = cols16 * rows16;
     cudaMemsetAsync(sum, 0, sizeof(double), st);
-    k_ssim_cells<<<(n + 127) / 128, 128, 0, st>>>(y, pitch, MiCols, MiRows, cols16, rows16, out, sum);
+    if (bd == 10)
+        k_ssim_cells<10><<<(n + 127) / 128, 128, 0, st>>>((const uint16_t *)y, pitch, MiCols, MiRows, cols16, rows16, out, sum);
+    else k_ssim_cells<8><<<(n + 127) / 128, 128, 0, st>>>(y, pitch, MiCols, MiRows, cols16, rows16, out, sum);
     k_ssim_norm<<<(n + 255) / 256, 256, 0, st>>>(out, n, sum);
 }
 
-void gp_launch_analysis(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st) {
-    gp_launch_an_d(B, P, shTotal, st);
-    gp_launch_an_c(B, P, shTotal, st);
-    gp_launch_an_b(B, P, shTotal, st);
-    gp_launch_an_a(B, P, shTotal, st);
-    if (P.uvInDp) gp_launch_an_uv(B, P, shTotal, st);
+// 8-bit YCbCr planes -> 10-bit (front ends with --depth 10, sources with 8 bits per sample): the full-range
+// unorm mapping libavif applies when it writes 10-bit YUV from 8-bit RGB (avifImageRGBToYUV: v / 255 normalised,
+// Y = round(y * 1023), Cb/Cr = round(c * 1023 + 512)), here on the 8-bit Y / Cb / Cr samples:
+// Y10 = round(Y8 * 1023 / 255), C10 = clamp(round((C8 - 128) * 1023 / 255) + 512).  No ties exist (3 v mod 255 is
+// never 127.5), so the integer rounding below is exact.
+__global__ void k_to10(const uint8_t *src, int sp, uint16_t *dst, int dp, int w, int h, int chroma) {
+    const int x = blockIdx.x * blockDim.x + threadIdx.x, y = blockIdx.y;
+    if (x >= w || y >= h) return;
+    const int v = src[(size_t)y * sp + x];
+    int o;
+    if (!chroma) {
+        o = (2 * 1023 * v + 255) / 510;
+    } else {
+        const int t = (v - 128) * 1023;
+        o = (t >= 0 ? (2 * t + 255) / 510 : -((-2 * t + 255) / 510)) + 512;
+        o = o < 0 ? 0 : o > 1023 ? 1023 : o;
+    }
+    dst[(size_t)y * dp + x] = (uint16_t)o;
+}
+void gp_launch_to10(const uint8_t *src, int spitch, uint16_t *dst, int dpitch, int w, int h, int chroma, cudaStream_t st) {
+    if (w <= 0 || h <= 0) return;
+    k_to10<<<dim3((w + 255) / 256, h), 256, 0, st>>>(src, spitch, dst, dpitch, w, h, chroma);
 }
 
-void gp_launch_dp(const GpBatch &B, const GpParams &P, cudaStream_t st) {
+void gp_launch_analysis(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st, int bd) {
+    gp_launch_an_d(B, P, shTotal, st, bd);
+    gp_launch_an_c(B, P, shTotal, st, bd);
+    gp_launch_an_b(B, P, shTotal, st, bd);
+    gp_launch_an_a(B, P, shTotal, st, bd);
+    if (P.uvInDp) gp_launch_an_uv(B, P, shTotal, st, bd);
+}
+
+void gp_launch_dp(const GpBatch &B, const GpParams &P, cudaStream_t st, int bd) {
     if (!B.nSb) return;
-    k_dp<<<(B.nSb + 63) / 64, 64, 0, st>>>(B, P);
+    if (bd == 10) k_dp<10><<<(B.nSb + 63) / 64, 64, 0, st>>>(B, P);
+    else k_dp<8><<<(B.nSb + 63) / 64, 64, 0, st>>>(B, P);
 }
 
 void gp_launch_pack(const GpBatch &B, const GpPackOff *dOff, av1g_block *oB, uint32_t *oBT, av1g_txb *oT, int16_t *oC,

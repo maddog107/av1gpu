@@ -46,6 +46,8 @@ struct GpConfig {
     int ssimLambda = 0;       // tune=iq per-16x16 SSIM rdmult scaling of lambda
     int yuv444 = 0;           // front ends (CLI, batch mode): produce full-resolution chroma input planes and
                               // code colour frames 4:4:4 (the encoder itself follows GpFrameIn::yuv444)
+    int depth = 8;            // front ends: 10 = produce 10-bit input planes and code 10-bit (high_bitdepth) streams
+                              // (the encoder itself follows GpFrameIn::bitDepth)
     GpConfig();
 };
 
@@ -54,6 +56,8 @@ struct GpConfig {
 struct GpFrameIn {
     int W = 0, H = 0, mono = 0;
     int yuv444 = 0;            // 1: chroma planes are full size and the frame is coded 4:4:4 (High profile)
+    int bitDepth = 8;          // 10: dsrc are uint16_t planes (10-bit samples, pitches in samples), coded 10-bit.
+                               // All frames of one encode() call must have the same bit depth.
     const uint8_t *dsrc[3] = {nullptr, nullptr, nullptr};
     int spitch[3] = {0, 0, 0};
     int aw = 0, ah = 0;
@@ -66,7 +70,8 @@ struct GpFrameOut {
     std::vector<uint32_t> block_txb;
     std::vector<av1g_txb> txb;
     std::vector<int16_t> coeffs;
-    std::vector<uint8_t> recon[3];   // cropped: Y W x H, U/V ((W+1)/2) x ((H+1)/2) (4:4:4: W x H)
+    std::vector<uint8_t> recon[3];   // cropped: Y W x H, U/V ((W+1)/2) x ((H+1)/2) (4:4:4: W x H); 10-bit frames:
+                                     // uint16_t samples (2 bytes each, native byte order)
     int orientation = 1;             // EXIF orientation of the source (set by the caller; AVIF irot/imir)
     av1g_decision_record record();   // points into the vectors above
 };
@@ -98,7 +103,14 @@ private:
     cudaEvent_t evx_[2];
     cudaStream_t hiSt_ = nullptr;   // high-priority stream for the wavefront
     uint8_t *vbLuts_ = nullptr;
+    uint8_t *vbLuts10_ = nullptr;   // variance-boost LUTs with libaom's 10-bit q tables
 };
+
+// Front ends (--depth 10): convert the 8-bit frames of `frames` (bitDepth 8) to 10-bit device planes in place
+// (Y10 = round(Y8 * 1023 / 255), C10 = round((C8 - 128) * 1023 / 255) + 512, libavif's full-range mapping).  One
+// device allocation on st for all of them is returned in *buf (NULL if nothing was converted); free it with
+// cudaFreeAsync(*buf, st) after the encode.  The source planes must stay valid until the work on st is done.
+int gp_frames_to_10bit(std::vector<GpFrameIn> &frames, cudaStream_t st, uint8_t **buf, std::string &err);
 
 // Entropy coding.  CPU: av1core's writer (av1g_encode, bitstream only).  GPU: av1core GPU entropy
 // (symbolize + od_ec on the GPU) + OBU assembly.  Both produce identical bytes.
