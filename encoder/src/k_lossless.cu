@@ -267,7 +267,6 @@ __device__ __forceinline__ void ll_shape_arbl(int i, int j, int bw4, int bh4, in
 
 template <int BD>
 __global__ void __launch_bounds__(128) k_ll_shape(GpBatch B, GpLossless L, int bs, uint32_t nTotal, int fiOn) {
-    __shared__ float sJ[4][LL_NCAND_Y];
     const int warp = threadIdx.x >> 5, lane = threadIdx.x & 31;
     const uint32_t gb = blockIdx.x * 4 + warp;
     if (gb >= nTotal) return;
@@ -285,7 +284,9 @@ __global__ void __launch_bounds__(128) k_ll_shape(GpBatch B, GpLossless L, int b
     const float *C = g_cost[0];
     const TileBox tb = tile_of(I, x0, y0);
     const int bw4 = W >> 2, bh4 = H >> 2;
-    // ---- luma: lanes over the 66 candidates ----
+    // ---- luma: lanes over the 66 candidates; the best (lowest index on ties) by warp reduction ----
+    float bestJ = GP_INF;
+    int bestC = 0;
     {
         const int pw4 = I.MiCols, ph4 = I.MiRows;
         const int nj = min(bw4, pw4 - (x0 >> 2)), ni = min(bh4, ph4 - (y0 >> 2));
@@ -297,17 +298,21 @@ __global__ void __launch_bounds__(128) k_ll_shape(GpBatch B, GpLossless L, int b
                 uint32_t s = 0;
                 for (int i = 0; i < ni; i++)
                     for (int j = 0; j < nj; j++) {
-                        int ar, bl;
-                        ll_shape_arbl(i, j, bw4, bh4, x0, y0, 0, tb, pw4, ph4, ar, bl);
+                        int ar = 0, bl = 0;
+                        if (cd.var) ll_shape_arbl(i, j, bw4, bh4, x0, y0, 0, tb, pw4, ph4, ar, bl);
                         const int e = cd.ent + (cd.var == 1 ? ar : cd.var == 2 ? bl : 0);
                         s += ct[((size_t)((y0 >> 2) + i) * pw4 + (x0 >> 2) + j) * LL_NE_Y + e];
                     }
                 J = s * (1.f / 16.f) + ll_ymode_bits(bs, cd, fiOn, C);
             }
-            sJ[warp][c] = J;
+            if (J < bestJ) { bestJ = J; bestC = c; }
+        }
+        for (int o = 16; o > 0; o >>= 1) {
+            const float oj = __shfl_xor_sync(0xffffffffu, bestJ, o);
+            const int oc = __shfl_xor_sync(0xffffffffu, bestC, o);
+            if (oj < bestJ || (oj == bestJ && oc < bestC)) { bestJ = oj; bestC = oc; }
         }
     }
-    __syncwarp();
     // ---- chroma: best uv mode (no CfL) over the chroma footprint, U + V ----
     float uvJ = 0.f;
     if (!I.mono) {
@@ -329,8 +334,8 @@ __global__ void __launch_bounds__(128) k_ll_shape(GpBatch B, GpLossless L, int b
                 const uint16_t *ct = L.cost[p] + L.costOff[img][p];
                 for (int i = 0; i < ni; i++)
                     for (int j = 0; j < nj; j++) {
-                        int ar, bl;
-                        ll_shape_arbl(i, j, cbw4, cbh4, cx0, cy0, sx, tb, pw4, ph4, ar, bl);
+                        int ar = 0, bl = 0;
+                        if (cd.var) ll_shape_arbl(i, j, cbw4, cbh4, cx0, cy0, sx, tb, pw4, ph4, ar, bl);
                         const int e = cd.ent + (cd.var == 1 ? ar : cd.var == 2 ? bl : 0);
                         s += ct[((size_t)((cy0 >> 2) + i) * pw4 + (cx0 >> 2) + j) * LL_NE_UV + e];
                     }
@@ -370,22 +375,13 @@ __global__ void __launch_bounds__(128) k_ll_shape(GpBatch B, GpLossless L, int b
         uvJ = best * frac;
     }
     if (lane == 0) {
-        // top 3 luma candidates (informational) and the block's J in lambda units (k_dp adds lambda * partition bits)
-        int pick[3] = {-1, -1, -1};
-        for (int k = 0; k < 3; k++) {
-            float bj = GP_INF;
-            for (int c = 0; c < LL_NCAND_Y; c++)
-                if (c != pick[0] && c != pick[1] && sJ[warp][c] < bj) { bj = sJ[warp][c]; pick[k] = c; }
-        }
+        // the block's J in lambda units (k_dp adds lambda * partition bits); the best luma candidate (informational:
+        // k_ll_decide decides again with exact availability)
         const float lambda = gp_lambda<8>(0, 1.f) * L.lambdaScale;
-        out.J = (sJ[warp][pick[0]] + uvJ + g_avgSkip0) * lambda;
-        int n = 0;
-        for (int k = 0; k < 3; k++) {
-            if (pick[k] < 0) continue;
-            const LLCand cd = c_llCand[pick[k]];
-            out.cand[n++] = (uint8_t)(cd.fi >= 0 ? 0x68 + cd.fi : cand_pack(cd.mode, cd.delta));
-        }
-        out.ncand = (uint8_t)n;
+        out.J = (bestJ + uvJ + g_avgSkip0) * lambda;
+        const LLCand cd = c_llCand[bestC];
+        out.cand[0] = (uint8_t)(cd.fi >= 0 ? 0x68 + cd.fi : cand_pack(cd.mode, cd.delta));
+        out.ncand = 1;
         out.tx = 0;
     }
 }
