@@ -54,7 +54,7 @@ static bool decode_png(const std::vector<uint8_t> &d, int &W, int &H, std::vecto
     return true;
 }
 
-bool gp_decode_cpu(const std::string &path, GpHostPlanes &out, std::string &err) {
+bool gp_decode_cpu(const std::string &path, GpHostPlanes &out, std::string &err, bool yuv444) {
     std::vector<uint8_t> d;
     if (!gp_read_file(path, d)) { err = "read failed"; return false; }
     int W = 0, H = 0;
@@ -71,7 +71,7 @@ bool gp_decode_cpu(const std::string &path, GpHostPlanes &out, std::string &err)
         err = "unsupported input format";
         return false;
     }
-    out.W = W; out.H = H; out.mono = 0;
+    out.W = W; out.H = H; out.mono = 0; out.yuv444 = yuv444 ? 1 : 0;
     const int MiW = 2 * ((W + 7) >> 3) * 4, MiH = 2 * ((H + 7) >> 3) * 4;
     out.aw = (MiW + 63) & ~63;
     out.ah = (MiH + 63) & ~63;
@@ -85,10 +85,19 @@ bool gp_decode_cpu(const std::string &path, GpHostPlanes &out, std::string &err)
         Cr[i] = cl(0.5 * r - 0.418687589 * g - 0.081312411 * b + 128);
     }
     out.p[0].assign((size_t)out.aw * out.ah, 0);
-    out.p[1].assign((size_t)(out.aw / 2) * (out.ah / 2), 0);
-    out.p[2].assign((size_t)(out.aw / 2) * (out.ah / 2), 0);
+    out.p[1].assign((size_t)out.cw() * out.ch(), 0);
+    out.p[2].assign((size_t)out.cw() * out.ch(), 0);
     for (int y = 0; y < out.ah; y++)
         for (int x = 0; x < out.aw; x++) out.p[0][(size_t)y * out.aw + x] = Y[(size_t)std::min(y, H - 1) * W + std::min(x, W - 1)];
+    if (yuv444) {   // full-resolution chroma, edge-replicated like luma
+        for (int y = 0; y < out.ah; y++)
+            for (int x = 0; x < out.aw; x++) {
+                const size_t o = (size_t)std::min(y, H - 1) * W + std::min(x, W - 1);
+                out.p[1][(size_t)y * out.aw + x] = Cb[o];
+                out.p[2][(size_t)y * out.aw + x] = Cr[o];
+            }
+        return true;
+    }
     const int caw = out.aw / 2, cah = out.ah / 2;
     std::vector<uint8_t> cbs((size_t)cw * ch), crs((size_t)cw * ch);
     for (int y = 0; y < ch; y++)

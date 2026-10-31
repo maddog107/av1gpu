@@ -1,4 +1,4 @@
-// Batch mode = many images in flight.  The ingest module delivers GPU-resident 4:2:0 planes in
+// Batch mode = many images in flight.  The ingest module delivers GPU-resident 4:2:0 (--yuv 444: 4:4:4) planes in
 // size-classed batches (NVJPG hardware decode, CPU workers only parse/read); each ingest batch is
 // encoded as one GPU batch (analysis -> DP -> wavefront closed loop -> pack), then entropy coded
 // (GPU: av1core GPU entropy, or CPU writer threads) and written.  Reports img/s, MP/s, per-stage times, CPU use.
@@ -124,6 +124,7 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
     ic.pinned_bytes = 256ll << 20;
     if (getenv("GP_INGEST_DECODER")) ic.decoder = atoi(getenv("GP_INGEST_DECODER"));   // 1 = CPU entropy decode + GPU IDCT (no nvJPEG/NVJPG)
     if (getenv("GP_INGEST_HWBATCH")) ic.hw_batch = atoi(getenv("GP_INGEST_HWBATCH"));
+    ic.out_444 = cfg.yuv444;   // --yuv 444: full-resolution chroma planes
     char eb[256] = {0};
     const double t0 = now_ms(), c0 = cpu_ms();
     ingest_ctx *ictx = ingest_create(&ic, eb, sizeof eb);
@@ -313,12 +314,12 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
                 }
                 GpHostPlanes hp;
                 std::string e2;
-                if (!gp_decode_cpu(p, hp, e2) || (double)hp.W * hp.H > 35.6e6) {
+                if (!gp_decode_cpu(p, hp, e2, cfg.yuv444) || (double)hp.W * hp.H > 35.6e6) {
                     fprintf(stderr, "[av1gpu] skipped %s: %s\n", p.c_str(), e2.empty() ? "larger than 35.6 megapixels" : e2.c_str());
                     cpuFallbackA++;
                     continue;
                 }
-                const size_t ys = (size_t)hp.aw * hp.ah, cs = (size_t)(hp.aw / 2) * (hp.ah / 2);
+                const size_t ys = (size_t)hp.aw * hp.ah, cs = (size_t)hp.cw() * hp.ch();
                 uint8_t *d = nullptr;
                 if (cudaMallocAsync((void **)&d, ys + 2 * cs, fs) != cudaSuccess) { cpuFallbackA++; continue; }
                 cudaMemcpyAsync(d, hp.p[0].data(), ys, cudaMemcpyHostToDevice, fs);
@@ -328,9 +329,9 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
                 FbFrame F;
                 F.d = d;
                 F.name = base_name(p);
-                F.f.W = hp.W; F.f.H = hp.H; F.f.aw = hp.aw; F.f.ah = hp.ah;
+                F.f.W = hp.W; F.f.H = hp.H; F.f.aw = hp.aw; F.f.ah = hp.ah; F.f.yuv444 = hp.yuv444;
                 F.f.dsrc[0] = d; F.f.dsrc[1] = d + ys; F.f.dsrc[2] = d + ys + cs;
-                F.f.spitch[0] = hp.aw; F.f.spitch[1] = F.f.spitch[2] = hp.aw / 2;
+                F.f.spitch[0] = hp.aw; F.f.spitch[1] = F.f.spitch[2] = hp.cw();
                 std::lock_guard<std::mutex> lk(fbMu);
                 fbReady.push_back(F);
             }
@@ -377,7 +378,7 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
                     for (int i = 0; i < b.n_images; i++) {
                         const ingest_image &im = b.images[i];
                         GpFrameIn f;
-                        f.W = im.width; f.H = im.height; f.mono = im.mono; f.aw = im.aw; f.ah = im.ah;
+                        f.W = im.width; f.H = im.height; f.mono = im.mono; f.aw = im.aw; f.ah = im.ah; f.yuv444 = im.chroma_full;
                         f.dsrc[0] = b.pool + im.y_off; f.spitch[0] = im.y_pitch;
                         if (!im.mono) { f.dsrc[1] = b.pool + im.cb_off; f.dsrc[2] = b.pool + im.cr_off; f.spitch[1] = f.spitch[2] = im.c_pitch; }
                         fin.push_back(f);

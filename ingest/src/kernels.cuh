@@ -24,7 +24,8 @@ struct OutDesc {
   long long tile0;     // first global tile index
   int out_pitch, out_w, out_h;  // fill region (aw x ah or aw/2 x ah/2)
   int tiles_x;
-  int chroma;          // 0: direct (luma / mono), 1: 2x2 box average to 4:2:0
+  int chroma;          // 0: direct (luma / mono), 1: 2x2 box average to 4:2:0, 2: full resolution (4:4:4 output,
+                       //    libjpeg-turbo fancy upsampling of subsampled components)
   int src;             // PlaneDesc index of the native source component
   int W, H;            // source visible size (luma units, stored orientation)
   int Wo, Ho;          // output visible size (after orientation)

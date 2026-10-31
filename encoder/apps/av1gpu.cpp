@@ -31,7 +31,8 @@ static void usage() {
             "usage: av1gpu IN OUT.avif [options]\n"
             "       av1gpu --batch LIST|DIR --outdir DIR [options]\n"
             "\n"
-            "Input: JPEG (GPU decode), PNG or WebP (CPU decode).  Output: 8-bit 4:2:0 (or monochrome) AVIF.\n"
+            "Input: JPEG (GPU decode), PNG or WebP (CPU decode).  Output: 8-bit 4:2:0 (or monochrome) AVIF,\n"
+            "or 4:4:4 with --yuv 444.\n"
             "Defaults: --quality 60 --tune iq --edge-filter --preset turbo --small-preset base --gpu-entropy\n"
             "\n"
             "common options:\n"
@@ -40,6 +41,10 @@ static void usage() {
             "  --preset P              slow|base|fast|faster|turbo|turbo2|turbo3 (default turbo)\n"
             "  --small-preset P|none   preset for images below --small-mp megapixels (default base, 1 MP)\n"
             "  --tune iq|none          libaom tune=iq tool set: chroma delta-q, QM, variance boost, deblock, CDEF\n"
+            "  --yuv 420|444           chroma format of colour images (default 420).  444: full-resolution chroma,\n"
+            "                          AV1 High profile; PNG/WebP are converted without chroma downsampling, 4:4:4\n"
+            "                          JPEGs keep their chroma, subsampled JPEGs are upsampled like libjpeg-turbo's\n"
+            "                          decoder does (bigger files, no detail gained for them)\n"
             "  --cpu-entropy           entropy-code on the CPU instead of the GPU (identical bytes)\n"
             "  --batch LIST|DIR        encode every file in LIST (one path per line) or DIR; outputs <name>.avif\n"
             "  --outdir DIR            batch output directory (outputs are named <input file name>.avif)\n"
@@ -58,6 +63,7 @@ static void usage() {
             "  --qm L|auto --qm-uv L --edge-filter --lf q|LEVEL --lf-mul M --cdef ypri,ysec,uvpri,uvsec,damp-3\n"
             "  --vb 0|1 --vb-order tile|row|nearest --vb-strength PCT --f-lf off|q|search --f-cdef off|aom|search\n"
             "  --check                 compare the reconstruction with av1core's CPU decode of the record\n"
+            "  --dump-source F         (single image) write the encoder's input planes (visible Y, U, V) to F\n"
             "  --gpu-entropy           GPU symbolization + entropy coding (default)\n"
             "\n"
             "environment (batch mode): GP_ENCODERS (concurrent encoders, default 3), GP_ENCODE_MP (MP per GPU batch,\n"
@@ -67,7 +73,7 @@ static void usage() {
 struct Opts {
     std::vector<int> qlist;   // --qindex a,b,c (batch mode: one pass per q, outputs <name>.q<Q>.avif)
     bool nameQ = false;       // --name-q: add .q<Q> to batch output names even for a single q
-    std::string in, out, batch, outdir;
+    std::string in, out, batch, outdir, dumpSource;
     bool check = false, gpuEntropy = false, stats = false, devEntropy = false, checkEntropy = false, debugOutputs = false;
 };
 
@@ -198,6 +204,13 @@ static bool parse(int argc, char **argv, GpConfig &cfg, Opts &o) {
             }
             else { fprintf(stderr, "unknown --tune %s (iq, none)\n", v); return false; }
         }
+        else if (a == "--yuv") {
+            const char *v = nxt();
+            if (!strcmp(v, "444")) cfg.yuv444 = 1;
+            else if (!strcmp(v, "420")) cfg.yuv444 = 0;
+            else { fprintf(stderr, "unknown --yuv %s (420, 444)\n", v); return false; }
+        }
+        else if (a == "--dump-source") o.dumpSource = nxt();
         else if (a == "--tuneiq-frame") cfg.tuneIq = atoi(nxt());
         else if (a == "--vb") cfg.vb = atoi(nxt());
         else if (a == "--ssim-lambda") cfg.ssimLambda = atoi(nxt());
@@ -280,6 +293,8 @@ static int run_single(const GpConfig &cfg, const Opts &o) {
         ic.max_wait_ms = 0;
         ic.activity = 0;
         ic.pinned_bytes = 256ll << 20;   // D round 2: > 6000 px sides go to the CPU route (coefficients staged in this arena)
+        ic.out_444 = cfg.yuv444;
+        if (getenv("GP_INGEST_DECODER")) ic.decoder = atoi(getenv("GP_INGEST_DECODER"));   // 1: CPU entropy decode + GPU IDCT
         char eb[256] = {0};
         ictx = ingest_create(&ic, eb, sizeof eb);
         if (!ictx) { fprintf(stderr, "ingest_create: %s\n", eb); return 1; }
@@ -295,7 +310,7 @@ static int run_single(const GpConfig &cfg, const Opts &o) {
             return 3;
         }
         const ingest_image &im = ib.images[0];
-        fin.W = im.width; fin.H = im.height; fin.mono = im.mono;
+        fin.W = im.width; fin.H = im.height; fin.mono = im.mono; fin.yuv444 = im.chroma_full;
         fin.aw = im.aw; fin.ah = im.ah;
         fin.dsrc[0] = ib.pool + im.y_off; fin.spitch[0] = im.y_pitch;
         if (!im.mono) {
@@ -306,16 +321,26 @@ static int run_single(const GpConfig &cfg, const Opts &o) {
         if (!im.oriented) orientation = im.orientation;
     } else {
         GpHostPlanes hp;
-        if (!gp_decode_cpu(o.in, hp, err)) { fprintf(stderr, "decode %s: %s\n", o.in.c_str(), err.c_str()); return 3; }
-        const size_t ys = (size_t)hp.aw * hp.ah, cs = (size_t)(hp.aw / 2) * (hp.ah / 2);
+        if (!gp_decode_cpu(o.in, hp, err, cfg.yuv444)) { fprintf(stderr, "decode %s: %s\n", o.in.c_str(), err.c_str()); return 3; }
+        const size_t ys = (size_t)hp.aw * hp.ah, cs = (size_t)hp.cw() * hp.ch();
         if (cudaMalloc(&dplanes, ys + 2 * cs) != cudaSuccess) { fprintf(stderr, "cudaMalloc failed\n"); return 1; }
         cudaMemcpy(dplanes, hp.p[0].data(), ys, cudaMemcpyHostToDevice);
         cudaMemcpy(dplanes + ys, hp.p[1].data(), cs, cudaMemcpyHostToDevice);
         cudaMemcpy(dplanes + ys + cs, hp.p[2].data(), cs, cudaMemcpyHostToDevice);
-        fin.W = hp.W; fin.H = hp.H; fin.mono = 0; fin.aw = hp.aw; fin.ah = hp.ah;
+        fin.W = hp.W; fin.H = hp.H; fin.mono = 0; fin.aw = hp.aw; fin.ah = hp.ah; fin.yuv444 = hp.yuv444;
         fin.dsrc[0] = dplanes; fin.spitch[0] = hp.aw;
         fin.dsrc[1] = dplanes + ys; fin.dsrc[2] = dplanes + ys + cs;
-        fin.spitch[1] = fin.spitch[2] = hp.aw / 2;
+        fin.spitch[1] = fin.spitch[2] = hp.cw();
+    }
+    if (!o.dumpSource.empty()) {   // debug: the visible input planes as the encoder sees them (Y, then U, V)
+        std::vector<uint8_t> yuv;
+        for (int p = 0; p < (fin.mono ? 1 : 3); p++) {
+            const int s = (p && !fin.yuv444) ? 1 : 0, w = p ? (fin.W + s) >> s : fin.W, h = p ? (fin.H + s) >> s : fin.H;
+            const size_t at = yuv.size();
+            yuv.resize(at + (size_t)w * h);
+            cudaMemcpy2D(yuv.data() + at, w, fin.dsrc[p], fin.spitch[p], w, h, cudaMemcpyDeviceToHost);
+        }
+        if (!gp_write_file(o.dumpSource, yuv.data(), yuv.size())) { fprintf(stderr, "write %s failed\n", o.dumpSource.c_str()); return 1; }
     }
     auto t1 = std::chrono::steady_clock::now();
     GpEncoder encS;
