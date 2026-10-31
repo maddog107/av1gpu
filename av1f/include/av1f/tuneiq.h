@@ -1,6 +1,9 @@
 /* av1f/tuneiq.h - libaom v3.13.1 tune=iq decisions (all-intra, avifenc 1.4 defaults), header-only,
  * host + device.  Every function reproduces the cited libaom function exactly (validated against
- * libaom's own bitstreams).
+ * libaom's own bitstreams).  Bit depth (bd = 8 or 10): libaom's high-bitdepth rules - the 10-bit
+ * quantizer tables in av1_convert_qindex_to_q (ac_q / 16) / av1_convert_q_to_qindex, the 10-bit
+ * LPF_PICK_FROM_Q fit, rdmult / 16, and aom_highbd_10_variance8x8's rounding to 8-bit scale; the chroma
+ * delta-q, QM levels, delta_q_res, sharpness and CDEF damping / mode rules depend on the qindex only.
  *
  *   frame level   av1f_tuneiq_frame_init()  base qindex -> chroma delta-q, QM levels, delta_q_res,
  *                                            deblocking levels + sharpness, CDEF damping/mode, rdmult
@@ -17,6 +20,7 @@
 #include <stdint.h>
 #include "av1g/hd.h"
 #include "av1g/decisions.h"
+#include "av1g/spec_tables.h"
 #include "av1f/aom_tables_gen.h"
 
 #define AV1F_VB_MAX_DELTAQ_RANGE 80   /* VAR_BOOST_MAX_DELTAQ_RANGE */
@@ -27,6 +31,13 @@
 AV1G_HD int av1f_clampi(int v, int lo, int hi) { return v < lo ? lo : (v > hi ? hi : v); }
 AV1G_HD int av1f_dc_q(int qindex) { return AV1G_T(Aom_Dc_Qlookup)[av1f_clampi(qindex, 0, 255)]; }
 AV1G_HD int av1f_ac_q(int qindex) { return AV1G_T(Aom_Ac_Qlookup)[av1f_clampi(qindex, 0, 255)]; }
+/* av1_dc/ac_quant_QTX(qindex, 0, bd): libaom's dc/ac_qlookup(_10)_QTX == spec Dc/Ac_Qlookup[(bd - 8) >> 1] */
+AV1G_HD int av1f_dc_q_bd(int qindex, int bd) {
+    return bd == 8 ? av1f_dc_q(qindex) : AV1G_T(Dc_Qlookup)[(bd - 8) >> 1][av1f_clampi(qindex, 0, 255)];
+}
+AV1G_HD int av1f_ac_q_bd(int qindex, int bd) {
+    return bd == 8 ? av1f_ac_q(qindex) : AV1G_T(Ac_Qlookup)[(bd - 8) >> 1][av1f_clampi(qindex, 0, 255)];
+}
 
 /* avifenc 1.4 -q (tune=iq) -> base_q_idx (libavif tuneIqQualityToQuantizer + libaom quantizer_to_qindex) */
 AV1G_HD int av1f_qindex_for_quality(int quality) {
@@ -75,8 +86,9 @@ AV1G_HD int av1f_adjust_q(int res, int prev, int cur) {
 }
 
 /* av1_get_sbq_variance_boost (allintra_vis.c).  Double arithmetic in libaom's evaluation order;
- * device results are checked against the host for every (base, variance < 1024) pair. */
-AV1G_HD int av1f_varboost_qindex(int base, unsigned variance, int deltaq_strength_pct) {
+ * device results are checked against the host for every (base, variance < 1024) pair.  bd: the
+ * av1_convert_qindex_to_q / av1_convert_q_to_qindex bit depth (ac_q / 4 at 8 bits, / 16 at 10). */
+AV1G_HD int av1f_varboost_qindex(int base, unsigned variance, int deltaq_strength_pct, int bd = 8) {
     double strength = (deltaq_strength_pct / 100.0) * 3.0;
     strength = strength < 0.0 ? 0.0 : strength > 6.0 ? 6.0 : strength;
     if (variance == 0) variance = 1;
@@ -86,10 +98,11 @@ AV1G_HD int av1f_varboost_qindex(int base, unsigned variance, int deltaq_strengt
     double ratio = 0.15 * strength * (-log2((double)variance) + 10.0) + 1.0;
 #endif
     ratio = ratio < 1.0 ? 1.0 : ratio > AV1F_VB_MAX_BOOST ? AV1F_VB_MAX_BOOST : ratio;
-    const double base_q = av1f_ac_q(base) / 4.0;              /* av1_convert_qindex_to_q, 8-bit */
+    const double qdiv = bd == 8 ? 4.0 : 16.0;
+    const double base_q = av1f_ac_q_bd(base, bd) / qdiv;      /* av1_convert_qindex_to_q */
     const double target_q = base_q / ratio;
     int t = 0;                                                /* av1_convert_q_to_qindex */
-    while (t < 255 && av1f_ac_q(t) / 4.0 < target_q) t++;
+    while (t < 255 && av1f_ac_q_bd(t, bd) / qdiv < target_q) t++;
 #if defined(__CUDA_ARCH__)
     int boost = (int)round(__ddiv_rn(__dmul_rn(base + 544.0, (double)(base - t)), 1279.0));
 #else
@@ -116,15 +129,39 @@ AV1G_HD unsigned av1f_sb_variance(unsigned v[64]) {
 AV1G_HD unsigned av1f_var8x8_from_sums(int sum, unsigned sse) {
     return (sse - (unsigned)(((int64_t)sum * sum) / 64)) / 64;
 }
+/* the same for 10-bit samples (aom_highbd_10_variance8x8_c against zeros): sse and sum rounded to 8-bit
+ * scale (ROUND_POWER_OF_TWO(sse, 4), ROUND_POWER_OF_TWO(sum, 2)), negative variances clamped to 0 */
+AV1G_HD unsigned av1f_var8x8_from_sums_10(int64_t sum, uint64_t sse) {
+    const uint32_t s2 = (uint32_t)((sse + 8) >> 4);
+    const int s1 = (int)((sum + 2) >> 2);
+    const int64_t v = (int64_t)s2 - ((int64_t)s1 * s1) / 64;
+    return (v >= 0 ? (unsigned)v : 0u) / 64;
+}
 
-/* av1_compute_rd_mult_based_on_qindex(KF_UPDATE) with the tune=iq weight: cpi->rd.RDMULT */
-AV1G_HD int av1f_frame_rdmult(int base) {
-    const int q = av1f_dc_q(base);
+/* av1_compute_rd_mult_based_on_qindex(KF_UPDATE) with the tune=iq weight: cpi->rd.RDMULT
+ * (10 bits: dc_q of the 10-bit table, then ROUND_POWER_OF_TWO(rdmult, 4)) */
+AV1G_HD int av1f_frame_rdmult(int base, int bd = 8) {
+    const int q = av1f_dc_q_bd(base, bd);
     int64_t r = (int64_t)q * q;
     r = (int64_t)((double)r * (3.3 + 0.0015 * q));
     const int w = av1f_clampi(((255 - base) * 3) / 4, 0, 72) + 128;
     r = (int64_t)((double)r * w / 128.0);
+    if (bd == 10) r = (r + 8) >> 4;
     return r > 0 ? (int)r : 1;
+}
+/* av1_pick_filter_level(LPF_PICK_FROM_Q) of a key frame: the filter level (before the loop filter deltas).
+ * 8 bits ROUND_POWER_OF_TWO(q * 17563 - 421574, 18); 10 bits ROUND_POWER_OF_TWO(q * 20723 + 4060632, 20) - 4;
+ * q = ac_q of the bit depth, clamped to 0..63. */
+AV1G_HD int av1f_lf_level_from_q(int base, int bd = 8) {
+    int g;
+    if (bd == 8) {
+        const int64_t v = (int64_t)av1f_ac_q(base) * 17563 - 421574;
+        g = (int)((v + (1 << 17)) >> 18);
+    } else {
+        const int64_t v = (int64_t)av1f_ac_q_bd(base, bd) * 20723 + 4060632;
+        g = (int)((v + (1 << 19)) >> 20) - 4;
+    }
+    return av1f_clampi(g, 0, 63);
 }
 
 /* All frame-level tune=iq decisions for a base qindex. */
@@ -138,10 +175,10 @@ typedef struct av1f_tuneiq_frame {
     int cdef_damping;                        /* 3 + (base >> 6) */
     int cdef_mode;                           /* 0: CDEF off (cq <= 32, one zero preset), 1: halved strengths
                                                 (33..220), 2: full strengths (> 220) */
-    int rdmult;                              /* frame RDMULT (CDEF bits RD decision) */
+    int rdmult;                              /* frame RDMULT (CDEF bits RD decision; 8-bit scale at every bit depth) */
 } av1f_tuneiq_frame;
 
-AV1G_HD void av1f_tuneiq_frame_init(int base, int ssx, int ssy, int mono, av1f_tuneiq_frame *f) {
+AV1G_HD void av1f_tuneiq_frame_init(int base, int ssx, int ssy, int mono, av1f_tuneiq_frame *f, int bd = 8) {
     int dq[4];
     av1f_chroma_delta_q(base, ssx, ssy, dq);
     if (mono) dq[0] = dq[1] = dq[2] = dq[3] = 0;   /* not coded for monochrome */
@@ -152,23 +189,24 @@ AV1G_HD void av1f_tuneiq_frame_init(int base, int ssx, int ssy, int mono, av1f_t
     f->qm_u = f->qm_v = (ssx == 0 && ssy == 0) ? av1f_qm_level_444_chroma(cq, AV1F_QM_MIN_IQ, AV1F_QM_MAX_IQ)
                                                : av1f_qm_level_allintra(cq, AV1F_QM_MIN_IQ, AV1F_QM_MAX_IQ);
     f->delta_q_res = av1f_delta_q_res(base);
-    /* av1_pick_filter_level(LPF_PICK_FROM_Q), key frame, 8-bit; + INTRA ref delta (+1 << (lvl >> 5)) */
-    const int64_t g = (int64_t)av1f_ac_q(base) * 17563 - 421574;
-    const int lvl = av1f_clampi((int)((g + (1 << 17)) >> 18), 0, 63);
+    /* av1_pick_filter_level(LPF_PICK_FROM_Q), key frame; + INTRA ref delta (+1 << (lvl >> 5)) */
+    const int lvl = av1f_lf_level_from_q(base, bd);
     f->lf_level = lvl == 0 ? 0 : av1f_clampi(lvl + (1 << (lvl >> 5)), 0, 63);
     f->lf_sharpness = base <= 120 ? 7 : base <= 160 ? 1 : 0;   /* sharpness 7, enable_adaptive_sharpness */
     f->cdef_damping = 3 + (base >> 6);
     f->cdef_mode = base <= 32 ? 0 : base <= 220 ? 1 : 2;
-    f->rdmult = av1f_frame_rdmult(base);
+    f->rdmult = av1f_frame_rdmult(base, bd);
 }
 
-/* Writes every frame-header decision of libaom tune=iq into fp (4:2:0 or monochrome): base qindex,
- * chroma delta-q, QM levels, deblocking from Q (effective levels) + sharpness, CDEF damping with
- * enable_cdef = 1 (presets / cdef_bits / per-SB cdef_idx come from av1f_lf_search), and
- * delta_q_res; delta_q_present is left to the caller (1 iff some SB qindex != base). */
+/* Writes every frame-header decision of libaom tune=iq into fp (4:2:0 or 4:4:4 as set in
+ * fp->chroma_format, or monochrome): base qindex, chroma delta-q, QM levels, deblocking from Q
+ * (effective levels) + sharpness, CDEF damping with enable_cdef = 1 (presets / cdef_bits / per-SB
+ * cdef_idx come from av1f_lf_search), and delta_q_res; delta_q_present is left to the caller (1 iff
+ * some SB qindex != base). */
 AV1G_HD void av1f_tuneiq_fill_fp(av1g_frame_params *fp, int base, int mono) {
     av1f_tuneiq_frame t;
-    av1f_tuneiq_frame_init(base, 1, 1, mono, &t);
+    const int ss = (!mono && fp->chroma_format == AV1G_CHROMA_444) ? 0 : 1;
+    av1f_tuneiq_frame_init(base, ss, ss, mono, &t, fp->bit_depth == 10 ? 10 : 8);
     fp->base_q_idx = (uint8_t)base;
     fp->monochrome = (uint8_t)mono;
     fp->delta_q_y_dc = 0;

@@ -8,8 +8,8 @@
  *
  * Inputs (device): the record's blocks (skip / tx_depth / bsize decide edges and CDEF skip),
  * the PADDED pre-filter reconstruction (av1g_encode AV1G_ENC_PREFILTER_RECON: MiCols*4 x
- * MiRows*4, chroma >> 1) and the source planes padded at least as far.  fp supplies width,
- * height, monochrome and base_q_idx.
+ * MiRows*4, chroma >> ssx / ssy) and the source planes padded at least as far.  fp supplies width,
+ * height, monochrome, chroma_format and base_q_idx.
  * On return: d_recon is DEBLOCKED with the chosen levels (CDEF not applied), res holds the frame
  * header values (deblocking levels/sharpness, CDEF damping/bits/presets with secondary strengths
  * as applied values 0/1/2/4), d_sb_cdef_idx[sbRows * sbCols] the preset of every 64x64
@@ -25,6 +25,9 @@
  *             plane, libaom's joint greedy preset search, no strength halving; ~1.8 ms/MP,
  *             -0.42 % BD vs libaom's choice)
  *   cdef_damping -2 additionally searches the damping (sync API only).
+ * 10-bit frames (fp.bit_depth = 10): d_recon / d_src are uint16_t planes (strides in samples); the search follows
+ * libaom's high-bitdepth rules (CDEF SSE >> 2 * (BitDepth - 8) per SB and plane, 10-bit level-from-Q fit,
+ * rdmult / 16), so its tables and RD decisions are on the 8-bit scale.
  * Distortion: SSE (8-bit samples, libaom) or a variance-masked SSE (AV1F_DIST_VARW, a cheap
  * SSIMULACRA2 proxy - not better than SSE for CDEF); a caller with its own perceptual per-SB
  * loss can choose presets with av1f_cdef_select_tables() below.

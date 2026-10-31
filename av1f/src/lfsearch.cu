@@ -10,6 +10,13 @@
 // candidates cost ~npri*4 + nsec*16 constrain() calls per pixel instead of 12 per candidate.  The
 // per-SB SSE table feeds libaom's joint greedy preset search (search_one_dual + refinement) on the
 // GPU (k_cur / k_pairs / k_argmin) and the RD choice of cdef_bits (host, a few numbers).
+// 4:4:4: chroma planes are full size (8x8 chroma CDEF blocks, chroma deblocking on every 4x4); the
+// fused deblocking search runs one plane per CTA (k_lf_tiles_1p), the CDEF SSE tile kernel is
+// instantiated per subsampling.  4:2:0 frames use exactly the kernels they used before.
+// 10-bit frames (fp.bit_depth = 10, uint16_t planes, strides in samples): the fused deblocking search runs
+// k_lf_tiles_1p<10> for every plane and layout; the CDEF tables come from k_cdef_sse_t10 (libaom
+// compute_cdef_dist_highbd: SSE >> 2 * coeff_shift per SB and plane, U + V); tune=iq frame values (deblocking
+// level from Q, rdmult) at 10 bits (av1f/tuneiq.h).  The 8-bit kernels are unchanged.
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -38,8 +45,10 @@ namespace {
 
 struct Geo {
     int MiRows, MiCols, sbRows, sbCols, nsb, mono;
-    int lw, lh, cw, ch;  // padded plane sizes
+    int ssx, ssy;        // chroma subsampling (1, 1: 4:2:0 / monochrome; 0, 0: 4:4:4)
+    int lw, lh, cw, ch;  // padded plane sizes (samples)
     size_t lbytes, cbytes;
+    int bd, bps;         // bit depth, bytes per sample
 };
 Geo geo(const av1g_frame_params *fp) {
     Geo g;
@@ -49,10 +58,13 @@ Geo geo(const av1g_frame_params *fp) {
     g.sbRows = (g.MiRows + 15) >> 4;
     g.nsb = g.sbCols * g.sbRows;
     g.mono = fp->monochrome;
+    g.ssx = av1g_ssx(fp); g.ssy = av1g_ssy(fp);
     g.lw = g.MiCols * 4; g.lh = g.MiRows * 4;
-    g.cw = g.MiCols * 2; g.ch = g.MiRows * 2;
-    g.lbytes = (size_t)g.lw * g.lh;
-    g.cbytes = (size_t)g.cw * g.ch;
+    g.cw = (g.MiCols * 4) >> g.ssx; g.ch = (g.MiRows * 4) >> g.ssy;
+    g.bd = fp->bit_depth == 10 ? 10 : 8;
+    g.bps = g.bd == 8 ? 1 : 2;
+    g.lbytes = (size_t)g.lw * g.lh * g.bps;
+    g.cbytes = (size_t)g.cw * g.ch * g.bps;
     return g;
 }
 
@@ -91,16 +103,18 @@ struct SseJob {
     int ncand;
     const float *wmap;   // per luma 8x8 (NULL = plain SSE)
     int n8c;
+    int sh[3];           // log2 of a luma 8x8 weight cell in plane samples (8 luma, 4 / 8 chroma)
 };
+template <typename Px>
 __global__ void k_sse(SseJob j, unsigned long long *out /* [cand][3] */, int cand0) {
     const int z = blockIdx.z, cand = z / 3, p = z % 3;
     if (cand >= j.ncand || !j.a[z]) return;
     const int w = j.w[p], h = j.h[p];
     unsigned long long s = 0;
-    const int sh = p ? 2 : 3;  // plane samples per luma-8x8 weight cell: 8 (luma) / 4 (chroma)
+    const int sh = j.sh[p];  // plane samples per luma-8x8 weight cell: 8 (luma, 4:4:4 chroma) / 4 (4:2:0 chroma)
     for (int y = blockIdx.y; y < h; y += gridDim.y)
         for (int x = blockIdx.x * blockDim.x + threadIdx.x; x < w; x += gridDim.x * blockDim.x) {
-            const int d = (int)j.a[z][(size_t)y * j.astride[p] + x] - (int)j.src[p][(size_t)y * j.sstride[p] + x];
+            const int d = (int)((const Px *)j.a[z])[(size_t)y * j.astride[p] + x] - (int)((const Px *)j.src[p])[(size_t)y * j.sstride[p] + x];
             if (j.wmap) s += (unsigned long long)(16.f * d * d * j.wmap[(size_t)(y >> sh) * j.n8c + (x >> sh)] + 0.5f);
             else s += (unsigned)(d * d);
         }
@@ -116,8 +130,10 @@ __global__ void k_sse(SseJob j, unsigned long long *out /* [cand][3] */, int can
 }
 
 // ---------------------------------------------------------------- SSIMULACRA2 proxy weights
-// w[8x8] = 1 / (var_src(8x8 luma) + c), later normalised to a mean of 1 over the picture
-__global__ void k_wmap(const uint8_t *src, int stride, int n8c, int n8r, float c, float *w, double *sum) {
+// w[8x8] = 1 / (var_src(8x8 luma) + c), later normalised to a mean of 1 over the picture (10 bits: the variance
+// in 8-bit units, / 16, so c keeps its meaning)
+template <typename Px>
+__global__ void k_wmap(const Px *src, int stride, int n8c, int n8r, float c, float *w, double *sum) {
     const int bx = blockIdx.x * blockDim.x + threadIdx.x, by = blockIdx.y;
     float v = 0.f;
     if (bx < n8c && by < n8r) {
@@ -128,7 +144,7 @@ __global__ void k_wmap(const uint8_t *src, int stride, int n8c, int n8r, float c
                 s += x;
                 q += x * x;
             }
-        const float var = (q - (float)s * s / 64.f) / 64.f;
+        const float var = (q - (float)s * s / 64.f) / 64.f / (sizeof(Px) == 1 ? 1.f : 16.f);
         v = 1.f / (var + c);
         w[(size_t)by * n8c + bx] = v;
     }
@@ -148,6 +164,7 @@ __global__ void k_wnorm(float *w, size_t n, const double *sum) {
 // dependency reach of one output sample is < 12 luma / < 8 chroma samples per direction, so the
 // halo makes the SB result identical to whole-frame filtering (checked: AV1F_LF_CHECK).
 constexpr int LT = 96, LH = 16, CT = 48, CH = 8;
+// 4:2:0 / monochrome frames only (half-size chroma tiles); 4:4:4 uses k_lf_tiles_1p below.
 // k_lf_tiles2: k_lf_tiles with the SB's edge list built once (positions + filter sizes of the actual
 // transform edges, exactly av1g_lf_edge's tests) so that each level only runs av1g_lf_line per
 // (edge, line), and one reduction for all planes.  Same results (AV1F_LF_CHECK).
@@ -284,6 +301,126 @@ __global__ void __launch_bounds__(256) k_lf_tiles2(av1g_pf_frame f, const uint8_
     }
 }
 
+// One plane per CTA (blockIdx.y = plane, blockIdx.x = SB), for frames whose chroma planes are full size
+// (4:4:4): the k_lf_tiles2 luma path with the plane as a parameter (96x96 tile = SB + 16-sample halo,
+// more than the chroma filters' reach).  Same per-plane SSE as k_lf_tiles2 / the frame copies.
+// BD = 10: uint16_t tiles (any layout: the plane geometry follows f.ssx / f.ssy), av1g_lf_line<10>.
+constexpr int LF1_E0 = 400, LF1_E1 = 320;  // max edges per pass of one plane in one SB region
+template <int BD = 8>
+__global__ void __launch_bounds__(256) k_lf_tiles_1p(av1g_pf_frame f, const uint8_t *s0, const uint8_t *s1, const uint8_t *s2, int ss0,
+                                                     int ss1, int ss2, const float *wmap, unsigned long long *sse, int grad) {
+    typedef av1g_pixel_t(BD) Px;
+    __shared__ __align__(16) Px in[LT * LT], wk[LT * LT];
+    __shared__ uint32_t edges[2][LF1_E0];
+    __shared__ int nE[2];
+    __shared__ unsigned long long red[8];
+    const int sb = blockIdx.x, sbr = sb / f.sbCols, sbc = sb % f.sbCols, plane = blockIdx.y;
+    const int tid = threadIdx.x;
+    const int subX = plane ? f.ssx : 0, subY = plane ? f.ssy : 0;
+    const int pw = (f.MiCols * 4) >> subX, ph = (f.MiRows * 4) >> subY;   // decoded area of the plane
+    const int n = 64 >> subX, nh = 64 >> subY;                           // the SB in plane samples
+    const int x0 = sbc * n, y0 = sbr * nh;
+    if (tid < 2) nE[tid] = 0;
+    for (int i = tid; i < LT * LT; i += 256) {
+        const int X = x0 - LH + i % LT, Y = y0 - LH + i / LT;
+        in[i] = (X >= 0 && Y >= 0 && X < pw && Y < ph) ? ((const Px *)f.plane[plane])[(size_t)Y * f.stride[plane] + X] : 0;
+    }
+    __syncthreads();
+    // ---- edge list (plane units): entry = filterSize code (2 bits) | local x (8) | local y (8)
+    const int pr4 = f.MiRows >> subY, pc4 = f.MiCols >> subX;
+    for (int pass = 0; pass < 2; pass++) {
+        const int r0 = pass ? max(0, (y0 - 4) >> 2) : max(0, (y0 - LH + 4) >> 2);
+        const int r1 = pass ? min(pr4, ((y0 + nh + 4) >> 2) + 1) : min(pr4, (y0 + nh + LH - 4) >> 2);
+        const int c0 = pass ? x0 >> 2 : max(0, (x0 - 4) >> 2);
+        const int c1 = pass ? min(pc4, (x0 + n) >> 2) : min(pc4, ((x0 + n + 4) >> 2) + 1);
+        const int ncol = max(1, c1 - c0), ne = max(0, (r1 - r0) * (c1 - c0));
+        for (int e = tid; e < ne; e += 256) {
+            // == av1g_lf_edge's tests (everything but the level), plane-unit position (r4, c4)
+            const int row = (r0 + e / ncol) << subY, col = (c0 + e % ncol) << subX;
+            const int x = col * 4, y = row * 4;
+            if (x >= f.W || y >= f.H) continue;
+            if (pass == 0 && x == 0) continue;
+            if (pass == 1 && y == 0) continue;
+            const int r = row | subY, c = col | subX;
+            const int xP = x >> subX, yP = y >> subY;
+            const int pr = r - ((pass == 1) << subY), pc = c - ((pass == 0) << subX);
+            const int st = f.MiCols >> subX;
+            const int txSz = f.lfTx[plane][(size_t)(r >> subY) * st + (c >> subX)];
+            const int prevTxSz = f.lfTx[plane][(size_t)(pr >> subY) * st + (pc >> subX)];
+            const int cur = pass == 0 ? AV1G_T(Tx_Width)[txSz] : AV1G_T(Tx_Height)[txSz];
+            const int prev = pass == 0 ? AV1G_T(Tx_Width)[prevTxSz] : AV1G_T(Tx_Height)[prevTxSz];
+            if ((pass == 0 ? xP : yP) & (cur - 1)) continue;
+            const int base = prev < cur ? prev : cur, cap = plane ? 8 : 16;
+            const int fs = base < cap ? base : cap;  // 4, 8 or 16
+            const int lx = xP - (x0 - LH), ly = yP - (y0 - LH);
+            const int slot = atomicAdd(&nE[pass], 1);
+            if (slot < (pass ? LF1_E1 : LF1_E0))
+                edges[pass][slot] = (uint32_t)(fs == 4 ? 0 : fs == 8 ? 1 : 2) << 28 | (uint32_t)lx << 8 | (uint32_t)ly;
+        }
+    }
+    __syncthreads();
+    const int shift = f.sharpness > 4 ? 2 : f.sharpness > 0 ? 1 : 0;
+    const int W = plane ? (f.W + subX) >> subX : f.W, H = plane ? (f.H + subY) >> subY : f.H;
+    const Px *src = (const Px *)(plane == 0 ? s0 : plane == 1 ? s1 : s2);
+    const int sst = plane == 0 ? ss0 : plane == 1 ? ss1 : ss2;
+    for (int lvl = 0; lvl < 64; lvl++) {
+        for (int i = tid; i < LT * LT * (int)sizeof(Px) / 16; i += 256) reinterpret_cast<uint4 *>(wk)[i] = reinterpret_cast<const uint4 *>(in)[i];
+        __syncthreads();
+        if (lvl) {
+            const int limit = f.sharpness > 0 ? av1g_clip3(1, 9 - f.sharpness, lvl >> shift) : ((lvl >> shift) > 1 ? lvl >> shift : 1);
+            const int blimit = 2 * (lvl + 2) + limit, thresh = lvl >> 4;
+            for (int pass = 0; pass < 2; pass++) {
+                const int ne = min(nE[pass], pass ? LF1_E1 : LF1_E0);
+                for (int t = tid; t < 4 * ne; t += 256) {
+                    const uint32_t e = edges[pass][t >> 2];
+                    const int fs = 4 << ((e >> 28) & 3), lx = (e >> 8) & 255, ly = e & 255, line = t & 3;
+                    Px *q0 = wk + (ly + (pass == 0) * line) * LT + lx + (pass == 1) * line;
+                    av1g_lf_line<BD>(q0, pass == 0 ? 1 : LT, plane, fs, limit, blimit, thresh);
+                }
+                __syncthreads();
+            }
+        }
+        unsigned long long acc = 0;
+        for (int i = tid; i < n * nh; i += 256) {
+            const int X = x0 + (i % n), Y = y0 + (i / n);
+            if (X >= W || Y >= H) continue;
+            const int d = (int)wk[(Y - y0 + LH) * LT + (X - x0 + LH)] - (int)src[(size_t)Y * sst + X];
+            if (grad) {
+                const int lx = i % n, ly = i / n;
+                if (lx + 1 < n && X + 1 < W) {
+                    const int d2 = (int)wk[(Y - y0 + LH) * LT + (X + 1 - x0 + LH)] - (int)src[(size_t)Y * sst + X + 1];
+                    acc += (unsigned)((d2 - d) * (d2 - d));
+                }
+                if (ly + 1 < nh && Y + 1 < H) {
+                    const int d2 = (int)wk[(Y + 1 - y0 + LH) * LT + (X - x0 + LH)] - (int)src[(size_t)(Y + 1) * sst + X];
+                    acc += (unsigned)((d2 - d) * (d2 - d));
+                }
+            } else if (wmap) acc += (unsigned long long)(16.f * d * d * wmap[(size_t)((Y << subY) >> 3) * (f.MiCols >> 1) + ((X << subX) >> 3)] + 0.5f);
+            else acc += (unsigned)(d * d);
+        }
+        for (int o = 16; o; o >>= 1) acc += __shfl_xor_sync(0xffffffff, acc, o);
+        if ((tid & 31) == 0) red[tid >> 5] = acc;
+        __syncthreads();
+        if (tid == 0) {
+            unsigned long long t = 0;
+            for (int w = 0; w < 8; w++) t += red[w];
+            atomicAdd(&sse[lvl * 3 + plane], t);
+        }
+    }
+}
+// the fused level search of either layout (sse[64][3] zeroed by the caller)
+void launch_lf_tiles(const Geo &g, const av1g_pf_frame &f, const uint8_t *const d_src[3], const int src_stride[3], const float *wmap,
+                     unsigned long long *sse, int grad, cudaStream_t s) {
+    if (g.bd == 10)   // 10-bit: one plane per CTA for every layout (uint16_t tiles)
+        k_lf_tiles_1p<10><<<dim3(g.nsb, g.mono ? 1 : 3), 256, 0, s>>>(f, d_src[0], d_src[1], d_src[2], src_stride[0], src_stride[1],
+                                                                      src_stride[2], wmap, sse, grad);
+    else if (!g.mono && !g.ssx && !g.ssy)
+        k_lf_tiles_1p<8><<<dim3(g.nsb, 3), 256, 0, s>>>(f, d_src[0], d_src[1], d_src[2], src_stride[0], src_stride[1], src_stride[2], wmap,
+                                                     sse, grad);
+    else
+        k_lf_tiles2<<<g.nsb, 256, 0, s>>>(f, d_src[0], d_src[1], d_src[2], src_stride[0], src_stride[1], src_stride[2], wmap, sse, grad);
+}
+
 __global__ void k_cdef_idx_norm(int8_t *idx, int n) {
     const int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i < n) idx[i] = idx[i] >= 0 ? 0 : -1;
@@ -304,13 +441,13 @@ struct Taps {
     int s[8];   // secondary samples (k) x (sign) x (dir - 2, dir + 2)
     int mn, mx;
 };
-__device__ __forceinline__ int tap(const uint8_t *src, int stride, int x, int y, int dy, int dx, int sub, int MiRows,
+__device__ __forceinline__ int tap(const uint8_t *src, int stride, int x, int y, int dy, int dx, int subX, int subY, int MiRows,
                                    int MiCols) {
     const int yy = y + dy, xx = x + dx;
-    if (yy < 0 || xx < 0 || ((yy << sub) >> 2) >= MiRows || ((xx << sub) >> 2) >= MiCols) return -1;
+    if (yy < 0 || xx < 0 || ((yy << subY) >> 2) >= MiRows || ((xx << subX) >> 2) >= MiCols) return -1;
     return src[(size_t)yy * stride + xx];
 }
-__device__ __forceinline__ void gather(Taps &t, const uint8_t *src, int stride, int x, int y, int dir, int sub, int MiRows,
+__device__ __forceinline__ void gather(Taps &t, const uint8_t *src, int stride, int x, int y, int dir, int subX, int subY, int MiRows,
                                        int MiCols, int x0) {
     t.mn = t.mx = x0;
 #pragma unroll
@@ -318,13 +455,13 @@ __device__ __forceinline__ void gather(Taps &t, const uint8_t *src, int stride, 
 #pragma unroll
         for (int sg = 0; sg < 2; sg++) {
             const int sign = sg ? 1 : -1;
-            int v = tap(src, stride, x, y, sign * c_dirs[dir][k][0], sign * c_dirs[dir][k][1], sub, MiRows, MiCols);
+            int v = tap(src, stride, x, y, sign * c_dirs[dir][k][0], sign * c_dirs[dir][k][1], subX, subY, MiRows, MiCols);
             t.p[k * 2 + sg] = v;
             if (v >= 0) { t.mn = min(t.mn, v); t.mx = max(t.mx, v); }
 #pragma unroll
             for (int o = 0; o < 2; o++) {
                 const int dd = (dir + (o ? 2 : -2)) & 7;
-                v = tap(src, stride, x, y, sign * c_dirs[dd][k][0], sign * c_dirs[dd][k][1], sub, MiRows, MiCols);
+                v = tap(src, stride, x, y, sign * c_dirs[dd][k][0], sign * c_dirs[dd][k][1], subX, subY, MiRows, MiCols);
                 t.s[(k * 2 + sg) * 2 + o] = v;
                 if (v >= 0) { t.mn = min(t.mn, v); t.mx = max(t.mx, v); }
             }
@@ -349,13 +486,13 @@ __device__ __forceinline__ int pri_sum(const Taps &t, int x0, int adj, int dampi
 }
 
 template <int NPRI, int NSEC, typename ACC>
-__device__ __forceinline__ void cdef_pixel_acc(const uint8_t *src, int stride, int x, int y, int sub, int MiRows, int MiCols,
-                                               int yDir, int varStr, int var, int damping, int target, const CdefCand &cd,
+__device__ __forceinline__ void cdef_pixel_acc(const uint8_t *src, int stride, int x, int y, int subX, int subY, int chroma, int MiRows,
+                                               int MiCols, int yDir, int varStr, int var, int damping, int target, const CdefCand &cd,
                                                ACC *acc, float wt) {
     const int x0 = src[(size_t)y * stride + x];
     Taps tA, t0;
-    gather(tA, src, stride, x, y, yDir, sub, MiRows, MiCols, x0);
-    gather(t0, src, stride, x, y, 0, sub, MiRows, MiCols, x0);
+    gather(tA, src, stride, x, y, yDir, subX, subY, MiRows, MiCols, x0);
+    gather(t0, src, stride, x, y, 0, subX, subY, MiRows, MiCols, x0);
     int SA[NSEC], S0[NSEC];
 #pragma unroll
     for (int si = 0; si < NSEC; si++) {
@@ -365,7 +502,7 @@ __device__ __forceinline__ void cdef_pixel_acc(const uint8_t *src, int stride, i
 #pragma unroll
     for (int pi = 0; pi < NPRI; pi++) {
         const int pri = cd.pri[pi];
-        const int adj = sub ? pri : (var ? (pri * (4 + varStr) + 8) >> 4 : 0);
+        const int adj = chroma ? pri : (var ? (pri * (4 + varStr) + 8) >> 4 : 0);   // luma: variance-adjusted
         const int P = pri ? pri_sum(tA, x0, adj, damping) : 0;
         const int mn = pri ? tA.mn : t0.mn, mx = pri ? tA.mx : t0.mx;
 #pragma unroll
@@ -394,14 +531,16 @@ __global__ void __launch_bounds__(256) k_cdef_sse(av1g_pf_frame f, const uint8_t
 #pragma unroll
         for (int j = 0; j < NC; j++) acc[j] = 0;
         if (active) {
-            const int npx = pass == 0 ? 4096 : 2048;
+            // chroma: an SB of (64 >> ssx) x (64 >> ssy) samples per plane
+            const int cw = 64 >> f.ssx, ch = 64 >> f.ssy;
+            const int npx = pass == 0 ? 4096 : 2 * cw * ch;
             for (int i = threadIdx.x; i < npx; i += 256) {
                 int plane, x, y;
                 if (pass == 0) { plane = 0; y = sbr * 64 + (i >> 6); x = sbc * 64 + (i & 63); }
-                else { plane = 1 + (i >> 10); const int j = i & 1023; y = sbr * 32 + (j >> 5); x = sbc * 32 + (j & 31); }
-                const int sub = plane ? 1 : 0;
-                if (((x << sub) >> 2) >= f.MiCols || ((y << sub) >> 2) >= f.MiRows) continue;
-                const int ly = y << sub, lx = x << sub;  // luma position of the sample's 8x8
+                else { plane = 1 + i / (cw * ch); const int j = i % (cw * ch); y = sbr * ch + j / cw; x = sbc * cw + j % cw; }
+                const int subX = plane ? f.ssx : 0, subY = plane ? f.ssy : 0;
+                if (((x << subX) >> 2) >= f.MiCols || ((y << subY) >> 2) >= f.MiRows) continue;
+                const int ly = y << subY, lx = x << subX;  // luma position of the sample's 8x8
                 const int r = (ly >> 3) * 2, c = (lx >> 3) * 2;
                 if (av1g_cdef_active_idx(&f, r, c) < 0) continue;
                 const int dv = f.cdefDirVar[(size_t)(ly >> 3) * n8c + (lx >> 3)];
@@ -413,7 +552,7 @@ __global__ void __launch_bounds__(256) k_cdef_sse(av1g_pf_frame f, const uint8_t
                 const uint8_t *tg = plane == 0 ? s0 : plane == 1 ? s1 : s2;
                 const int tst = plane == 0 ? ss0 : plane == 1 ? ss1 : ss2;
                 const float wt = wmap ? wmap[(size_t)(ly >> 3) * n8c + (lx >> 3)] : 1.f;
-                cdef_pixel_acc<NPRI, NSEC, ACC>(src, st, x, y, sub, f.MiRows, f.MiCols, yDir, varStr, var,
+                cdef_pixel_acc<NPRI, NSEC, ACC>(src, st, x, y, subX, subY, plane != 0, f.MiRows, f.MiCols, yDir, varStr, var,
                                                 plane ? f.cdefDamping - 1 : f.cdefDamping, tg[(size_t)y * tst + x], cd, acc, wt);
             }
         }
@@ -460,7 +599,7 @@ __device__ __forceinline__ void gather_t(Taps &t, const int16_t *tile, int tw, i
 }
 
 template <int NPRI, int NSEC, typename ACC>
-__device__ __forceinline__ void cdef_pixel_acc_t(const int16_t *tile, int tw, int lx, int ly, int sub, int yDir, int varStr, int var,
+__device__ __forceinline__ void cdef_pixel_acc_t(const int16_t *tile, int tw, int lx, int ly, int chroma, int yDir, int varStr, int var,
                                                  int damping, int target, const CdefCand &cd, ACC *acc, float wt) {
     const int x0 = tile[ly * tw + lx];
     Taps tA, t0;
@@ -475,7 +614,7 @@ __device__ __forceinline__ void cdef_pixel_acc_t(const int16_t *tile, int tw, in
 #pragma unroll
     for (int pi = 0; pi < NPRI; pi++) {
         const int pri = cd.pri[pi];
-        const int adj = sub ? pri : (var ? (pri * (4 + varStr) + 8) >> 4 : 0);
+        const int adj = chroma ? pri : (var ? (pri * (4 + varStr) + 8) >> 4 : 0);   // luma: variance-adjusted
         const int P = pri ? pri_sum(tA, x0, adj, damping) : 0;
         const int mn = pri ? tA.mn : t0.mn, mx = pri ? tA.mx : t0.mx;
 #pragma unroll
@@ -490,11 +629,12 @@ __device__ __forceinline__ void cdef_pixel_acc_t(const int16_t *tile, int tw, in
     }
 }
 
-template <int NPRI, int NSEC, typename ACC>
+// SS: chroma subsampling of the frame (1: 4:2:0 / monochrome, 0: 4:4:4 - 64x64 chroma per plane and SB)
+template <int NPRI, int NSEC, typename ACC, int SS>
 __global__ void __launch_bounds__(256) k_cdef_sse_t(av1g_pf_frame f, const uint8_t *s0, const uint8_t *s1, const uint8_t *s2, int ss0,
                                                     int ss1, int ss2, CdefCand cd, const float *wmap, uint32_t *mse_y,
                                                     uint32_t *mse_uv) {
-    constexpr int NC = NPRI * NSEC, TL = 68, TC = 36;
+    constexpr int NC = NPRI * NSEC, TL = 68, CN = 64 >> SS, TC = CN + 4, CPX = CN * CN;
     __shared__ int16_t tl[TL * TL];
     __shared__ int16_t tc[2][TC * TC];
     __shared__ int32_t dvs[64];
@@ -519,11 +659,11 @@ __global__ void __launch_bounds__(256) k_cdef_sse_t(av1g_pf_frame f, const uint8
             tl[i] = av ? f.plane[0][(size_t)Y * f.stride[0] + X] : -1;
         }
         if (!f.mono) {
-            const int cx0 = sbc * 32 - 2, cy0 = sbr * 32 - 2;
+            const int cx0 = sbc * CN - 2, cy0 = sbr * CN - 2;
             for (int i = tid; i < 2 * TC * TC; i += blockDim.x) {
                 const int pl = i / (TC * TC), j = i % (TC * TC);
                 const int X = cx0 + j % TC, Y = cy0 + j / TC;
-                const bool av = X >= 0 && Y >= 0 && ((X << 1) >> 2) < f.MiCols && ((Y << 1) >> 2) < f.MiRows;
+                const bool av = X >= 0 && Y >= 0 && ((X << SS) >> 2) < f.MiCols && ((Y << SS) >> 2) < f.MiRows;
                 tc[pl][j] = av ? f.plane[1 + pl][(size_t)Y * f.stride[1 + pl] + X] : -1;
             }
         }
@@ -540,15 +680,15 @@ __global__ void __launch_bounds__(256) k_cdef_sse_t(av1g_pf_frame f, const uint8
         ACC acc[NC];
 #pragma unroll
         for (int j = 0; j < NC; j++) acc[j] = 0;
-        const int npx = pass == 0 ? 4096 : 2048;
+        const int npx = pass == 0 ? 4096 : 2 * CPX;
         for (int i = tid; i < npx; i += 256) {
             int plane, lx, ly;
             if (pass == 0) { plane = 0; ly = i >> 6; lx = i & 63; }
-            else { plane = 1 + (i >> 10); const int j = i & 1023; ly = j >> 5; lx = j & 31; }
-            const int sub = plane ? 1 : 0;
+            else { plane = 1 + i / CPX; const int j = i % CPX; ly = j / CN; lx = j % CN; }
+            const int sub = plane ? SS : 0;
             const int b = ((ly << sub) >> 3) * 8 + ((lx << sub) >> 3);
             if (!act[b]) continue;
-            const int x = (sub ? sbc * 32 : sbc * 64) + lx, y = (sub ? sbr * 32 : sbr * 64) + ly;
+            const int x = (plane ? sbc * CN : sbc * 64) + lx, y = (plane ? sbr * CN : sbr * 64) + ly;
             if (((x << sub) >> 2) >= f.MiCols || ((y << sub) >> 2) >= f.MiRows) continue;
             const int dv = dvs[b], yDir = dv & 7, var = dv >> 3;
             int varStr = 0;
@@ -556,7 +696,7 @@ __global__ void __launch_bounds__(256) k_cdef_sse_t(av1g_pf_frame f, const uint8
             const uint8_t *tg = plane == 0 ? s0 : plane == 1 ? s1 : s2;
             const int tst = plane == 0 ? ss0 : plane == 1 ? ss1 : ss2;
             const int16_t *tile = plane == 0 ? tl : tc[plane - 1];
-            cdef_pixel_acc_t<NPRI, NSEC, ACC>(tile, plane ? TC : TL, lx + 2, ly + 2, sub, yDir, varStr, var,
+            cdef_pixel_acc_t<NPRI, NSEC, ACC>(tile, plane ? TC : TL, lx + 2, ly + 2, plane != 0, yDir, varStr, var,
                                               plane ? f.cdefDamping - 1 : f.cdefDamping, tg[(size_t)y * tst + x], cd, acc, wts[b]);
         }
 #pragma unroll
@@ -575,6 +715,187 @@ __global__ void __launch_bounds__(256) k_cdef_sse_t(av1g_pf_frame f, const uint8
         }
         __syncthreads();
     }
+}
+
+// ---- 10-bit CDEF SSE tables (libaom av1_cdef_mse_calc_block with use_highbitdepth): the filter at BitDepth 10
+// (strengths << coeff_shift before the luma variance adjustment, primary taps from (priStr >> coeff_shift) & 1,
+// damping + coeff_shift) and compute_cdef_dist_highbd: per SB, plane and strength the SSE over the filtered 8x8
+// blocks >> 2 * coeff_shift; the chroma table is U + V, each shifted (mse[1] += in libaom).  One reduction per plane.
+constexpr int CDEF_CS10 = 2;   // coeff_shift = BitDepth - 8
+__device__ __forceinline__ int pri_sum10(const Taps &t, int x0, int adj, int damping) {
+    if (!adj) return 0;
+    const int odd = (adj >> CDEF_CS10) & 1;
+    const int w0 = odd ? 3 : 4, w1 = odd ? 3 : 2;  // Cdef_Pri_Taps[(priStr >> coeffShift) & 1]
+    int s = 0;
+#pragma unroll
+    for (int i = 0; i < 4; i++)
+        if (t.p[i] >= 0) s += (i < 2 ? w0 : w1) * av1g_cdef_constrain(t.p[i] - x0, adj, damping);
+    return s;
+}
+template <int NPRI, int NSEC, typename ACC>
+__device__ __forceinline__ void cdef_pixel_acc_t10(const int16_t *tile, int tw, int lx, int ly, int chroma, int yDir, int varStr, int var,
+                                                   int damping, int target, const CdefCand &cd, ACC *acc, float wt) {
+    const int x0 = tile[ly * tw + lx];
+    Taps tA, t0;
+    gather_t(tA, tile, tw, lx, ly, yDir, x0);
+    gather_t(t0, tile, tw, lx, ly, 0, x0);
+    int SA[NSEC], S0[NSEC];
+#pragma unroll
+    for (int si = 0; si < NSEC; si++) {
+        const int sec = cd.sec[si] << CDEF_CS10;
+        SA[si] = sec_sum(tA, x0, sec, damping);
+        S0[si] = sec_sum(t0, x0, sec, damping);
+    }
+#pragma unroll
+    for (int pi = 0; pi < NPRI; pi++) {
+        const int pri = cd.pri[pi] << CDEF_CS10;
+        const int adj = chroma ? pri : (var ? (pri * (4 + varStr) + 8) >> 4 : 0);   // luma: variance-adjusted
+        const int P = pri ? pri_sum10(tA, x0, adj, damping) : 0;
+        const int mn = pri ? tA.mn : t0.mn, mx = pri ? tA.mx : t0.mx;
+#pragma unroll
+        for (int si = 0; si < NSEC; si++) {
+            const int sum = P + (pri ? SA[si] : S0[si]);
+            int v = x0 + ((8 + sum - (sum < 0)) >> 4);
+            v = v < mn ? mn : v > mx ? mx : v;
+            const int e = v - target;
+            if (sizeof(ACC) == 4 && (ACC)0.5f == 0) acc[pi * NSEC + si] += (ACC)(e * e);   // <= 16 px * 1023^2 per thread
+            else acc[pi * NSEC + si] += (ACC)(wt * (float)(e * e));
+        }
+    }
+}
+template <int NPRI, int NSEC, typename ACC, int SS>
+__global__ void __launch_bounds__(256) k_cdef_sse_t10(av1g_pf_frame f, const uint8_t *s0, const uint8_t *s1, const uint8_t *s2, int ss0,
+                                                      int ss1, int ss2, CdefCand cd, const float *wmap, uint32_t *mse_y,
+                                                      uint32_t *mse_uv) {
+    constexpr int NC = NPRI * NSEC, TL = 68, CN = 64 >> SS, TC = CN + 4, CPX = CN * CN;
+    constexpr bool INT = sizeof(ACC) == 4 && (ACC)0.5f == 0;
+    __shared__ int16_t tl[TL * TL];
+    __shared__ int16_t tc[2][TC * TC];
+    __shared__ int32_t dvs[64];
+    __shared__ float wts[64];
+    __shared__ uint8_t act[64];
+    __shared__ double red[8][NC];   // exact for integer SSE (< 2^53)
+    const int sb = blockIdx.x, sbr = sb / f.sbCols, sbc = sb % f.sbCols;
+    const int tid = threadIdx.x;
+    if (f.cdefIdx[sb] < 0) {
+        for (int j = tid; j < NC; j += blockDim.x) {
+            mse_y[(size_t)sb * NC + j] = 0;
+            if (!f.mono) mse_uv[(size_t)sb * NC + j] = 0;
+        }
+        return;
+    }
+    const int n8c = f.MiCols >> 1;
+    {   // stage luma (+ chroma) with a 2-sample halo
+        const uint16_t *p0 = (const uint16_t *)f.plane[0];
+        const int x0 = sbc * 64 - 2, y0 = sbr * 64 - 2;
+        for (int i = tid; i < TL * TL; i += blockDim.x) {
+            const int X = x0 + i % TL, Y = y0 + i / TL;
+            const bool av = X >= 0 && Y >= 0 && (X >> 2) < f.MiCols && (Y >> 2) < f.MiRows;
+            tl[i] = av ? (int16_t)p0[(size_t)Y * f.stride[0] + X] : -1;
+        }
+        if (!f.mono) {
+            const int cx0 = sbc * CN - 2, cy0 = sbr * CN - 2;
+            for (int i = tid; i < 2 * TC * TC; i += blockDim.x) {
+                const int pl = i / (TC * TC), j = i % (TC * TC);
+                const int X = cx0 + j % TC, Y = cy0 + j / TC;
+                const bool av = X >= 0 && Y >= 0 && ((X << SS) >> 2) < f.MiCols && ((Y << SS) >> 2) < f.MiRows;
+                tc[pl][j] = av ? (int16_t)((const uint16_t *)f.plane[1 + pl])[(size_t)Y * f.stride[1 + pl] + X] : -1;
+            }
+        }
+        if (tid < 64) {
+            const int by = sbr * 8 + (tid >> 3), bx = sbc * 8 + (tid & 7);
+            const bool in = by * 2 < f.MiRows && bx * 2 < f.MiCols;
+            act[tid] = in && av1g_cdef_active_idx(&f, by * 2, bx * 2) >= 0;
+            dvs[tid] = in ? f.cdefDirVar[(size_t)by * n8c + bx] : 0;
+            wts[tid] = (in && wmap) ? wmap[(size_t)by * n8c + bx] : 1.f;
+        }
+    }
+    __syncthreads();
+    for (int plane = 0; plane < (f.mono ? 1 : 3); plane++) {
+        ACC acc[NC];
+#pragma unroll
+        for (int j = 0; j < NC; j++) acc[j] = 0;
+        const int npx = plane == 0 ? 4096 : CPX;
+        const int sub = plane ? SS : 0;
+        for (int i = tid; i < npx; i += 256) {
+            int lx, ly;
+            if (plane == 0) { ly = i >> 6; lx = i & 63; }
+            else { ly = i / CN; lx = i % CN; }
+            const int b = ((ly << sub) >> 3) * 8 + ((lx << sub) >> 3);
+            if (!act[b]) continue;
+            const int x = (plane ? sbc * CN : sbc * 64) + lx, y = (plane ? sbr * CN : sbr * 64) + ly;
+            if (((x << sub) >> 2) >= f.MiCols || ((y << sub) >> 2) >= f.MiRows) continue;
+            const int dv = dvs[b], yDir = dv & 7, var = dv >> 3;
+            int varStr = 0;
+            if (var >> 6) { varStr = av1g_floor_log2((uint32_t)(var >> 6)); if (varStr > 12) varStr = 12; }
+            const uint16_t *tg = (const uint16_t *)(plane == 0 ? s0 : plane == 1 ? s1 : s2);
+            const int tst = plane == 0 ? ss0 : plane == 1 ? ss1 : ss2;
+            const int16_t *tile = plane == 0 ? tl : tc[plane - 1];
+            cdef_pixel_acc_t10<NPRI, NSEC, ACC>(tile, plane ? TC : TL, lx + 2, ly + 2, plane != 0, yDir, varStr, var,
+                                                f.cdefDamping + CDEF_CS10 - (plane > 0), tg[(size_t)y * tst + x], cd, acc, wts[b]);
+        }
+#pragma unroll
+        for (int j = 0; j < NC; j++) {
+            double v = (double)acc[j];
+            for (int o = 16; o; o >>= 1) v += __shfl_xor_sync(0xffffffff, v, o);
+            if ((tid & 31) == 0) red[tid >> 5][j] = v;
+        }
+        __syncthreads();
+        for (int j = tid; j < NC; j += blockDim.x) {
+            double t = 0;
+            for (int w = 0; w < 8; w++) t += red[w][j];
+            // integer: (sum >> 2 * coeff_shift); weighted: x16 fixed point of the normalised (/ 16) SSE, saturating
+            const uint32_t u = INT ? (uint32_t)((unsigned long long)t >> (2 * CDEF_CS10)) : (uint32_t)fmin((double)t + 0.5, 4.0e9);
+            if (plane == 0) mse_y[(size_t)sb * NC + j] = u;
+            else if (plane == 1) mse_uv[(size_t)sb * NC + j] = u;
+            else mse_uv[(size_t)sb * NC + j] += u;
+        }
+        __syncthreads();
+    }
+}
+
+// the tile kernel for the frame's layout and candidate set
+template <int SS>
+void launch_cdef_sse_t10_ss(const Geo &g, const av1g_pf_frame &f, const uint8_t *const d_src[3], const int src_stride[3], const CdefCand &cd,
+                            int nc, const float *wmap, uint32_t *my, uint32_t *muv, cudaStream_t s) {
+    if (nc == 4 && !wmap)
+        k_cdef_sse_t10<2, 2, uint32_t, SS><<<g.nsb, 256, 0, s>>>(f, d_src[0], d_src[1], d_src[2], src_stride[0], src_stride[1],
+                                                                 src_stride[2], cd, nullptr, my, muv);
+    else if (nc == 4)
+        k_cdef_sse_t10<2, 2, float, SS><<<g.nsb, 256, 0, s>>>(f, d_src[0], d_src[1], d_src[2], src_stride[0], src_stride[1],
+                                                              src_stride[2], cd, wmap, my, muv);
+    else if (!wmap)
+        k_cdef_sse_t10<16, 4, uint32_t, SS><<<g.nsb, 256, 0, s>>>(f, d_src[0], d_src[1], d_src[2], src_stride[0], src_stride[1],
+                                                                  src_stride[2], cd, nullptr, my, muv);
+    else
+        k_cdef_sse_t10<16, 4, float, SS><<<g.nsb, 256, 0, s>>>(f, d_src[0], d_src[1], d_src[2], src_stride[0], src_stride[1],
+                                                               src_stride[2], cd, wmap, my, muv);
+}
+template <int SS>
+void launch_cdef_sse_t_ss(const Geo &g, const av1g_pf_frame &f, const uint8_t *const d_src[3], const int src_stride[3], const CdefCand &cd,
+                          int nc, const float *wmap, uint32_t *my, uint32_t *muv, cudaStream_t s) {
+    if (nc == 4 && !wmap)
+        k_cdef_sse_t<2, 2, uint32_t, SS><<<g.nsb, 256, 0, s>>>(f, d_src[0], d_src[1], d_src[2], src_stride[0], src_stride[1],
+                                                               src_stride[2], cd, nullptr, my, muv);
+    else if (nc == 4)
+        k_cdef_sse_t<2, 2, float, SS><<<g.nsb, 256, 0, s>>>(f, d_src[0], d_src[1], d_src[2], src_stride[0], src_stride[1],
+                                                            src_stride[2], cd, wmap, my, muv);
+    else if (!wmap)
+        k_cdef_sse_t<16, 4, uint32_t, SS><<<g.nsb, 256, 0, s>>>(f, d_src[0], d_src[1], d_src[2], src_stride[0], src_stride[1],
+                                                                src_stride[2], cd, nullptr, my, muv);
+    else
+        k_cdef_sse_t<16, 4, float, SS><<<g.nsb, 256, 0, s>>>(f, d_src[0], d_src[1], d_src[2], src_stride[0], src_stride[1],
+                                                             src_stride[2], cd, wmap, my, muv);
+}
+void launch_cdef_sse_t(const Geo &g, const av1g_pf_frame &f, const uint8_t *const d_src[3], const int src_stride[3], const CdefCand &cd,
+                       int nc, const float *wmap, uint32_t *my, uint32_t *muv, cudaStream_t s) {
+    if (g.bd == 10) {
+        if (!g.mono && !g.ssx && !g.ssy) launch_cdef_sse_t10_ss<0>(g, f, d_src, src_stride, cd, nc, wmap, my, muv, s);
+        else launch_cdef_sse_t10_ss<1>(g, f, d_src, src_stride, cd, nc, wmap, my, muv, s);
+        return;
+    }
+    if (!g.mono && !g.ssx && !g.ssy) launch_cdef_sse_t_ss<0>(g, f, d_src, src_stride, cd, nc, wmap, my, muv, s);
+    else launch_cdef_sse_t_ss<1>(g, f, d_src, src_stride, cd, nc, wmap, my, muv, s);
 }
 
 // ---------------------------------------------------------------- preset selection (libaom joint search)
@@ -757,14 +1078,15 @@ __global__ void k_gather_cols(const uint32_t *m, int nc, int nsb, const int *sel
 
 // ---------------------------------------------------------------- async path helpers (no host sync)
 // deblock with levels read from device memory (wraps av1core's bit-exact av1g_lf_edge)
+template <int BD>
 __global__ void k_deblock_lv(av1g_pf_frame f, int pass, const int *lv) {
-    const int plane = blockIdx.z, sub = plane ? 1 : 0;
+    const int plane = blockIdx.z, subX = plane ? f.ssx : 0, subY = plane ? f.ssy : 0;
     const int col = blockIdx.x * blockDim.x + threadIdx.x, row = blockIdx.y * blockDim.y + threadIdx.y;
-    if (col >= (f.MiCols >> sub) || row >= (f.MiRows >> sub)) return;
+    if (col >= (f.MiCols >> subX) || row >= (f.MiRows >> subY)) return;
     if (!lv[0] && !lv[1]) return;
     av1g_pf_frame fl = f;
     for (int i = 0; i < 4; i++) fl.lfLevel[i] = lv[i];
-    av1g_lf_edge(&fl, plane, pass, row << sub, col << sub);
+    av1g_lf_edge<BD>(&fl, plane, pass, row << subY, col << subX);
 }
 // argmin over the 64 deblocking levels per plane (lowest level on ties); chroma 0 if luma is 0
 __global__ void k_lf_pick(const unsigned long long *sse, int nplanes, int *lv) {
@@ -883,8 +1205,9 @@ static int lf_search_copies(const av1g_frame_params *fp, const Geo &g, const av1
         job.astride[p] = p ? g.cw : g.lw;
         job.src[p] = d_src[p];
         job.sstride[p] = src_stride[p];
-        job.w[p] = p ? (fp->width + 1) >> 1 : fp->width;
-        job.h[p] = p ? (fp->height + 1) >> 1 : fp->height;
+        job.w[p] = p ? (fp->width + g.ssx) >> g.ssx : fp->width;
+        job.h[p] = p ? (fp->height + g.ssy) >> g.ssy : fp->height;
+        job.sh[p] = p ? 3 - g.ssx : 3;
     }
     for (int l0 = 0; l0 < 64; l0 += LF_BATCH) {
         const int nb = l0 + LF_BATCH <= 64 ? LF_BATCH : 64 - l0;
@@ -894,7 +1217,8 @@ static int lf_search_copies(const av1g_frame_params *fp, const Geo &g, const av1
             for (int p = 0; p < nplanes; p++) {
                 uint8_t *dst = p == 0 ? c : c + g.lbytes + (p - 1) * g.cbytes;
                 const int w = p ? g.cw : g.lw, h = p ? g.ch : g.lh;
-                CK(cudaMemcpy2DAsync(dst, w, d_recon[p], recon_stride[p], w, h, cudaMemcpyDeviceToDevice, s));
+                CK(cudaMemcpy2DAsync(dst, (size_t)w * g.bps, d_recon[p], (size_t)recon_stride[p] * g.bps, (size_t)w * g.bps, h,
+                                     cudaMemcpyDeviceToDevice, s));
                 fk.plane[p] = dst;
                 fk.stride[p] = w;
                 job.a[k * 3 + p] = dst;
@@ -904,7 +1228,8 @@ static int lf_search_copies(const av1g_frame_params *fp, const Geo &g, const av1
             CK(av1g_gpu_deblock(&fk, s));
         }
         job.ncand = nb;
-        k_sse<<<dim3(4, 64, nb * 3), 256, 0, s>>>(job, sse, l0);
+        if (g.bd == 10) k_sse<uint16_t><<<dim3(4, 64, nb * 3), 256, 0, s>>>(job, sse, l0);
+        else k_sse<uint8_t><<<dim3(4, 64, nb * 3), 256, 0, s>>>(job, sse, l0);
     }
     if (!compare) return (int)cudaGetLastError();
     unsigned long long a[192], b[192];
@@ -931,7 +1256,7 @@ extern "C" int av1f_lf_search(const av1g_frame_params *fp, const av1g_block *d_b
     memset(res, 0, sizeof *res);
     const int bq = fp->base_q_idx;
     av1f_tuneiq_frame tf;
-    av1f_tuneiq_frame_init(bq, 1, 1, g.mono, &tf);
+    av1f_tuneiq_frame_init(bq, g.ssx, g.ssy, g.mono, &tf, g.bd);   // 10 bits: libaom's 10-bit level-from-Q fit and rdmult
     const int sharp = o->sharpness >= 0 ? o->sharpness : tf.lf_sharpness;
     const int damping = o->cdef_damping >= 3 ? o->cdef_damping : tf.cdef_damping;
     const int nplanes = g.mono ? 1 : 3;
@@ -951,8 +1276,12 @@ extern "C" int av1f_lf_search(const av1g_frame_params *fp, const av1g_block *d_b
         double *wsum = (double *)(base + L.wsum);
         const int n8c = g.MiCols / 2, n8r = g.MiRows / 2;
         CK(cudaMemsetAsync(wsum, 0, sizeof(double), s));
-        k_wmap<<<dim3((n8c + 127) / 128, n8r), 128, 0, s>>>(d_src[0], src_stride[0], n8c, n8r, o->dist_c > 0 ? o->dist_c : 58.5f,
-                                                           wmap, wsum);
+        if (g.bd == 10)
+            k_wmap<<<dim3((n8c + 127) / 128, n8r), 128, 0, s>>>((const uint16_t *)d_src[0], src_stride[0], n8c, n8r,
+                                                               o->dist_c > 0 ? o->dist_c : 58.5f, wmap, wsum);
+        else
+            k_wmap<<<dim3((n8c + 127) / 128, n8r), 128, 0, s>>>(d_src[0], src_stride[0], n8c, n8r, o->dist_c > 0 ? o->dist_c : 58.5f,
+                                                               wmap, wsum);
         k_wnorm<<<(unsigned)(((size_t)n8c * n8r + 255) / 256), 256, 0, s>>>(wmap, (size_t)n8c * n8r, wsum);
     }
 
@@ -967,8 +1296,7 @@ extern "C" int av1f_lf_search(const av1g_frame_params *fp, const av1g_block *d_b
         av1g_pf_frame ft = f;
         for (int p = 0; p < nplanes; p++) { ft.plane[p] = d_recon[p]; ft.stride[p] = recon_stride[p]; }
         if (lf_fused(o)) {  // default: one fused kernel, no frame copies (AV1F_LF_COPIES=1: copy-based path)
-            k_lf_tiles2<<<g.nsb, 256, 0, s>>>(ft, d_src[0], d_src[1], d_src[2], src_stride[0], src_stride[1], src_stride[2], wmap, sse,
-                                              o->dist == AV1F_DIST_GRAD);
+            launch_lf_tiles(g, ft, d_src, src_stride, wmap, sse, o->dist == AV1F_DIST_GRAD, s);
             CK(cudaGetLastError());
             if (getenv("AV1F_LF_CHECK") && o->dist != AV1F_DIST_GRAD)
                 CK(lf_search_copies(fp, g, f, d_recon, recon_stride, d_src, src_stride, wmap, base + L.cand, sse, s, true));
@@ -1047,8 +1375,8 @@ extern "C" int av1f_lf_search(const av1g_frame_params *fp, const av1g_block *d_b
             KERNEL<16, 4, float><<<g.nsb, 256, 0, s>>>(f, d_src[0], d_src[1], d_src[2], src_stride[0], src_stride[1],         \
                                                        src_stride[2], cd, wmap, MY, MUV);                                     \
     } while (0)
-    AV1F_LAUNCH_SSE(k_cdef_sse_t, my, muv);
-    if (getenv("AV1F_CDEF_CHECK")) {  // debug: the global-memory kernel must give identical tables
+    launch_cdef_sse_t(g, f, d_src, src_stride, cd, nc, wmap, my, muv, s);
+    if (getenv("AV1F_CDEF_CHECK") && g.bd == 8) {  // debug: the global-memory kernel must give identical tables (8-bit)
         uint32_t *cy, *cuv;
         CK(cudaMalloc(&cy, (size_t)g.nsb * nc * 4));
         CK(cudaMalloc(&cuv, (size_t)g.nsb * nc * 4));
@@ -1213,12 +1541,13 @@ extern "C" int av1f_lf_search_host(const av1g_frame_params *fp, const av1g_block
     CK(cudaMalloc(&scr, ns));
     CK(cudaMemcpy(db, blocks, sizeof(av1g_block) * n_blocks, cudaMemcpyHostToDevice));
     int rs[3], ss[3];
+    const int B = g.bps;   // 10-bit: uint16_t planes, strides in samples
     for (int p = 0; p < (g.mono ? 1 : 3); p++) {
         const int w = p ? g.cw : g.lw, h = p ? g.ch : g.lh;
-        CK(cudaMalloc(&dr[p], (size_t)w * h));
-        CK(cudaMalloc(&ds[p], (size_t)w * h));
-        CK(cudaMemcpy2D(dr[p], w, recon[p], recon_stride[p], w, h, cudaMemcpyHostToDevice));
-        CK(cudaMemcpy2D(ds[p], w, src[p], src_stride[p], w, h, cudaMemcpyHostToDevice));
+        CK(cudaMalloc(&dr[p], (size_t)w * h * B));
+        CK(cudaMalloc(&ds[p], (size_t)w * h * B));
+        CK(cudaMemcpy2D(dr[p], (size_t)w * B, recon[p], (size_t)recon_stride[p] * B, (size_t)w * B, h, cudaMemcpyHostToDevice));
+        CK(cudaMemcpy2D(ds[p], (size_t)w * B, src[p], (size_t)src_stride[p] * B, (size_t)w * B, h, cudaMemcpyHostToDevice));
         rs[p] = ss[p] = w;
     }
     int rc;
@@ -1236,7 +1565,7 @@ extern "C" int av1f_lf_search_host(const av1g_frame_params *fp, const av1g_block
     if (sb_cdef_idx) cudaMemcpy(sb_cdef_idx, di, g.nsb, cudaMemcpyDeviceToHost);
     for (int p = 0; p < (g.mono ? 1 : 3); p++) {
         const int w = p ? g.cw : g.lw, h = p ? g.ch : g.lh;
-        cudaMemcpy2D(recon[p], recon_stride[p], dr[p], w, w, h, cudaMemcpyDeviceToHost);  // deblocked
+        cudaMemcpy2D(recon[p], (size_t)recon_stride[p] * B, dr[p], (size_t)w * B, (size_t)w * B, h, cudaMemcpyDeviceToHost);  // deblocked
         cudaFree(dr[p]);
         cudaFree(ds[p]);
     }
@@ -1258,7 +1587,7 @@ extern "C" int av1f_lf_search_async(const av1g_frame_params *fp, const av1g_bloc
     uint8_t *base = (uint8_t *)d_scratch;
     const int bq = fp->base_q_idx;
     av1f_tuneiq_frame tf;
-    av1f_tuneiq_frame_init(bq, 1, 1, g.mono, &tf);
+    av1f_tuneiq_frame_init(bq, g.ssx, g.ssy, g.mono, &tf, g.bd);   // 10 bits: libaom's 10-bit level-from-Q fit and rdmult
     const int sharp = o->sharpness >= 0 ? o->sharpness : tf.lf_sharpness;
     const int damping = o->cdef_damping >= 3 ? o->cdef_damping : tf.cdef_damping;
     const int nplanes = g.mono ? 1 : 3;
@@ -1278,8 +1607,12 @@ extern "C" int av1f_lf_search_async(const av1g_frame_params *fp, const av1g_bloc
         double *wsum = (double *)(base + L.wsum);
         const int n8c = g.MiCols / 2, n8r = g.MiRows / 2;
         CK(cudaMemsetAsync(wsum, 0, sizeof(double), s));
-        k_wmap<<<dim3((n8c + 127) / 128, n8r), 128, 0, s>>>(d_src[0], src_stride[0], n8c, n8r, o->dist_c > 0 ? o->dist_c : 58.5f,
-                                                           wmap, wsum);
+        if (g.bd == 10)
+            k_wmap<<<dim3((n8c + 127) / 128, n8r), 128, 0, s>>>((const uint16_t *)d_src[0], src_stride[0], n8c, n8r,
+                                                               o->dist_c > 0 ? o->dist_c : 58.5f, wmap, wsum);
+        else
+            k_wmap<<<dim3((n8c + 127) / 128, n8r), 128, 0, s>>>(d_src[0], src_stride[0], n8c, n8r, o->dist_c > 0 ? o->dist_c : 58.5f,
+                                                               wmap, wsum);
         k_wnorm<<<(unsigned)(((size_t)n8c * n8r + 255) / 256), 256, 0, s>>>(wmap, (size_t)n8c * n8r, wsum);
     }
     // ---- deblocking
@@ -1291,13 +1624,15 @@ extern "C" int av1f_lf_search_async(const av1g_frame_params *fp, const av1g_bloc
         unsigned long long *sse = (unsigned long long *)(base + L.sse);
         CK(cudaMemsetAsync(sse, 0, 64 * 3 * sizeof(unsigned long long), s));
         if (lf_fused(o))
-            k_lf_tiles2<<<g.nsb, 256, 0, s>>>(f, d_src[0], d_src[1], d_src[2], src_stride[0], src_stride[1], src_stride[2], wmap, sse,
-                                              o->dist == AV1F_DIST_GRAD);
+            launch_lf_tiles(g, f, d_src, src_stride, wmap, sse, o->dist == AV1F_DIST_GRAD, s);
         else
             CK(lf_search_copies(fp, g, f, d_recon, recon_stride, d_src, src_stride, wmap, base + L.cand, sse, s, false));
         k_lf_pick<<<1, 32, 0, s>>>(sse, nplanes, lvDev);
         const dim3 blk(32, 4), grid((g.MiCols + 31) / 32, (g.MiRows + 3) / 4, nplanes);
-        for (int pass = 0; pass < 2; pass++) k_deblock_lv<<<grid, blk, 0, s>>>(f, pass, lvDev);
+        for (int pass = 0; pass < 2; pass++) {
+            if (g.bd == 10) k_deblock_lv<10><<<grid, blk, 0, s>>>(f, pass, lvDev);
+            else k_deblock_lv<8><<<grid, blk, 0, s>>>(f, pass, lvDev);
+        }
         fa.useLvDev = 1;
     } else {
         const int l = o->lf_mode == AV1F_LF_FROM_Q ? tf.lf_level : 0;
@@ -1331,18 +1666,7 @@ extern "C" int av1f_lf_search_async(const av1g_frame_params *fp, const av1g_bloc
     const int nc = npri * nsec;
     uint32_t *my = (uint32_t *)(base + L.msey), *muv = (uint32_t *)(base + L.mseuv);
     if (g.mono) CK(cudaMemsetAsync(muv, 0, (size_t)g.nsb * nc * 4, s));
-    if (nc == 4 && !wmap)
-        k_cdef_sse_t<2, 2, uint32_t><<<g.nsb, 256, 0, s>>>(f, d_src[0], d_src[1], d_src[2], src_stride[0], src_stride[1], src_stride[2],
-                                                           cd, nullptr, my, muv);
-    else if (nc == 4)
-        k_cdef_sse_t<2, 2, float><<<g.nsb, 256, 0, s>>>(f, d_src[0], d_src[1], d_src[2], src_stride[0], src_stride[1], src_stride[2],
-                                                        cd, wmap, my, muv);
-    else if (!wmap)
-        k_cdef_sse_t<16, 4, uint32_t><<<g.nsb, 256, 0, s>>>(f, d_src[0], d_src[1], d_src[2], src_stride[0], src_stride[1],
-                                                            src_stride[2], cd, nullptr, my, muv);
-    else
-        k_cdef_sse_t<16, 4, float><<<g.nsb, 256, 0, s>>>(f, d_src[0], d_src[1], d_src[2], src_stride[0], src_stride[1], src_stride[2],
-                                                         cd, wmap, my, muv);
+    launch_cdef_sse_t(g, f, d_src, src_stride, cd, nc, wmap, my, muv, s);
     CK(cudaMemsetAsync(nactDev, 0, sizeof(int), s));
     k_count_active<<<(g.nsb + 255) / 256, 256, 0, s>>>(f.cdefIdx, g.nsb, nactDev);
     unsigned long long *tot = (unsigned long long *)(base + L.tot), *cur = (unsigned long long *)(base + L.cur);

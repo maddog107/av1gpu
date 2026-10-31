@@ -3,19 +3,27 @@
 // Generates random *legal* DecisionRecords (random sizes, partitions, modes,
 // angle deltas, CFL alphas, tx sizes/types, sparse coefficients incl. Golomb-range
 // magnitudes, skip blocks, tiles, delta-q, QM, filter intra, edge filter,
-// deblocking + CDEF), encodes them with av1core and checks
-// that dav1d AND aomdec reproduce av1core's reconstruction byte for byte.
+// deblocking + CDEF; 4:2:0, 4:4:4 and monochrome; 8-bit and 10-bit), encodes them with av1core and
+// checks that dav1d AND aomdec reproduce av1core's reconstruction byte for byte (10-bit: 16-bit
+// little-endian samples from both decoders).
 //
 //   av1g_fuzz --seed S --count N [--mode m2|full] [--out DIR] [--keep] [--maxdim D]
-//             [--big P] [--no-aom] [--quiet]
+//             [--big P] [--yuv444 P] [--depth10 P] [--no-aom] [--quiet]
+// --yuv444 P: P % of the non-monochrome cases are 4:4:4 (default 40).  That choice comes from
+// its own random stream, so every other case of a seed is the same record as with
+// --yuv444 0, which reproduces the pre-4:4:4 (4:2:0 / monochrome only) case stream exactly.
+// --depth10 P: P % of the cases are 10-bit (default 40), again from a separate stream: a 10-bit
+// case is the record its seed has in 8 bits with fp.bit_depth = 10, and --depth10 0 reproduces
+// the 8-bit-only case stream (every 8-bit case of a seed is the same with any P).
 // Exit status 0 iff every case matched.  Failing cases are kept in DIR as
 // case_<seed>.{obu,yuv,txt}.
-// post-filter path coverage (counted when the fuzzer re-runs the shared filters itself)
-static unsigned long long g_pfStat[16];
+// post-filter path coverage (counted when the fuzzer re-runs the shared filters itself), per bit depth
+static unsigned long long g_pfStat[2][16];
+static int g_pfBd10 = 0;   // index into g_pfStat: the case being filtered is 10-bit
 #if defined(__CUDA_ARCH__)
 #define AV1G_PF_STAT(kind) ((void)0)
 #else
-#define AV1G_PF_STAT(kind) (g_pfStat[(kind)]++)
+#define AV1G_PF_STAT(kind) (g_pfStat[g_pfBd10][(kind)]++)
 #endif
 #include "av1g/postfilter.h"
 #include "av1g/av1g.h"
@@ -76,6 +84,23 @@ struct Coverage {
     uint64_t lf = 0, lfChromaOff = 0, lfSharp[8] = {}, cdef = 0, cdefBits[4] = {}, cdefDamp[4] = {}, cdefSec4 = 0, pfBoth = 0;
     uint64_t golomb = 0, maxMag = 0, skip = 0, mono = 0, deltaq = 0, sepuv = 0, multiTile = 0, edgeForced = 0;
     uint32_t maxTileCols = 0, maxTileRows = 0;
+    // 4:4:4 cases (counted separately: everything 4:2:0 exercises must also be hit in 4:4:4)
+    uint64_t c444 = 0, c444Tiles = 0, c444Lf = 0, c444Cdef = 0, c444Dq = 0, c444Qm = 0, c444Fi = 0, c444Ef = 0, c444TxSel = 0,
+             c444Reduced = 0, c444Sct = 0, c444DeltaQ = 0, c444Big = 0;
+    uint64_t txChroma444[19] = {};       // coded (eob > 0) chroma tx blocks per size
+    uint64_t txChromaType444[19][16] = {};  // derived chroma tx types coded per size
+    uint64_t cfl444[22] = {};            // CfL blocks per bsize
+    uint64_t uvmode444[14][7] = {};      // uv mode x angle delta
+    uint64_t subChroma444 = 0;           // 4xN / Nx4 blocks at even mi positions (no chroma in 4:2:0)
+    uint64_t multiTxChroma444 = 0;       // blocks with several chroma tx blocks per plane (64-sample sides)
+    uint64_t bsize444[22] = {};
+    // 10-bit cases (counted separately: every tool the 8-bit cases exercise must also be hit at 10 bits)
+    uint64_t c10 = 0, c10Fmt[3] = {}, c10Tiles = 0, c10Lf = 0, c10Cdef = 0, c10Dq = 0, c10Qm = 0, c10Fi = 0, c10Ef = 0,
+             c10TxSel = 0, c10Reduced = 0, c10Sct = 0, c10DeltaQ = 0, c10Big = 0, c10Fixed = 0, c10Golomb = 0, c10Clamp = 0;
+    uint64_t bsize10[22] = {}, ymode10[13][7] = {}, uvmode10[14][7] = {}, cflSigns10[9] = {}, cfl10[22] = {};
+    uint64_t txLuma10[19][16] = {}, txChroma10[19] = {}, fiMode10[5] = {}, efDir10 = 0, qmLevel10[16] = {}, dqRes10[4] = {};
+    uint64_t lfSharp10[8] = {}, cdefBits10[4] = {}, cdefDamp10[4] = {}, cdefSec4_10 = 0, pfBoth10 = 0, lfChromaOff10 = 0;
+    uint64_t maxMag10 = 0;
     void report() const {
         static const int sq[4] = {AV1G_BLOCK_8X8, AV1G_BLOCK_16X16, AV1G_BLOCK_32X32, AV1G_BLOCK_64X64};
         int missing = 0;
@@ -145,17 +170,121 @@ struct Coverage {
         static const char *pfName[AV1G_PF_STAT_COUNT] = {"lf masked", "narrow hev", "narrow", "wide6 (chroma)", "wide8", "wide16",
                                                          "cdef all-skip 8x8", "cdef filtered 8x8", "cdef clamped px"};
         printf("  post-filter paths (lines / blocks / px):");
-        for (int i = 0; i < AV1G_PF_STAT_COUNT; i++) { printf(" %s %llu,", pfName[i], g_pfStat[i]); missing += !g_pfStat[i]; }
+        for (int i = 0; i < AV1G_PF_STAT_COUNT; i++) {
+            printf(" %s %llu,", pfName[i], g_pfStat[0][i] + g_pfStat[1][i]);
+            missing += !(g_pfStat[0][i] + g_pfStat[1][i]);
+        }
         printf("\n");
+        // ---- 4:4:4 ----
+        printf("COVERAGE 4:4:4: %llu cases (tiles %llu, deblocking %llu, CDEF %llu, delta-q %llu, QM %llu, filter intra %llu,"
+               " edge filter %llu, tx-select %llu, reduced set %llu, screen content %llu, frame delta-q %llu, forced tiles %llu)\n",
+               (unsigned long long)c444, (unsigned long long)c444Tiles, (unsigned long long)c444Lf, (unsigned long long)c444Cdef,
+               (unsigned long long)c444Dq, (unsigned long long)c444Qm, (unsigned long long)c444Fi, (unsigned long long)c444Ef,
+               (unsigned long long)c444TxSel, (unsigned long long)c444Reduced, (unsigned long long)c444Sct,
+               (unsigned long long)c444DeltaQ, (unsigned long long)c444Big);
+        missing += !c444 + !c444Tiles + !c444Lf + !c444Cdef + !c444Dq + !c444Qm + !c444Fi + !c444Ef + !c444TxSel + !c444Reduced +
+                   !c444Sct + !c444DeltaQ;
+        printf("  block sizes:");
+        for (int b = 0; b < 22; b++) if (b < 13 || b > 15) { printf(" %llu", (unsigned long long)bsize444[b]); missing += !bsize444[b]; }
+        printf("\n  chroma tx sizes coded:");
+        int cAllowed = 0, cHit = 0;
+        for (int t = 0; t < 19; t++) {
+            printf(" %llu", (unsigned long long)txChroma444[t]);
+            if (av1g_tx_w(t) <= 32 && av1g_tx_h(t) <= 32) { cAllowed++; cHit += txChroma444[t] > 0; missing += !txChroma444[t]; }
+        }
+        int ctAllowed = 0, ctHit = 0;
+        for (int t = 0; t < 19; t++) {
+            if (av1g_tx_w(t) > 32 || av1g_tx_h(t) > 32) continue;
+            for (int ty = 0; ty < 16; ty++) {
+                bool derivable = false;   // some uv_mode / reduced_tx_set maps to this type
+                for (int m = 0; m <= AV1G_UV_CFL_PRED && !derivable; m++)
+                    derivable = av1g_chroma_tx_type(t, m, 0) == ty || av1g_chroma_tx_type(t, m, 1) == ty;
+                if (!derivable) continue;
+                ctAllowed++;
+                if (txChromaType444[t][ty]) ctHit++; else { missing++; printf("\n  MISSING 4:4:4 chroma tx size %d type %d", t, ty); }
+            }
+        }
+        printf("\n  chroma tx sizes: %d / %d, (size, derived type) combos: %d / %d\n  CfL per bsize:", cHit, cAllowed, ctHit, ctAllowed);
+        for (int b = 0; b < 22; b++)
+            if ((b < 13 || b > 15) && av1g_cfl_allowed(b)) { printf(" %llu", (unsigned long long)cfl444[b]); missing += !cfl444[b]; }
+        printf("\n  uv_mode x angle:");
+        for (int m = 0; m < 14; m++) for (int d = 0; d < 7; d++) {
+            bool need = (m < 13 && av1g_is_directional(m)) || d == 3;
+            if (need) missing += !uvmode444[m][d];
+        }
+        for (int m = 0; m < 14; m++) printf(" %llu", (unsigned long long)uvmode444[m][3]);
+        printf("\n  4xN/Nx4 chroma at even positions %llu, blocks with several chroma tx per plane %llu\n",
+               (unsigned long long)subChroma444, (unsigned long long)multiTxChroma444);
+        missing += !subChroma444 + !multiTxChroma444;
+        // ---- 10-bit ----
+        if (c10) {
+            const int m0 = missing;
+            printf("COVERAGE 10-bit: %llu cases (4:2:0 %llu, 4:4:4 %llu, mono %llu; tiles %llu, deblocking %llu, CDEF %llu, delta-q %llu,"
+                   " QM %llu, filter intra %llu, edge filter %llu, tx-select %llu, reduced set %llu, screen content %llu, frame delta-q %llu,"
+                   " forced tiles %llu)\n",
+                   (unsigned long long)c10, (unsigned long long)c10Fmt[0], (unsigned long long)c10Fmt[1], (unsigned long long)c10Fmt[2],
+                   (unsigned long long)c10Tiles, (unsigned long long)c10Lf, (unsigned long long)c10Cdef, (unsigned long long)c10Dq,
+                   (unsigned long long)c10Qm, (unsigned long long)c10Fi, (unsigned long long)c10Ef, (unsigned long long)c10TxSel,
+                   (unsigned long long)c10Reduced, (unsigned long long)c10Sct, (unsigned long long)c10DeltaQ, (unsigned long long)c10Big);
+            for (int i = 0; i < 3; i++) missing += !c10Fmt[i];
+            missing += !c10Tiles + !c10Lf + !c10Cdef + !c10Dq + !c10Qm + !c10Fi + !c10Ef + !c10TxSel + !c10Reduced + !c10Sct + !c10DeltaQ;
+            printf("  block sizes:");
+            for (int b = 0; b < 22; b++) if (b < 13 || b > 15) { printf(" %llu", (unsigned long long)bsize10[b]); missing += !bsize10[b]; }
+            int ym = 0, uvm = 0;
+            for (int m = 0; m < 13; m++) for (int d = 0; d < 7; d++) if (av1g_is_directional(m) || d == 3) ym += !ymode10[m][d];
+            for (int m = 0; m < 14; m++) for (int d = 0; d < 7; d++) if ((m < 13 && av1g_is_directional(m)) || d == 3) uvm += !uvmode10[m][d];
+            missing += ym + uvm;
+            printf("\n  y_mode x angle missing %d, uv_mode x angle missing %d, cfl sign combos:", ym, uvm);
+            for (int i = 0; i < 8; i++) { printf(" %llu", (unsigned long long)cflSigns10[i]); missing += !cflSigns10[i]; }
+            printf("\n  CfL per bsize:");
+            for (int b = 0; b < 22; b++)
+                if ((b < 13 || b > 15) && av1g_cfl_allowed(b)) { printf(" %llu", (unsigned long long)cfl10[b]); missing += !cfl10[b]; }
+            int txAllowed = 0, txHit = 0;
+            for (int t = 0; t < 19; t++) for (int ty = 0; ty < 16; ty++) {
+                bool allowed = av1g_tx_type_in_set_intra(av1g_get_tx_set_intra(t, 0), ty) || av1g_tx_type_in_set_intra(av1g_get_tx_set_intra(t, 1), ty);
+                if (!allowed) continue;
+                txAllowed++;
+                if (txLuma10[t][ty]) txHit++; else { missing++; printf("\n  MISSING 10-bit luma tx size %d type %d", t, ty); }
+            }
+            int cAllowed = 0, cHit = 0;
+            for (int t = 0; t < 19; t++)
+                if (av1g_tx_w(t) <= 32 && av1g_tx_h(t) <= 32) { cAllowed++; cHit += txChroma10[t] > 0; missing += !txChroma10[t]; }
+            printf("\n  luma (tx size, type) combos coded: %d / %d, chroma tx sizes coded: %d / %d\n", txHit, txAllowed, cHit, cAllowed);
+            printf("  filter intra modes:");
+            for (int i = 0; i < 5; i++) { printf(" %llu", (unsigned long long)fiMode10[i]); missing += !fiMode10[i]; }
+            printf(", edge-filter directional blocks %llu, QM levels:", (unsigned long long)efDir10);
+            missing += !efDir10;
+            for (int l = 0; l < 16; l++) { printf(" %llu", (unsigned long long)qmLevel10[l]); missing += !qmLevel10[l]; }
+            printf("\n  delta-q res 0..3:");
+            for (int r = 0; r < 4; r++) { printf(" %llu", (unsigned long long)dqRes10[r]); missing += !dqRes10[r]; }
+            printf(", deblocking sharpness 0..7:");
+            for (int i = 0; i < 8; i++) { printf(" %llu", (unsigned long long)lfSharp10[i]); missing += !lfSharp10[i]; }
+            printf(" (chroma plane off %llu), CDEF bits:", (unsigned long long)lfChromaOff10);
+            for (int i = 0; i < 4; i++) { printf(" %llu", (unsigned long long)cdefBits10[i]); missing += !cdefBits10[i] + !cdefDamp10[i]; }
+            printf(" damping:");
+            for (int i = 0; i < 4; i++) printf(" %llu", (unsigned long long)cdefDamp10[i]);
+            printf(", sec 4 %llu, with deblocking %llu\n", (unsigned long long)cdefSec4_10, (unsigned long long)pfBoth10);
+            missing += !lfChromaOff10 + !cdefSec4_10 + !pfBoth10;
+            static const char *pfName10[AV1G_PF_STAT_COUNT] = {"lf masked", "narrow hev", "narrow", "wide6 (chroma)", "wide8", "wide16",
+                                                               "cdef all-skip 8x8", "cdef filtered 8x8", "cdef clamped px"};
+            printf("  post-filter paths at 10 bits:");
+            for (int i = 0; i < AV1G_PF_STAT_COUNT; i++) { printf(" %s %llu,", pfName10[i], g_pfStat[1][i]); missing += !g_pfStat[1][i]; }
+            printf("\n  golomb coeffs %llu, max |coeff| %llu, dequantized values clamped to +-2^17: %llu, range-fixed txb %llu\n",
+                   (unsigned long long)c10Golomb, (unsigned long long)maxMag10, (unsigned long long)c10Clamp, (unsigned long long)c10Fixed);
+            missing += !c10Golomb + !c10Clamp + !c10Fixed;
+            printf("  10-bit items missing: %d\n", missing - m0);
+        }
         printf("COVERAGE missing items: %d\n", missing);
     }
 };
 static Coverage cov;
+static bool g_cov10 = false;   // the case being generated is 10-bit (coverage only)
 
 struct Gen {
     Rng &rng;
     bool m2;
     int W, H, MiCols, MiRows, mono, txSelect, reduced;
+    int ssx = 1, ssy = 1;   // 4:4:4: 0, 0
     std::vector<av1g_block> blocks;
     int maxDepthBias;
     int dqBias = 0;
@@ -183,7 +312,7 @@ struct Gen {
         b.y_mode = (uint8_t)rng.range(0, 12);
         if (bs >= AV1G_BLOCK_8X8 && av1g_is_directional(b.y_mode) && rng.chance(70)) b.angle_delta_y = (int8_t)rng.range(-3, 3);
         if (txSelect && bs > AV1G_BLOCK_4X4) b.tx_depth = (uint8_t)rng.range(0, av1g_max_tx_depth(bs));
-        if (av1g_has_chroma(bs, r, c, mono)) {
+        if (av1g_has_chroma(bs, r, c, mono, ssx, ssy)) {
             int maxuv = av1g_cfl_allowed(bs) ? 13 : 12;
             b.uv_mode = (uint8_t)rng.range(0, maxuv);
             if (av1g_cfl_allowed(bs) && rng.chance(20)) b.uv_mode = AV1G_UV_CFL_PRED;
@@ -195,17 +324,31 @@ struct Gen {
             }
             if (bs >= AV1G_BLOCK_8X8 && av1g_is_directional(b.uv_mode) && rng.chance(70)) b.angle_delta_uv = (int8_t)rng.range(-3, 3);
             cov.uvmode[b.uv_mode][b.angle_delta_uv + 3]++;
+            if (g_cov10) {
+                cov.uvmode10[b.uv_mode][b.angle_delta_uv + 3]++;
+                if (b.uv_mode == AV1G_UV_CFL_PRED) cov.cfl10[bs]++;
+            }
+            if (!ssx) {
+                cov.uvmode444[b.uv_mode][b.angle_delta_uv + 3]++;
+                if (b.uv_mode == AV1G_UV_CFL_PRED) cov.cfl444[bs]++;
+                if ((av1g_bw4(bs) == 1 && !(c & 1)) || (av1g_bh4(bs) == 1 && !(r & 1))) cov.subChroma444++;
+                if (av1g_bw4(bs) == 16 || av1g_bh4(bs) == 16) cov.multiTxChroma444++;
+            }
             if (b.uv_mode == AV1G_UV_CFL_PRED) {
                 int su = b.cfl_alpha_u == 0 ? 0 : b.cfl_alpha_u < 0 ? 1 : 2, sv = b.cfl_alpha_v == 0 ? 0 : b.cfl_alpha_v < 0 ? 1 : 2;
                 cov.cflSigns[su * 3 + sv - 1]++;
+                if (g_cov10) cov.cflSigns10[su * 3 + sv - 1]++;
             }
         }
         if (fi && b.y_mode == AV1G_DC_PRED && av1g_bw4(bs) <= 8 && av1g_bh4(bs) <= 8 && rng.chance(50)) {
             b.filter_intra = (uint8_t)rng.range(1, 5);
             cov.fiMode[b.filter_intra - 1]++;
+            if (g_cov10) cov.fiMode10[b.filter_intra - 1]++;
         }
         cov.ymode[b.y_mode][b.angle_delta_y + 3]++;
         cov.bsize[bs]++;
+        if (g_cov10) { cov.ymode10[b.y_mode][b.angle_delta_y + 3]++; cov.bsize10[bs]++; }
+        if (!ssx && !mono) cov.bsize444[bs]++;
         cov.depth[bs][b.tx_depth]++;
         blocks.push_back(b);
     }
@@ -323,10 +466,17 @@ struct FuzzCase {
     std::vector<int16_t> coeffs;
 };
 
-// Build the random legal record of seed cs (deterministic).
-static bool make_case(uint64_t cs, bool m2, int maxdim, int bigPct, FuzzCase &fc) {
+// Build the random legal record of seed cs (deterministic).  pct444: % of the non-monochrome
+// cases that are 4:4:4, drawn from a separate stream (0: the 4:2:0 / monochrome stream as before).
+// pct10: % of the cases that are 10-bit, from another separate stream (0: 8-bit only).
+static bool is_10bit_case(uint64_t cs, bool m2, int pct10) {
+    Rng drng(cs ^ 0x10B17D3B7110B17Dull);
+    return !m2 && pct10 > 0 && drng.chance(pct10);
+}
+static bool make_case(uint64_t cs, bool m2, int maxdim, int bigPct, FuzzCase &fc, int pct444 = 40, int pct10 = 0) {
     Rng rng(cs);
     Gen g(rng, m2);
+    g_cov10 = is_10bit_case(cs, m2, pct10);
     // ---- frame parameters ----
     int W, H;
     int sz = rng.range(0, 99);
@@ -343,7 +493,15 @@ static bool make_case(uint64_t cs, bool m2, int maxdim, int bigPct, FuzzCase &fc
     rec.fp.version = AV1G_DECISIONS_VERSION;
     rec.fp.width = W;
     rec.fp.height = H;
+    rec.fp.bit_depth = g_cov10 ? 10 : 8;
     rec.fp.monochrome = m2 ? 0 : rng.chance(15);
+    {
+        Rng yrng(cs ^ 0x4444C0FFEE444444ull);   // own stream: the other cases keep their records
+        if (!m2 && !rec.fp.monochrome && pct444 > 0 && yrng.chance(pct444)) {
+            rec.fp.chroma_format = AV1G_CHROMA_444;
+            g.ssx = g.ssy = 0;
+        }
+    }
     rec.fp.base_q_idx = (uint8_t)rng.range(1, 255);
     rec.fp.tx_mode_select = m2 ? 0 : rng.chance(60);
     rec.fp.reduced_tx_set = m2 ? 0 : rng.chance(30);
@@ -466,7 +624,7 @@ static bool make_case(uint64_t cs, bool m2, int maxdim, int bigPct, FuzzCase &fc
 #ifndef AV1G_FUZZ_NO_MAIN
 int main(int argc, char **argv) {
     uint64_t seed = 1;
-    int count = 100, maxdim = 300, bigPct = 2;
+    int count = 100, maxdim = 300, bigPct = 2, pct444 = 40, pct10 = 40;
     bool m2 = false, keep = false, useAom = true, quiet = false;
     std::string out = default_out_dir("av1g_fuzz");
     for (int i = 1; i < argc; i++) {
@@ -479,6 +637,8 @@ int main(int argc, char **argv) {
         else if (a == "--keep") keep = true;
         else if (a == "--maxdim") maxdim = atoi(nx().c_str());
         else if (a == "--big") bigPct = atoi(nx().c_str());
+        else if (a == "--yuv444") pct444 = atoi(nx().c_str());
+        else if (a == "--depth10") pct10 = atoi(nx().c_str());
         else if (a == "--no-aom") useAom = false;
         else if (a == "--quiet") quiet = true;
         else { fprintf(stderr, "unknown arg %s\n", a.c_str()); return 2; }
@@ -489,8 +649,11 @@ int main(int argc, char **argv) {
     for (int ci = 0; ci < count; ci++) {
         const uint64_t cs = seed + ci;
         FuzzCase fc;
-        if (!make_case(cs, m2, maxdim, bigPct, fc)) return 1;
+        if (!make_case(cs, m2, maxdim, bigPct, fc, pct444, pct10)) return 1;
         av1g_decision_record &rec = fc.rec;
+        const bool is10 = av1g_bit_depth(&rec.fp) == 10;
+        const int bps = is10 ? 2 : 1;   // recon bytes per sample
+        g_pfBd10 = is10;
         totalBlocks += rec.n_blocks;
         totalTxb += rec.n_txb;
         av1g_encode_opts eo = {AV1G_ENC_FIX_RANGE | AV1G_ENC_TD | AV1G_ENC_CHECK_EDGES, -1};
@@ -505,6 +668,55 @@ int main(int argc, char **argv) {
         }
         totalFixed += o.n_fixed_txb;
         cov.mono += rec.fp.monochrome;
+        const bool is444 = rec.fp.chroma_format == AV1G_CHROMA_444;
+        const int ssx = av1g_ssx(&rec.fp), ssy = av1g_ssy(&rec.fp);
+        const bool lfOn10 = rec.fp.loop_filter_level[0] || rec.fp.loop_filter_level[1];
+        if (is10) {
+            cov.c10++;
+            cov.c10Fmt[rec.fp.monochrome ? 2 : is444 ? 1 : 0]++;
+            cov.c10Tiles += o.tile_cols * o.tile_rows > 1;
+            cov.c10Lf += lfOn10;
+            cov.c10Cdef += rec.fp.enable_cdef;
+            cov.c10Dq += rec.fp.delta_q_present;
+            cov.c10Qm += rec.fp.using_qmatrix;
+            cov.c10Fi += rec.fp.enable_filter_intra;
+            cov.c10Ef += rec.fp.enable_intra_edge_filter;
+            cov.c10TxSel += rec.fp.tx_mode_select;
+            cov.c10Reduced += rec.fp.reduced_tx_set;
+            cov.c10Sct += rec.fp.allow_screen_content_tools;
+            cov.c10DeltaQ += rec.fp.delta_q_y_dc || rec.fp.delta_q_u_dc || rec.fp.delta_q_u_ac || rec.fp.delta_q_v_dc || rec.fp.delta_q_v_ac;
+            cov.c10Big += rec.fp.width > 4096 || (uint64_t)rec.fp.width * rec.fp.height > 4096ull * 2304;
+            cov.c10Fixed += o.n_fixed_txb;
+            if (lfOn10) {
+                cov.lfSharp10[rec.fp.loop_filter_sharpness]++;
+                if (!rec.fp.monochrome && (!rec.fp.loop_filter_level[2] || !rec.fp.loop_filter_level[3])) cov.lfChromaOff10++;
+            }
+            if (rec.fp.enable_cdef) {
+                cov.pfBoth10 += lfOn10;
+                cov.cdefBits10[rec.fp.cdef_bits]++;
+                cov.cdefDamp10[rec.fp.cdef_damping_minus_3]++;
+                for (int i = 0; i < (1 << rec.fp.cdef_bits); i++) cov.cdefSec4_10 += rec.fp.cdef_y_sec[i] == 4 || rec.fp.cdef_uv_sec[i] == 4;
+            }
+            if (rec.fp.enable_intra_edge_filter)
+                for (uint32_t b = 0; b < rec.n_blocks; b++) cov.efDir10 += av1g_is_directional(rec.blocks[b].y_mode);
+            if (rec.fp.using_qmatrix) { cov.qmLevel10[rec.fp.qm_y]++; cov.qmLevel10[rec.fp.qm_u]++; cov.qmLevel10[rec.fp.qm_v]++; }
+            if (rec.fp.delta_q_present) cov.dqRes10[rec.fp.delta_q_res]++;
+        }
+        if (is444) {
+            cov.c444++;
+            cov.c444Tiles += o.tile_cols * o.tile_rows > 1;
+            cov.c444Lf += rec.fp.loop_filter_level[0] || rec.fp.loop_filter_level[1];
+            cov.c444Cdef += rec.fp.enable_cdef;
+            cov.c444Dq += rec.fp.delta_q_present;
+            cov.c444Qm += rec.fp.using_qmatrix;
+            cov.c444Fi += rec.fp.enable_filter_intra;
+            cov.c444Ef += rec.fp.enable_intra_edge_filter;
+            cov.c444TxSel += rec.fp.tx_mode_select;
+            cov.c444Reduced += rec.fp.reduced_tx_set;
+            cov.c444Sct += rec.fp.allow_screen_content_tools;
+            cov.c444DeltaQ += rec.fp.delta_q_u_dc || rec.fp.delta_q_u_ac || rec.fp.delta_q_v_dc || rec.fp.delta_q_v_ac;
+            cov.c444Big += rec.fp.width > 4096 || (uint64_t)rec.fp.width * rec.fp.height > 4096ull * 2304;
+        }
         cov.sct += rec.fp.allow_screen_content_tools;
         cov.fiFrames += rec.fp.enable_filter_intra;
         const bool lfOn = rec.fp.loop_filter_level[0] || rec.fp.loop_filter_level[1];
@@ -553,11 +765,33 @@ int main(int argc, char **argv) {
                 const av1g_txb &x = rec.txb[t];
                 if (!x.eob) continue;
                 if (x.plane == 0) cov.txLuma[x.tx_size][x.tx_type]++; else cov.txChroma[x.tx_size]++;
+                if (x.plane && is444) { cov.txChroma444[x.tx_size]++; cov.txChromaType444[x.tx_size][x.tx_type]++; }
+                if (is10) { if (x.plane == 0) cov.txLuma10[x.tx_size][x.tx_type]++; else cov.txChroma10[x.tx_size]++; }
                 const int16_t *q = rec.coeffs + x.coeff_off;
+                // 10 bits: dequantized values that hit the +-2^17 clamp (spec 7.12.3 1f)
+                int dcQ = 0, acQ = 0, den = 1;
+                const uint8_t *qmw = nullptr;
+                if (is10) {
+                    const av1g_block &k = rec.blocks[b];
+                    const int qi = rec.fp.delta_q_present ? k.sb_qindex : rec.fp.base_q_idx;
+                    const int ddc = x.plane == 0 ? rec.fp.delta_q_y_dc : x.plane == 1 ? rec.fp.delta_q_u_dc : rec.fp.delta_q_v_dc;
+                    const int dac = x.plane == 0 ? 0 : x.plane == 1 ? rec.fp.delta_q_u_ac : rec.fp.delta_q_v_ac;
+                    dcQ = av1g_dc_q<10>(qi + ddc);
+                    acQ = av1g_ac_q<10>(qi + dac);
+                    den = av1g_dq_denom(x.tx_size);
+                    const int lvl = x.plane == 0 ? rec.fp.qm_y : x.plane == 1 ? rec.fp.qm_u : rec.fp.qm_v;
+                    qmw = av1g_qm(rec.fp.using_qmatrix, lvl, x.plane, x.tx_size, x.tx_type);
+                }
                 for (int i = 0, n = av1g_tx_coeffs(x.tx_size); i < n; i++) {
                     uint64_t a = q[i] < 0 ? -q[i] : q[i];
                     if (a > 14) cov.golomb++;
                     if (a > cov.maxMag) cov.maxMag = a;
+                    if (is10 && a) {
+                        if (a > 14) cov.c10Golomb++;
+                        if (a > cov.maxMag10) cov.maxMag10 = a;
+                        const int64_t raw = ((int64_t)a * av1g_qm_step(i == 0 ? dcQ : acQ, qmw, i)) & 0xFFFFFF;
+                        if (raw / den > (1 << 17) - 1) cov.c10Clamp++;
+                    }
                 }
             }
         }
@@ -571,6 +805,9 @@ int main(int argc, char **argv) {
             else {
                 av1g_decision_record &q = pr->rec;
                 if (q.n_blocks != rec.n_blocks || q.n_txb != rec.n_txb) why = "block/txb count";
+                if (q.fp.chroma_format != rec.fp.chroma_format || q.fp.monochrome != rec.fp.monochrome)
+                    why = "frame params (chroma format)";
+                if (av1g_bit_depth(&q.fp) != av1g_bit_depth(&rec.fp)) why = "frame params (bit depth)";
                 if (q.fp.using_qmatrix != rec.fp.using_qmatrix || q.fp.delta_q_present != rec.fp.delta_q_present ||
                     q.fp.enable_filter_intra != rec.fp.enable_filter_intra ||
                     q.fp.enable_intra_edge_filter != rec.fp.enable_intra_edge_filter ||
@@ -596,7 +833,7 @@ int main(int argc, char **argv) {
                 }
                 for (uint32_t b = 0; why.empty() && b < rec.n_blocks; b++) {
                     const av1g_block &x = rec.blocks[b], &y = q.blocks[b];
-                    bool hc = av1g_has_chroma(x.bsize, x.mi_row, x.mi_col, rec.fp.monochrome);
+                    bool hc = av1g_has_chroma(x.bsize, x.mi_row, x.mi_col, rec.fp.monochrome, ssx, ssy);
                     if (x.mi_row != y.mi_row || x.mi_col != y.mi_col || x.bsize != y.bsize || x.skip != y.skip ||
                         x.tx_depth != y.tx_depth || x.y_mode != y.y_mode || x.angle_delta_y != y.angle_delta_y ||
                         (hc && (x.uv_mode != y.uv_mode || x.angle_delta_uv != y.angle_delta_uv ||
@@ -630,8 +867,8 @@ int main(int argc, char **argv) {
         std::string obuPath = std::string(base) + ".obu", yuvPath = std::string(base) + ".yuv";
         write_file(obuPath, o.obu, o.obu_size);
         std::vector<uint8_t> ref;
-        for (int p = 0; p < 3; p++)
-            if (o.recon[p]) ref.insert(ref.end(), o.recon[p], o.recon[p] + (size_t)o.recon_w[p] * o.recon_h[p]);
+        for (int p = 0; p < 3; p++)   // the decoders write 10-bit samples as 16-bit little endian (this host's order)
+            if (o.recon[p]) ref.insert(ref.end(), o.recon[p], o.recon[p] + (size_t)o.recon_w[p] * o.recon_h[p] * bps);
         // dav1d
         std::string d1 = std::string(base) + ".dav1d.yuv", d2 = std::string(base) + ".aom.yuv";
         std::string cmd = DAV1D + " -q -i " + obuPath + " --demuxer section5 --muxer yuv -o " + d1 + " >/dev/null 2>&1";
@@ -655,53 +892,59 @@ int main(int argc, char **argv) {
             if (av1g_encode(&rec, &e3, &o3) != AV1G_OK) okPf = false;
             else {
                 const int np = rec.fp.monochrome ? 1 : 3;
-                std::vector<uint8_t> pl[3], pl2[3];
+                std::vector<uint8_t> pl[3], pl2[3];   // bytes; 10-bit: uint16_t samples (strides in samples)
                 uint8_t *pp[3] = {nullptr, nullptr, nullptr}, *pp2[3] = {nullptr, nullptr, nullptr};
                 int st[3] = {0, 0, 0};
                 for (int p = 0; p < np; p++) {
-                    pl[p].assign(o3.recon[p], o3.recon[p] + (size_t)o3.recon_w[p] * o3.recon_h[p]);
+                    pl[p].assign(o3.recon[p], o3.recon[p] + (size_t)o3.recon_w[p] * o3.recon_h[p] * bps);
                     pl2[p] = pl[p];
                     pp[p] = pl[p].data();
                     pp2[p] = pl2[p].data();
                     st[p] = (int)o3.recon_w[p];
                 }
                 // (a) the library API
-                av1g_postfilter(&rec, pp2, st);
+                if (is10) {
+                    uint16_t *pp16[3] = {(uint16_t *)pp2[0], (uint16_t *)pp2[1], (uint16_t *)pp2[2]};
+                    if (av1g_postfilter16(&rec, pp16, st) != AV1G_OK) okPf = false;
+                } else if (av1g_postfilter(&rec, pp2, st) != AV1G_OK) okPf = false;
                 // (b) the header functions here (counts paths), maps from av1g_pf_mark_block
                 av1g_pf_frame f;
                 memset(&f, 0, sizeof f);
                 av1g_pf_frame_init(&rec.fp, &f);
-                std::vector<uint8_t> sk((size_t)f.MiRows * f.MiCols), t0(sk.size()), t1((size_t)(f.MiRows / 2) * (f.MiCols / 2)), t2(t1.size());
+                std::vector<uint8_t> sk((size_t)f.MiRows * f.MiCols), t0(sk.size()), t1((size_t)(f.MiRows >> ssy) * (f.MiCols >> ssx)),
+                    t2(t1.size());
                 std::vector<int8_t> cd((size_t)f.sbCols * f.sbRows, -1);
                 f.skip = sk.data(); f.lfTx[0] = t0.data(); f.lfTx[1] = t1.data(); f.lfTx[2] = t2.data(); f.cdefIdx = cd.data();
                 for (uint32_t b = 0; b < rec.n_blocks; b++) av1g_pf_mark_block(&f, &rec.blocks[b]);
                 for (int p = 0; p < np; p++) { f.plane[p] = pp[p]; f.stride[p] = st[p]; }
-                av1g_deblock_frame(&f);
-                std::vector<uint8_t> outp[3];
+                if (is10) av1g_deblock_frame<10>(&f); else av1g_deblock_frame<8>(&f);
+                std::vector<uint16_t> outp[3];
                 uint8_t *dst[3] = {pp[0], pp[1], pp[2]};
                 if (f.enableCdef) {
-                    for (int p = 0; p < np; p++) { outp[p].assign(pl[p].size(), 0); dst[p] = outp[p].data(); }
-                    av1g_cdef_frame(&f, dst, st);
+                    for (int p = 0; p < np; p++) { outp[p].assign(pl[p].size(), 0); dst[p] = (uint8_t *)outp[p].data(); }
+                    if (is10) av1g_cdef_frame<10>(&f, dst, st); else av1g_cdef_frame<8>(&f, dst, st);
                 }
                 size_t off = 0;
                 for (int p = 0; p < np && okPf; p++) {
                     const int w = (int)o.recon_w[p], h = (int)o.recon_h[p];
                     for (int y = 0; y < h && okPf; y++) {
-                        if (memcmp(dst[p] + (size_t)y * st[p], ref.data() + off + (size_t)y * w, w) ||
-                            memcmp(pp2[p] + (size_t)y * st[p], ref.data() + off + (size_t)y * w, w)) {
+                        if (memcmp(dst[p] + (size_t)y * st[p] * bps, ref.data() + off + (size_t)y * w * bps, (size_t)w * bps) ||
+                            memcmp(pp2[p] + (size_t)y * st[p] * bps, ref.data() + off + (size_t)y * w * bps, (size_t)w * bps)) {
                             okPf = false;
                             printf("   post-filter API mismatch: plane %d row %d\n", p, y);
                         }
                     }
-                    off += (size_t)w * h;
+                    off += (size_t)w * h * bps;
                 }
             }
             av1g_output_free(&o3);
         }
         ok1 = ok1 && okPf;
         if (!quiet || !(ok1 && ok2))
-            printf("seed %llu %dx%d%s q%d lf%d/%d/%d/%d cdef%d txsel%d red%d tiles %ux%u blocks %u txb %u fixed %u bytes %zu: dav1d %s aomdec %s\n",
-                   (unsigned long long)cs, (int)rec.fp.width, (int)rec.fp.height, rec.fp.monochrome ? " mono" : "", rec.fp.base_q_idx,
+            printf("seed %llu %dx%d%s%s q%d lf%d/%d/%d/%d cdef%d txsel%d red%d tiles %ux%u blocks %u txb %u fixed %u bytes %zu: dav1d %s aomdec %s\n",
+                   (unsigned long long)cs, (int)rec.fp.width, (int)rec.fp.height, rec.fp.monochrome ? " mono" : is444 ? " 444" : "",
+                   is10 ? " 10bit" : "",
+                   rec.fp.base_q_idx,
                    rec.fp.loop_filter_level[0], rec.fp.loop_filter_level[1], rec.fp.loop_filter_level[2], rec.fp.loop_filter_level[3],
                    rec.fp.enable_cdef ? 1 + rec.fp.cdef_bits : 0, rec.fp.tx_mode_select, rec.fp.reduced_tx_set, o.tile_cols, o.tile_rows, rec.n_blocks, rec.n_txb,
                    o.n_fixed_txb, o.obu_size, ok1 ? "OK" : (r1 ? "ERR" : "MISMATCH"),
@@ -710,13 +953,14 @@ int main(int argc, char **argv) {
             fails++;
             write_file(yuvPath, ref.data(), ref.size());
             if (!ok1 && v1.size() == ref.size()) {
-                size_t i = 0;
-                while (i < ref.size() && v1[i] == ref[i]) i++;
+                size_t i = 0;   // sample index
+                auto smp = [&](const std::vector<uint8_t> &v, size_t k) { return bps == 2 ? v[2 * k] | v[2 * k + 1] << 8 : v[k]; };
+                while (i < ref.size() / bps && smp(v1, i) == smp(ref, i)) i++;
                 size_t ysz = (size_t)o.recon_w[0] * o.recon_h[0];
                 int p = i < ysz ? 0 : (i < ysz + (size_t)o.recon_w[1] * o.recon_h[1] ? 1 : 2);
                 size_t off = p == 0 ? i : p == 1 ? i - ysz : i - ysz - (size_t)o.recon_w[1] * o.recon_h[1];
                 printf("   first dav1d mismatch: plane %d x %zu y %zu (ours %d theirs %d)\n", p, off % o.recon_w[p],
-                       off / o.recon_w[p], ref[i], v1[i]);
+                       off / o.recon_w[p], smp(ref, i), smp(v1, i));
             } else if (!ok1) {
                 printf("   dav1d output size %zu vs %zu\n", v1.size(), ref.size());
             }
@@ -729,9 +973,11 @@ int main(int argc, char **argv) {
         fflush(stdout);
     }
     cov.report();
-    printf("SUMMARY seeds %llu..%llu mode %s: %d cases, %d mismatches (%d parser round-trip failures), %d encode errors, blocks %llu, txb %llu, range-fixed txb %llu\n",
-           (unsigned long long)seed, (unsigned long long)(seed + count - 1), m2 ? "m2" : "full", count, fails, parseFails, encFails,
-           (unsigned long long)totalBlocks, (unsigned long long)totalTxb, (unsigned long long)totalFixed);
+    printf("SUMMARY seeds %llu..%llu mode %s: %d cases (%llu 4:4:4, %llu monochrome, %llu 10-bit), %d mismatches (%d parser round-trip "
+           "failures), %d encode errors, blocks %llu, txb %llu, range-fixed txb %llu\n",
+           (unsigned long long)seed, (unsigned long long)(seed + count - 1), m2 ? "m2" : "full", count, (unsigned long long)cov.c444,
+           (unsigned long long)cov.mono, (unsigned long long)cov.c10, fails, parseFails, encFails, (unsigned long long)totalBlocks,
+           (unsigned long long)totalTxb, (unsigned long long)totalFixed);
     return (fails || encFails) ? 1 : 0;
 }
 #endif  // AV1G_FUZZ_NO_MAIN

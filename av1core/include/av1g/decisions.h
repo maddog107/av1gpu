@@ -1,6 +1,6 @@
 /* av1g/decisions.h - the DecisionRecord: every coding decision + quantized
- * coefficients for ONE AV1 intra-only still picture (8-bit, 4:2:0 or monochrome,
- * 64x64 superblocks, reduced_still_picture_header).  Interface version 1.
+ * coefficients for ONE AV1 intra-only still picture (8-bit or 10-bit; 4:2:0, 4:4:4 or
+ * monochrome; 64x64 superblocks, reduced_still_picture_header).  Interface version 3.
  *
  * Any search engine that fills this record gets (a) the exact decoder
  * reconstruction and (b) a conformant OBU stream / AVIF from av1core (av1g.h).
@@ -9,6 +9,23 @@
  * (structured dtypes, see tools/av1g_ctypes.py).
  *
  * ============================== SPEC / INVARIANTS ===============================
+ * Chroma format (fp.chroma_format, v2).  AV1G_CHROMA_420 (0): Main profile, chroma planes
+ *   subsampled 2x2 (ssx = ssy = 1).  AV1G_CHROMA_444 (1): High profile (seq_profile 1), chroma
+ *   planes at full resolution (ssx = ssy = 0).  Must be 0 when fp.monochrome = 1.
+ *   Below, "ssx/ssy" are the spec's subsampling_x/y of the frame (av1g_ssx()/av1g_ssy() in
+ *   av1g/blockinfo.h), "plane units" are luma units >> ssx/ssy for planes 1 and 2.  Everything
+ *   that differs between the formats is derived by the spec rules from ssx/ssy (HasChroma,
+ *   get_plane_residual_size, AvailU/LChroma, the chroma tx size, the context and filter maps).
+ *
+ * Bit depth (fp.bit_depth, v3).  8 (or 0, as in version 1 / 2 records) or 10.  10-bit streams set
+ *   high_bitdepth = 1 in the sequence header: Main profile for 4:2:0 and monochrome, High profile
+ *   for 4:4:4.  The decisions and coefficient syntax are the same; what the bit depth changes is the
+ *   decoding process, which the backend applies: the quantizer tables (Dc_Qlookup / Ac_Qlookup
+ *   [(BitDepth - 8) >> 1]: steps ~4x the 8-bit ones), the dequantization clamp (+-2^(7 + BitDepth)),
+ *   the inverse transform's clamp ranges (rowClampRange BitDepth + 8, colClampRange
+ *   Max(BitDepth + 6, 16)), Clip1 / the intra edge base values (1 << (BitDepth - 1)), and the
+ *   post-filters' BitDepth scaling.  Reconstructions are uint16_t samples (av1g.h).
+ *
  * Coordinates.  mi_row/mi_col are in units of 4 luma samples.  MiCols =
  *   2*((width+7)>>3), MiRows = 2*((height+7)>>3): the coded area is the picture
  *   padded to a multiple of 8.  Engines must pad their source planes the same way
@@ -51,15 +68,18 @@
  *                  Max_Tx_Size_Rect[bsize] split tx_depth times (Split_Tx_Size).
  *                  Must be 0 when fp.tx_mode_select == 0 or bsize == 4x4.
  *                  Intra blocks use ONE luma tx size for the whole block; chroma
- *                  always uses the largest size for the chroma block (<= 32x32).
+ *                  always uses the largest size for the chroma block (<= 32x32;
+ *                  4:2:0: one tx block per plane, 4:4:4: 64-sample block sides are
+ *                  split into 32-sample tx blocks, e.g. 64x64 -> four 32x32).
  *   y_mode         AV1G_DC_PRED..AV1G_PAETH_PRED (0..12)
  *   angle_delta_y  -3..3; must be 0 unless y_mode is directional (V_PRED..D67_PRED)
  *                  and bsize >= 8x8 (by size enum: not 4x4/4x8/8x4)
- *   uv_mode        0..12 or AV1G_UV_CFL_PRED (13).  CFL only if max(bw,bh) <= 32.
- *                  Ignored (write 0) when the block carries no chroma (monochrome,
- *                  or 4:2:0 sub-8x8 blocks at even mi_row/mi_col: chroma of a 4xN /
- *                  Nx4 pair is coded with the LAST (odd row/col) block and covers
- *                  the union area).
+ *   uv_mode        0..12 or AV1G_UV_CFL_PRED (13).  CFL only if max(bw,bh) <= 32
+ *                  (luma block size, both formats).  Ignored (write 0) when the block
+ *                  carries no chroma (monochrome, or 4:2:0 sub-8x8 blocks at even
+ *                  mi_row/mi_col: chroma of a 4xN / Nx4 pair is coded with the LAST
+ *                  (odd row/col) block and covers the union area).  In 4:4:4 every
+ *                  block carries chroma, of the block's own size.
  *   angle_delta_uv like angle_delta_y but for uv_mode (same bsize >= 8x8 rule,
  *                  uses the LUMA bsize).
  *   cfl_alpha_u/v  -16..16, not both 0, when uv_mode == CFL (else 0).  These are
@@ -82,8 +102,9 @@
  *
  * Transform blocks (txb[], 16 bytes each).  For every block, in order: all luma
  *   tx blocks of the block in raster order, then (if the block carries chroma) all
- *   U tx blocks, then all V tx blocks.  Tx blocks whose top-left sample is outside
- *   the coded area (x >= MiCols*4 >> ssx or y >= MiRows*4 >> ssy) do not exist.
+ *   U tx blocks, then all V tx blocks (each plane in raster order).  Tx blocks whose
+ *   top-left sample is outside the coded area (x >= MiCols*4 >> ssx or y >= MiRows*4 >> ssy)
+ *   do not exist.  x4/y4 are in 4-sample units of the tx block's plane.
  *   block_txb[b] .. block_txb[b+1]-1 are block b's entries.  The layout (offsets,
  *   positions, sizes) is deterministic given blocks[] - call av1g_layout() (or
  *   reimplement it on the GPU) and then fill tx_type + coefficients.
@@ -100,7 +121,8 @@
  *   col), i.e. exactly the spec's Quant[] array (quantized levels, signed, NOT
  *   dequantized, natural order - the backend applies the scan).  For 64-point
  *   transforms only the top-left 32x32 (16x32/32x16) quadrant exists.  |value| <=
- *   32767 (larger is pointless: dequantized values saturate at 2^15 for 8-bit).
+ *   32767 (larger is pointless: dequantized values saturate at 2^(7 + BitDepth), i.e. 2^15 at
+ *   8 bits and 2^17 at 10 bits, where the smallest quantizer step is 4).
  *   Bitstream conformance also requires every intermediate of the inverse transform
  *   to stay in range (AV1 spec 7.13.2); av1g_encode() checks this and, with
  *   AV1G_ENC_FIX_RANGE, repairs offending tx blocks by halving their coefficients
@@ -118,10 +140,18 @@
  *   loop_filter_level[4] = effective levels (Y vertical edges, Y horizontal edges, U, V;
  *   0..63; chroma levels need a nonzero luma level), loop_filter_sharpness 0..7 (ref/mode
  *   deltas are not used).  CDEF: damping 3..6 (cdef_damping_minus_3), 1 << cdef_bits presets,
- *   primary strengths 0..15, secondary strengths 0, 1, 2 or 4.
+ *   primary strengths 0..15, secondary strengths 0, 1, 2 or 4.  In 4:4:4 the chroma planes
+ *   are filtered at full resolution: chroma edges on every 4x4 (the chroma filters are still
+ *   at most 6 taps), CDEF on 8x8 chroma blocks with the luma direction.
  *
  * Frame-level decisions are in av1g_frame_params.  Lossless (base_q_idx 0), loop
- * restoration, segmentation, delta-lf, palette and intra block copy are not supported.
+ * restoration, segmentation, delta-lf, palette, intra block copy, 4:2:2 and bit depths
+ * other than 8 and 10 are not supported.
+ *
+ * Versions.  2 added fp.chroma_format (formerly reserved[0]), 3 fp.bit_depth (formerly
+ * reserved[1] of v2).  av1g_encode() accepts version 1 and 2 records unchanged: their reserved
+ * bytes are 0, i.e. 4:2:0 / 8-bit.  New fields are taken from reserved[] (which must be 0) so
+ * the struct layout stays fixed.
  * ==============================================================================
  */
 #ifndef AV1G_DECISIONS_H
@@ -134,7 +164,11 @@
 extern "C" {
 #endif
 
-#define AV1G_DECISIONS_VERSION 1
+#define AV1G_DECISIONS_VERSION 3
+
+/* av1g_frame_params.chroma_format */
+#define AV1G_CHROMA_420 0   /* Main profile, ssx = ssy = 1 */
+#define AV1G_CHROMA_444 1   /* High profile, ssx = ssy = 0 */
 
 typedef struct av1g_block {
     uint16_t mi_row;         /* top-left position, luma 4x4 units */
@@ -166,9 +200,9 @@ typedef struct av1g_txb {
 } av1g_txb;
 
 typedef struct av1g_frame_params {
-    uint32_t version;        /* AV1G_DECISIONS_VERSION */
+    uint32_t version;        /* AV1G_DECISIONS_VERSION (1 is accepted too) */
     uint32_t width, height;  /* output picture size, 1..65535 */
-    uint8_t  monochrome;     /* 1: Y only (grayscale JPEG) */
+    uint8_t  monochrome;     /* 1: Y only (grayscale JPEG); chroma_format must be 0 */
     uint8_t  base_q_idx;     /* 1..255 */
     uint8_t  tx_mode_select; /* 0: TX_MODE_LARGEST, 1: TX_MODE_SELECT */
     uint8_t  reduced_tx_set; /* 0/1 */
@@ -197,7 +231,11 @@ typedef struct av1g_frame_params {
     uint8_t  allow_screen_content_tools; /* 1: frame header allows screen content tools; palette is still
                                             never used (has_palette_y/uv coded as 0).  Only needed to
                                             replay libaom streams whose screen-content detection set it. */
-    uint8_t  reserved[15];
+    /* ---- v2 ---- */
+    uint8_t  chroma_format;  /* AV1G_CHROMA_420 / AV1G_CHROMA_444 (see "Chroma format"); 0 if monochrome */
+    /* ---- v3 ---- */
+    uint8_t  bit_depth;      /* 8 or 10 (see "Bit depth"); 0 = 8 (version 1 / 2 records) */
+    uint8_t  reserved[13];   /* must be 0 (future fields are taken from here) */
 } av1g_frame_params;
 
 typedef struct av1g_decision_record {

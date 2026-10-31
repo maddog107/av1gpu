@@ -255,7 +255,8 @@ __device__ __forceinline__ void warp_fwd_rt(const int16_t *res, float *tmp, int 
     __syncwarp();
 }
 
-// Quantize tmp -> q, return distortion / rate.  All lanes get the results.
+// Quantize tmp -> q, return distortion / rate.  All lanes get the results.  BD: the dequantization clamp.
+template <int BD = 8>
 __device__ __forceinline__ void warp_quant_rate_rt(const float *tmp, int16_t *q, const EvalIn &e, EvalOut &o, int W, int H) {
     const int lane = threadIdx.x & 31;
     const int th = H > 32 ? 32 : H, tw = W > 32 ? 32 : W, TS = W + 1, n = tw * th;
@@ -272,7 +273,7 @@ __device__ __forceinline__ void warp_quant_rate_rt(const float *tmp, int16_t *q,
         l = min(l, 16383);
         const int qv = v < 0 ? -l : l;
         q[idx] = (int16_t)qv;
-        const float dq = l ? (float)av1g_dequant_coef(qv, step, den) : 0.f;
+        const float dq = l ? (float)av1g_dequant_coef<BD>(qv, step, den) : 0.f;
         const float d = v - dq;
         dist = fmaf(d * d, e.qmDist ? wr * wr : 1.f, dist);
         kept = fmaf(v, v, kept);
@@ -301,16 +302,17 @@ __device__ __forceinline__ void warp_quant_rate_rt(const float *tmp, int16_t *q,
     o.eob = eob;
 }
 
+template <int BD = 8>
 __device__ __forceinline__ void warp_eval_rt(const int16_t *res, float *tmp, int16_t *q, const EvalIn &e, EvalOut &o, int W,
                                              int H) {
     warp_fwd_rt(res, tmp, W, H, e.txSz, e.txType);
-    warp_quant_rate_rt(tmp, q, e, o, W, H);
+    warp_quant_rate_rt<BD>(tmp, q, e, o, W, H);
 }
 
 // compile-time-size wrapper (analysis kernels): constants propagate through the inlined runtime code
-template <int W, int H>
+template <int W, int H, int BD = 8>
 __device__ __forceinline__ void warp_eval(const int16_t *res, float *tmp, int16_t *q, const EvalIn &e, EvalOut &o) {
-    warp_eval_rt(res, tmp, q, e, o, W, H);
+    warp_eval_rt<BD>(res, tmp, q, e, o, W, H);
 }
 
 // Runtime dispatch over the 19 transform sizes (closed loop).

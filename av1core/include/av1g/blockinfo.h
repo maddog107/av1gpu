@@ -1,11 +1,21 @@
 /* av1g/blockinfo.h - block / transform geometry rules of the AV1 syntax that every
- * engine needs (host + device).  4:2:0 or monochrome, no 128x128 blocks. */
+ * engine needs (host + device).  4:2:0, 4:4:4 or monochrome, no 128x128 blocks.
+ * Chroma rules take the frame's subsampling (ssx, ssy) = (subsampling_x, subsampling_y):
+ * (1, 1) for 4:2:0, (0, 0) for 4:4:4 (av1g_ssx / av1g_ssy); monochrome frames carry no
+ * chroma, any value works for them. */
 #ifndef AV1G_BLOCKINFO_H
 #define AV1G_BLOCKINFO_H
 
 #include "av1g/hd.h"
 #include "av1g/enums_gen.h"
 #include "av1g/spec_tables.h"
+#include "av1g/decisions.h"
+
+/* subsampling_x / subsampling_y of a frame (monochrome: 1, as in the spec) */
+AV1G_HD int av1g_ssx(const av1g_frame_params *fp) { return (!fp->monochrome && fp->chroma_format == AV1G_CHROMA_444) ? 0 : 1; }
+AV1G_HD int av1g_ssy(const av1g_frame_params *fp) { return (!fp->monochrome && fp->chroma_format == AV1G_CHROMA_444) ? 0 : 1; }
+/* BitDepth of a frame (fp.bit_depth, v3): 8 or 10; 0 (version 1 / 2 records) means 8 */
+AV1G_HD int av1g_bit_depth(const av1g_frame_params *fp) { return fp->bit_depth == 10 ? 10 : 8; }
 
 AV1G_HD int av1g_bw4(int bsize) { return AV1G_T(Num_4x4_Blocks_Wide)[bsize]; }
 AV1G_HD int av1g_bh4(int bsize) { return AV1G_T(Num_4x4_Blocks_High)[bsize]; }
@@ -14,11 +24,12 @@ AV1G_HD int av1g_bh4(int bsize) { return AV1G_T(Num_4x4_Blocks_High)[bsize]; }
 AV1G_HD int av1g_mi_cols(int width) { return 2 * ((width + 7) >> 3); }
 AV1G_HD int av1g_mi_rows(int height) { return 2 * ((height + 7) >> 3); }
 
-/* HasChroma (spec decode_block), 4:2:0 */
-AV1G_HD int av1g_has_chroma(int bsize, int mi_row, int mi_col, int mono) {
+/* HasChroma (spec decode_block): 4:4:4 blocks always carry chroma; in 4:2:0 a 4xN / Nx4
+ * block at an even mi_col / mi_row does not (its chroma is coded with the next block) */
+AV1G_HD int av1g_has_chroma(int bsize, int mi_row, int mi_col, int mono, int ssx, int ssy) {
     if (mono) return 0;
-    if (av1g_bh4(bsize) == 1 && (mi_row & 1) == 0) return 0;
-    if (av1g_bw4(bsize) == 1 && (mi_col & 1) == 0) return 0;
+    if (ssy && av1g_bh4(bsize) == 1 && (mi_row & 1) == 0) return 0;
+    if (ssx && av1g_bw4(bsize) == 1 && (mi_col & 1) == 0) return 0;
     return 1;
 }
 
@@ -34,12 +45,13 @@ AV1G_HD int av1g_max_tx_depth(int bsize) {
     return d > 2 ? 2 : d;
 }
 
-/* chroma block size (get_plane_residual_size, plane > 0, 4:2:0) */
-AV1G_HD int av1g_uv_bsize(int bsize) { return AV1G_T(Subsampled_Size)[bsize][1][1]; }
+/* chroma block size (get_plane_residual_size, plane > 0); 4:4:4: the block size itself */
+AV1G_HD int av1g_uv_bsize(int bsize, int ssx, int ssy) { return AV1G_T(Subsampled_Size)[bsize][ssx][ssy]; }
 
-/* chroma TxSize (get_tx_size for plane > 0) */
-AV1G_HD int av1g_uv_tx_size(int bsize) {
-    int uvTx = AV1G_T(Max_Tx_Size_Rect)[av1g_uv_bsize(bsize)];
+/* chroma TxSize (get_tx_size for plane > 0): the largest tx of the chroma block, at most 32
+ * samples per side (4:4:4 blocks with a 64-sample side get several chroma tx blocks) */
+AV1G_HD int av1g_uv_tx_size(int bsize, int ssx, int ssy) {
+    int uvTx = AV1G_T(Max_Tx_Size_Rect)[av1g_uv_bsize(bsize, ssx, ssy)];
     int w = AV1G_T(Tx_Width)[uvTx], h = AV1G_T(Tx_Height)[uvTx];
     if (w == 64 || h == 64) {
         if (w == 16) return AV1G_TX_16X32;
@@ -62,14 +74,14 @@ AV1G_HD int av1g_tx_coeffs(int txSz) {
 
 /* Block-level neighbour availability (spec decode_block): AvailU/AvailL for luma and
  * AvailUChroma/AvailLChroma; tile bounds in luma mi units. */
-AV1G_HD void av1g_block_avail(int bsize, int mi_row, int mi_col, int mono, int tileR0, int tileR1, int tileC0, int tileC1,
-                              int *availU, int *availL, int *availUC, int *availLC) {
+AV1G_HD void av1g_block_avail(int bsize, int mi_row, int mi_col, int mono, int ssx, int ssy, int tileR0, int tileR1, int tileC0,
+                              int tileC1, int *availU, int *availL, int *availUC, int *availLC) {
 #define AV1G_INSIDE(r, c) ((c) >= tileC0 && (c) < tileC1 && (r) >= tileR0 && (r) < tileR1)
     *availU = AV1G_INSIDE(mi_row - 1, mi_col);
     *availL = AV1G_INSIDE(mi_row, mi_col - 1);
-    if (av1g_has_chroma(bsize, mi_row, mi_col, mono)) {
-        *availUC = av1g_bh4(bsize) == 1 ? AV1G_INSIDE(mi_row - 2, mi_col) : *availU;
-        *availLC = av1g_bw4(bsize) == 1 ? AV1G_INSIDE(mi_row, mi_col - 2) : *availL;
+    if (av1g_has_chroma(bsize, mi_row, mi_col, mono, ssx, ssy)) {
+        *availUC = (ssy && av1g_bh4(bsize) == 1) ? AV1G_INSIDE(mi_row - 2, mi_col) : *availU;
+        *availLC = (ssx && av1g_bw4(bsize) == 1) ? AV1G_INSIDE(mi_row, mi_col - 2) : *availL;
     } else {
         *availUC = *availLC = 0;
     }
@@ -86,23 +98,23 @@ AV1G_HD void av1g_block_avail(int bsize, int mi_row, int mi_col, int mono, int t
  * covering tx block precedes t, or it is in the row above / column left of the SB
  * inside the tile (spec clear_block_decoded_flags).  For GPU closed-loop engines.
  *   plane/x4/y4/txSz/t: the tx block; xi/yi: its 4x4 offset inside the block;
- *   blockAvailL/U: AvailL/AvailU (plane 0) or AvailLChroma/AvailUChroma. */
-AV1G_HD void av1g_txb_edges(int plane, int x4, int y4, int txSz, uint32_t t, int xi, int yi, int blockAvailL,
+ *   blockAvailL/U: AvailL/AvailU (plane 0) or AvailLChroma/AvailUChroma; ssx/ssy: the frame's. */
+AV1G_HD void av1g_txb_edges(int plane, int ssx, int ssy, int x4, int y4, int txSz, uint32_t t, int xi, int yi, int blockAvailL,
                             int blockAvailU, int tileR1, int tileC1, const uint32_t *ordmap, int stride,
                             int *haveLeft, int *haveAbove, int *haveAboveRight, int *haveBelowLeft) {
-    const int sub = plane ? 1 : 0;
-    const int row = y4 << sub, col = x4 << sub;            /* luma mi */
+    const int subX = plane ? ssx : 0, subY = plane ? ssy : 0;
+    const int row = y4 << subY, col = x4 << subX;          /* luma mi */
     const int sbR = row & ~15, sbC = col & ~15;            /* SB origin, luma mi */
-    const int by = (row & 15) >> sub, bx = (col & 15) >> sub;
+    const int by = (row & 15) >> subY, bx = (col & 15) >> subX;
     const int stepX = AV1G_T(Tx_Width)[txSz] >> 2, stepY = AV1G_T(Tx_Height)[txSz] >> 2;
-    const int sbSize = 16 >> sub;
-    const int sbW4 = (tileC1 - sbC) >> sub, sbH4 = (tileR1 - sbR) >> sub;
-    const int x0 = sbC >> sub, y0 = sbR >> sub;            /* SB origin, plane 4x4 units */
+    const int sbSizeX = 16 >> subX, sbSizeY = 16 >> subY;
+    const int sbW4 = (tileC1 - sbC) >> subX, sbH4 = (tileR1 - sbR) >> subY;
+    const int x0 = sbC >> subX, y0 = sbR >> subY;          /* SB origin, plane 4x4 units */
     *haveLeft = blockAvailL || xi > 0;
     *haveAbove = blockAvailU || yi > 0;
     /* BlockDecoded[plane][yy][xx] in SB-relative plane units */
-#define AV1G_BD(yy, xx) ((yy) < 0 ? ((xx) < sbW4) : (xx) < 0 ? ((yy) < sbH4 && (yy) != sbSize) : \
-                         ((yy) >= sbSize || (xx) >= sbSize) ? 0 : \
+#define AV1G_BD(yy, xx) ((yy) < 0 ? ((xx) < sbW4) : (xx) < 0 ? ((yy) < sbH4 && (yy) != sbSizeY) : \
+                         ((yy) >= sbSizeY || (xx) >= sbSizeX) ? 0 : \
                          (ordmap[(size_t)(y0 + (yy)) * stride + x0 + (xx)] < t))
     *haveAboveRight = AV1G_BD(by - 1, bx + stepX);
     *haveBelowLeft = AV1G_BD(by + stepY, bx - 1);
@@ -110,27 +122,27 @@ AV1G_HD void av1g_txb_edges(int plane, int x4, int y4, int txSz, uint32_t t, int
 }
 
 /* get_filter_type (spec 7.11.2.8) for the intra edge filter: 1 if the above or left block
- * (chroma: the chroma-carrying block of that 8x8 unit) uses SMOOTH / SMOOTH_V / SMOOTH_H.
+ * (4:2:0 chroma: the chroma-carrying block of that 8x8 unit) uses SMOOTH / SMOOTH_V / SMOOTH_H.
  * yModes/uvModes: 4x4 maps (stride = MiCols) of YMode and UVMode (UVMode written by blocks
  * that carry chroma); availU/availL: AvailU/AvailL (plane 0) or AvailUChroma/AvailLChroma. */
 AV1G_HD int av1g_get_filter_type(int plane, int mi_row, int mi_col, int availU, int availL, const uint8_t *yModes,
-                                 const uint8_t *uvModes, int miCols) {
+                                 const uint8_t *uvModes, int miCols, int ssx, int ssy) {
 #define AV1G_SMOOTH(m) ((m) == AV1G_SMOOTH_PRED || (m) == AV1G_SMOOTH_V_PRED || (m) == AV1G_SMOOTH_H_PRED)
     int aboveSmooth = 0, leftSmooth = 0;
     const uint8_t *m = plane ? uvModes : yModes;
     if (availU) {
         int r = mi_row - 1, c = mi_col;
         if (plane > 0) {
-            if (!(mi_col & 1)) c++;
-            if (mi_row & 1) r--;
+            if (ssx && !(mi_col & 1)) c++;
+            if (ssy && (mi_row & 1)) r--;
         }
         aboveSmooth = AV1G_SMOOTH(m[(size_t)r * miCols + c]);
     }
     if (availL) {
         int r = mi_row, c = mi_col - 1;
         if (plane > 0) {
-            if (mi_col & 1) c--;
-            if (!(mi_row & 1)) r++;
+            if (ssx && (mi_col & 1)) c--;
+            if (ssy && !(mi_row & 1)) r++;
         }
         leftSmooth = AV1G_SMOOTH(m[(size_t)r * miCols + c]);
     }
@@ -143,18 +155,18 @@ AV1G_HD int av1g_get_filter_type(int plane, int mi_row, int mi_col, int availU, 
  * plane (4-sample units) and (xi,yi) its index within the block (4x4 units of the
  * plane, as the spec's x/y in transform_block).  Returns the count. */
 template <typename F>
-AV1G_HDI int av1g_for_each_txb(int bsize, int mi_row, int mi_col, int tx_depth, int mono,
+AV1G_HDI int av1g_for_each_txb(int bsize, int mi_row, int mi_col, int tx_depth, int mono, int ssx, int ssy,
                                int mi_rows, int mi_cols, F &&fn) {
     int n = 0;
-    const int hasChroma = av1g_has_chroma(bsize, mi_row, mi_col, mono);
+    const int hasChroma = av1g_has_chroma(bsize, mi_row, mi_col, mono, ssx, ssy);
     for (int plane = 0; plane < 1 + 2 * hasChroma; plane++) {
-        const int sub = plane ? 1 : 0;
-        const int txSz = plane ? av1g_uv_tx_size(bsize) : av1g_luma_tx_size(bsize, tx_depth);
+        const int subX = plane ? ssx : 0, subY = plane ? ssy : 0;
+        const int txSz = plane ? av1g_uv_tx_size(bsize, ssx, ssy) : av1g_luma_tx_size(bsize, tx_depth);
         const int stepX = AV1G_T(Tx_Width)[txSz] >> 2, stepY = AV1G_T(Tx_Height)[txSz] >> 2;
-        const int planeSz = plane ? av1g_uv_bsize(bsize) : bsize;
+        const int planeSz = plane ? av1g_uv_bsize(bsize, ssx, ssy) : bsize;
         const int num4x4W = av1g_bw4(planeSz), num4x4H = av1g_bh4(planeSz);
-        const int baseX4 = mi_col >> sub, baseY4 = mi_row >> sub;
-        const int maxX4 = mi_cols >> sub, maxY4 = mi_rows >> sub; /* (MiCols*MI_SIZE)>>sub in 4-units */
+        const int baseX4 = mi_col >> subX, baseY4 = mi_row >> subY;
+        const int maxX4 = mi_cols >> subX, maxY4 = mi_rows >> subY; /* (MiCols*MI_SIZE)>>sub in 4-units */
         for (int y = 0; y < num4x4H; y += stepY)
             for (int x = 0; x < num4x4W; x += stepX) {
                 int x4 = baseX4 + x, y4 = baseY4 + y;

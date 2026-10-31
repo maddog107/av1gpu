@@ -50,7 +50,7 @@ __device__ __forceinline__ void fwd_scalar(const int16_t *res, float *out, int t
         }
 }
 
-template <int W, int H>
+template <int W, int H, int BD = 8>
 __device__ __forceinline__ EvalOut eval_scalar(const int16_t *res, const EvalIn &e) {
     constexpr int n = W * H;
     float c[n];
@@ -67,7 +67,7 @@ __device__ __forceinline__ EvalOut eval_scalar(const int16_t *res, const EvalIn 
         l = min(l, 16383);
         const int qv = v < 0 ? -l : l;
         q[idx] = (int16_t)qv;
-        const float dq = l ? (float)av1g_dequant_coef(qv, step, den) : 0.f;
+        const float dq = l ? (float)av1g_dequant_coef<BD>(qv, step, den) : 0.f;
         const float d = v - dq;
         dist = fmaf(d * d, e.qmDist ? wr * wr : 1.f, dist);
     }
@@ -87,9 +87,10 @@ __device__ __forceinline__ EvalOut eval_scalar(const int16_t *res, const EvalIn 
     return o;
 }
 
-template <int W, int H, int BS>
+template <int W, int H, int BS, int BD = 8>
 __global__ void __launch_bounds__(128) k_analysis_small(GpBatch B, GpParams P, uint32_t nTotal) {
     typedef SmallTx<W, H> T;
+    typedef av1g_pixel_t(BD) Px;
     const uint32_t gb = blockIdx.x * blockDim.x + threadIdx.x;
     if (gb >= nTotal) return;
     const uint32_t *starts = B.shImgStart + (size_t)BS * (B.nimg + 1);
@@ -112,19 +113,19 @@ __global__ void __launch_bounds__(128) k_analysis_small(GpBatch B, GpParams P, u
     const int haveAR = ol_decoded(x + W, y - 1, x, y, 0, tb);
     const int haveBL = ol_decoded(x - 1, y + H, x, y, 0, tb);
     const int maxX = I.MiCols * 4 - 1, maxY = I.MiRows * 4 - 1;
-    const uint8_t *src = I.src[0] + (size_t)y * I.spitch[0] + x;
+    const Px *src = gp_src<BD>(I, 0) + (size_t)y * I.spitch[0] + x;
     const int sp = I.spitch[0];
     const int qidx = sb_qindex(I, x, y);
-    const float lambda = gp_lambda(qidx, P.lambdaMul) * ssim_scale(I, x, y, W, H);
+    const float lambda = gp_lambda<BD>(qidx, P.lambdaMul) * ssim_scale(I, x, y, W, H);
     const float lamS = P.satdLambda * sqrtf(lambda);
     const float *C = g_cost[I.qctx];
-    if (prune_flat(I, P, x, y, W, H, qidx)) { out.J = GP_INF; out.ncand = 0; return; }
+    if (prune_flat<BD>(I, P, x, y, W, H, qidx)) { out.J = GP_INF; out.ncand = 0; return; }
     constexpr int EL = AV1G_EDGE_OFF + 2 * (W + H) + 8;
-    uint8_t ea[EL], el[EL];
-    uint8_t *A = ea + AV1G_EDGE_OFF, *L = el + AV1G_EDGE_OFF;
-    build_edges_par(I.src[0], sp, x, y, T::lw, T::lh, haveLeft, haveAbove, haveAR, haveBL, maxX, maxY, A, L, 0, 1);
-    const int dcv = av1g_dc_value(A, L, haveLeft, haveAbove, T::lw, T::lh);
-    uint8_t s[W * H];
+    Px ea[EL], el[EL];
+    Px *A = ea + AV1G_EDGE_OFF, *L = el + AV1G_EDGE_OFF;
+    build_edges_par<BD>(gp_src<BD>(I, 0), sp, x, y, T::lw, T::lh, haveLeft, haveAbove, haveAR, haveBL, maxX, maxY, A, L, 0, 1);
+    const int dcv = av1g_dc_value<BD>(A, L, haveLeft, haveAbove, T::lw, T::lh);
+    Px s[W * H];
 #pragma unroll
     for (int i = 0; i < H; i++)
 #pragma unroll
@@ -196,24 +197,24 @@ __global__ void __launch_bounds__(128) k_analysis_small(GpBatch B, GpParams P, u
         while (nc < K && cands[nc] >= 0) nc++;
     }
     // ---- RD ----
-    const int hasC = av1g_has_chroma(BS, y >> 2, x >> 2, I.mono);
+    const int hasC = av1g_has_chroma(BS, y >> 2, x >> 2, I.mono, I.ssx, I.ssy);
     const float overhead = (hasC ? P.uvOverheadBits : 0.f) + g_avgSkip0;
     EvalIn e;
     e.txSz = txSz; e.plane = 0;
-    e.dcQ = av1g_dc_q(qidx); e.acQ = av1g_ac_q(qidx);
+    e.dcQ = av1g_dc_q<BD>(qidx); e.acQ = av1g_ac_q<BD>(qidx);
     e.rnd = P.rnd; e.zbin = P.zbin;
     e.skipCtx = 0; e.dcCtx = 0; e.reduced = 0; e.C = C;
     e.qmDist = P.qmDist; e.qmRnd = P.qmRnd; e.resEnergy = 0;
     int16_t res[W * H];
-    uint8_t pa[EL], pl[EL];
+    Px pa[EL], pl[EL];
     auto residual = [&](int c) {
         const int m = cand_mode(c);
         const bool ef = I.edgeFilter && av1g_is_directional(m);
         int upA = 0, upL = 0;
         if (ef) {
             for (int k = 0; k < EL; k++) { pa[k] = ea[k]; pl[k] = el[k]; }
-            av1g_edge_prepare(pangle_of(m, cand_delta(c)), T::lw, T::lh, 0, haveLeft, haveAbove, x, y, maxX, maxY,
-                              pa + AV1G_EDGE_OFF, pl + AV1G_EDGE_OFF, &upA, &upL);
+            av1g_edge_prepare<BD>(pangle_of(m, cand_delta(c)), T::lw, T::lh, 0, haveLeft, haveAbove, x, y, maxX, maxY,
+                                  pa + AV1G_EDGE_OFF, pl + AV1G_EDGE_OFF, &upA, &upL);
         }
 #pragma unroll
         for (int i = 0; i < H; i++)
@@ -233,7 +234,7 @@ __global__ void __launch_bounds__(128) k_analysis_small(GpBatch B, GpParams P, u
         e.txType = AV1G_DCT_DCT;
         e.intraDir = cand_mode(c);
         e.qm = av1g_qm(I.usingQm, I.qm[0], 0, txSz, AV1G_DCT_DCT);
-        const EvalOut o = eval_scalar<W, H>(res, e);
+        const EvalOut o = eval_scalar<W, H, BD>(res, e);
         const float J = o.D + lambda * (o.R + mbits(c) + overhead);
         if (J < bestJ) { bestJ = J; bestK = k; }
     }
@@ -245,7 +246,7 @@ __global__ void __launch_bounds__(128) k_analysis_small(GpBatch B, GpParams P, u
             if (!av1g_tx_type_in_set_intra(set, t)) continue;
             e.txType = t;
             e.qm = av1g_qm(I.usingQm, I.qm[0], 0, txSz, t);
-            const EvalOut o = eval_scalar<W, H>(res, e);
+            const EvalOut o = eval_scalar<W, H, BD>(res, e);
             const float J = o.D + lambda * (o.R + mbits(c) + overhead);
             if (J < bestJ) { bestJ = J; bestTx = t; }
         }

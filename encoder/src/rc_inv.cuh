@@ -311,8 +311,10 @@ __device__ __forceinline__ void inv_1d(int32_t (&T)[1 << n], int kind, int r, ui
     }
 }
 
-// one row of the 2-D inverse (dequantization + optional rect scaling + 1-D + row shift + clip); returns err
-template <int LW>
+// one row of the 2-D inverse (dequantization + optional rect scaling + 1-D + row shift + clip); returns err.
+// BD: dequantization clamp +-2^(7 + BitDepth) and rowClampRange BitDepth + 8; colClampRange is 16 at 8 and
+// 10 bits, so the int16 residual buffer and col() are the same for both.
+template <int LW, int BD = 8>
 __device__ __forceinline__ uint32_t row(int i, int th, int tw, const int16_t *q, int dcQ, int acQ, const uint8_t *qm, int den, bool rect,
                                         int rk, int rowShift, int16_t *res) {
     constexpr int W = 1 << LW;
@@ -323,7 +325,7 @@ __device__ __forceinline__ uint32_t row(int i, int th, int tw, const int16_t *q,
         int32_t d = 0;
         if (j < 32 && i < th && j < tw) {
             const int idx = i * tw + j;
-            d = q[idx] ? av1g_dequant_coef(q[idx], av1g_qm_step(idx == 0 ? dcQ : acQ, qm, idx), den) : 0;
+            d = q[idx] ? av1g_dequant_coef<BD>(q[idx], av1g_qm_step(idx == 0 ? dcQ : acQ, qm, idx), den) : 0;
         }
         Tv[j] = d;
         nz |= d;
@@ -338,7 +340,7 @@ __device__ __forceinline__ uint32_t row(int i, int th, int tw, const int16_t *q,
         for (int j = 0; j < W; j++) Tv[j] = (int32_t)av1g_round2_64((int64_t)Tv[j] * 2896, 12);
     }
     uint32_t err = 0;
-    inv_1d<LW>(Tv, rk, 16, err);
+    inv_1d<LW>(Tv, rk, BD + 8, err);
 #pragma unroll
     for (int j = 0; j < W; j++)
         res[i * W + j] = (int16_t)av1g_clip3(-(1 << 15), (1 << 15) - 1, (int32_t)av1g_round2_64(Tv[j], rowShift));

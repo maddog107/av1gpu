@@ -91,10 +91,20 @@ add_library(gpujpegingest STATIC ingest/src/jpeg_reader.cpp ingest/src/kernels.c
 target_include_directories(gpujpegingest PUBLIC ingest/src)
 target_link_libraries(gpujpegingest PUBLIC CUDA::cudart_static ${AV1GPU_NVJPEG} JPEG::JPEG Threads::Threads ${CMAKE_DL_LIBS} rt)
 
+# wavefront reconstruction, one instantiation (layout x bit depth) per file.  Each needs several GB of memory to
+# compile, so with Ninja they compile one at a time (the rest of the build stays parallel).
+set_property(GLOBAL APPEND PROPERTY JOB_POOLS av1gpu_recon=1)
+add_library(av1gpu_recon OBJECT
+  encoder/src/k_recon.cu encoder/src/k_recon_444_8.cu encoder/src/k_recon_420_10.cu encoder/src/k_recon_444_10.cu)
+set_property(TARGET av1gpu_recon PROPERTY JOB_POOL_COMPILE av1gpu_recon)
+target_include_directories(av1gpu_recon PRIVATE encoder/src)
+target_compile_options(av1gpu_recon PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:--expt-relaxed-constexpr>)
+target_link_libraries(av1gpu_recon PRIVATE av1f av1core_gpu gpujpegingest PNG::PNG PkgConfig::WEBP Threads::Threads)
+
 # encoder: analysis, partition DP, wavefront reconstruction, batching
 add_library(av1gpu_encoder STATIC
   encoder/src/k_misc.cu encoder/src/k_an_a.cu encoder/src/k_an_b.cu encoder/src/k_an_c.cu encoder/src/k_an_d.cu
-  encoder/src/k_an_uv.cu encoder/src/k_recon.cu encoder/src/pipeline.cpp encoder/src/imageio.cpp
+  encoder/src/k_an_uv.cu $<TARGET_OBJECTS:av1gpu_recon> encoder/src/pipeline.cpp encoder/src/imageio.cpp
   encoder/src/entropy_gpu.cpp encoder/src/entropy_dev.cu encoder/src/batch.cpp)
 target_include_directories(av1gpu_encoder PUBLIC encoder/src)
 target_compile_options(av1gpu_encoder PRIVATE

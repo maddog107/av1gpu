@@ -1,4 +1,4 @@
-/* av1gpu ingest: JPEG -> GPU-resident 4:2:0 / mono planes.
+/* av1gpu ingest: JPEG -> GPU-resident 4:2:0 / 4:4:4 / mono planes.
  *
  * Plain C ABI (fixed-layout structs), so it can also be bound from other languages, e.g. ctypes.
  *
@@ -10,13 +10,16 @@
  *       hook that stores the quantized DCT blocks straight into a pinned arena; one H2D per image
  *       and GPU dequant + islow IDCT
  *   Both routes produce native planes bit-exact with libjpeg-turbo's islow decode.  A finalize
- *   kernel then converts native sampling -> 4:2:0 (or mono), replicates edges, optionally applies
- *   the EXIF rotation, and writes the output pool + activity maps.  Batches are packed by size
- *   class; ingest_next_batch() hands them out in dispatch order.
+ *   kernel then converts native sampling -> 4:2:0 (or mono), or with cfg.out_444 to full-resolution
+ *   chroma (4:4:4 sources as coded, subsampled ones upsampled exactly like libjpeg-turbo's decoder:
+ *   jdsample.c with do_fancy_upsampling), replicates edges, optionally applies the EXIF rotation, and
+ *   writes the output pool + activity maps.  Batches are packed by size class; ingest_next_batch()
+ *   hands them out in dispatch order.
  *
  * Output layout (one device allocation per batch, "pool"):
  *   for each image i:  Y   at pool + y_off,  aw x ah bytes, row pitch y_pitch
- *                      Cb  at pool + cb_off, aw/2 x ah/2,   row pitch c_pitch   (cb_off = -1 for mono)
+ *                      Cb  at pool + cb_off, aw/2 x ah/2,   row pitch c_pitch   (cb_off = -1 for mono;
+ *                                            aw x ah when chroma_full = 1, i.e. cfg.out_444)
  *                      Cr  at pool + cr_off, same as Cb
  *                      ACT at pool + act_off, float4 [act_h][act_w] per 8x8 luma block (if enabled)
  *   width/height = visible size; w8/h8 = padded to 8 (the AV1 coded frame area);
@@ -34,7 +37,7 @@
 extern "C" {
 #endif
 
-#define INGEST_ABI_VERSION 5
+#define INGEST_ABI_VERSION 6   /* 6: ingest_config.out_444, ingest_image.chroma_full */
 
 /* source subsampling codes (ingest_image.src_sub) */
 enum {
@@ -81,6 +84,7 @@ typedef struct ingest_config {
   int decoder;            /* 0 (default) auto: baseline JPEGs -> nvJPEG on the GPU's hardware JPEG engine
                              (NVJPG), everything else -> CPU entropy decode + GPU IDCT; 1: CPU path only */
   int hw_batch;           /* max images per nvJPEG hardware call (default 32) */
+  int out_444;            /* 0 (default): 4:2:0 output; 1: full-resolution chroma (4:4:4 output) */
   int64_t pinned_bytes;   /* pinned staging arena (default 512 MiB) */
   int64_t batch_pixels;   /* luma pixels per batch, small/regular classes (default 16e6) */
   double max_mp;          /* fallback above this (default 35.6) */
@@ -105,7 +109,7 @@ typedef struct ingest_image {
   int32_t bucket, tiled, tile_cols_log2, tile_rows_log2;
   int32_t icc_size, exif_size;
   int32_t decoder_used;       /* 0 CPU entropy decode + GPU IDCT, 1 NVJPG hardware, 2 hardware failed -> CPU */
-  int32_t pad1_;
+  int32_t chroma_full;        /* 1: Cb/Cr planes are full size (aw x ah, cfg.out_444); 0: aw/2 x ah/2 (or mono) */
   const uint8_t *icc;         /* host pointers, valid until ingest_release_batch */
   const uint8_t *exif;        /* APP1 payload after "Exif\0\0" (TIFF header first) */
   float cpu_ms_read, cpu_ms_decode, cpu_ms_copy;   /* worker thread CPU time */

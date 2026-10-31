@@ -138,9 +138,10 @@ extern "C" int av1g_mux_avif_ex(const uint8_t *obus, size_t obu_size, uint32_t w
                               ((cfg.mono & 1) << 4) | ((cfg.ssx & 1) << 3) | ((cfg.ssy & 1) << 2) | (cfg.csp & 3)),
                     0x00};
     Bytes av1c = box("av1C", av1c_d);
-    Bytes pixi_d;
-    if (cfg.mono) { pixi_d.push_back(1); pixi_d.push_back(8); }
-    else { pixi_d.push_back(3); pixi_d.push_back(8); pixi_d.push_back(8); pixi_d.push_back(8); }
+    Bytes pixi_d;   // bits_per_channel = BitDepth of the sequence header (8, 10 or 12)
+    const uint8_t bpc = (uint8_t)(cfg.hbd ? (cfg.twelve ? 12 : 10) : 8);
+    if (cfg.mono) { pixi_d.push_back(1); pixi_d.push_back(bpc); }
+    else { pixi_d.push_back(3); pixi_d.push_back(bpc); pixi_d.push_back(bpc); pixi_d.push_back(bpc); }
     Bytes pixi = fullbox("pixi", 0, 0, pixi_d);
     Bytes colr_d;
     app(colr_d, "nclx", 4);

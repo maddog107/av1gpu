@@ -493,18 +493,22 @@ static bool dispatch(ingest_ctx *c, std::unique_ptr<Batch> b) {
     m.h8 = (int)align_up(Ho, 8);
     m.aw = (int)align_up(Wo, A);
     m.ah = (int)align_up(Ho, A);
+    // 4:4:4 output (cfg.out_444): full-size chroma planes
+    const int cfull = c->cfg.out_444 && !m.mono ? 1 : 0;
+    m.chroma_full = cfull;
     m.y_pitch = m.aw;
-    m.c_pitch = m.aw / 2;
+    m.c_pitch = cfull ? m.aw : m.aw / 2;
     m.icc = in.icc.empty() ? nullptr : in.icc.data();
     m.exif = in.exif.empty() ? nullptr : in.exif.data();
     // output planes
     m.y_off = (long long)pool;
     pool = align_up(pool + (size_t)m.y_pitch * m.ah, 256);
     if (!m.mono) {
+      const int ch = cfull ? m.ah : m.ah / 2;
       m.cb_off = (long long)pool;
-      pool = align_up(pool + (size_t)m.c_pitch * (m.ah / 2), 256);
+      pool = align_up(pool + (size_t)m.c_pitch * ch, 256);
       m.cr_off = (long long)pool;
-      pool = align_up(pool + (size_t)m.c_pitch * (m.ah / 2), 256);
+      pool = align_up(pool + (size_t)m.c_pitch * ch, 256);
     } else {
       m.cb_off = m.cr_off = -1;
     }
@@ -512,12 +516,12 @@ static bool dispatch(ingest_ctx *c, std::unique_ptr<Batch> b) {
       OutDesc o{};
       o.out_off = k == 0 ? m.y_off : (k == 1 ? m.cb_off : m.cr_off);
       o.out_pitch = k == 0 ? m.y_pitch : m.c_pitch;
-      o.out_w = k == 0 ? m.aw : m.aw / 2;
-      o.out_h = k == 0 ? m.ah : m.ah / 2;
+      o.out_w = (k == 0 || cfull) ? m.aw : m.aw / 2;
+      o.out_h = (k == 0 || cfull) ? m.ah : m.ah / 2;
       o.tiles_x = (o.out_w + 63) / 64;
       o.tile0 = tiles;
       tiles += (long long)o.tiles_x * ((o.out_h + 15) / 16);
-      o.chroma = k > 0;
+      o.chroma = k == 0 ? 0 : cfull ? 2 : 1;
       o.src = fp + k;
       o.W = W;
       o.H = H;

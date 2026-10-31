@@ -232,6 +232,10 @@ private:
     TxbHook *hook = nullptr;
     const av1g_frame_params *fp = nullptr;
     int W = 0, H = 0, MiCols = 0, MiRows = 0, mono = 0, sbCols = 0, sbRows = 0;
+    int ssx = 1, ssy = 1;           // chroma subsampling (spec subsampling_x / subsampling_y)
+    int bd = 8;                     // BitDepth (8 or 10)
+    int subX(int p) const { return p ? ssx : 0; }
+    int subY(int p) const { return p ? ssy : 0; }
     TileInfo tiles;
     int dcQ[3], acQ[3];
     int qmLevel[3] = {15, 15, 15};  // 15 = no matrix
@@ -239,21 +243,23 @@ private:
     void set_block_q(int qidx) {
         if (qidx == blockQ) return;
         blockQ = qidx;
-        dcQ[0] = av1g_dc_q(qidx + fp->delta_q_y_dc); acQ[0] = av1g_ac_q(qidx);
-        dcQ[1] = av1g_dc_q(qidx + fp->delta_q_u_dc); acQ[1] = av1g_ac_q(qidx + fp->delta_q_u_ac);
-        dcQ[2] = av1g_dc_q(qidx + fp->delta_q_v_dc); acQ[2] = av1g_ac_q(qidx + fp->delta_q_v_ac);
+        dcQ[0] = av1g_dc_q_bd(qidx + fp->delta_q_y_dc, bd); acQ[0] = av1g_ac_q_bd(qidx, bd);
+        dcQ[1] = av1g_dc_q_bd(qidx + fp->delta_q_u_dc, bd); acQ[1] = av1g_ac_q_bd(qidx + fp->delta_q_u_ac, bd);
+        dcQ[2] = av1g_dc_q_bd(qidx + fp->delta_q_v_dc, bd); acQ[2] = av1g_ac_q_bd(qidx + fp->delta_q_v_ac, bd);
     }
     template <class S> int lit(S &sk, int vW, int n) {  // L(n) literal, MSB first
         int v = 0;
         for (int i = n - 1; i >= 0; i--) v = (v << 1) | sk.bit((vW >> i) & 1);
         return v;
     }
-    // recon planes (cover all superblocks)
+    // recon planes (cover all superblocks): plane[] at 8 bits, plane16[] at 10 bits
     int pstride[3] = {0, 0, 0}, pheight[3] = {0, 0, 0};
     std::vector<uint8_t> plane[3];
+    std::vector<uint16_t> plane16[3];
+    template <int BD> av1g_pixel_t(BD) *pix(int p);
     // 4x4-granular mode info maps
     std::vector<uint8_t> mapMiSize, mapYMode, mapSkip, mapTxSize, mapUVMode;
-    std::vector<uint8_t> lfTxUV[2];   // LoopfilterTxSizes for U, V (chroma 4x4 units)
+    std::vector<uint8_t> lfTxUV[2];   // LoopfilterTxSizes for U, V (chroma 4x4 units, (MiRows >> ssy) x (MiCols >> ssx))
     std::vector<int8_t> sbCdef;       // cdef_idx per 64x64 SB (-1: no non-skip block)
     int sbIndex = 0;                  // current SB (raster)
     void postfilter();
@@ -287,6 +293,9 @@ private:
     template <class S> void encode_partition(S &sk, int r, int c, int bSize);
     template <class S> void encode_block(S &sk, int r, int c, int bsize);
     template <class S> void code_txb(S &sk, av1g_txb &t, int xi, int yi);
+    template <int BD> void predict_txb(const av1g_txb &t, int xi, int yi);
+    template <int BD> uint32_t dequant_inverse(const int16_t *q, int plane, int txSz, int txType, int32_t *dq, int32_t *res);
+    template <int BD> void postfilter_bd();
     template <class S> int code_coeffs(S &sk, int plane, int txSz, int &txType, int x4, int y4, int16_t *q, int eob);
     int derive_partition(int r, int c, int bSize, int hasRows, int hasCols);
     void clear_block_decoded(int r, int c);
@@ -331,17 +340,17 @@ void Encoder::check_block_fields(const av1g_block &b) {
 
 void Encoder::clear_block_decoded(int r, int c) {
     for (int p = 0; p < (mono ? 1 : 3); p++) {
-        const int sub = p ? 1 : 0;
-        const int sbWidth4 = (miColEnd - c) >> sub, sbHeight4 = (miRowEnd - r) >> sub;
-        for (int y = -1; y <= (16 >> sub); y++)
-            for (int x = -1; x <= (16 >> sub); x++) {
+        const int sx = subX(p), sy = subY(p);
+        const int sbWidth4 = (miColEnd - c) >> sx, sbHeight4 = (miRowEnd - r) >> sy;
+        for (int y = -1; y <= (16 >> sy); y++)
+            for (int x = -1; x <= (16 >> sx); x++) {
                 uint8_t v;
                 if (y < 0 && x < sbWidth4) v = 1;
                 else if (x < 0 && y < sbHeight4) v = 1;
                 else v = 0;
                 blockDecoded[p][y + 1][x + 1] = v;
             }
-        blockDecoded[p][(16 >> sub) + 1][0] = 0;
+        blockDecoded[p][(16 >> sy) + 1][0] = 0;
     }
 }
 
@@ -485,13 +494,13 @@ void Encoder::encode_block(S &sk, int r, int c, int bsize) {
     av1g_block &b = *B;
     MiRow = r; MiCol = c; MiSize = bsize;
     bw4 = av1g_bw4(bsize); bh4 = av1g_bh4(bsize);
-    hasChroma = av1g_has_chroma(bsize, r, c, mono);
+    hasChroma = av1g_has_chroma(bsize, r, c, mono, ssx, ssy);
     availU = is_inside(r - 1, c);
     availL = is_inside(r, c - 1);
     availUC = availU; availLC = availL;
     if (hasChroma) {
-        if (bh4 == 1) availUC = is_inside(r - 2, c);
-        if (bw4 == 1) availLC = is_inside(r, c - 2);
+        if (ssy && bh4 == 1) availUC = is_inside(r - 2, c);
+        if (ssx && bw4 == 1) availLC = is_inside(r, c - 2);
     } else {
         availUC = availLC = 0;
     }
@@ -619,9 +628,9 @@ void Encoder::encode_block(S &sk, int r, int c, int bsize) {
 
     if (b.skip) {  // reset_block_context
         for (int p = 0; p < 1 + 2 * hasChroma; p++) {
-            const int sub = p ? 1 : 0;
-            for (int i = MiCol >> sub; i < ((MiCol + bw4) >> sub); i++) aboveLevel[p][i] = aboveDc[p][i] = 0;
-            for (int i = MiRow >> sub; i < ((MiRow + bh4) >> sub); i++) leftLevel[p][i] = leftDc[p][i] = 0;
+            const int sx = subX(p), sy = subY(p);
+            for (int i = MiCol >> sx; i < ((MiCol + bw4) >> sx); i++) aboveLevel[p][i] = aboveDc[p][i] = 0;
+            for (int i = MiRow >> sy; i < ((MiRow + bh4) >> sy); i++) leftLevel[p][i] = leftDc[p][i] = 0;
         }
     }
     const int rEnd = r + bh4 < MiRows ? r + bh4 : MiRows, cEnd = c + bw4 < MiCols ? c + bw4 : MiCols;
@@ -635,7 +644,7 @@ void Encoder::encode_block(S &sk, int r, int c, int bsize) {
     if (S::kWrite) {
         const uint32_t t0 = R->block_txb[bIdx], t1 = R->block_txb[bIdx + 1];
         uint32_t ti = t0;
-        av1g_for_each_txb(bsize, r, c, b.tx_depth, mono, MiRows, MiCols,
+        av1g_for_each_txb(bsize, r, c, b.tx_depth, mono, ssx, ssy, MiRows, MiCols,
                           [&](int plane, int txSz, int x4, int y4, int xi, int yi) {
                               if (ti >= t1 || R->txb[ti].plane != plane || R->txb[ti].tx_size != txSz ||
                                   R->txb[ti].x4 != x4 || R->txb[ti].y4 != y4)
@@ -646,7 +655,7 @@ void Encoder::encode_block(S &sk, int r, int c, int bsize) {
                           });
         if (ti != t1) throw Error(AV1G_ERR_INVALID, "block %u: tx layout mismatch (count)", bIdx);
     } else {
-        av1g_for_each_txb(bsize, r, c, b.tx_depth, mono, MiRows, MiCols,
+        av1g_for_each_txb(bsize, r, c, b.tx_depth, mono, ssx, ssy, MiRows, MiCols,
                           [&](int plane, int txSz, int x4, int y4, int xi, int yi) {
                               av1g_txb t;
                               memset(&t, 0, sizeof t);
@@ -669,49 +678,78 @@ void Encoder::encode_block(S &sk, int r, int c, int bsize) {
         }
 }
 
-template <class S>
-void Encoder::code_txb(S &sk, av1g_txb &t, int xi, int yi) {
+template <> uint8_t *Encoder::pix<8>(int p) { return plane[p].data(); }
+template <> uint16_t *Encoder::pix<10>(int p) { return plane16[p].data(); }
+
+// Exact intra prediction of tx block t into the reconstruction (spec 7.11.2 / 7.11.5).
+template <int BD>
+void Encoder::predict_txb(const av1g_txb &t, int xi, int yi) {
+    typedef av1g_pixel_t(BD) P;
     const av1g_block &b = *B;
-    const int plane = t.plane, txSz = t.tx_size, sub = plane ? 1 : 0;
+    const int plane = t.plane, txSz = t.tx_size, sx = subX(plane), sy = subY(plane);
     const int startX = t.x4 * 4, startY = t.y4 * 4;
-    const int row = (startY << sub) >> 2, col = (startX << sub) >> 2;
+    const int row = (startY << sy) >> 2, col = (startX << sx) >> 2;
     const int sbr = row & 15, sbc = col & 15;
     const int stepX = AV1G_T(Tx_Width)[txSz] >> 2, stepY = AV1G_T(Tx_Height)[txSz] >> 2;
     const int log2W = AV1G_T(Tx_Width_Log2)[txSz], log2H = AV1G_T(Tx_Height_Log2)[txSz];
     const int isCfl = plane > 0 && b.uv_mode == AV1G_UV_CFL_PRED;
-
-    if (doRecon) {
+    {
         const int mode = plane == 0 ? b.y_mode : (isCfl ? AV1G_DC_PRED : b.uv_mode);
         const int haveLeft = (plane == 0 ? availL : availLC) || xi > 0;
         const int haveAbove = (plane == 0 ? availU : availUC) || yi > 0;
-        const int haveAboveRight = blockDecoded[plane][(sbr >> sub) - 1 + 1][(sbc >> sub) + stepX + 1];
-        const int haveBelowLeft = blockDecoded[plane][(sbr >> sub) + stepY + 1][(sbc >> sub) - 1 + 1];
+        const int haveAboveRight = blockDecoded[plane][(sbr >> sy) - 1 + 1][(sbc >> sx) + stepX + 1];
+        const int haveBelowLeft = blockDecoded[plane][(sbr >> sy) + stepY + 1][(sbc >> sx) - 1 + 1];
         if (opts.flags & AV1G_ENC_CHECK_EDGES) {
             int hl, ha, har, hbl;
-            av1g_txb_edges(plane, t.x4, t.y4, txSz, curTxb, xi, yi, plane == 0 ? availL : availLC,
-                           plane == 0 ? availU : availUC, miRowEnd, miColEnd, ordMap[plane].data(), (sbCols * 16) >> sub, &hl,
+            av1g_txb_edges(plane, ssx, ssy, t.x4, t.y4, txSz, curTxb, xi, yi, plane == 0 ? availL : availLC,
+                           plane == 0 ? availU : availUC, miRowEnd, miColEnd, ordMap[plane].data(), (sbCols * 16) >> sx, &hl,
                            &ha, &har, &hbl);
             if (hl != haveLeft || ha != haveAbove || har != haveAboveRight || hbl != haveBelowLeft)
                 throw Error(AV1G_ERR_INTERNAL, "block %u plane %d tx (%d,%d): av1g_txb_edges %d%d%d%d != spec %d%d%d%d", bIdx,
                             plane, t.x4, t.y4, hl, ha, har, hbl, haveLeft, haveAbove, haveAboveRight, haveBelowLeft);
         }
-        const int maxX = ((MiCols * 4) >> sub) - 1, maxY = ((MiRows * 4) >> sub) - 1;
-        uint8_t edgeA[AV1G_EDGE_LEN], edgeL[AV1G_EDGE_LEN];
-        uint8_t *A = edgeA + AV1G_EDGE_OFF, *L = edgeL + AV1G_EDGE_OFF;
-        uint8_t *pl = plane_ptr(plane);
-        av1g_build_edges(pl, pstride[plane], startX, startY, log2W, log2H, haveLeft, haveAbove, haveAboveRight,
-                         haveBelowLeft, maxX, maxY, A, L);
+        const int maxX = ((MiCols * 4) >> sx) - 1, maxY = ((MiRows * 4) >> sy) - 1;
+        P edgeA[AV1G_EDGE_LEN], edgeL[AV1G_EDGE_LEN];
+        P *A = edgeA + AV1G_EDGE_OFF, *L = edgeL + AV1G_EDGE_OFF;
+        P *pl = pix<BD>(plane);
+        av1g_build_edges<BD>(pl, pstride[plane], startX, startY, log2W, log2H, haveLeft, haveAbove, haveAboveRight,
+                             haveBelowLeft, maxX, maxY, A, L);
         const int filterType = (fp->enable_intra_edge_filter && av1g_is_directional(mode))
                                    ? av1g_get_filter_type(plane, MiRow, MiCol, plane == 0 ? availU : availUC,
-                                                          plane == 0 ? availL : availLC, mapYMode.data(), mapUVMode.data(), MiCols)
+                                                          plane == 0 ? availL : availLC, mapYMode.data(), mapUVMode.data(), MiCols,
+                                                          ssx, ssy)
                                    : 0;
-        av1g_predict_intra_ex(mode, plane == 0 ? b.angle_delta_y : b.angle_delta_uv,
-                              (plane == 0 && b.filter_intra) ? b.filter_intra - 1 : -1, fp->enable_intra_edge_filter,
-                              filterType, haveLeft, haveAbove, log2W, log2H, startX, startY, maxX, maxY, A, L,
-                              pl + (size_t)startY * pstride[plane] + startX, pstride[plane]);
+        av1g_predict_intra_ex<BD>(mode, plane == 0 ? b.angle_delta_y : b.angle_delta_uv,
+                                  (plane == 0 && b.filter_intra) ? b.filter_intra - 1 : -1, fp->enable_intra_edge_filter,
+                                  filterType, haveLeft, haveAbove, log2W, log2H, startX, startY, maxX, maxY, A, L,
+                                  pl + (size_t)startY * pstride[plane] + startX, pstride[plane]);
         if (isCfl)
-            av1g_cfl_predict(pl, pstride[plane], plane_ptr(0), pstride[0], startX, startY, txSz, 1, 1, maxLumaW,
-                             maxLumaH, plane == 1 ? b.cfl_alpha_u : b.cfl_alpha_v);
+            av1g_cfl_predict<BD>(pl, pstride[plane], pix<BD>(0), pstride[0], startX, startY, txSz, ssx, ssy, maxLumaW,
+                                 maxLumaH, plane == 1 ? b.cfl_alpha_u : b.cfl_alpha_v);
+    }
+}
+
+// Dequantize + inverse transform (spec 7.12.3 steps 1-2); returns the conformance flags.
+template <int BD>
+uint32_t Encoder::dequant_inverse(const int16_t *q, int plane, int txSz, int txType, int32_t *dq, int32_t *res) {
+    av1g_dequant<BD>(q, dq, txSz, dcQ[plane], acQ[plane], av1g_qm(fp->using_qmatrix, qmLevel[plane], plane, txSz, txType));
+    uint32_t err = 0;
+    av1g_inv_txfm2d<BD>(dq, txSz, txType, res, &err);
+    return err;
+}
+
+template <class S>
+void Encoder::code_txb(S &sk, av1g_txb &t, int xi, int yi) {
+    const av1g_block &b = *B;
+    const int plane = t.plane, txSz = t.tx_size, sx = subX(plane), sy = subY(plane);
+    const int startX = t.x4 * 4, startY = t.y4 * 4;
+    const int row = (startY << sy) >> 2, col = (startX << sx) >> 2;
+    const int sbr = row & 15, sbc = col & 15;
+    const int stepX = AV1G_T(Tx_Width)[txSz] >> 2, stepY = AV1G_T(Tx_Height)[txSz] >> 2;
+
+    if (doRecon) {
+        if (bd == 8) predict_txb<8>(t, xi, yi);
+        else predict_txb<10>(t, xi, yi);
     }
     if (plane == 0) {
         maxLumaW = startX + stepX * 4;
@@ -732,6 +770,7 @@ void Encoder::code_txb(S &sk, av1g_txb &t, int xi, int yi) {
         static thread_local int32_t dq[1024], res[4096];
         if (S::kWrite) {
             if (hook && doRecon) {
+                if (bd != 8) throw Error(AV1G_ERR_INVALID, "closed-loop hooks are 8-bit only");
                 hook->on_txb(b, bIdx, t, q, plane_ptr(plane) + (size_t)startY * pstride[plane] + startX, pstride[plane],
                              dcQ[plane], acQ[plane], txType, fp->using_qmatrix ? qmLevel[plane] : 15);
                 if (plane == 0) txType = t.tx_type;
@@ -746,9 +785,8 @@ void Encoder::code_txb(S &sk, av1g_txb &t, int xi, int yi) {
             }
             if (nz && doRecon) {
                 for (;;) {
-                    av1g_dequant(q, dq, txSz, dcQ[plane], acQ[plane], av1g_qm(fp->using_qmatrix, qmLevel[plane], plane, txSz, txType));
-                    uint32_t err = 0;
-                    av1g_inv_txfm2d(dq, txSz, txType, res, &err);
+                    const uint32_t err = bd == 8 ? dequant_inverse<8>(q, plane, txSz, txType, dq, res)
+                                                 : dequant_inverse<10>(q, plane, txSz, txType, dq, res);
                     if (!err) break;
                     if (!fixRange)
                         throw Error(AV1G_ERR_RANGE, "block %u plane %d tx (%d,%d): coefficients overflow inverse transform range (flags %u)",
@@ -768,13 +806,16 @@ void Encoder::code_txb(S &sk, av1g_txb &t, int xi, int yi) {
         eob = code_coeffs(sk, plane, txSz, txType, t.x4, t.y4, q, eob);
         if (plane == 0) t.tx_type = (uint8_t)txType;
         t.eob = (uint16_t)eob;
-        if (eob > 0 && doRecon)
-            av1g_add_residual(plane_ptr(plane) + (size_t)startY * pstride[plane] + startX, pstride[plane], res, txSz, txType);
+        if (eob > 0 && doRecon) {
+            const size_t o = (size_t)startY * pstride[plane] + startX;
+            if (bd == 8) av1g_add_residual<8>(pix<8>(plane) + o, pstride[plane], res, txSz, txType);
+            else av1g_add_residual<10>(pix<10>(plane) + o, pstride[plane], res, txSz, txType);
+        }
     }
     for (int i = 0; i < stepY; i++)
-        for (int j = 0; j < stepX; j++) blockDecoded[plane][(sbr >> sub) + i + 1][(sbc >> sub) + j + 1] = 1;
+        for (int j = 0; j < stepX; j++) blockDecoded[plane][(sbr >> sy) + i + 1][(sbc >> sx) + j + 1] = 1;
     if (plane > 0) {  // LoopfilterTxSizes for the chroma planes (luma uses mapTxSize)
-        const int cs = MiCols >> 1, cr = MiRows >> 1;
+        const int cs = MiCols >> ssx, cr = MiRows >> ssy;
         for (int i = 0; i < stepY && t.y4 + i < cr; i++)
             for (int j = 0; j < stepX && t.x4 + j < cs; j++) lfTxUV[plane - 1][(size_t)(t.y4 + i) * cs + t.x4 + j] = (uint8_t)txSz;
     }
@@ -783,25 +824,34 @@ void Encoder::code_txb(S &sk, av1g_txb &t, int xi, int yi) {
 // Deblocking (spec 7.14) then CDEF (7.15) on the reconstruction: the decoder's output frame.
 // The maps come from this walk (independent of av1g_pf_mark_block, which the GPU path uses).
 void Encoder::postfilter() {
+    if (bd == 8) postfilter_bd<8>();
+    else postfilter_bd<10>();
+}
+template <int BD>
+void Encoder::postfilter_bd() {
+    typedef av1g_pixel_t(BD) P;
     av1g_pf_frame f;
     memset(&f, 0, sizeof f);
     av1g_pf_frame_init(fp, &f);
-    for (int p = 0; p < (mono ? 1 : 3); p++) { f.plane[p] = plane[p].data(); f.stride[p] = pstride[p]; }
+    for (int p = 0; p < (mono ? 1 : 3); p++) { f.plane[p] = (uint8_t *)pix<BD>(p); f.stride[p] = pstride[p]; }
     f.skip = mapSkip.data();
     f.lfTx[0] = mapTxSize.data();
     f.lfTx[1] = lfTxUV[0].data();
     f.lfTx[2] = lfTxUV[1].data();
     f.cdefIdx = sbCdef.data();
-    av1g_deblock_frame(&f);
+    av1g_deblock_frame<BD>(&f);
     if (!fp->enable_cdef) return;
-    std::vector<uint8_t> out[3];
+    std::vector<P> out[3];
     uint8_t *dst[3] = {nullptr, nullptr, nullptr};
     for (int p = 0; p < (mono ? 1 : 3); p++) {
-        out[p].assign(plane[p].size(), 0);
-        dst[p] = out[p].data();
+        out[p].assign((size_t)pstride[p] * pheight[p], 0);
+        dst[p] = (uint8_t *)out[p].data();
     }
-    av1g_cdef_frame(&f, dst, pstride);
-    for (int p = 0; p < (mono ? 1 : 3); p++) plane[p].swap(out[p]);
+    av1g_cdef_frame<BD>(&f, dst, pstride);
+    for (int p = 0; p < (mono ? 1 : 3); p++) {
+        if (BD == 8) memcpy(plane[p].data(), out[p].data(), plane[p].size());
+        else memcpy(plane16[p].data(), out[p].data(), plane16[p].size() * 2);
+    }
 }
 
 // coeffs() (spec 5.11.39).  Write: q holds the levels, eob was computed by the
@@ -809,18 +859,18 @@ void Encoder::postfilter() {
 // txType (luma) is coded / decoded here.
 template <class S>
 int Encoder::code_coeffs(S &sk, int plane, int txSz, int &txType, int x4, int y4, int16_t *q, int eob) {
-    const int ptype = plane > 0, sub = plane ? 1 : 0;
+    const int ptype = plane > 0;
     const int txSzCtx = (AV1G_T(Tx_Size_Sqr)[txSz] + AV1G_T(Tx_Size_Sqr_Up)[txSz] + 1) >> 1;
     const int w = AV1G_T(Tx_Width)[txSz], h = AV1G_T(Tx_Height)[txSz];
     const int w4 = w >> 2, h4 = h >> 2;
-    const int maxX4 = MiCols >> sub, maxY4 = MiRows >> sub;
+    const int maxX4 = MiCols >> subX(plane), maxY4 = MiRows >> subY(plane);
     uint8_t *aL = aboveLevel[plane].data(), *aD = aboveDc[plane].data();
     uint8_t *lL = leftLevel[plane].data(), *lD = leftDc[plane].data();
 
     // all_zero context
     int ctx;
     {
-        const int bsz = plane ? av1g_uv_bsize(MiSize) : MiSize;
+        const int bsz = plane ? av1g_uv_bsize(MiSize, ssx, ssy) : MiSize;
         const int bw = 4 * av1g_bw4(bsz), bh = 4 * av1g_bh4(bsz);
         if (plane == 0) {
             int top = 0, left = 0;
@@ -1055,7 +1105,8 @@ void Encoder::write_headers(BitWriter &seq, BitWriter &fh, int level) {
     // ---- sequence_header_obu (reduced still picture) ----
     const int diff_uv = (fp->delta_q_v_dc != fp->delta_q_u_dc || fp->delta_q_v_ac != fp->delta_q_u_ac);
     const int separate_uv = !mono && (diff_uv || (fp->using_qmatrix && fp->qm_v != fp->qm_u));
-    seq.put(0, 3);          // seq_profile = Main
+    const int high = !mono && ssx == 0 && ssy == 0;   // 4:4:4 needs the High profile
+    seq.put(high ? 1 : 0, 3);  // seq_profile = Main (4:2:0, monochrome) / High (4:4:4)
     seq.put(1, 1);          // still_picture
     seq.put(1, 1);          // reduced_still_picture_header
     seq.put(level, 5);      // seq_level_idx[0]
@@ -1073,15 +1124,15 @@ void Encoder::write_headers(BitWriter &seq, BitWriter &fh, int level) {
     seq.put(fp->enable_cdef, 1);  // enable_cdef
     seq.put(0, 1);          // enable_restoration
     // color_config
-    seq.put(0, 1);          // high_bitdepth
-    seq.put(mono, 1);       // mono_chrome
+    seq.put(bd == 10, 1);   // high_bitdepth (BitDepth 10; twelve_bit is only coded in the Professional profile)
+    if (!high) seq.put(mono, 1);  // mono_chrome (High profile: not coded, 0)
     seq.put(1, 1);          // color_description_present_flag
     seq.put(1, 8);          // color_primaries = CP_BT_709
     seq.put(13, 8);         // transfer_characteristics = TC_SRGB
-    seq.put(6, 8);          // matrix_coefficients = MC_BT_601
+    seq.put(6, 8);          // matrix_coefficients = MC_BT_601 (YCbCr also in 4:4:4, not identity/RGB)
     seq.put(1, 1);          // color_range = full
-    if (!mono) {
-        seq.put(0, 2);      // chroma_sample_position = CSP_UNKNOWN
+    if (!mono) {            // subsampling_x/y follow from seq_profile (Main 1/1, High 0/0)
+        if (ssx && ssy) seq.put(0, 2);  // chroma_sample_position = CSP_UNKNOWN (4:2:0 only)
         seq.put(separate_uv, 1);  // separate_uv_delta_q
     }
     seq.put(0, 1);          // film_grain_params_present
@@ -1165,6 +1216,8 @@ void Encoder::setup_frame() {
     fp = &R->fp;
     W = fp->width; H = fp->height;
     mono = fp->monochrome;
+    ssx = av1g_ssx(fp); ssy = av1g_ssy(fp);
+    bd = av1g_bit_depth(fp);
     MiCols = av1g_mi_cols(W); MiRows = av1g_mi_rows(H);
     sbCols = (MiCols + 15) >> 4; sbRows = (MiRows + 15) >> 4;
     if (!compute_tiles(W, H, fp->tile_cols_log2, fp->tile_rows_log2, tiles))
@@ -1175,15 +1228,15 @@ void Encoder::setup_frame() {
     qmLevel[1] = fp->qm_u;
     qmLevel[2] = (!mono && fp->using_qmatrix) ? fp->qm_v : fp->qm_u;
     for (int p = 0; p < (mono ? 1 : 3); p++) {
-        const int sub = p ? 1 : 0;
-        pstride[p] = (sbCols * 64) >> sub;
-        pheight[p] = (sbRows * 64) >> sub;
-        if (doRecon) plane[p].assign((size_t)pstride[p] * pheight[p], 0);
+        pstride[p] = (sbCols * 64) >> subX(p);
+        pheight[p] = (sbRows * 64) >> subY(p);
+        if (doRecon && bd == 8) plane[p].assign((size_t)pstride[p] * pheight[p], 0);
+        if (doRecon && bd != 8) plane16[p].assign((size_t)pstride[p] * pheight[p], 0);
     }
     const size_t nmi = (size_t)MiRows * MiCols;
     mapMiSize.assign(nmi, 0); mapYMode.assign(nmi, 0); mapSkip.assign(nmi, 0); mapTxSize.assign(nmi, 0); mapUVMode.assign(nmi, 0);
-    lfTxUV[0].assign((size_t)(MiRows >> 1) * (MiCols >> 1), 0);
-    lfTxUV[1].assign((size_t)(MiRows >> 1) * (MiCols >> 1), 0);
+    lfTxUV[0].assign((size_t)(MiRows >> ssy) * (MiCols >> ssx), 0);
+    lfTxUV[1].assign((size_t)(MiRows >> ssy) * (MiCols >> ssx), 0);
     sbCdef.assign((size_t)sbCols * sbRows, -1);
     for (int p = 0; p < 3; p++) {
         aboveLevel[p].assign(MiCols + 32, 0); aboveDc[p].assign(MiCols + 32, 0);
@@ -1193,7 +1246,13 @@ void Encoder::setup_frame() {
 
 void Encoder::run(av1g_output *out) {
     fp = &R->fp;
-    if (fp->version != AV1G_DECISIONS_VERSION) throw Error(AV1G_ERR_INVALID, "record version %u != %d", fp->version, AV1G_DECISIONS_VERSION);
+    if (fp->version < 1 || fp->version > AV1G_DECISIONS_VERSION)
+        throw Error(AV1G_ERR_INVALID, "record version %u (supported: 1 .. %d)", fp->version, AV1G_DECISIONS_VERSION);
+    if ((fp->bit_depth != 0 && fp->bit_depth != 8 && fp->bit_depth != 10) || (fp->bit_depth && fp->version < 3))
+        throw Error(AV1G_ERR_INVALID, "bit_depth %d: must be 8 or 10 (0 = 8; 0 for version 1 / 2 records)", fp->bit_depth);
+    if (fp->chroma_format > AV1G_CHROMA_444 || (fp->chroma_format && (fp->monochrome || fp->version < 2)))
+        throw Error(AV1G_ERR_INVALID, "chroma_format %d: must be 0 (4:2:0) or 1 (4:4:4), 0 for monochrome / version 1 records",
+                    fp->chroma_format);
     if (fp->width < 1 || fp->height < 1 || fp->width > 65535 || fp->height > 65535)
         throw Error(AV1G_ERR_INVALID, "bad size %ux%u", fp->width, fp->height);
     if (fp->base_q_idx < 1) throw Error(AV1G_ERR_INVALID, "base_q_idx must be >= 1 (lossless unsupported)");
@@ -1219,7 +1278,7 @@ void Encoder::run(av1g_output *out) {
             fp->qm_v > 15)
             throw Error(AV1G_ERR_INVALID, "bad delta_q / quantizer matrix parameters");
         for (int i = 0; i < (int)sizeof fp->reserved; i++)
-            if (fp->reserved[i]) throw Error(AV1G_ERR_INVALID, "reserved frame_params fields must be 0 in interface v1");
+            if (fp->reserved[i]) throw Error(AV1G_ERR_INVALID, "reserved frame_params fields must be 0");
         if (fp->allow_screen_content_tools > 1) throw Error(AV1G_ERR_INVALID, "allow_screen_content_tools must be 0/1");
     }
     doRecon = !(opts.flags & AV1G_ENC_SKIP_RECON);
@@ -1230,12 +1289,12 @@ void Encoder::run(av1g_output *out) {
     setup_frame();
     if (opts.flags & AV1G_ENC_CHECK_EDGES) {
         for (int p = 0; p < (mono ? 1 : 3); p++) {
-            const int sub = p ? 1 : 0, stride = (sbCols * 16) >> sub, rows = (sbRows * 16) >> sub;
+            const int stride = (sbCols * 16) >> subX(p), rows = (sbRows * 16) >> subY(p);
             ordMap[p].assign((size_t)stride * rows, 0xFFFFFFFFu);
         }
         for (uint32_t i = 0; i < R->n_txb; i++) {
             const av1g_txb &x = R->txb[i];
-            const int sub = x.plane ? 1 : 0, stride = (sbCols * 16) >> sub, rows = (sbRows * 16) >> sub;
+            const int stride = (sbCols * 16) >> subX(x.plane), rows = (sbRows * 16) >> subY(x.plane);
             const int w4 = av1g_tx_w(x.tx_size) >> 2, h4 = av1g_tx_h(x.tx_size) >> 2;
             for (int yy = 0; yy < h4 && x.y4 + yy < rows; yy++)
                 for (int xx = 0; xx < w4 && x.x4 + xx < stride; xx++) ordMap[x.plane][(size_t)(x.y4 + yy) * stride + x.x4 + xx] = i;
@@ -1322,14 +1381,17 @@ void Encoder::run(av1g_output *out) {
     if (doRecon && !(opts.flags & AV1G_ENC_NO_RECON)) {
         if (!(opts.flags & AV1G_ENC_PREFILTER_RECON)) postfilter();
         for (int p = 0; p < (mono ? 1 : 3); p++) {
-            const int sub = p ? 1 : 0;
+            const int sx = subX(p), sy = subY(p);
             // pre-filter recon keeps the decoded area up to MiCols*4 x MiRows*4: the filters read it
             const bool pad = opts.flags & AV1G_ENC_PREFILTER_RECON;
-            const int w = pad ? (MiCols * 4) >> sub : (W + sub) >> sub, h = pad ? (MiRows * 4) >> sub : (H + sub) >> sub;
-            out->recon[p] = (uint8_t *)malloc((size_t)w * h);
+            const int w = pad ? (MiCols * 4) >> sx : (W + sx) >> sx, h = pad ? (MiRows * 4) >> sy : (H + sy) >> sy;
+            const int bps = bd == 8 ? 1 : 2;   // bytes per sample
+            out->recon[p] = (uint8_t *)malloc((size_t)w * h * bps);
             out->recon_w[p] = w;
             out->recon_h[p] = h;
-            for (int y = 0; y < h; y++) memcpy(out->recon[p] + (size_t)y * w, plane[p].data() + (size_t)y * pstride[p], w);
+            const uint8_t *src = bd == 8 ? plane[p].data() : (const uint8_t *)plane16[p].data();
+            for (int y = 0; y < h; y++)
+                memcpy(out->recon[p] + (size_t)y * w * bps, src + (size_t)y * pstride[p] * bps, (size_t)w * bps);
         }
     }
 }
@@ -1360,7 +1422,7 @@ void Encoder::parse(const uint8_t *obus, size_t n) {
     struct Seq {
         bool seen = false;
         int reduced = 0, level = 0, wbits = 0, hbits = 0, maxW = 0, maxH = 0, filterIntra = 0, edgeFilter = 0;
-        int superres = 0, cdef = 0, restoration = 0, mono = 0, separateUv = 0, forceSct = 2, forceIntMv = 2;
+        int superres = 0, cdef = 0, restoration = 0, mono = 0, separateUv = 0, forceSct = 2, forceIntMv = 2, profile = 0, hbd = 0;
         int orderHintBits = 0, frameIds = 0, filmGrain = 0, decoderModel = 0;
     } sq;
     av1g_frame_params &F = R->fp;
@@ -1389,7 +1451,8 @@ void Encoder::parse(const uint8_t *obus, size_t n) {
             int profile = br.f(3);
             br.f(1);  // still_picture
             sq.reduced = br.f(1);
-            NEED(profile == 0, "only Main profile (got %d)", profile);
+            NEED(profile == 0 || profile == 1, "only Main and High profile (got %d)", profile);
+            sq.profile = profile;
             if (sq.reduced) {
                 sq.level = br.f(5);
             } else {
@@ -1437,8 +1500,8 @@ void Encoder::parse(const uint8_t *obus, size_t n) {
             sq.superres = br.f(1);
             sq.cdef = br.f(1);
             sq.restoration = br.f(1);
-            NEED(br.f(1) == 0, "only 8-bit supported");
-            sq.mono = br.f(1);
+            sq.hbd = br.f(1);  // high_bitdepth: BitDepth 10 (Main / High profile; no twelve_bit)
+            sq.mono = sq.profile == 1 ? 0 : br.f(1);  // High profile: no mono_chrome flag
             int cp = 2, tc = 2, mc = 2;
             if (br.f(1)) { cp = br.f(8); tc = br.f(8); mc = br.f(8); }
             if (sq.mono) {
@@ -1446,7 +1509,7 @@ void Encoder::parse(const uint8_t *obus, size_t n) {
             } else {
                 NEED(!(cp == 1 && tc == 13 && mc == 0), "4:4:4 identity matrix not supported");
                 br.f(1);  // color_range
-                br.f(2);  // chroma_sample_position
+                if (sq.profile == 0) br.f(2);  // chroma_sample_position (4:2:0 only; High = 4:4:4)
                 sq.separateUv = br.f(1);
             }
             sq.filmGrain = br.f(1);
@@ -1481,6 +1544,8 @@ void Encoder::parse(const uint8_t *obus, size_t n) {
             F.width = fw;
             F.height = fh;
             F.monochrome = (uint8_t)sq.mono;
+            F.chroma_format = (uint8_t)(sq.profile == 1 ? AV1G_CHROMA_444 : AV1G_CHROMA_420);
+            F.bit_depth = (uint8_t)(sq.hbd ? 10 : 8);
             int tileSizeBytes = 4;
             // tile_info
             {
@@ -1640,12 +1705,14 @@ extern "C" void av1g_legalize_sb_qindex(int base_q_idx, int delta_q_res, const u
     }
 }
 
-extern "C" int av1g_postfilter(const av1g_decision_record *rec, uint8_t *const planes[3], const int stride[3]) {
-    if (!rec || !planes || !stride) return AV1G_ERR_INVALID;
+namespace {
+template <int BD>
+int postfilter_planes(const av1g_decision_record *rec, uint8_t *const planes[3], const int stride[3]) {
+    typedef av1g_pixel_t(BD) P;
     av1g_pf_frame f;
     memset(&f, 0, sizeof f);
     av1g_pf_frame_init(&rec->fp, &f);
-    const size_t nmi = (size_t)f.MiRows * f.MiCols, nuv = (size_t)(f.MiRows >> 1) * (f.MiCols >> 1);
+    const size_t nmi = (size_t)f.MiRows * f.MiCols, nuv = (size_t)(f.MiRows >> f.ssy) * (f.MiCols >> f.ssx);
     std::vector<uint8_t> skip(nmi, 0), txY(nmi, 0), txU(nuv, 0), txV(nuv, 0);
     std::vector<int8_t> cdef((size_t)f.sbCols * f.sbRows, -1);
     f.skip = skip.data();
@@ -1655,21 +1722,34 @@ extern "C" int av1g_postfilter(const av1g_decision_record *rec, uint8_t *const p
     f.cdefIdx = cdef.data();
     for (uint32_t b = 0; b < rec->n_blocks; b++) av1g_pf_mark_block(&f, &rec->blocks[b]);
     for (int p = 0; p < (f.mono ? 1 : 3); p++) { f.plane[p] = planes[p]; f.stride[p] = stride[p]; }
-    av1g_deblock_frame(&f);
+    av1g_deblock_frame<BD>(&f);
     if (!f.enableCdef) return AV1G_OK;
-    std::vector<uint8_t> out[3];
+    std::vector<P> out[3];
     uint8_t *dst[3] = {nullptr, nullptr, nullptr};
     for (int p = 0; p < (f.mono ? 1 : 3); p++) {
-        const int h = (f.MiRows * 4) >> (p ? 1 : 0);
+        const int h = (f.MiRows * 4) >> (p ? f.ssy : 0);
         out[p].assign((size_t)h * stride[p], 0);
-        dst[p] = out[p].data();
+        dst[p] = (uint8_t *)out[p].data();
     }
-    av1g_cdef_frame(&f, dst, stride);
+    av1g_cdef_frame<BD>(&f, dst, stride);
     for (int p = 0; p < (f.mono ? 1 : 3); p++) {
-        const int h = (f.MiRows * 4) >> (p ? 1 : 0), w = (f.MiCols * 4) >> (p ? 1 : 0);
-        for (int y = 0; y < h; y++) memcpy(planes[p] + (size_t)y * stride[p], dst[p] + (size_t)y * stride[p], (size_t)w);
+        const int h = (f.MiRows * 4) >> (p ? f.ssy : 0), w = (f.MiCols * 4) >> (p ? f.ssx : 0);
+        for (int y = 0; y < h; y++)
+            memcpy(planes[p] + (size_t)y * stride[p] * sizeof(P), dst[p] + (size_t)y * stride[p] * sizeof(P), (size_t)w * sizeof(P));
     }
     return AV1G_OK;
+}
+}  // namespace
+
+extern "C" int av1g_postfilter(const av1g_decision_record *rec, uint8_t *const planes[3], const int stride[3]) {
+    if (!rec || !planes || !stride || av1g_bit_depth(&rec->fp) != 8) return AV1G_ERR_INVALID;
+    return postfilter_planes<8>(rec, planes, stride);
+}
+
+extern "C" int av1g_postfilter16(const av1g_decision_record *rec, uint16_t *const planes[3], const int stride[3]) {
+    if (!rec || !planes || !stride || av1g_bit_depth(&rec->fp) != 10) return AV1G_ERR_INVALID;
+    uint8_t *const pl[3] = {(uint8_t *)planes[0], (uint8_t *)planes[1], (uint8_t *)planes[2]};
+    return postfilter_planes<10>(rec, pl, stride);
 }
 
 int av1g_apply_sb_qindex(av1g_decision_record *rec, const uint8_t *sb_map) {
@@ -1684,6 +1764,7 @@ int av1g_apply_sb_qindex(av1g_decision_record *rec, const uint8_t *sb_map) {
 extern "C" int av1g_layout(av1g_decision_record *rec, uint32_t txb_cap, uint64_t coeff_cap) {
     const av1g_frame_params &fp = rec->fp;
     const int MiCols = av1g_mi_cols(fp.width), MiRows = av1g_mi_rows(fp.height);
+    const int ssx = av1g_ssx(&fp), ssy = av1g_ssy(&fp);
     const bool fill = rec->txb && rec->block_txb;
     uint32_t n = 0;
     uint64_t nc = 0;
@@ -1692,7 +1773,7 @@ extern "C" int av1g_layout(av1g_decision_record *rec, uint32_t txb_cap, uint64_t
         const av1g_block &k = rec->blocks[b];
         if (k.bsize >= AV1G_BLOCK_SIZES || k.mi_row >= MiRows || k.mi_col >= MiCols) return AV1G_ERR_INVALID;
         int depth = k.tx_depth > av1g_max_tx_depth(k.bsize) ? av1g_max_tx_depth(k.bsize) : k.tx_depth;
-        av1g_for_each_txb(k.bsize, k.mi_row, k.mi_col, depth, fp.monochrome, MiRows, MiCols,
+        av1g_for_each_txb(k.bsize, k.mi_row, k.mi_col, depth, fp.monochrome, ssx, ssy, MiRows, MiCols,
                           [&](int, int txSz, int, int, int, int) { n++; nc += av1g_tx_coeffs(txSz); });
     }
     rec->n_txb = n;
@@ -1704,7 +1785,7 @@ extern "C" int av1g_layout(av1g_decision_record *rec, uint32_t txb_cap, uint64_t
         const av1g_block &k = rec->blocks[b];
         rec->block_txb[b] = n;
         int depth = k.tx_depth > av1g_max_tx_depth(k.bsize) ? av1g_max_tx_depth(k.bsize) : k.tx_depth;
-        av1g_for_each_txb(k.bsize, k.mi_row, k.mi_col, depth, fp.monochrome, MiRows, MiCols,
+        av1g_for_each_txb(k.bsize, k.mi_row, k.mi_col, depth, fp.monochrome, ssx, ssy, MiRows, MiCols,
                           [&](int plane, int txSz, int x4, int y4, int, int) {
                               av1g_txb &t = rec->txb[n++];
                               t.coeff_off = (uint32_t)nc;

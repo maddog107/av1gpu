@@ -15,6 +15,9 @@
  *   AV1F_VB_NEAREST  fully parallel nearest legal value (av1g_legalize_sb_qindex rule)
  * Input luma must be readable for the whole SB grid (ingest pads to 64 by edge replication); the
  * kernel uses 8-byte loads: luma pointer 8-byte aligned and pitch a multiple of 8 (ingest: 64).
+ * 10-bit luma (bit_depth = 10): uint16_t samples, pitch in samples, 16-byte loads (16-byte aligned,
+ * pitch a multiple of 8); variances as aom_highbd_10_variance8x8 (8-bit scale) and the 10-bit q tables
+ * (LUTs from av1f_vb_build_luts_bd(..., 10, ...)); descriptors of one call share the bit depth.
  * VRAM: luts 256 KB (once) + 6 B per SB.  One kernel pass reads the luma plane once.
  */
 #ifndef AV1F_VARBOOST_GPU_H
@@ -37,6 +40,7 @@ typedef struct av1f_vb_desc {
     int32_t tile_cols_log2;    /* actual uniform tiling (av1g_tile_layout(...).cols_log2) */
     int32_t tile_rows_log2;
     uint32_t sb_off;           /* first SB of this image in the output arrays */
+    int32_t bit_depth;         /* 8 or 10 (0 = 8): y holds uint16_t samples at 10 bits (appended field) */
 } av1f_vb_desc;
 
 /* SB count of a picture (for sizing / sb_off) */
@@ -45,18 +49,26 @@ static inline uint32_t av1f_vb_num_sbs(int width, int height) {
     return c * r;
 }
 
-/* d_luts: 256 x 1024 bytes, entry [base][var] = SB qindex for variance var < 1024. */
+/* d_luts: 256 x 1024 bytes, entry [base][var] = SB qindex for variance var < 1024 (8-bit / bit_depth q tables). */
 int av1f_vb_build_luts(uint8_t *d_luts, int deltaq_strength_pct, cudaStream_t stream);
+int av1f_vb_build_luts_bd(uint8_t *d_luts, int deltaq_strength_pct, int bit_depth, cudaStream_t stream);
 
 /* n images (descriptors in DEVICE memory), total_sbs = sum of SB counts.  d_sb_var/d_sb_target may
  * be NULL.  Returns 0 or a cudaError_t. */
 int av1f_varboost(const av1f_vb_desc *d_desc, int n, uint32_t total_sbs, const uint8_t *d_luts, int order,
                   uint32_t *d_sb_var, uint8_t *d_sb_target, uint8_t *d_sb_qindex, cudaStream_t stream);
+/* bit_depth: of every descriptor (8 or 10); av1f_varboost = bit_depth 8 */
+int av1f_varboost_bd(const av1f_vb_desc *d_desc, int n, uint32_t total_sbs, const uint8_t *d_luts, int order, int bit_depth,
+                     uint32_t *d_sb_var, uint8_t *d_sb_target, uint8_t *d_sb_qindex, cudaStream_t stream);
 
 /* Host convenience (tests / Python): one image from HOST memory; plane must cover the SB grid. */
 int av1f_varboost_host(const uint8_t *y, int pitch, int width, int height, int base_q_idx, int tile_cols_log2,
                        int tile_rows_log2, int order, int deltaq_strength_pct, uint32_t *sb_var, uint8_t *sb_target,
                        uint8_t *sb_qindex);
+/* the same with a bit depth: 10 -> y is uint16_t samples (pitch in samples) */
+int av1f_varboost_host_bd(const void *y, int pitch, int width, int height, int base_q_idx, int tile_cols_log2,
+                          int tile_rows_log2, int order, int deltaq_strength_pct, int bit_depth, uint32_t *sb_var,
+                          uint8_t *sb_target, uint8_t *sb_qindex);
 
 #ifdef __cplusplus
 }

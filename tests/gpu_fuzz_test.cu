@@ -1,10 +1,11 @@
 // gpu_fuzz_test - random DecisionRecords (same generator as av1g_fuzz: all partitions,
 // modes, angle deltas, CFL, tx sizes/types, tx-select, reduced tx set, delta-q,
-// monochrome, screen-content flag, forced/extra tiles, odd sizes) through the GPU
+// monochrome, 4:4:4, screen-content flag, forced/extra tiles, odd sizes) through the GPU
 // symbolizer + entropy coder through av1g_gpu::run_batch_device (device arrays); streams and
-// tile bytes must equal the CPU writer's.
+// tile bytes must equal the CPU writer's.  Batches mix 4:2:0, 4:4:4 and monochrome frames, 8-bit and 10-bit.
 //
-//   gpu_fuzz_test --seed S --count N [--batch B]
+//   gpu_fuzz_test --seed S --count N [--batch B] [--yuv444 P] [--depth10 P]
+//   (--yuv444: % of colour cases in 4:4:4, default 40; --depth10: % of cases 10-bit, default 40)
 #define AV1G_FUZZ_NO_MAIN
 #include "fuzz.cpp"
 #include "gpu_entropy.h"
@@ -12,14 +13,16 @@
 
 int main(int argc, char **argv) {
     uint64_t seed = 1;
-    int count = 200, batch = 40;
+    int count = 200, batch = 40, pct444 = 40, pct10 = 40;
     for (int i = 1; i < argc; i++) {
         std::string a = argv[i];
         if (a == "--seed" && i + 1 < argc) seed = strtoull(argv[++i], 0, 10);
         else if (a == "--count" && i + 1 < argc) count = atoi(argv[++i]);
         else if (a == "--batch" && i + 1 < argc) batch = atoi(argv[++i]);
+        else if (a == "--yuv444" && i + 1 < argc) pct444 = atoi(argv[++i]);
+        else if (a == "--depth10" && i + 1 < argc) pct10 = atoi(argv[++i]);
     }
-    int bad = 0, done = 0, tilesChecked = 0, capacityErrors = 0, orderCheck = 0, scratchAllocs = 0;
+    int bad = 0, done = 0, tilesChecked = 0, capacityErrors = 0, orderCheck = 0, scratchAllocs = 0, n444 = 0, nMono = 0, n10 = 0;
     uint64_t syms = 0;
     void *scratch = nullptr;
     size_t scratchBytes = 0;
@@ -33,7 +36,10 @@ int main(int argc, char **argv) {
         std::vector<const av1g_decision_record *> frames;
         for (int i = 0; i < n; i++) {
             const uint64_t cs = seed + c0 + i;
-            if (!make_case(cs, false, 300, 2, cases[i])) return 1;
+            if (!make_case(cs, false, 300, 2, cases[i], pct444, pct10)) return 1;
+            n444 += cases[i].rec.fp.chroma_format == AV1G_CHROMA_444;
+            n10 += av1g_bit_depth(&cases[i].rec.fp) == 10;
+            nMono += cases[i].rec.fp.monochrome;
             // make the record conformant (FIX_RANGE), then record the reference streams
             av1g_encode_opts eo = {AV1G_ENC_FIX_RANGE | AV1G_ENC_NO_RECON, -1};
             av1g_output o;
@@ -135,11 +141,20 @@ int main(int argc, char **argv) {
                     br.tileBytes[f].emplace_back(bytes.begin() + toff[i], bytes.begin() + toff[i + 1]);
                     br.tileSyms[f].emplace_back(hs.begin() + sb[i], hs.begin() + se[i]);
                 }
-            // one broken record per run: swapped blocks must be reported (AV1G_GPU_ERR_ORDER), not crash
-            if (c0 == 0 && n > 0 && cases[0].rec.n_blocks > 2) {
-                std::vector<av1g_block> sw(cases[0].rec.blocks, cases[0].rec.blocks + cases[0].rec.n_blocks);
+            // one broken record per run: swapped blocks must be reported (AV1G_GPU_ERR_ORDER), not crash.  The record is
+            // the first of the batch whose first and last blocks lie in different superblocks: the device validator
+            // checks the superblock order, so a swap inside a single-SB frame (tiny sizes) is not an order error it
+            // can see (the previous choice, always case 0, missed it for seeds whose case 0 is such a frame)
+            int sc = -1;
+            for (int i = 0; i < n && sc < 0; i++) {
+                const av1g_decision_record &R = cases[i].rec;
+                const av1g_block &f0 = R.blocks[0], &fl = R.blocks[R.n_blocks - 1];
+                if (R.n_blocks > 2 && ((f0.mi_row >> 4) != (fl.mi_row >> 4) || (f0.mi_col >> 4) != (fl.mi_col >> 4))) sc = i;
+            }
+            if (c0 == 0 && sc >= 0) {
+                std::vector<av1g_block> sw(cases[sc].rec.blocks, cases[sc].rec.blocks + cases[sc].rec.n_blocks);
                 std::swap(sw[0], sw.back());
-                cudaMemcpyAsync(dB + df[0].blockBase, sw.data(), sw.size() * sizeof(av1g_block), cudaMemcpyHostToDevice, stream);
+                cudaMemcpyAsync(dB + df[sc].blockBase, sw.data(), sw.size() * sizeof(av1g_block), cudaMemcpyHostToDevice, stream);
                 cudaStreamSynchronize(stream);
                 b.symbolCapacity = 0;
                 const size_t need = av1g_gpu::run_batch_device_scratch_bytes(b);
@@ -164,8 +179,9 @@ int main(int argc, char **argv) {
             if (!ok) {
                 bad++;
                 const av1g_frame_params &fp = cases[i].rec.fp;
-                printf("seed %llu %ux%u mono%d txsel%d red%d sct%d: GPU MISMATCH\n", (unsigned long long)(seed + c0 + i), fp.width,
-                       fp.height, fp.monochrome, fp.tx_mode_select, fp.reduced_tx_set, fp.allow_screen_content_tools);
+                printf("seed %llu %ux%u mono%d 444%d bd%d txsel%d red%d sct%d: GPU MISMATCH\n", (unsigned long long)(seed + c0 + i), fp.width,
+                       fp.height, fp.monochrome, fp.chroma_format, av1g_bit_depth(&fp), fp.tx_mode_select, fp.reduced_tx_set,
+                       fp.allow_screen_content_tools);
                 for (size_t t = 0; t < cpuSyms[i].size() && t < br.tileSyms[i].size(); t++) {
                     const auto &a = br.tileSyms[i][t], &b = cpuSyms[i][t];
                     size_t k = 0;
@@ -178,9 +194,10 @@ int main(int argc, char **argv) {
         }
         done += n;
     }
-    printf("GPU FUZZ (run_batch_device, device arrays, non-blocking stream, %d scratch allocations) seeds %llu..%llu: %d cases, "
-           "%d tiles, %llu symbols, %d symbol-capacity errors reported + rerun, order check %s, %d mismatches -> %s\n",
-           scratchAllocs, (unsigned long long)seed, (unsigned long long)(seed + count - 1), done, tilesChecked,
+    printf("GPU FUZZ (run_batch_device, device arrays, non-blocking stream, %d scratch allocations) seeds %llu..%llu: %d cases "
+           "(%d 4:4:4, %d monochrome, %d 10-bit), %d tiles, %llu symbols, %d symbol-capacity errors reported + rerun, order check %s, "
+           "%d mismatches -> %s\n",
+           scratchAllocs, (unsigned long long)seed, (unsigned long long)(seed + count - 1), done, n444, nMono, n10, tilesChecked,
            (unsigned long long)syms, capacityErrors, orderCheck > 0 ? "ok" : orderCheck < 0 ? "FAILED" : "not run", bad,
            bad ? "FAILED" : "PASSED");
     cudaFree(scratch);

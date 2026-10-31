@@ -4,8 +4,9 @@
 //                 (jidctint.c, CONST_BITS=13, PASS1_BITS=2, same range-limit table semantics),
 //                 writes the native component plane; for luma also the activity map.
 // finalize_kernel: native planes -> output planes: replicate visible edges, resample native
-//                 sampling to 4:2:0 (2x2 box, libjpeg h2v2_downsample rounding bias 1,2,1,2..),
-//                 optional EXIF orientation.  4 output pixels per thread, 64x16 tiles.
+//                 sampling to 4:2:0 (2x2 box, libjpeg h2v2_downsample rounding bias 1,2,1,2..)
+//                 or to 4:4:4 (libjpeg-turbo's decoder upsampling, jdsample.c), optional EXIF
+//                 orientation.  4 output pixels per thread, 64x16 tiles.
 // act_remap_kernel: activity map into the oriented block grid (only when rotating on GPU).
 #include "kernels.cuh"
 
@@ -205,6 +206,41 @@ __device__ __forceinline__ unsigned fetch(const OutDesc &O, const uint8_t *nat, 
   return __ldg(nat + (size_t)ny * pitch + nx);
 }
 
+// Full-resolution sample of a native component at output (oriented) luma position (ox, oy), as
+// libjpeg-turbo's decoder produces it (jdsample.c, do_fancy_upsampling = TRUE, unscaled): fullsize
+// copy; h2v1 / h2v2 triangle filters ("fancy", ordered-dither rounding biases, first / last column
+// special cases) when the component is more than 2 samples wide, else replication; h1v2 triangle
+// filter; replication (int_upsample) for the other integral ratios.  Vertical context beyond the
+// component (jdmainct.c): the row above row 0 is row 0, rows below the last real row repeat it.
+__device__ __forceinline__ unsigned fetch_full(const OutDesc &O, const uint8_t *nat, int pitch, int ox, int oy) {
+  ox = min(ox, O.Wo - 1);
+  oy = min(oy, O.Ho - 1);
+  int sx, sy;
+  orient_map(O.orient, ox, oy, O.W, O.H, sx, sy);
+  const int hs = O.hs, vs = O.vs, hm = O.hmax, vm = O.vmax;
+  auto px = [&](int x, int y) -> int { return __ldg(nat + (size_t)y * pitch + x); };
+  if (hs == hm && vs == vm) return (unsigned)px(sx, sy);
+  const int dw = (O.W * hs + hm - 1) / hm, dh = (O.H * vs + vm - 1) / vm;   // downsampled_width / height
+  const bool h2 = hs * 2 == hm, v2 = vs * 2 == vm;
+  if (h2 && vs == vm && dw > 2) {                    // h2v1_fancy_upsample
+    const int c = sx >> 1, v = px(c, sy);
+    if (sx & 1) return c == dw - 1 ? (unsigned)v : (unsigned)((v * 3 + px(c + 1, sy) + 2) >> 2);
+    return c == 0 ? (unsigned)v : (unsigned)((v * 3 + px(c - 1, sy) + 1) >> 2);
+  }
+  if (hs == hm && v2) {                              // h1v2_fancy_upsample
+    const int r = sy >> 1, r1 = (sy & 1) ? min(r + 1, dh - 1) : max(r - 1, 0);
+    return (unsigned)((px(sx, r) * 3 + px(sx, r1) + ((sy & 1) ? 2 : 1)) >> 2);
+  }
+  if (h2 && v2 && dw > 2) {                          // h2v2_fancy_upsample
+    const int r = sy >> 1, r1 = (sy & 1) ? min(r + 1, dh - 1) : max(r - 1, 0), c = sx >> 1;
+    auto colsum = [&](int k) { return px(k, r) * 3 + px(k, r1); };
+    const int t = colsum(c);
+    if (sx & 1) return c == dw - 1 ? (unsigned)((t * 4 + 7) >> 4) : (unsigned)((t * 3 + colsum(c + 1) + 7) >> 4);
+    return c == 0 ? (unsigned)((t * 4 + 8) >> 4) : (unsigned)((t * 3 + colsum(c - 1) + 8) >> 4);
+  }
+  return (unsigned)px(sx * hs / hm, sy * vs / vm);   // h2v1 / h2v2 / int_upsample replication
+}
+
 __global__ void __launch_bounds__(256) finalize_kernel(const OutDesc *__restrict__ outs, int nouts,
                                                        const PlaneDesc *__restrict__ planes,
                                                        const uint8_t *__restrict__ native, uint8_t *__restrict__ pool) {
@@ -228,6 +264,9 @@ __global__ void __launch_bounds__(256) finalize_kernel(const OutDesc *__restrict
   if (!O.chroma) {
 #pragma unroll
     for (int i = 0; i < 4; ++i) packed |= fetch(O, nat, np, x0 + i, y) << (8 * i);
+  } else if (O.chroma == 2) {
+#pragma unroll
+    for (int i = 0; i < 4; ++i) packed |= fetch_full(O, nat, np, x0 + i, y) << (8 * i);
   } else {
 #pragma unroll
     for (int i = 0; i < 4; ++i) {
