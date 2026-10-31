@@ -1,0 +1,26 @@
++ cd /home/ubuntu/av1gpu
++ P=/home/ubuntu/venv/bin/python
++ export LD_LIBRARY_PATH=/home/ubuntu/venv/lib/python3.12/site-packages/nvidia/cudnn/lib:/usr/local/cuda-13.2/lib:/usr/local/cuda-13.2/lib64:/usr/local/cuda-13.2:/usr/local/cuda-13.2/targets/x86_64-linux/lib/:/usr/local/cuda-13.2/extras/CUPTI/lib64:/opt/amazon/openmpi/lib:/usr/local/lib:/usr/lib
++ LD_LIBRARY_PATH=/home/ubuntu/venv/lib/python3.12/site-packages/nvidia/cudnn/lib:/usr/local/cuda-13.2/lib:/usr/local/cuda-13.2/lib64:/usr/local/cuda-13.2:/usr/local/cuda-13.2/targets/x86_64-linux/lib/:/usr/local/cuda-13.2/extras/CUPTI/lib64:/opt/amazon/openmpi/lib:/usr/local/lib:/usr/lib
++ mkdir -p /home/ubuntu/images4
++ for f in 370f7c330a75892f_large.jpg bd4ff3b451c3ba6b_large.jpg ca12d94f3a1dca2c_large.jpg fe00a8d898a01166_large.jpg
++ ln -f /home/ubuntu/images_gamut/370f7c330a75892f_large.jpg /home/ubuntu/images4/370f7c330a75892f_large.jpg
++ for f in 370f7c330a75892f_large.jpg bd4ff3b451c3ba6b_large.jpg ca12d94f3a1dca2c_large.jpg fe00a8d898a01166_large.jpg
++ ln -f /home/ubuntu/images_gamut/bd4ff3b451c3ba6b_large.jpg /home/ubuntu/images4/bd4ff3b451c3ba6b_large.jpg
++ for f in 370f7c330a75892f_large.jpg bd4ff3b451c3ba6b_large.jpg ca12d94f3a1dca2c_large.jpg fe00a8d898a01166_large.jpg
++ ln -f /home/ubuntu/images_gamut/ca12d94f3a1dca2c_large.jpg /home/ubuntu/images4/ca12d94f3a1dca2c_large.jpg
++ for f in 370f7c330a75892f_large.jpg bd4ff3b451c3ba6b_large.jpg ca12d94f3a1dca2c_large.jpg fe00a8d898a01166_large.jpg
++ ln -f /home/ubuntu/images_gamut/fe00a8d898a01166_large.jpg /home/ubuntu/images4/fe00a8d898a01166_large.jpg
++ ph p3_start
+++ date -u +%FT%TZ
++ echo 'PHASE p3_start 2026-10-31T08:09:07Z'
++ /home/ubuntu/venv/bin/python bench/bench.py --images /home/ubuntu/images4 --out /home/ubuntu/results/p3 --av1gpu /home/ubuntu/w4.sh --avifenc /home/ubuntu/opt/bin/avifenc --avifdec /home/ubuntu/opt/bin/avifdec --ssimulacra2 /home/ubuntu/opt/bin/ssimulacra2 --skip-speed --aom-speeds 6,9 --svt-presets 4,6,9 --svt-tune 3 --avifdec-codec dav1d --cvvdp standard_fhd --quality 30,40,50,60,70,80,85,90 --webp-quality 50,60,70,80,90,95,98,100 --keep
++ NV_SRC=/home/ubuntu/images4
++ /home/ubuntu/venv/bin/python /home/ubuntu/nvenc_encode.py /home/ubuntu/nv/q3 6,12,18,25,32,38,44,50
++ echo 'bench exit 0'
++ wait
++ /home/ubuntu/venv/bin/python /home/ubuntu/nvenc_score.py /home/ubuntu/av1gpu /home/ubuntu/nv/q3 /home/ubuntu/results/nvenc_p3.json standard_fhd
++ /home/ubuntu/venv/bin/python /home/ubuntu/cvvdp_luma.py /home/ubuntu/results/cvvdp_luma_p3.json av1gpu=/home/ubuntu/results/p3/files/av1gpu aom_s6=/home/ubuntu/results/p3/files/aom_s6
++ ph p3_done
+++ date -u +%FT%TZ
++ echo 'PHASE p3_done 2026-10-31T08:12:51Z'

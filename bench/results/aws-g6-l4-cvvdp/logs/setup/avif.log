@@ -1,0 +1,120 @@
+-- The C compiler identification is GNU 13.3.0
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: /usr/bin/cc - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Found PkgConfig: /usr/bin/pkg-config (found version "1.8.1") 
+-- Checking for module 'libyuv'
+--   Package 'libyuv', required by 'virtual:world', not found
+-- libavif: libyuv (1883) found; libyuv-based fast paths enabled.
+-- libavif: Enabling warnings for GCC
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Success
+-- Found Threads: TRUE  
+-- Checking for module 'dav1d'
+--   Found dav1d, version 1.4.1
+-- libavif: Codec enabled: dav1d (decode)
+-- Checking for module 'SvtAv1Enc'
+--   Found SvtAv1Enc, version 4.2.0
+-- libavif: Codec enabled: svt (encode)
+-- Checking for module 'aom'
+--   Found aom, version 3.13.1
+-- libavif: Codec enabled: aom (encode/decode)
+-- The CXX compiler identification is GNU 13.3.0
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /usr/bin/c++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Found ZLIB: /usr/lib/x86_64-linux-gnu/libz.so (found version "1.3")  
+-- Found PNG: /usr/lib/x86_64-linux-gnu/libpng.so (found suitable version "1.6.43", minimum required is "1.6.32") 
+-- Found JPEG: /usr/lib/x86_64-linux-gnu/libjpeg.so (found version "80") 
+-- libavif: libxml2 not found; avifenc will ignore any gain map in JPEG files
+-- libavif(libargparse): compiled library not found at /home/ubuntu/src/libavif/ext/libargparse/build/libargparse.a; using FetchContent
+-- libavif(libargparse): fetching and configuring libargparse
+-- libavif(libargparse): fetching and configuring libargparse - complete
+-- Configuring done (1.1s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/ubuntu/src/avif-build
+ninja: Entering directory `avif-build'
+[1/62] Building C object CMakeFiles/avif_obj.dir/src/mem.c.o
+[2/62] Building C object CMakeFiles/avif_obj.dir/src/reformat_libsharpyuv.c.o
+[3/62] Building C object CMakeFiles/avif_obj.dir/src/diag.c.o
+[4/62] Building C object CMakeFiles/avif_obj.dir/src/properties.c.o
+[5/62] Building C object CMakeFiles/avif_obj.dir/src/rawdata.c.o
+[6/62] Building C object CMakeFiles/avif_obj.dir/src/exif.c.o
+[7/62] Building C object CMakeFiles/avif_obj.dir/src/io.c.o
+[8/62] Building C object CMakeFiles/avif_apps.dir/apps/shared/avifexif.c.o
+[9/62] Building C object CMakeFiles/avif_obj.dir/src/colrconvert.c.o
+[10/62] Building C object CMakeFiles/avif_obj.dir/src/scale.c.o
+[11/62] Building C object CMakeFiles/avif_obj.dir/src/codec_dav1d.c.o
+[12/62] Building C object CMakeFiles/avif_obj.dir/src/utils.c.o
+[13/62] Building C object CMakeFiles/avif_obj.dir/src/sampletransform.c.o
+[14/62] Building C object CMakeFiles/avif_obj.dir/src/colr.c.o
+[15/62] Building C object CMakeFiles/avif_apps_internal.dir/apps/shared/avifexif.c.o
+[16/62] Building C object CMakeFiles/avif_obj.dir/src/alpha.c.o
+[17/62] Building C object CMakeFiles/avif_obj.dir/src/reformat_libyuv.c.o
+[18/62] Building C object CMakeFiles/avif_obj.dir/src/codec_svt.c.o
+[19/62] Building C object CMakeFiles/avif_apps.dir/third_party/iccjpeg/iccjpeg.c.o
+[20/62] Building C object CMakeFiles/avif_apps.dir/apps/shared/avifjpeg.c.o
+[21/62] Building C object CMakeFiles/avif_apps.dir/apps/shared/iccmaker.c.o
+[22/62] Building C object CMakeFiles/avif_apps.dir/apps/shared/avifpng.c.o
+[23/62] Building C object CMakeFiles/avif_obj.dir/src/codec_aom.c.o
+[24/62] Building C object CMakeFiles/avif_apps.dir/apps/shared/y4m.c.o
+[25/62] Building C object CMakeFiles/avif_apps_internal.dir/third_party/iccjpeg/iccjpeg.c.o
+[26/62] Building C object CMakeFiles/avif_apps_internal.dir/apps/shared/iccmaker.c.o
+[27/62] Building C object CMakeFiles/avif_obj.dir/src/stream.c.o
+[28/62] Building C object CMakeFiles/avif_apps.dir/apps/shared/avifutil.c.o
+[29/62] Building C object CMakeFiles/avif_apps_internal.dir/apps/shared/avifjpeg.c.o
+[30/62] Building C object CMakeFiles/avif_obj.dir/src/avif.c.o
+[31/62] Building C object CMakeFiles/avif_apps_internal.dir/apps/shared/y4m.c.o
+[32/62] Building C object CMakeFiles/avif_apps_internal.dir/apps/shared/avifpng.c.o
+[33/62] Building C object CMakeFiles/avifdec.dir/apps/avifdec.c.o
+[34/62] Building C object CMakeFiles/avif_apps_internal.dir/apps/shared/avifutil.c.o
+[35/62] Building C object CMakeFiles/avif_obj.dir/src/obu.c.o
+[36/62] Building C object CMakeFiles/avif_obj.dir/src/gainmap.c.o
+[37/62] Building CXX object CMakeFiles/avifgainmaputil.dir/apps/avifgainmaputil/imageio.cc.o
+[38/62] Building C object CMakeFiles/avif_obj.dir/src/reformat.c.o
+[39/62] Building C object CMakeFiles/avifenc.dir/apps/avifenc.c.o
+[40/62] Building C object CMakeFiles/avif_obj.dir/src/write.c.o
+[41/62] Building CXX object CMakeFiles/avifgainmaputil.dir/apps/avifgainmaputil/program_command.cc.o
+[42/62] Building CXX object _deps/libargparse-build/CMakeFiles/libargparse.dir/src/argparse_util.cpp.o
+[43/62] Building CXX object CMakeFiles/avifgainmaputil.dir/apps/avifgainmaputil/avifgainmaputil.cc.o
+[44/62] Building CXX object _deps/libargparse-build/CMakeFiles/libargparse.dir/src/argparse_formatter.cpp.o
+[45/62] Building CXX object CMakeFiles/avifgainmaputil.dir/apps/avifgainmaputil/extractgainmap_command.cc.o
+[46/62] Building C object CMakeFiles/avif_obj.dir/src/read.c.o
+[47/62] Linking C static library libavif_internal.a
+[48/62] Linking C static library libavif_apps_internal.a
+[49/62] Linking CXX shared library libavif.so.16.4.0
+[50/62] Creating library symlink libavif.so.16 libavif.so
+[51/62] Linking C static library libavif_apps.a
+[52/62] Linking CXX executable avifenc
+[53/62] Linking CXX executable avifdec
+[54/62] Building CXX object CMakeFiles/avifgainmaputil.dir/apps/avifgainmaputil/printmetadata_command.cc.o
+[55/62] Building CXX object CMakeFiles/avifgainmaputil.dir/apps/avifgainmaputil/swapbase_command.cc.o
+[56/62] Building CXX object CMakeFiles/avifgainmaputil.dir/apps/avifgainmaputil/combine_command.cc.o
+[57/62] Building CXX object CMakeFiles/avifgainmaputil.dir/apps/avifgainmaputil/convert_command.cc.o
+[58/62] Building CXX object _deps/libargparse-build/CMakeFiles/libargparse.dir/src/argparse.cpp.o
+[59/62] Linking CXX static library _deps/libargparse-build/libargparse.a
+[60/62] Building CXX object CMakeFiles/avifgainmaputil.dir/apps/avifgainmaputil/tonemap_command.cc.o
+[61/62] Linking CXX executable avifgainmaputil
+[61/62] Install the project...
+-- Install configuration: "Release"
+-- Installing: /home/ubuntu/opt/bin/avifenc
+-- Set non-toolchain portion of runtime path of "/home/ubuntu/opt/bin/avifenc" to "/home/ubuntu/opt/lib"
+-- Installing: /home/ubuntu/opt/bin/avifdec
+-- Set non-toolchain portion of runtime path of "/home/ubuntu/opt/bin/avifdec" to "/home/ubuntu/opt/lib"
+-- Installing: /home/ubuntu/opt/bin/avifgainmaputil
+-- Set non-toolchain portion of runtime path of "/home/ubuntu/opt/bin/avifgainmaputil" to "/home/ubuntu/opt/lib"
+-- Installing: /home/ubuntu/opt/lib/libavif.so.16.4.0
+-- Installing: /home/ubuntu/opt/lib/libavif.so.16
+-- Set non-toolchain portion of runtime path of "/home/ubuntu/opt/lib/libavif.so.16.4.0" to "/home/ubuntu/opt/lib"
+-- Installing: /home/ubuntu/opt/lib/libavif.so
+-- Installing: /home/ubuntu/opt/lib/cmake/libavif/libavif-config.cmake
+-- Installing: /home/ubuntu/opt/lib/cmake/libavif/libavif-config-release.cmake
+-- Installing: /home/ubuntu/opt/lib/cmake/libavif/libavif-config-version.cmake
+-- Installing: /home/ubuntu/opt/lib/pkgconfig/libavif.pc
+-- Installing: /home/ubuntu/opt/include/avif/avif.h
+-- Installing: /home/ubuntu/opt/include/avif/avif_cxx.h
+exit 0

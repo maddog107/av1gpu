@@ -1,0 +1,25 @@
++ cd /home/ubuntu/av1gpu
++ P=/home/ubuntu/venv/bin/python
++ export LD_LIBRARY_PATH=/home/ubuntu/venv/lib/python3.12/site-packages/nvidia/cudnn/lib:/usr/local/cuda-13.2/lib:/usr/local/cuda-13.2/lib64:/usr/local/cuda-13.2:/usr/local/cuda-13.2/targets/x86_64-linux/lib/:/usr/local/cuda-13.2/extras/CUPTI/lib64:/opt/amazon/openmpi/lib:/usr/local/lib:/usr/lib
++ LD_LIBRARY_PATH=/home/ubuntu/venv/lib/python3.12/site-packages/nvidia/cudnn/lib:/usr/local/cuda-13.2/lib:/usr/local/cuda-13.2/lib64:/usr/local/cuda-13.2:/usr/local/cuda-13.2/targets/x86_64-linux/lib/:/usr/local/cuda-13.2/extras/CUPTI/lib64:/opt/amazon/openmpi/lib:/usr/local/lib:/usr/lib
++ ph p2_start
+++ date -u +%FT%TZ
++ echo 'PHASE p2_start 2026-10-31T07:26:44Z'
++ /home/ubuntu/venv/bin/python bench/bench.py --images /home/ubuntu/images_gamut --out /home/ubuntu/results/p2 --av1gpu /home/ubuntu/w4.sh --avifenc /home/ubuntu/opt/bin/avifenc --avifdec /home/ubuntu/opt/bin/avifdec --ssimulacra2 /home/ubuntu/opt/bin/ssimulacra2 --skip-speed --aom-speeds 6,9 --svt-presets 4,6,9 --svt-tune 3 --avifdec-codec dav1d --cvvdp standard_fhd --quality 85,90 --webp-quality 98,100 --keep
++ /home/ubuntu/venv/bin/python /home/ubuntu/nvenc_encode.py /home/ubuntu/nv/q2 12,6
+++ date -u +%FT%TZ
++ echo 'PHASE nvenc_enc_p2_done 2026-10-31T07:28:32Z'
++ echo 'bench exit 0'
++ ph p2_bench_done
+++ date -u +%FT%TZ
++ echo 'PHASE p2_bench_done 2026-10-31T07:37:36Z'
++ wait
++ /home/ubuntu/venv/bin/python /home/ubuntu/nvenc_score.py /home/ubuntu/av1gpu /home/ubuntu/nv/q2 /home/ubuntu/results/nvenc_p2.json standard_fhd
++ ph p2_nvenc_score_done
+++ date -u +%FT%TZ
++ echo 'PHASE p2_nvenc_score_done 2026-10-31T07:39:04Z'
++ /home/ubuntu/venv/bin/python /home/ubuntu/webp_icc.py /home/ubuntu/results/p1/files/webp /home/ubuntu/results/p2/files/webp /home/ubuntu/results/webp_icc.json
++ /home/ubuntu/venv/bin/python /home/ubuntu/bytes_check.py /home/ubuntu/av1gpu /home/ubuntu/results/p2/files /home/ubuntu/nv/q2 /home/ubuntu/results/bytes_p2.json
++ ph p2_done
+++ date -u +%FT%TZ
++ echo 'PHASE p2_done 2026-10-31T07:41:43Z'
