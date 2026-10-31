@@ -41,6 +41,13 @@ static void usage() {
             "  --qindex Q[,Q2,...]     AV1 base_q_idx 1..255 instead of --quality (batch mode: one pass per value)\n"
             "  --preset P              slow|base|fast|faster|turbo|turbo2|turbo3 (default turbo)\n"
             "  --small-preset P|none   preset for images below --small-mp megapixels (default base, 1 MP)\n"
+            "  --tiles MIN_MP,C,R      images of at least MIN_MP megapixels get 2^C x 2^R uniform tiles (C, R: 0..6) instead\n"
+            "                          of the preset's tiling (turbo, turbo2: 2,1,1 = 2x2 tiles from 2 MP; turbo3: 2,2,1 =\n"
+            "                          4x2; other presets: none).  MIN_MP 0: no extra tiles, only those AV1 requires (frames\n"
+            "                          wider than 4096 or larger than 9.4 MP); an image too small for the grid gets those\n"
+            "                          too.  More tiles shorten the wavefront, which helps GPUs with many SMs, and each costs\n"
+            "                          a little compression.  Applies wherever it is given (before or after --preset), also\n"
+            "                          to lossy alpha frames; lossless frames use --ll-tile-area\n"
             "  --tune iq|none          libaom tune=iq tool set: chroma delta-q, QM, variance boost, deblock, CDEF\n"
             "  --yuv 420|444           chroma format of colour images (default 420).  444: full-resolution chroma,\n"
             "                          AV1 High profile; PNG/WebP are converted without chroma downsampling, 4:4:4\n"
@@ -62,7 +69,7 @@ static void usage() {
             "  --ycgco-re              with --lossless: RGB as YCgCo-Re (CICP matrix 16, libavif / H.273) instead of GBR:\n"
             "                          8-bit RGB -> 10-bit 4:4:4 (2 extra bits); usually smaller than GBR for photos\n"
             "  --ll-tile-area N        with --lossless: uniform tiles of at most N pixels (default 262144; more tiles code\n"
-            "                          faster on the GPU, each costs ~0.1-0.4 %%; 0: the preset's tiling)\n"
+            "                          faster on the GPU, each costs ~0.1-0.4 %%; 0: the --tiles / preset tiling)\n"
             "  --alpha-quality Q       0..100: quality of the alpha channel; alpha quality defaults to --quality, as in avifenc\n"
             "                          1.2+; 100 = lossless.  PNG / WebP inputs with transparency (any alpha below the maximum)\n"
             "                          get an AVIF alpha item (straight alpha, as libavif writes it): a monochrome AV1 image at\n"
@@ -109,6 +116,9 @@ struct Opts {
     bool yuvSet = false, depthSet = false;   // explicit --yuv / --depth (not combinable with --lossless)
     int colourQuality = -1;   // the last --quality value (-1: --qindex set the colour quantizer)
     int alphaQuality = -1;    // --alpha-quality (-1: follow --quality)
+    bool tilesSet = false;    // --tiles (the last one): applied after all options, so a --preset after it keeps it
+    float tileMinMp = 0;
+    int tileColsLog2 = 0, tileRowsLog2 = 0;
 };
 
 // alpha quality -> qindex as libavif codes alpha with libaom (tune=psnr: quantizer ((100 - Q) * 63 + 50) / 100, libaom's
@@ -290,7 +300,17 @@ static bool parse(int argc, char **argv, GpConfig &cfg, Opts &o) {
         else if (a == "--uv-deltas") cfg.P.uvDeltas = atoi(nxt());
         else if (a == "--prune-flat") cfg.P.pruneFlat = (float)atof(nxt());
         else if (a == "--k-large") cfg.P.kLarge = atoi(nxt());
-        else if (a == "--tiles") { sscanf(nxt(), "%f,%d,%d", &cfg.tileMinMp, &cfg.tileColsLog2, &cfg.tileRowsLog2); }
+        else if (a == "--tiles") {
+            const char *v = nxt();
+            float mp = 0;
+            int c = 0, r = 0;
+            char tail = 0;
+            if (sscanf(v, "%f,%d,%d%c", &mp, &c, &r, &tail) != 3 || !(mp >= 0) || c < 0 || c > 6 || r < 0 || r > 6) {
+                fprintf(stderr, "--tiles needs MIN_MP,COLS_LOG2,ROWS_LOG2 (MIN_MP >= 0, log2 values 0..6), e.g. 2,2,2\n");
+                return false;
+            }
+            o.tilesSet = true; o.tileMinMp = mp; o.tileColsLog2 = c; o.tileRowsLog2 = r;
+        }
         else if (a == "--deltas-max-area") cfg.P.deltasMaxArea = atoi(nxt());
         else if (a == "--prof") cfg.P.profile = 1;
         else if (a == "--uv-in-dp") { cfg.P.uvInDp = 1; cfg.P.uvOverheadBits = 0.f; }
@@ -313,6 +333,11 @@ static bool parse(int argc, char **argv, GpConfig &cfg, Opts &o) {
         else if (a.size() > 1 && a[0] == '-' && a[1] == '-') { fprintf(stderr, "unknown option %s\n", a.c_str()); return false; }
         else pos.push_back(a);
     }
+    // --tiles replaces the preset's tiling wherever it appears (apply_preset resets the tiling, so --preset after
+    // --tiles would otherwise undo it).  The small preset only contributes its speed knobs (cfg.Psmall), so these
+    // tiles apply to images below --small-mp too, and to lossy alpha frames (gp_alpha_config keeps them); lossless
+    // frames use --ll-tile-area unless it is 0
+    if (o.tilesSet) { cfg.tileMinMp = o.tileMinMp; cfg.tileColsLog2 = o.tileColsLog2; cfg.tileRowsLog2 = o.tileRowsLog2; }
     if (o.batch.empty()) {
         if (pos.size() != 2) return false;
         o.in = pos[0];
