@@ -19,8 +19,6 @@ option(AV1GPU_CUDA "Build the CUDA encoder" ON)
 option(AV1GPU_TESTS "Build the tests" ON)
 # release binaries: libjpeg, libpng, zlib, libwebp and nvJPEG linked in, so only the NVIDIA driver is needed
 option(AV1GPU_STATIC_DEPS "Link the image libraries and nvJPEG statically" OFF)
-set(AV1GPU_CLANG_CUDA_PATH "" CACHE PATH
-  "CUDA toolkit used by Clang; set this when /usr/local/cuda is newer than Clang supports")
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -56,14 +54,20 @@ endif()
 
 # ---------------------------------------------------------------------------------------------------
 enable_language(CUDA)
+# the toolkit CMake found for the CUDA compiler (with Clang, CMAKE_CUDA_COMPILER_VERSION is Clang's version)
+find_package(CUDAToolkit 12.0 REQUIRED)
 if(AV1GPU_DEFAULT_ARCHS)
-  if(CMAKE_CUDA_COMPILER_VERSION VERSION_GREATER_EQUAL 12.8)
+  if(CUDAToolkit_VERSION VERSION_GREATER_EQUAL 12.8)
     set(CMAKE_CUDA_ARCHITECTURES "75-real;80-real;86-real;89-real;90-real;100-real;120-real;120-virtual")
   else()
     set(CMAKE_CUDA_ARCHITECTURES "75-real;80-real;86-real;89-real;90-real;90-virtual")
   endif()
+  if(CMAKE_CUDA_COMPILER_ID STREQUAL "Clang")
+    # Clang has no PTX-only targets (CMake warns): the newest architecture gets SASS + PTX instead ("120")
+    string(REGEX REPLACE "-real;[0-9]+-virtual$" "" CMAKE_CUDA_ARCHITECTURES "${CMAKE_CUDA_ARCHITECTURES}")
+  endif()
 endif()
-message(STATUS "CUDA ${CMAKE_CUDA_COMPILER_VERSION}, architectures: ${CMAKE_CUDA_ARCHITECTURES}")
+message(STATUS "CUDA ${CUDAToolkit_VERSION} (${CMAKE_CUDA_COMPILER_ID} ${CMAKE_CUDA_COMPILER_VERSION}), architectures: ${CMAKE_CUDA_ARCHITECTURES}")
 set(CMAKE_CUDA_STANDARD 17)
 set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 set(CMAKE_CUDA_FLAGS_RELEASE "-O3")
@@ -72,16 +76,12 @@ if(CMAKE_CUDA_COMPILER_ID STREQUAL "NVIDIA")
 endif()
 set(CMAKE_CUDA_RUNTIME_LIBRARY Static)
 if(CMAKE_CUDA_COMPILER_ID STREQUAL "Clang")
-  # Clang 23's CUDA support tops out at toolkit 13.2; a newer /usr/local/cuda still
-  # compiles, but ptxas is used from that toolkit.
+  # Clang (-DCMAKE_CUDA_COMPILER=clang++; pick the toolkit with -DCUDAToolkit_ROOT): it still compiles with
+  # a toolkit newer than it knows, but would warn about that in every file
   add_compile_options($<$<COMPILE_LANGUAGE:CUDA>:-Wno-unknown-cuda-version>)
-  if(AV1GPU_CLANG_CUDA_PATH)
-    # CMake supplies its detected --cuda-path before target options; placing
-    # this option here lets an explicitly requested toolkit take precedence.
-    add_compile_options($<$<COMPILE_LANGUAGE:CUDA>:--cuda-path=${AV1GPU_CLANG_CUDA_PATH}>)
-  endif()
 endif()
-find_package(CUDAToolkit 12.0 REQUIRED)
+# nvcc only: constexpr host functions (std::min, ...) callable from device code; Clang allows that by default
+set(AV1GPU_CUDA_OPTIONS $<$<AND:$<COMPILE_LANGUAGE:CUDA>,$<CUDA_COMPILER_ID:NVIDIA>>:--expt-relaxed-constexpr>)
 if(AV1GPU_STATIC_DEPS)
   set(CMAKE_FIND_LIBRARY_SUFFIXES .a)
   set(AV1GPU_NVJPEG CUDA::nvjpeg_static)
@@ -97,15 +97,18 @@ find_package(Threads REQUIRED)
 # av1core GPU backend: symbolization + entropy coding, deblocking + CDEF
 add_library(av1core_gpu STATIC av1core/src/gpu_entropy.cu av1core/src/gpu_postfilter.cu)
 target_link_libraries(av1core_gpu PUBLIC av1core CUDA::cudart_static)
-# per-thread default stream: the entropy thread's batches run concurrently with the next encode
-target_compile_options(av1core_gpu PRIVATE
-  $<$<AND:$<COMPILE_LANGUAGE:CUDA>,$<CUDA_COMPILER_ID:NVIDIA>>:--expt-relaxed-constexpr --default-stream per-thread>)
+# per-thread default stream: the entropy thread's batches run concurrently with the next encode.  Clang's driver
+# passes -fgpu-default-stream on for HIP only (for CUDA it warns "argument unused"), so it goes to cc1 directly,
+# which then does what nvcc does (cudaLaunchKernel_ptsz for <<<>>>, the _ptds runtime API)
+target_compile_options(av1core_gpu PRIVATE ${AV1GPU_CUDA_OPTIONS}
+  $<$<AND:$<COMPILE_LANGUAGE:CUDA>,$<CUDA_COMPILER_ID:NVIDIA>>:--default-stream per-thread>
+  "$<$<AND:$<COMPILE_LANGUAGE:CUDA>,$<CUDA_COMPILER_ID:Clang>>:SHELL:-Xclang -fgpu-default-stream=per-thread>")
 
 # av1f: libaom tune=iq decisions, variance boost, loop-filter / CDEF strength search
 add_library(av1f STATIC av1f/src/varboost.cu av1f/src/lfsearch.cu)
 target_include_directories(av1f PUBLIC av1f/include)
 target_link_libraries(av1f PUBLIC av1core CUDA::cudart_static)
-target_compile_options(av1f PRIVATE $<$<AND:$<COMPILE_LANGUAGE:CUDA>,$<CUDA_COMPILER_ID:NVIDIA>>:--expt-relaxed-constexpr>)
+target_compile_options(av1f PRIVATE ${AV1GPU_CUDA_OPTIONS})
 
 # ingest: JPEG -> GPU-resident 4:2:0 planes (nvJPEG hardware/hybrid decode or CPU entropy decode + GPU IDCT)
 add_library(gpujpegingest STATIC ingest/src/jpeg_reader.cpp ingest/src/kernels.cu ingest/src/pipeline.cu)
@@ -119,7 +122,7 @@ add_library(av1gpu_recon OBJECT
   encoder/src/k_recon.cu encoder/src/k_recon_444_8.cu encoder/src/k_recon_420_10.cu encoder/src/k_recon_444_10.cu)
 set_property(TARGET av1gpu_recon PROPERTY JOB_POOL_COMPILE av1gpu_recon)
 target_include_directories(av1gpu_recon PRIVATE encoder/src)
-target_compile_options(av1gpu_recon PRIVATE $<$<AND:$<COMPILE_LANGUAGE:CUDA>,$<CUDA_COMPILER_ID:NVIDIA>>:--expt-relaxed-constexpr>)
+target_compile_options(av1gpu_recon PRIVATE ${AV1GPU_CUDA_OPTIONS})
 target_link_libraries(av1gpu_recon PRIVATE av1f av1core_gpu gpujpegingest PNG::PNG PkgConfig::WEBP Threads::Threads)
 
 # encoder: analysis, partition DP, wavefront reconstruction, batching
@@ -129,7 +132,7 @@ add_library(av1gpu_encoder STATIC
   encoder/src/imageio.cpp encoder/src/entropy_gpu.cpp encoder/src/entropy_dev.cu encoder/src/batch.cpp)
 target_include_directories(av1gpu_encoder PUBLIC encoder/src)
 target_compile_options(av1gpu_encoder PRIVATE
-  $<$<AND:$<COMPILE_LANGUAGE:CUDA>,$<CUDA_COMPILER_ID:NVIDIA>>:--expt-relaxed-constexpr>
+  ${AV1GPU_CUDA_OPTIONS}
   $<$<COMPILE_LANGUAGE:CXX>:-Wall -Wno-unused-function -Wno-missing-braces>)
 target_link_libraries(av1gpu_encoder PUBLIC av1f av1core_gpu gpujpegingest PNG::PNG PkgConfig::WEBP Threads::Threads)
 
@@ -141,14 +144,14 @@ if(AV1GPU_TESTS)
   foreach(t gpu_fuzz_test gpu_postfilter_test)
     add_executable(${t} tests/${t}.cu)
     target_link_libraries(${t} av1core_gpu)
-    target_compile_options(${t} PRIVATE $<$<AND:$<COMPILE_LANGUAGE:CUDA>,$<CUDA_COMPILER_ID:NVIDIA>>:--expt-relaxed-constexpr>)
+    target_compile_options(${t} PRIVATE ${AV1GPU_CUDA_OPTIONS})
   endforeach()
   add_executable(gpu_dsp_test tests/gpu_dsp_test.cu)
   target_link_libraries(gpu_dsp_test av1core CUDA::cudart_static)
-  target_compile_options(gpu_dsp_test PRIVATE $<$<AND:$<COMPILE_LANGUAGE:CUDA>,$<CUDA_COMPILER_ID:NVIDIA>>:--expt-relaxed-constexpr>)
+  target_compile_options(gpu_dsp_test PRIVATE ${AV1GPU_CUDA_OPTIONS})
   add_executable(varboost_test tests/varboost_test.cu)
   target_link_libraries(varboost_test av1f)
-  target_compile_options(varboost_test PRIVATE $<$<AND:$<COMPILE_LANGUAGE:CUDA>,$<CUDA_COMPILER_ID:NVIDIA>>:--expt-relaxed-constexpr>)
+  target_compile_options(varboost_test PRIVATE ${AV1GPU_CUDA_OPTIONS})
   # decoder identity on tests/gate_images (dav1d + aomdec): cfl_edge_211x149.png gets CfL blocks with a split
   # luma tx on the bottom frame edge (CfL MaxLumaW/H); AB-only partitions make --preset slow reach them
   find_package(Python3 COMPONENTS Interpreter)
