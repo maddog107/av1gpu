@@ -48,6 +48,8 @@ struct FrameG {
     uint32_t sbBase, nSb, tileBase, nTiles;
     int tileCols, tileRows, tileWsb, tileHsb;    // uniform tile grid
 };
+// lossless frame (base_q_idx 0, every DeltaQ 0: av1g_encode's rule): 4x4 WHT, no tx types, the lossless CfL rule
+__device__ __forceinline__ int frame_lossless(const FrameG &F) { return F.qidx == 0; }
 struct TileG {
     uint32_t frame;
     int miRowStart, miRowEnd, miColStart, miColEnd;
@@ -104,6 +106,7 @@ __global__ void k_txctx(const av1g_block *blocks, const uint32_t *blockFrame, co
     const av1g_txb x = txb[t];
     const int plane = x.plane, txSz = x.tx_size;
     int type = plane ? av1g_chroma_tx_type(txSz, k.uv_mode, F.reduced) : x.tx_type;
+    if (frame_lossless(F)) type = AV1G_DCT_DCT;   // lossless: compute_tx_type is DCT_DCT (the WHT) in every plane
     int eob = 0, cul = 0, dc = 0;
     if (!k.skip) {
         const int16_t *q = coeffs + F.coeffBase + x.coeff_off;
@@ -193,7 +196,7 @@ __global__ void k_txsym(const av1g_block *blocks, const uint32_t *blockFrame, co
     if (eob > 0) {
         if (plane == 0) {
             const int set = av1g_get_tx_set_intra(txSz, F.reduced);
-            if (set > 0) {
+            if (set > 0 && F.qidx > 0) {   // transform_type: coded only for base_q_idx > 0
                 const int sqr = AV1G_T(Tx_Size_Sqr)[txSz];
                 const int intraDir = k.filter_intra ? AV1G_T(Filter_Intra_Mode_To_Intra_Dir)[k.filter_intra - 1] : k.y_mode;
                 int idx = 0;
@@ -400,7 +403,7 @@ __device__ void w_block(Walk &w, int r, int c, int bsize) {
     if (bsize >= AV1G_BLOCK_8X8 && av1g_is_directional(k.y_mode))
         o.sym(CID(angle_delta[k.y_mode - AV1G_V_PRED]), k.angle_delta_y + 3, 7);
     if (hasChroma) {
-        if (av1g_cfl_allowed(bsize)) o.sym(CID(uv_mode_cfl_allowed[k.y_mode]), k.uv_mode, 14);
+        if (av1g_cfl_allowed_ex(bsize, frame_lossless(F), F.ssx, F.ssy)) o.sym(CID(uv_mode_cfl_allowed[k.y_mode]), k.uv_mode, 14);
         else o.sym(CID(uv_mode_cfl_not_allowed[k.y_mode]), k.uv_mode, 13);
         if (k.uv_mode == AV1G_UV_CFL_PRED) {
             const int sU = k.cfl_alpha_u == 0 ? 0 : k.cfl_alpha_u < 0 ? 1 : 2;
@@ -1122,7 +1125,7 @@ int build_plan(const DevBatch &b, Plan &P, std::string &err) {
     P.F.resize(P.nF);
     P.frameTile0.assign(P.nF + 1, 0);
     const uint32_t b0 = b.frames[0].blockBase, t0 = b.frames[0].txbBase;
-    uint64_t miTotal = 0, ctxTotal[3] = {0, 0, 0}, pixels = 0;
+    uint64_t miTotal = 0, ctxTotal[3] = {0, 0, 0}, pixels = 0, llSamples = 0;
     for (uint32_t f = 0; f < P.nF; f++) {
         const DevFrame &d = b.frames[f];
         const av1g_frame_params &fp = d.fp;
@@ -1140,6 +1143,7 @@ int build_plan(const DevBatch &b, Plan &P, std::string &err) {
         g.txsel = fp.tx_mode_select; g.sct = fp.allow_screen_content_tools;
         g.dq = fp.delta_q_present; g.dqRes = fp.delta_q_res; g.fi = fp.enable_filter_intra;
         g.cdefBits = fp.enable_cdef ? fp.cdef_bits : -1;
+        if (av1g_lossless(&fp)) llSamples += (uint64_t)fp.width * fp.height * (fp.monochrome ? 2 : g.ssx ? 3 : 6) / 2;
         g.miBase = miTotal;
         miTotal += (uint64_t)g.MiCols * g.MiRows;
         for (int p = 0; p < 3; p++) {
@@ -1190,7 +1194,8 @@ int build_plan(const DevBatch &b, Plan &P, std::string &err) {
     P.ctxAll = ctxTotal[0] + ctxTotal[1] + ctxTotal[2];
     P.nItems = (uint64_t)P.nB + P.nT;
     if (P.nItems + 1 > 0x7FFFFFFFull) { err = "batch too large (items)"; return -1; }
-    P.symCap = b.symbolCapacity ? b.symbolCapacity : pixels * 3 / 4 + 16ull * P.nB + 8ull * P.nT;
+    // default bound; lossless frames code every sample's WHT coefficient (sign, base / range levels, Golomb bits)
+    P.symCap = b.symbolCapacity ? b.symbolCapacity : pixels * 3 / 4 + 16ull * P.nB + 8ull * P.nT + 6ull * llSamples;
     P.capBytes = P.symCap / 2 + 256ull * P.nTiles;
     size_t t1 = 0, t2 = 0;
     cub::DeviceScan::ExclusiveSum(nullptr, t1, (const uint32_t *)nullptr, (uint32_t *)nullptr, (int)(P.nItems + 1));
