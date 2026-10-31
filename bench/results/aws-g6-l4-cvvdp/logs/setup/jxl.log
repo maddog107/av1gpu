@@ -1,0 +1,212 @@
+ninja: Entering directory `jxl-build'
+[1/185] Building CXX object lib/CMakeFiles/jxl_export.dir/nothing.cc.o
+[2/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/alpha.cc.o
+[3/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/ac_strategy.cc.o
+[4/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/ans_common.cc.o
+[5/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/chroma_from_luma.cc.o
+[6/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/blending.cc.o
+[7/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/coeff_order.cc.o
+[8/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/color_encoding_internal.cc.o
+[9/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/compressed_dc.cc.o
+[10/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/convolve_slow.cc.o
+[11/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/convolve_separable5.cc.o
+[12/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/dct_scales.cc.o
+[13/185] Building CXX object lib/CMakeFiles/jxl_cms.dir/jxl/cms/jxl_cms.cc.o
+[14/185] Linking CXX shared library lib/libjxl_cms.so.0.11.1
+[15/185] Creating library symlink lib/libjxl_cms.so.0.11 lib/libjxl_cms.so
+[16/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/convolve_symmetric5.cc.o
+[17/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/dec_ans.cc.o
+[18/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/dec_context_map.cc.o
+[19/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/convolve_symmetric3.cc.o
+[20/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/dec_cache.cc.o
+[21/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/dec_group_border.cc.o
+[22/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/dec_huffman.cc.o
+[23/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/dec_frame.cc.o
+[24/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/dec_external_image.cc.o
+[25/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/dec_modular.cc.o
+[26/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/dec_noise.cc.o
+[27/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/dec_patch_dictionary.cc.o
+[28/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/entropy_coder.cc.o
+[29/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/epf.cc.o
+[30/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/fields.cc.o
+[31/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/dec_xyb.cc.o
+[32/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/headers.cc.o
+[33/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/frame_header.cc.o
+[34/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/huffman_table.cc.o
+[35/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/icc_codec_common.cc.o
+[36/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/icc_codec.cc.o
+[37/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/image.cc.o
+[38/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/decode.cc.o
+[39/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/image_bundle.cc.o
+[40/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/image_metadata.cc.o
+[41/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/image_ops.cc.o
+[42/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/loop_filter.cc.o
+[43/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/memory_manager_internal.cc.o
+[44/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/luminance.cc.o
+[45/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/modular/encoding/dec_ma.cc.o
+[46/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/modular/modular_image.cc.o
+[47/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/modular/transform/palette.cc.o
+[48/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/dec_group.cc.o
+[49/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/modular/transform/transform.cc.o
+[50/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/opsin_params.cc.o
+[51/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/modular/transform/rct.cc.o
+[52/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/modular/encoding/encoding.cc.o
+[53/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/passes_state.cc.o
+[54/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/quantizer.cc.o
+[55/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/modular/transform/squeeze.cc.o
+[56/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/render_pipeline/render_pipeline.cc.o
+[57/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/render_pipeline/simple_render_pipeline.cc.o
+[58/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/render_pipeline/low_memory_render_pipeline.cc.o
+[59/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/quant_weights.cc.o
+[60/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/render_pipeline/stage_blending.cc.o
+[61/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/render_pipeline/stage_chroma_upsampling.cc.o
+[62/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/render_pipeline/stage_cms.cc.o
+[63/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/render_pipeline/stage_epf.cc.o
+[64/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/render_pipeline/stage_gaborish.cc.o
+[65/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/render_pipeline/stage_patches.cc.o
+[66/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/render_pipeline/stage_from_linear.cc.o
+[67/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/render_pipeline/stage_noise.cc.o
+[68/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/render_pipeline/stage_spot.cc.o
+[69/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/render_pipeline/stage_splines.cc.o
+[70/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/render_pipeline/stage_to_linear.cc.o
+[71/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/render_pipeline/stage_tone_mapping.cc.o
+[72/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/render_pipeline/stage_upsampling.cc.o
+[73/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/render_pipeline/stage_xyb.cc.o
+[74/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/simd_util.cc.o
+[75/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/render_pipeline/stage_ycbcr.cc.o
+[76/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/box_content_decoder.cc.o
+[77/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/toc.cc.o
+[78/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/render_pipeline/stage_write.cc.o
+[79/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/jpeg/dec_jpeg_data.cc.o
+[80/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/decode_to_jpeg.cc.o
+[81/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/jpeg/jpeg_data.cc.o
+[82/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/splines.cc.o
+[83/185] Building CXX object lib/CMakeFiles/jxl_dec-obj.dir/jxl/jpeg/dec_jpeg_data_writer.cc.o
+[84/185] Building CXX object lib/CMakeFiles/jxl_enc-obj.dir/jxl/butteraugli/butteraugli.cc.o
+[85/185] Building CXX object lib/CMakeFiles/jxl_enc-obj.dir/jxl/enc_aux_out.cc.o
+[86/185] Building CXX object lib/CMakeFiles/jxl_enc-obj.dir/jxl/enc_bit_writer.cc.o
+[87/185] Building CXX object lib/CMakeFiles/jxl_enc-obj.dir/jxl/enc_ans.cc.o
+[88/185] Building CXX object lib/CMakeFiles/jxl_enc-obj.dir/jxl/enc_adaptive_quantization.cc.o
+[89/185] Building CXX object lib/CMakeFiles/jxl_enc-obj.dir/jxl/enc_butteraugli_comparator.cc.o
+[90/185] Building CXX object lib/CMakeFiles/jxl_enc-obj.dir/jxl/enc_cache.cc.o
+[91/185] Building CXX object lib/CMakeFiles/jxl_enc-obj.dir/jxl/enc_coeff_order.cc.o
+[92/185] Building CXX object lib/CMakeFiles/jxl_enc-obj.dir/jxl/enc_cluster.cc.o
+[93/185] Building CXX object lib/CMakeFiles/jxl_enc-obj.dir/jxl/enc_ac_strategy.cc.o
+[94/185] Building CXX object lib/CMakeFiles/jxl_enc-obj.dir/jxl/enc_context_map.cc.o
+[95/185] Building CXX object lib/CMakeFiles/jxl_enc-obj.dir/jxl/enc_comparator.cc.o
+[96/185] Building CXX object lib/CMakeFiles/jxl_enc-obj.dir/jxl/enc_debug_image.cc.o
+[97/185] Building CXX object lib/CMakeFiles/jxl_enc-obj.dir/jxl/enc_dot_dictionary.cc.o
+[98/185] Building CXX object lib/CMakeFiles/jxl_enc-obj.dir/jxl/enc_external_image.cc.o
+[99/185] Building CXX object lib/CMakeFiles/jxl_enc-obj.dir/jxl/enc_chroma_from_luma.cc.o
+[100/185] Building CXX object lib/CMakeFiles/jxl_enc-obj.dir/jxl/enc_detect_dots.cc.o
+[101/185] Building CXX object lib/CMakeFiles/jxl_enc-obj.dir/jxl/enc_entropy_coder.cc.o
+[102/185] Building CXX object lib/CMakeFiles/jxl_enc-obj.dir/jxl/enc_fields.cc.o
+[103/185] Building CXX object lib/CMakeFiles/jxl_enc-obj.dir/jxl/enc_gaborish.cc.o
+[104/185] Building CXX object lib/CMakeFiles/jxl_enc-obj.dir/jxl/enc_heuristics.cc.o
+[105/185] Building CXX object lib/CMakeFiles/jxl_enc-obj.dir/jxl/enc_huffman.cc.o
+[106/185] Building CXX object lib/CMakeFiles/jxl_enc-obj.dir/jxl/enc_huffman_tree.cc.o
+[107/185] Building CXX object lib/CMakeFiles/jxl_enc-obj.dir/jxl/enc_frame.cc.o
+[108/185] Building CXX object lib/CMakeFiles/jxl_enc-obj.dir/jxl/enc_icc_codec.cc.o
+[109/185] Building CXX object lib/CMakeFiles/jxl_enc-obj.dir/jxl/enc_linalg.cc.o
+[110/185] Building CXX object lib/CMakeFiles/jxl_enc-obj.dir/jxl/enc_image_bundle.cc.o
+[111/185] Building CXX object lib/CMakeFiles/jxl_enc-obj.dir/jxl/enc_noise.cc.o
+[112/185] Building CXX object lib/CMakeFiles/jxl_enc-obj.dir/jxl/enc_fast_lossless.cc.o
+/home/ubuntu/src/libjxl/lib/jxl/enc_fast_lossless.cc: In static member function ‘static void {anonymous}::PrefixCode::ComputeCodeLengths(const uint64_t*, size_t, const uint8_t*, const uint8_t*, uint8_t*)’:
+/home/ubuntu/src/libjxl/lib/jxl/enc_fast_lossless.cc:550:30: warning: ‘compact_freqs’ may be used uninitialized [-Wmaybe-uninitialized]
+  550 |     ComputeCodeLengthsNonZero(compact_freqs, ni, min_limit, max_limit,
+      |     ~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  551 |                               num_bits);
+      |                               ~~~~~~~~~
+/home/ubuntu/src/libjxl/lib/jxl/enc_fast_lossless.cc:503:15: note: by argument 1 of type ‘const uint64_t*’ {aka ‘const long unsigned int*’} to ‘static void {anonymous}::PrefixCode::ComputeCodeLengthsNonZero(const uint64_t*, size_t, uint8_t*, uint8_t*, uint8_t*)’ declared here
+  503 |   static void ComputeCodeLengthsNonZero(const uint64_t* freqs, size_t n,
+      |               ^~~~~~~~~~~~~~~~~~~~~~~~~
+/home/ubuntu/src/libjxl/lib/jxl/enc_fast_lossless.cc:537:14: note: ‘compact_freqs’ declared here
+  537 |     uint64_t compact_freqs[kMaxNumSymbols];
+      |              ^~~~~~~~~~~~~
+[113/185] Building CXX object lib/CMakeFiles/jxl_enc-obj.dir/jxl/enc_photon_noise.cc.o
+[114/185] Building CXX object lib/CMakeFiles/jxl_enc-obj.dir/jxl/enc_group.cc.o
+[115/185] Building CXX object lib/CMakeFiles/jxl_enc-obj.dir/jxl/enc_progressive_split.cc.o
+[116/185] Building CXX object lib/CMakeFiles/jxl_enc-obj.dir/jxl/enc_splines.cc.o
+[117/185] Building CXX object lib/CMakeFiles/jxl_enc-obj.dir/jxl/enc_quant_weights.cc.o
+[118/185] Building CXX object lib/CMakeFiles/jxl_enc-obj.dir/jxl/enc_toc.cc.o
+[119/185] Building CXX object lib/CMakeFiles/jxl_enc-obj.dir/jxl/enc_modular.cc.o
+[120/185] Building CXX object lib/CMakeFiles/jxl_enc-obj.dir/jxl/enc_patch_dictionary.cc.o
+[121/185] Building CXX object lib/CMakeFiles/jxl_enc-obj.dir/jxl/enc_xyb.cc.o
+[122/185] Building CXX object lib/CMakeFiles/jxl_enc-obj.dir/jxl/jpeg/enc_jpeg_data.cc.o
+[123/185] Building CXX object lib/CMakeFiles/jxl_enc-obj.dir/jxl/jpeg/enc_jpeg_huffman_decode.cc.o
+[124/185] Building CXX object lib/CMakeFiles/jxl_enc-obj.dir/jxl/modular/encoding/enc_debug_tree.cc.o
+[125/185] Building CXX object lib/CMakeFiles/jxl_enc-obj.dir/jxl/jpeg/enc_jpeg_data_reader.cc.o
+[126/185] Building CXX object lib/CMakeFiles/jxl_enc-obj.dir/jxl/encode.cc.o
+In member function ‘jxl::Status JxlEncoderOutputProcessorWrapper::SetAvailOut(uint8_t**, size_t*)’,
+    inlined from ‘jxl::Status JxlEncoderOutputProcessorWrapper::SetAvailOut(uint8_t**, size_t*)’ at /home/ubuntu/src/libjxl/lib/jxl/encode.cc:183:13,
+    inlined from ‘jxl::Status JxlEncoderOutputProcessorWrapper::CopyOutput(std::vector<unsigned char>&, uint8_t*, size_t&)’ at /home/ubuntu/src/libjxl/lib/jxl/encode.cc:195:5:
+/home/ubuntu/src/libjxl/lib/jxl/encode.cc:187:13: warning: storing the address of local variable ‘next_out’ in ‘*this.JxlEncoderOutputProcessorWrapper::next_out_’ [-Wdangling-pointer=]
+  187 |   next_out_ = next_out;
+      |   ~~~~~~~~~~^~~~~~~~~~
+/home/ubuntu/src/libjxl/lib/jxl/encode.cc: In member function ‘jxl::Status JxlEncoderOutputProcessorWrapper::CopyOutput(std::vector<unsigned char>&, uint8_t*, size_t&)’:
+/home/ubuntu/src/libjxl/lib/jxl/encode.cc:193:44: note: ‘next_out’ declared here
+  193 |     std::vector<uint8_t>& output, uint8_t* next_out, size_t& avail_out) {
+      |                                   ~~~~~~~~~^~~~~~~~
+/home/ubuntu/src/libjxl/lib/jxl/encode.cc:193:71: note: ‘this’ declared here
+  193 |     std::vector<uint8_t>& output, uint8_t* next_out, size_t& avail_out) {
+      |                                                                       ^
+[127/185] Building CXX object lib/CMakeFiles/jxl_enc-obj.dir/jxl/enc_transforms.cc.o
+[128/185] Building CXX object lib/CMakeFiles/jxl_enc-obj.dir/jxl/modular/transform/enc_rct.cc.o
+[129/185] Building CXX object lib/CMakeFiles/jxl_enc-obj.dir/jxl/modular/transform/enc_squeeze.cc.o
+[130/185] Building CXX object lib/CMakeFiles/jxl_enc-obj.dir/jxl/modular/transform/enc_palette.cc.o
+[131/185] Building CXX object lib/CMakeFiles/jxl_enc-obj.dir/jxl/modular/transform/enc_transform.cc.o
+[132/185] Building CXX object lib/CMakeFiles/jxl_enc-obj.dir/jxl/modular/encoding/enc_encoding.cc.o
+[133/185] Building CXX object lib/CMakeFiles/jxl_extras_core-obj.dir/extras/alpha_blend.cc.o
+[134/185] Building CXX object lib/CMakeFiles/jxl_extras_core-obj.dir/extras/common.cc.o
+[135/185] Building CXX object lib/CMakeFiles/jxl_extras_core-obj.dir/extras/compressed_icc.cc.o
+[136/185] Building CXX object lib/CMakeFiles/jxl_extras_core-obj.dir/extras/dec/color_description.cc.o
+[137/185] Building CXX object lib/CMakeFiles/jxl_extras_core-obj.dir/extras/dec/color_hints.cc.o
+[138/185] Building CXX object lib/CMakeFiles/jxl_extras_core-obj.dir/extras/exif.cc.o
+[139/185] Building CXX object lib/CMakeFiles/jxl_enc-obj.dir/jxl/modular/encoding/enc_ma.cc.o
+[140/185] Linking CXX static library lib/libjxl-internal.a
+[141/185] Linking CXX shared library lib/libjxl.so.0.11.1
+[142/185] Creating library symlink lib/libjxl.so.0.11 lib/libjxl.so
+[143/185] Building CXX object lib/CMakeFiles/jxl_extras_core-obj.dir/extras/mmap.cc.o
+[144/185] Building CXX object lib/CMakeFiles/jxl_extras_core-obj.dir/extras/time.cc.o
+[145/185] Building CXX object lib/CMakeFiles/jxl_extras_core-obj.dir/extras/enc/encode.cc.o
+[146/185] Building CXX object lib/CMakeFiles/jxl_extras_core-obj.dir/extras/dec/decode.cc.o
+[147/185] Building CXX object lib/CMakeFiles/jxl_extras_core-obj.dir/extras/gain_map.cc.o
+[148/185] Building CXX object lib/CMakeFiles/jxl_extras_core-obj.dir/extras/dec/exr.cc.o
+[149/185] Building CXX object lib/CMakeFiles/jxl_extras_core-obj.dir/extras/enc/apng.cc.o
+[150/185] Building CXX object lib/CMakeFiles/jxl_extras_core-obj.dir/extras/dec/apng.cc.o
+[151/185] Building CXX object lib/CMakeFiles/jxl_extras_core-obj.dir/extras/enc/exr.cc.o
+[152/185] Building CXX object lib/CMakeFiles/jxl_extras_core-obj.dir/extras/dec/jpg.cc.o
+[153/185] Building CXX object lib/CMakeFiles/jxl_extras_core-obj.dir/extras/enc/jxl.cc.o
+[154/185] Building CXX object lib/CMakeFiles/jxl_extras_core-obj.dir/extras/dec/jxl.cc.o
+[155/185] Building CXX object lib/CMakeFiles/jxl_extras_core-obj.dir/extras/enc/jpg.cc.o
+[156/185] Building CXX object lib/CMakeFiles/jxl_extras_core-obj.dir/extras/dec/pgx.cc.o
+[157/185] Building CXX object lib/CMakeFiles/jxl_extras_core-obj.dir/extras/enc/pgx.cc.o
+[158/185] Building CXX object lib/CMakeFiles/jxl_extras_core-obj.dir/extras/enc/pnm.cc.o
+[159/185] Building CXX object lib/CMakeFiles/jxl_extras_core-obj.dir/extras/dec/gif.cc.o
+[160/185] Building CXX object lib/CMakeFiles/jxl_extras_core-obj.dir/extras/dec/pnm.cc.o
+[161/185] Building CXX object lib/CMakeFiles/jxl_extras_core-obj.dir/extras/enc/npy.cc.o
+[162/185] Building CXX object lib/CMakeFiles/jxl_extras_internal-obj.dir/extras/codec.cc.o
+[163/185] Building CXX object lib/CMakeFiles/jxl_extras_internal-obj.dir/extras/hlg.cc.o
+[164/185] Building CXX object lib/CMakeFiles/jxl_threads.dir/threads/resizable_parallel_runner.cc.o
+[165/185] Building CXX object lib/CMakeFiles/jxl_extras_internal-obj.dir/extras/metrics.cc.o
+[166/185] Building CXX object lib/CMakeFiles/jxl_threads.dir/threads/thread_parallel_runner.cc.o
+[167/185] Building CXX object lib/CMakeFiles/jxl_threads.dir/threads/thread_parallel_runner_internal.cc.o
+[168/185] Linking CXX shared library lib/libjxl_threads.so.0.11.1
+[169/185] Creating library symlink lib/libjxl_threads.so.0.11 lib/libjxl_threads.so
+[170/185] cd /home/ubuntu/src/jxl-build/tools && /usr/bin/cmake -D JPEGXL_ROOT_DIR=/home/ubuntu/src/libjxl -D DST=/home/ubuntu/src/jxl-build/tools/tool_version_git.h -P /home/ubuntu/src/libjxl/tools/git_version.cmake
+[171/185] Building CXX object tools/CMakeFiles/jxl_tool.dir/cmdline.cc.o
+[172/185] Building CXX object tools/CMakeFiles/jxl_tool.dir/codec_config.cc.o
+[173/185] Building CXX object tools/CMakeFiles/jxl_tool.dir/no_memory_manager.cc.o
+[174/185] Building CXX object tools/CMakeFiles/jxl_tool.dir/speed_stats.cc.o
+[175/185] Building CXX object tools/CMakeFiles/jxl_tool.dir/tool_version.cc.o
+[176/185] Building CXX object lib/CMakeFiles/jxl_extras_internal-obj.dir/extras/packed_image_convert.cc.o
+[177/185] Building CXX object tools/CMakeFiles/jxl_tool.dir/tracking_memory_manager.cc.o
+[178/185] Linking CXX static library tools/libjxl_tool.a
+[179/185] Building CXX object lib/CMakeFiles/jxl_extras_internal-obj.dir/extras/tone_mapping.cc.o
+[180/185] Linking CXX static library lib/libjxl_extras-internal.a
+[181/185] Building CXX object tools/CMakeFiles/jxl_gauss_blur.dir/gauss_blur.cc.o
+[182/185] Linking CXX static library tools/libjxl_gauss_blur.a
+[183/185] Building CXX object tools/CMakeFiles/ssimulacra2.dir/ssimulacra2_main.cc.o
+[184/185] Building CXX object tools/CMakeFiles/ssimulacra2.dir/ssimulacra2.cc.o
+[185/185] Linking CXX executable tools/ssimulacra2
+exit 0
