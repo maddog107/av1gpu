@@ -405,11 +405,18 @@ frames use tiles of at most 256K pixels so the entropy coder has more work in fl
 
 - **Colour:** PNG/WebP RGB is coded as GBR 4:4:4 at the source depth, as `avifenc -l` does. 16-bit PNGs are
   coded at 10 bits only if they hold exactly 10 significant bits, and refused otherwise. `--ycgco-re` codes
-  RGB as YCgCo-Re (CICP matrix 16, libavif 1.4's integer transform), 8-bit RGB to 10-bit 4:4:4. JPEGs keep
-  their decoded YCbCr planes at their own subsampling; 4:2:2, 4:4:0 and 4:1:1 JPEGs are refused.
+  RGB as YCgCo-Re (CICP matrix 16, libavif 1.4's integer transform), 8-bit RGB to 10-bit 4:4:4.
+- **JPEGs are refused** (skipped in batch mode). At first `--lossless` coded a JPEG's decoded YCbCr planes
+  (44.8 MP/s on the size-range photos), but the files came out a median 2.2× the size of the JPEGs (1.1–3.7× for
+  80 % of the 63 accepted photos, up to 6.2×; 1.75× in total).
+- **GPU memory:** lossless batches need several times the memory of lossy ones. On the 40 size-range photos of
+  5–24 MP as PNGs, the L4's memory use (`nvidia-smi`, 23,034 MiB in all) peaked at 14,553 MiB with
+  `GP_ENCODE_MP=12`, 17,305 MiB with 16 and 21,945 MiB with 24, and ran out with the default 48 (lossy: 3,463
+  MiB). av1gpu then exits with status 1 and suggests a smaller `GP_ENCODE_MP`. Exact alpha next to lossy colour
+  (`--alpha-quality 100`) peaked at 8,711 MiB on the same photos with transparency.
 - **Proof:** 189 of 189 files (Kodak and graphics in GBR and YCgCo-Re, 16-bit PNGs, gray, palette, odd sizes,
-  forced tiles, a 16.7 MP image, WebP, 22 JPEGs) decode to exactly the source with `avifdec -c aom` and
-  `-c dav1d` (libavif 1.4.0); the JPEG cases equal libjpeg-turbo's raw planes. Decoder gates 17/17,
+  forced tiles, a 16.7 MP image, WebP, and 22 JPEGs while JPEGs were accepted) decode to exactly the source with
+  `avifdec -c aom` and `-c dav1d` (libavif 1.4.0). Decoder gates 17/17,
   6,787 lossless CPU fuzz cases and the GPU unit tests pass with 0 mismatches.
 - **Lossy output unchanged:** 800/800 files byte-identical (default, turbo3, `--yuv 444`, `--depth 10`),
   every pre-existing GPU kernel compiles to identical SASS, and speed is within noise (115.7 vs 114.9 MP/s,
@@ -432,8 +439,7 @@ second the set repeated 4×.
 | cwebp `-lossless -z 9` | 12,187,462 | 65.7 % | 11,252,092 | 935,370 | 1.76 |
 
 Lossless WebP is far smaller on graphics because av1gpu (like libaom at these settings) has no palette mode or
-intra block copy. On lossless JPEG input (the size-range photos) av1gpu ran at 44.8 MP/s. One image at a time
-is limited by the GPU entropy coder (about 126 ms for a Kodak image). The rate estimate behind the mode
+intra block copy. One image at a time is limited by the GPU entropy coder (about 126 ms for a Kodak image). The rate estimate behind the mode
 choices uses default-CDF costs, so it is approximate.
 
 ### Transparency

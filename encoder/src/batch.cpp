@@ -103,16 +103,28 @@ static bool gp_write_debug(const std::string &avifPath, const GpFrameOut &o, con
     return gp_write_debug1(avifPath, o, obu) && (!alpha || !alphaObu || gp_write_debug1(avifPath + ".alpha", *alpha, *alphaObu));
 }
 
-const char *gp_jpeg_sub_name(int s) {
-    switch (s) {
-        case INGEST_SUB_420: return "4:2:0";
-        case INGEST_SUB_444: return "4:4:4";
-        case INGEST_SUB_422: return "4:2:2";
-        case INGEST_SUB_440: return "4:4:0";
-        case INGEST_SUB_411: return "4:1:1";
-        case INGEST_SUB_GRAY: return "gray";
-        default: return "non-standard sampling";
-    }
+// --lossless refuses JPEGs (skipped in batch mode, status 3 for one image): their lossless AVIF (the decoded YCbCr planes)
+// was a median 2.2x the JPEG's size on the size-range photos, up to 6.2x
+extern const char *const gp_lossless_jpeg_refusal =
+    "--lossless on a JPEG makes a file about twice the size of the JPEG, or more; drop --lossless to encode it lossy";
+
+// The hint printed with a GPU out-of-memory error under --lossless (empty otherwise).  Lossless frames code about every
+// sample, so they need several times the GPU memory of lossy ones: on an L4 (23,034 MiB), batch mode on 5-24 MP PNGs
+// peaked at 14,553 MiB with GP_ENCODE_MP=12, 17,305 MiB with 16 and 21,945 MiB with 24, and ran out with the default 48.
+// batchMp: the batch mode's GP_ENCODE_MP (0: one image).
+std::string gp_lossless_oom_hint(const GpConfig &cfg, const std::string &err, double batchMp) {
+    if (!cfg.lossless || err.find("out of memory") == std::string::npos) return "";
+    size_t fr = 0, tot = 0;
+    cudaMemGetInfo(&fr, &tot);
+    char b[400];
+    if (batchMp > 0)
+        snprintf(b, sizeof b, "[av1gpu] out of GPU memory: lossless batches need about 1 GB of GPU memory per megapixel of "
+                 "GP_ENCODE_MP (now %.0f; this GPU has %.1f GB); try a smaller GP_ENCODE_MP, e.g. %d", batchMp, tot / 1e9,
+                 std::max(4, (int)(0.7 * tot / 1e9)));
+    else
+        snprintf(b, sizeof b, "out of GPU memory: lossless frames need several times the GPU memory of lossy ones (this GPU has "
+                 "%.1f GB)", tot / 1e9);
+    return b;
 }
 
 const char *gp_fallback_reason(int r) {
@@ -243,6 +255,12 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
     // (av1core GPU entropy, per-thread default stream) + mux + write of the previous batch ----
     const double targetMp = getenv("GP_ENCODE_MP") ? atof(getenv("GP_ENCODE_MP")) : 48.0;
     const int maxImgs = getenv("GP_ENCODE_IMGS") ? atoi(getenv("GP_ENCODE_IMGS")) : 192;
+    // --lossless: the first out-of-GPU-memory error also prints how to avoid it (once; failures are handled as before)
+    std::atomic<bool> oomHinted{false};
+    auto oomHint = [&](const std::string &e) {
+        const std::string h = gp_lossless_oom_hint(cfg, e, targetMp);
+        if (!h.empty() && !oomHinted.exchange(true)) fprintf(stderr, "%s\n", h.c_str());
+    };
     cudaStream_t es;
     cudaStreamCreateWithFlags(&es, cudaStreamNonBlocking);
     std::mutex mu, aggMu;
@@ -273,12 +291,16 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
                     const double te = now_ms();
                     std::vector<std::vector<std::vector<uint8_t>>> tb;
                     double gms = 0;
-                    if (gp_entropy_dev(j->dev, ts, escr, tb, &gms, terr)) { fprintf(stderr, "entropy: %s\n", terr.c_str()); entFail++; }
+                    if (gp_entropy_dev(j->dev, ts, escr, tb, &gms, terr)) { fprintf(stderr, "entropy: %s\n", terr.c_str()); oomHint(terr); entFail++; }
                     gp_dev_records_free(j->dev, ts);
                     std::vector<std::vector<std::vector<uint8_t>>> atb;   // alpha frames of the job (one more entropy batch)
                     if (j->adev.pool) {
                         double gms2 = 0;
-                        if (gp_entropy_dev(j->adev, ts, escr, atb, &gms2, terr)) { fprintf(stderr, "entropy (alpha): %s\n", terr.c_str()); entFail++; }
+                        if (gp_entropy_dev(j->adev, ts, escr, atb, &gms2, terr)) {
+                            fprintf(stderr, "entropy (alpha): %s\n", terr.c_str());
+                            oomHint(terr);
+                            entFail++;
+                        }
                         gp_dev_records_free(j->adev, ts);
                         gms += gms2;
                     }
@@ -366,12 +388,23 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
             }
             const size_t ys = hp.bytes(0), cs = hp.bytes(1), as = hp.abytes();   // bytes (10-bit: uint16_t samples)
             uint8_t *d = nullptr;
-            if (cudaMallocAsync((void **)&d, ys + 2 * cs + as, fs) != cudaSuccess) { cpuFallbackA++; return; }
+            if (cudaMallocAsync((void **)&d, ys + 2 * cs + as, fs) != cudaSuccess) {
+                cudaGetLastError();
+                fprintf(stderr, "[av1gpu] skipped %s: out of GPU memory for its planes\n", p.c_str());
+                oomHint("out of memory");
+                cpuFallbackA++;
+                return;
+            }
             cudaMemcpyAsync(d, hp.data(0), ys, cudaMemcpyHostToDevice, fs);
             cudaMemcpyAsync(d + ys, hp.data(1), cs, cudaMemcpyHostToDevice, fs);
             cudaMemcpyAsync(d + ys + cs, hp.data(2), cs, cudaMemcpyHostToDevice, fs);
             if (as) cudaMemcpyAsync(d + ys + 2 * cs, hp.adata(), as, cudaMemcpyHostToDevice, fs);
-            if (cudaStreamSynchronize(fs) != cudaSuccess) { cpuFallbackA++; return; }
+            if (const cudaError_t se = cudaStreamSynchronize(fs)) {
+                cudaGetLastError();
+                fprintf(stderr, "[av1gpu] skipped %s: upload failed (%s)\n", p.c_str(), cudaGetErrorString(se));
+                cpuFallbackA++;
+                return;
+            }
             FbFrame F;
             F.d = d;
             F.name = base_name(p);
@@ -479,9 +512,8 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
                     held.push_back(b);
                     for (int i = 0; i < b.n_images; i++) {
                         const ingest_image &im = b.images[i];
-                        if (cfg.lossless && im.src_sub != INGEST_SUB_420 && im.src_sub != INGEST_SUB_444 && im.src_sub != INGEST_SUB_GRAY) {
-                            fprintf(stderr, "[av1gpu] skipped %s: --lossless keeps a JPEG's YCbCr planes, AV1 can only do that for 4:2:0, "
-                                            "4:4:4 and gray JPEGs (this one is %s)\n", paths[im.index].c_str(), gp_jpeg_sub_name(im.src_sub));
+                        if (cfg.lossless) {   // (ingest delivers JPEGs only)
+                            fprintf(stderr, "[av1gpu] skipped %s: %s\n", paths[im.index].c_str(), gp_lossless_jpeg_refusal);
                             cpuFallbackA++;
                             continue;
                         }
@@ -540,7 +572,7 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
                 }
                 GpTimes t10;
                 if (E->encode(f10, jd->outs, t10, eerr, s, gpuEntropy ? &jd->dev : nullptr) || !encodeAlpha(jd, ea, s, eerr)) {
-                    fprintf(stderr, "encode: %s\n", eerr.c_str()); encFail++; delete jd; delete job; return;
+                    fprintf(stderr, "encode: %s\n", eerr.c_str()); oomHint(eerr); encFail++; delete jd; delete job; return;
                 }
                 {
                     std::lock_guard<std::mutex> lk2(aggMu);
@@ -571,7 +603,7 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
                     }
                     GpTimes ts2;
                     if (Es->encode(fs, js->outs, ts2, eerr, s, gpuEntropy ? &js->dev : nullptr) || !encodeAlpha(js, ea, s, eerr)) {
-                        fprintf(stderr, "encode: %s\n", eerr.c_str()); encFail++; delete js; delete job; return;
+                        fprintf(stderr, "encode: %s\n", eerr.c_str()); oomHint(eerr); encFail++; delete js; delete job; return;
                     }
                     {
                         std::lock_guard<std::mutex> lk2(aggMu);
@@ -605,7 +637,7 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
                 continue;
             }
             if (E->encode(fin, job->outs, tm, eerr, s, gpuEntropy ? &job->dev : nullptr) || !encodeAlpha(job, ea, s, eerr)) {
-                fprintf(stderr, "encode: %s\n", eerr.c_str()); encFail++; delete job; return;
+                fprintf(stderr, "encode: %s\n", eerr.c_str()); oomHint(eerr); encFail++; delete job; return;
             }
             const double te = now_ms() - ts;
             for (auto &b : held) ingest_release_batch(ictx, b.batch_id, s);

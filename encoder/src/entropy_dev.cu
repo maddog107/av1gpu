@@ -10,10 +10,16 @@
 #include <algorithm>
 #include <cstring>
 
+// (the error is also cleared from the thread's last-error state: left there, a failed allocation made the next batch's
+// cub size query in this thread fail, so its scratch came out too small: "scratch too small: N < M")
 #define ECK(x)                                                                                     \
     do {                                                                                           \
         cudaError_t e_ = (x);                                                                      \
-        if (e_ != cudaSuccess) { err = std::string("CUDA: ") + cudaGetErrorString(e_) + " at " #x; return -1; } \
+        if (e_ != cudaSuccess) {                                                                   \
+            cudaGetLastError();                                                                    \
+            err = std::string("CUDA: ") + cudaGetErrorString(e_) + " at " #x;                      \
+            return -1;                                                                             \
+        }                                                                                          \
     } while (0)
 
 int gp_entropy_dev(const GpDevRecords &R, cudaStream_t st, GpEntScratch &scr,
