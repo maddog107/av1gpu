@@ -1,0 +1,26 @@
+-- 10-bit 4:2:0 (images, q60,120)
+[gate] q60: 100/100 identical in dav1d and aomdec (420 10-bit 99, mono 10-bit 1; 11278971 bytes), 0 not encoded (unsupported input), rc=0 PASS
+[gate] q120: 100/100 identical in dav1d and aomdec (420 10-bit 99, mono 10-bit 1; 5441830 bytes), 0 not encoded (unsupported input), rc=0 PASS
+   (15 s)
+-- 10-bit 4:4:4 (images, q60,120)
+[gate] q60: 100/100 identical in dav1d and aomdec (444 10-bit 99, mono 10-bit 1; 11053406 bytes), 0 not encoded (unsupported input), rc=0 PASS
+[gate] q120: 100/100 identical in dav1d and aomdec (444 10-bit 99, mono 10-bit 1; 5648543 bytes), 0 not encoded (unsupported input), rc=0 PASS
+   (18 s)
+-- 10-bit 4:2:0 (images_gamut, q60,120)
+[gate] q60: 100/100 identical in dav1d and aomdec (420 10-bit 100; 53539534 bytes), 0 not encoded (unsupported input), rc=0 PASS
+[gate] q120: 100/100 identical in dav1d and aomdec (420 10-bit 100; 22212217 bytes), 0 not encoded (unsupported input), rc=0 PASS
+   (36 s)
+-- 10-bit 4:4:4 (images_gamut, q60,120)
+[gate] q60: 100/100 identical in dav1d and aomdec (444 10-bit 100; 51676571 bytes), 0 not encoded (unsupported input), rc=0 PASS
+[gate] q120: 100/100 identical in dav1d and aomdec (444 10-bit 100; 23088086 bytes), 0 not encoded (unsupported input), rc=0 PASS
+   (52 s)
+-- 10-bit slow small-preset none (images, q60,120)
+[gate] q60: 100/100 identical in dav1d and aomdec (420 10-bit 99, mono 10-bit 1; 11199586 bytes), 0 not encoded (unsupported input), rc=0 PASS
+[gate] q120: 100/100 identical in dav1d and aomdec (420 10-bit 99, mono 10-bit 1; 5387539 bytes), 0 not encoded (unsupported input), rc=0 PASS
+   (21 s)
+-- 10-bit 4:4:4 slow small-preset none (images, q120)
+[gate] q120: 100/100 identical in dav1d and aomdec (444 10-bit 99, mono 10-bit 1; 5596104 bytes), 0 not encoded (unsupported input), rc=0 PASS
+   (10 s)
+-- 10-bit turbo3 (images, q120)
+[gate] q120: 100/100 identical in dav1d and aomdec (420 10-bit 99, mono 10-bit 1; 5468767 bytes), 0 not encoded (unsupported input), rc=0 PASS
+   (6 s)

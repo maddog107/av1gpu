@@ -164,7 +164,7 @@ BD-rate on SSIMULACRA2 against libaom speed 6, median over images (mean in brack
 | av1gpu `--preset turbo3 --small-preset none` | | +5.4 % (+5.4 %)¹ |
 | libaom speed 9 | +17.7 % (+20.7 %) | +15.0 % (+17.2 %) |
 | SVT-AV1 preset 2 / 4 / 6 / 8 / 9 (below) | | −5.1 / −2.6 / +2.1 / +7.7 / +9.8 % |
-| WebP | +41.3 % (+55.3 %) | +45.1 % (+61.2 %) |
+| WebP | +41.3 % (+55.3 %) | +42.1 % (+44.9 %)³ |
 | NVENC AV1 (ffmpeg `av1_nvenc` p7, below) | | +29.5 % (+46.6 %)² |
 
 ¹ 99 images, encoded on the RTX PRO 2000 (byte-identical to the L4) and scored with the same SSIMULACRA2
@@ -173,10 +173,17 @@ the same files (−0.65 % instead of −0.1 %), so its turbo3 numbers are shifte
 with the small-image preset left on scored +1.3 %.
 
 ² 94 of the 99 photos (on the other 5 its quality range does not overlap libaom's), scored on the L4 with
-the same tools as the rest of the table; see [NVENC AV1 on the same L4](#nvenc-av1-on-the-same-l4).
+the same tools as the rest of the table; see [NVENC AV1 on the same L4](#nvenc-av1-on-the-same-l4). The image
+pipeline used for NVENC decodes photos with an odd height with wrong chroma; on the 76 even-height photos
+NVENC is +27.9 %.
 
-Against WebP at each image's WebP quality, the default is 30.0 % (standard) and 31.2 % (size range)
-smaller. Size range by image size (median, images in brackets):
+³ Scored with each .webp's own ICC profile. The first published run decoded WebP with dwebp, which leaves
+the profile out of its PNG, so the 13 photos with Adobe RGB, Camera RGB or Generic RGB profiles were scored
+as colour-shifted: +45.1 % (+61.2 %). `bench.py` now copies the profile back. The standard set has not been
+re-checked.
+
+Against WebP at each image's WebP quality, the default is 30.0 % (standard) and 30.7 % (size range)
+smaller (31.2 % before the WebP ICC correction). Size range by image size (median, images in brackets):
 
 | Encoder | < 1 MP | 1–5 MP | 5–10 MP | ≥ 10 MP |
 |---|---:|---:|---:|---:|
@@ -325,9 +332,12 @@ ffmpeg decoding JPEGs and converting to 4:2:0 for the encoder; av1gpu decodes on
 
 **Compression:** six points, CQ 18, 25, 32, 38, 44 and 50, decoded with avifdec 1.4.0 and scored with the
 same `ssimulacra2` as everything else. Against libaom speed 6 its files are **+29.5 %** (median; mean
-+46.6 %) at equal quality, worse than libaom speed 9 (+15.0 %), and still 12.2 % smaller than WebP (87
-photos); measured the other way, av1gpu's default files are 22.8 % smaller than NVENC's (96 photos). The
-61 photos without an ICC profile (the pipeline drops ICC) give +29.1 %, so that is not the cause. Totals
++46.6 %) at equal quality, worse than libaom speed 9 (+15.0 %), and still 11.3 % smaller than WebP (85
+photos, with WebP's ICC profiles); measured the other way, av1gpu's default files are 22.8 % smaller than
+NVENC's (96 photos). Part of that is a bug in the image pipeline, not in NVENC: photos with an odd height
+decode with wrong chroma (below). On the 76 even-height photos NVENC is +27.9 % against libaom speed 6, and
+av1gpu's files are 20.9 % smaller than NVENC's. The 61 photos without an ICC profile (the pipeline drops ICC)
+give +29.1 %, so that is not the cause. Totals
 per CQ:
 
 | CQ | AVIF bytes | Mean SSIMULACRA2 |
@@ -350,12 +360,114 @@ Other things we noticed:
   scored every NVENC file with avifdec's dav1d codec (identical output to libaom where both decode).
 - **Odd sizes are padded:** NVENC encodes 4:2:0 at even dimensions, so a 1,023-pixel-wide photo becomes a
   1,024-pixel-wide AVIF with a repeated edge column (cropped off before scoring).
+- **Odd heights decode with wrong chroma:** found later, in the [CVVDP run](#cvvdp-a-second-metric). The 23
+  photos with an odd height decode with a chroma error at every CQ (25–30 dB at CQ 18 against about 45 dB
+  for even heights), while luma is fine. This is in the ffmpeg + muxer pipeline, not in NVENC, and it costs
+  NVENC about 1.6 points of the +29.5 %.
 - **8,192-pixel limit** per side; the pipeline sends bigger images to libaom instead (none in this set).
 
 The same pipeline on the development machine's RTX PRO 2000 Blackwell (one NVENC engine) peaked at
 about 9.4 MP/s (4 encodes at once; 9.5 MP/s with the JPEGs decoded to raw 4:2:0 in RAM beforehand, so the
 engine itself is the limit), against av1gpu's 104 MP/s there, and scored about +25 % against libaom speed 6
 (scored on a different machine, so not directly comparable with the L4's +29.5 %).
+
+### 4:4:4 and 10-bit
+
+`--yuv 444` (AV1 High profile) and `--depth 10` arrived on 2026-10-31. They were measured on a g6.4xlarge with
+`bench/formats.py`: the size-range photos, bench.py's six quality points, SSIMULACRA2 against the source JPEG
+(10-bit outputs decoded to 16-bit PNGs), and libaom speed 6 through avifenc 1.4.0 in the same format
+(`-y 444`, `-d 10`; `tune=iq`, avifenc defaults, 16 × `-j 1`). The libaom 8-bit 4:2:0 encodes in the same
+session reproduced the published files and scores (600/600). Raw results: `bench/results/aws-g6-l4-formats/`.
+
+| Format | av1gpu MP/s | libaom speed 6 MP/s | av1gpu vs libaom, same format (median BD-rate) |
+|---|---:|---:|---:|
+| 8-bit 4:2:0 | 113.4 | 28.6 | −0.1 % |
+| 8-bit 4:4:4 | 94.5 | 24.3 | +0.3 % |
+| 10-bit 4:2:0 | 109.8 | 22.0 | +0.1 % |
+| 10-bit 4:4:4 | 92.8 | 18.9 | +0.0 % |
+
+- **Speed:** 4:4:4 codes twice the chroma samples of 4:2:0, so av1gpu runs about 17 % slower; 10-bit costs it
+  about 3 %. libaom loses more at 10 bits (−23 %), so av1gpu's lead grows from 4.0× to 5.0×.
+- **10-bit vs 8-bit:** −2.3 % for av1gpu and −2.0 % for libaom in 4:2:0, −1.9 % and −1.8 % in 4:4:4, at equal
+  SSIMULACRA2. The sources are 8-bit JPEGs, so this comes from the extra precision inside the codec.
+- **4:4:4 vs 4:2:0:** +0.4 % for av1gpu and −0.8 % for libaom (8-bit). These photos were 4:2:0 JPEGs (or
+  upsampled to 4:4:4 from them), so there is little full-resolution colour to keep; 4:4:4 is for sources that
+  have it, such as PNG screenshots and graphics.
+- SVT-AV1 has no 4:4:4. At 10-bit 4:2:0, preset 6 ran at 43.5 MP/s and +1.1 % against libaom speed 6.
+
+### Lossless
+
+`--lossless` (2026-10-31) codes AV1 lossless: base_q_idx 0, 4×4 Walsh-Hadamard transforms only, no deblocking
+or CDEF. The reconstruction is the source, so av1gpu computes every prediction from source pixels in parallel
+(no wavefront), estimates each 4×4's WHT-residual bits for every mode, runs the existing partition search on
+those costs, then makes the final mode and CfL choices per superblock with exact edge availability. Lossless
+frames use tiles of at most 256K pixels so the entropy coder has more work in flight.
+
+- **Colour:** PNG/WebP RGB is coded as GBR 4:4:4 at the source depth, as `avifenc -l` does. 16-bit PNGs are
+  coded at 10 bits only if they hold exactly 10 significant bits, and refused otherwise. `--ycgco-re` codes
+  RGB as YCgCo-Re (CICP matrix 16, libavif 1.4's integer transform), 8-bit RGB to 10-bit 4:4:4. JPEGs keep
+  their decoded YCbCr planes at their own subsampling; 4:2:2, 4:4:0 and 4:1:1 JPEGs are refused.
+- **Proof:** 189 of 189 files (Kodak and graphics in GBR and YCgCo-Re, 16-bit PNGs, gray, palette, odd sizes,
+  forced tiles, a 16.7 MP image, WebP, 22 JPEGs) decode to exactly the source with `avifdec -c aom` and
+  `-c dav1d` (libavif 1.4.0); the JPEG cases equal libjpeg-turbo's raw planes. Decoder gates 17/17,
+  6,787 lossless CPU fuzz cases and the GPU unit tests pass with 0 mismatches.
+- **Lossy output unchanged:** 800/800 files byte-identical (default, turbo3, `--yuv 444`, `--depth 10`),
+  every pre-existing GPU kernel compiles to identical SASS, and speed is within noise (115.7 vs 114.9 MP/s,
+  18 runs each).
+
+On 47 8-bit RGB PNGs, 42.7 MP: the 24 Kodak photos and 23 graphics (this repository's 16 SVG charts rendered at
+2× and 7 synthetic 1920 × 1080 screenshots). CPU encoders ran as 16 single-threaded processes on the
+g6.4xlarge's 16 vCPUs. av1gpu ran in batch mode; its first column is one pass including CUDA start-up, the
+second the set repeated 4×.
+
+| Encoder | Total bytes | vs PNG | Photos | Graphics | MP/s |
+|---|---:|---:|---:|---:|---:|
+| PNG (the sources) | 18,543,751 | 100 % | 15,394,305 | 3,149,446 | |
+| av1gpu `--lossless` | 20,112,025 | 108.5 % | 13,370,817 | 6,741,208 | 16.8 / 41–43 |
+| av1gpu `--lossless --ycgco-re` | 16,809,786 | 90.6 % | 11,990,929 | 4,818,857 | 16.4 / 41–43 |
+| avifenc `-l -s 6` | 21,516,335 | 116.0 % | 13,686,053 | 7,830,282 | 9.3 |
+| avifenc `-l -s d` (libaom's default, cpu-used 0) | 18,861,272 | 101.7 % | 13,324,165 | 5,537,107 | 0.38 |
+| avifenc `-l -s 6 --cicp 1/13/16` | 17,103,004 | 92.2 % | 12,396,839 | 4,706,165 | 8.8 |
+| cwebp `-lossless` | 12,323,572 | 66.5 % | 11,339,964 | 983,608 | 44.4 |
+| cwebp `-lossless -z 9` | 12,187,462 | 65.7 % | 11,252,092 | 935,370 | 1.76 |
+
+Lossless WebP is far smaller on graphics because av1gpu (like libaom at these settings) has no palette mode or
+intra block copy. On lossless JPEG input (the size-range photos) av1gpu ran at 44.8 MP/s. One image at a time
+is limited by the GPU entropy coder (about 126 ms for a Kodak image). The rate estimate behind the mode
+choices uses default-CDF costs, so it is approximate.
+
+### CVVDP: a second metric
+
+SSIMULACRA2 does not model screen size or viewing distance, so the same size-range files were also scored
+with CVVDP (ColorVideoVDP 0.5.7) for its `standard_fhd` display: a 24-inch 1920 × 1080 screen at 200 cd/m²
+seen from 0.6 m (37.8 pixels per degree), with images shown at 100 % (one image pixel per screen pixel).
+All 4,752 files were re-encoded on an L4 and were byte-identical to the published ones, and their
+SSIMULACRA2 scores were identical too. Raw results: `bench/results/aws-g6-l4-cvvdp/`
+(`bench.py --cvvdp standard_fhd`).
+
+| Encoder | BD-rate vs libaom speed 6, JOD | SSIMULACRA2 | Bits per pixel at 9.5 JOD | Photos reaching 9.5 JOD |
+|---|---:|---:|---:|---:|
+| libaom speed 6 | 0 | 0 | 0.448 | 99/99 |
+| **av1gpu default** | **+3.9 %** | −0.1 % | 0.459 | 99/99 |
+| libaom speed 9 | +14.5 % | +15.0 % | 0.522 | 99/99 |
+| SVT-AV1 preset 4 | −2.0 % | −2.6 % | 0.430 | 99/99 |
+| SVT-AV1 preset 6 | +2.0 % | +2.1 % | 0.468 | 99/99 |
+| SVT-AV1 preset 9 | +9.3 % | +9.8 % | 0.491 | 99/99 |
+| NVENC AV1 | +28.4 % | +29.5 % | 0.541 | 85/99 |
+| WebP | +44.2 % | +42.1 % | 0.666 | 99/99 |
+
+(Median BD-rates over 99 photos, NVENC 97; quality points as published plus q85/q90 and matching higher
+WebP/NVENC points. Bits per pixel are medians, interpolated per photo.)
+
+- **The metrics agree on every encoder except av1gpu.** CVVDP rates av1gpu worse than SSIMULACRA2 does on 84
+  of the 99 photos, and the gap grows with image size (+2.1 % below 1 MP, +5.9 % at 10 MP and over). Scored
+  without colour, CVVDP puts it at +6.2 %, so the difference is in luma. av1gpu's search was tuned with
+  SSIMULACRA2; CVVDP suggests its luma decisions on large photos leave some quality behind.
+- **Speed at CVVDP's file sizes:** at av1gpu's +3.9 %, interpolating between presets and speeds, SVT-AV1 runs
+  at about 70 MP/s (between presets 6 and 9) and libaom at about 47 MP/s, so av1gpu is about 1.7× and 2.4×
+  faster. On SSIMULACRA2 the same comparison gives 4×.
+- 9.5 JOD is a "high fidelity" threshold suggested on Reddit for a 27-inch 1080p screen at about 20 inches,
+  which works out to about 28.5 pixels per degree, so artefacts there are easier to see than in this run.
 
 ### Correctness
 
@@ -370,6 +482,9 @@ engine itself is the limit), against av1gpu's 104 MP/s there, and scored about +
 | compute-sanitizer racecheck: `gpu_fuzz_test` | 4 reports in `k_entropy_win` (below) |
 | EXIF orientation 1–8, one-image and batch mode | `irot`/`imir` (and their essential flags) identical to avifenc's on all 8 |
 | one-image mode: JPEG, PNG; CMYK JPEG | encode and decode; CMYK rejected with exit status 3, `CMYK/YCCK JPEG` |
+| 4:4:4 and 10-bit (2026-10-31): `tests/decoder_gate.py`, 67 runs at q60 and q120 (8-bit default, turbo3, slow, slow `--small-preset none`; `--yuv 444`; `--depth 10`; both; 16-bit PNG, PNG/WebP, 40 large images; CPU JPEG route and CPU entropy) | 67/67 runs identical in dav1d and aomdec, 5,732 encodes |
+| 4:4:4 and 10-bit: CPU fuzz (4:2:0, 4:4:4, mono × 8/10-bit), `gpu_fuzz_test`, `gpu_postfilter_test`, `gpu_dsp_test`, `varboost_test` | 0 mismatches (36,000+ CPU fuzz cases; GPU tests per layout and depth) |
+| 8-bit 4:2:0 output after the 4:4:4/10-bit merge | 600/600 files byte-identical to before (default, turbo3, slow; both sets) |
 
 **`gpu_fuzz_test` failure.** The test failed with `device error 1` (`AV1G_GPU_ERR_SYMBOLS`) at a different
 batch from run to run (seed 521, 1481, ...), never under initcheck, which serialises GPU work. The test
