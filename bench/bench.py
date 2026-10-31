@@ -32,10 +32,26 @@ Requires: avifenc, avifdec, cwebp, dwebp, ssimulacra2 on PATH (or the --avifenc,
   older libaom the script falls back to libaom's default tuning and says so in the summary.
 --skip-gpu runs only the CPU codecs (useful for checking the setup on a machine without a GPU).
 Writes OUT/results.json (every measurement) and OUT/summary.md.
+
+CVVDP (optional, off by default): --cvvdp DISPLAY also scores every quality-phase file with ColorVideoVDP
+(https://github.com/gfxdisp/ColorVideoVDP, `pip install cvvdp`, PyTorch; on the GPU when torch sees one) for one
+of its display models, e.g. standard_fhd (24-inch 1920 x 1080, 200 cd/m^2, seen from 0.6 m under 250 lux, about
+38 pixels per degree).  It uses the same decoded PNG as SSIMULACRA2, whose scoring does not change.  Both images
+go in as 8-bit sRGB: the source JPEG decoded by Pillow and the decoded output, each converted with LittleCMS
+(relative colorimetric) from its own ICC profile if it has one, as SSIMULACRA2 does.  WebP takes the profile from
+the .webp file, because dwebp leaves it out of its PNG.  CVVDP maps image pixels 1:1 to display pixels; it does
+not scale an image to fit the screen.  The JOD scores (10 = no visible difference) give a second BD-rate table,
+with JOD as the quality axis and --cvvdp-min-overlap JOD instead of 2 SSIMULACRA2 points as the least overlap.
+They also give, for --cvvdp-target (9.5 JOD by default), how many images reach that JOD within the tested
+qualities and the bits per pixel at which each one does (interpolated along its curve as in the BD-rate).
+--avifdec-codec dav1d decodes with avifdec -c dav1d (default: avifdec's own choice).
+  pip install cvvdp            # CUDA PyTorch from PyPI on Linux x86-64
+  bench/bench.py --images bench/images_gamut --out OUT --skip-speed --cvvdp standard_fhd
 """
 import argparse
 import concurrent.futures as cf
 import glob
+import io
 import json
 import os
 import platform
@@ -45,6 +61,7 @@ import statistics
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 
 import numpy as np
@@ -150,6 +167,35 @@ def bd_rate(test, anchor, min_overlap=2.0):
     return float(np.expm1(diff))
 
 
+def bd_table(quality, sizes, metric="ssimulacra2", min_overlap=2.0):
+    """per-image BD-rates on `metric` of every codec against libaom speed 6 and against WebP:
+    ({"<codec>_vs_<anchor>": {n, median, mean}}, {"<codec>_vs_aom_s6": {size class: {n, median}}})"""
+    per = {}
+    for codec, rows in quality.items():
+        for r in rows:
+            per.setdefault(codec, {}).setdefault(r["image"], []).append((r["bytes"], r.get(metric)))
+    bd, by_size = {}, {}
+    for anchor in ("aom_s6", "webp"):
+        if anchor not in per:
+            continue
+        for codec in per:
+            if codec == anchor:
+                continue
+            vals = [bd_rate(per[codec][im], per[anchor][im], min_overlap) for im in per[codec] if im in per[anchor]]
+            vals = [v for v in vals if v is not None]
+            if vals:
+                bd[f"{codec}_vs_{anchor}"] = dict(n=len(vals), median=statistics.median(vals), mean=statistics.fmean(vals))
+            if anchor != "aom_s6":
+                continue
+            for cls, lo, hi in SIZE_CLASSES:
+                v = [bd_rate(per[codec][im], per[anchor][im], min_overlap) for im in per[codec]
+                     if im in per[anchor] and lo <= sizes[im] < hi]
+                v = [x for x in v if x is not None]
+                if v:
+                    by_size.setdefault(f"{codec}_vs_{anchor}", {})[cls] = dict(n=len(v), median=statistics.median(v))
+    return bd, by_size
+
+
 # ------------------------------------------------------------------------------------------- encoders
 def avifenc_threads(a):
     return getattr(a, "avifenc_threads", 1)
@@ -180,19 +226,139 @@ def avifenc_supports_tune_iq(a, src, work):
 def decode_png(a, path, png):
     if path.endswith(".webp"):
         return run([a.dwebp, path, "-o", png]).returncode == 0
-    return run([a.avifdec, path, png]).returncode == 0
+    codec = getattr(a, "avifdec_codec", "")
+    return run([a.avifdec] + (["-c", codec] if codec else []) + [path, png]).returncode == 0
 
 
-def score(a, src, path, work):
+def score(a, src, path, work, cvvdp=None):
+    """SSIMULACRA2 of `path`, decoded to PNG, against the source; with `cvvdp` (a Cvvdp), the pair
+    (SSIMULACRA2, CVVDP JOD) from the same PNG"""
     with tempfile.TemporaryDirectory(dir=work) as td:
         png = os.path.join(td, "d.png")
         if not decode_png(a, path, png):
-            return None
+            return None if cvvdp is None else (None, None)
         p = run([a.ssimulacra2, src, png])
         try:
-            return float(p.stdout.strip().split()[-1])
+            s = float(p.stdout.strip().split()[-1])
         except (ValueError, IndexError):
+            s = None
+        return s if cvvdp is None else (s, cvvdp(src, png, path))
+
+
+# ------------------------------------------------------------------------------------------- CVVDP
+_SRGB = []
+
+
+def srgb8(path, icc=None):
+    """an image file as an 8-bit sRGB H x W x 3 array, converted with LittleCMS from its ICC profile (or from `icc`,
+    for a decoder that drops the profile); no profile means sRGB"""
+    from PIL import Image, ImageCms
+    im = Image.open(path)
+    icc = im.info.get("icc_profile") or icc
+    if im.mode not in ("RGB", "L"):
+        im = im.convert("RGB")
+    if icc:
+        if not _SRGB:
+            _SRGB.append(ImageCms.ImageCmsProfile(ImageCms.createProfile("sRGB")))
+        try:  # rendering intent 1: relative colorimetric
+            im = ImageCms.profileToProfile(im, ImageCms.ImageCmsProfile(io.BytesIO(icc)), _SRGB[0],
+                                           renderingIntent=1, outputMode="RGB")
+        except (ImageCms.PyCMSError, OSError) as e:  # a broken profile, or one for other pixels: use them as they are
+            print(f"{path}: ICC profile not applied ({e})", file=sys.stderr, flush=True)
+    return np.asarray(im.convert("RGB"))
+
+
+def file_icc(path):
+    """the ICC profile inside an encoded WebP (dwebp does not copy it into its PNG); avifdec's PNG keeps its own"""
+    if not path.endswith(".webp"):
+        return None
+    from PIL import Image
+    try:
+        return Image.open(path).info.get("icc_profile")
+    except OSError:
+        return None
+
+
+class Cvvdp:
+    """ColorVideoVDP on one display model.  Callable from pool threads: they load and convert the pixels, and the
+    metric itself runs one image pair at a time."""
+
+    def __init__(self, display, device=None):
+        import torch
+        import pycvvdp
+        from importlib.metadata import version
+        self.metric = pycvvdp.cvvdp(display_name=display, quiet=True, device=torch.device(device) if device else None)
+        self.lock = threading.Lock()
+        m, dp, dg = self.metric, self.metric.display_photometry, self.metric.display_geometry
+        dev = m.device
+        self.info = dict(
+            cvvdp=version("cvvdp"), parameters_version=str(getattr(m, "version", "")), torch=torch.__version__,
+            torch_cuda=torch.version.cuda, device=torch.cuda.get_device_name(dev) if dev.type == "cuda" else str(dev),
+            display=display, display_name=getattr(dp, "full_name", ""), eotf=getattr(dp, "EOTF", ""),
+            peak_cd_m2=getattr(dp, "Y_peak", None), contrast=getattr(dp, "contrast", None),
+            ambient_lux=getattr(dp, "E_ambient", None), k_refl=getattr(dp, "k_refl", None),
+            resolution=list(getattr(dg, "resolution", ())), distance_m=getattr(dg, "distance_m", None),
+            display_size_m=list(getattr(dg, "display_size_m", ()) or ()), pixels_per_degree=float(m.pix_per_deg),
+            inputs="8-bit sRGB (ICC profiles converted with LittleCMS, relative colorimetric), 1:1 pixel mapping")
+
+    def __call__(self, src, png, path):
+        """JOD of the decoded `png` (of encoded file `path`) against the source image `src`; None on failure"""
+        try:
+            ref = srgb8(src)
+            test = srgb8(png, file_icc(path))
+            if test.shape != ref.shape:  # NVENC pads odd sizes to even ones: crop the padding
+                h, w = ref.shape[:2]
+                if test.shape[0] - h not in (0, 1) or test.shape[1] - w not in (0, 1):
+                    raise ValueError(f"decoded {test.shape} vs source {ref.shape}")
+                test = test[:h, :w]
+            with self.lock:
+                jod, _ = self.metric.predict(test, ref, dim_order="HWC")
+            return float(jod)
+        except Exception as e:  # report, leave the point out of the curve
+            print(f"cvvdp failed on {path}: {e}", file=sys.stderr, flush=True)
             return None
+
+
+def jod_target(quality, sizes, target):
+    """for each codec: how many images reach `target` JOD within the tested points, and the bits per pixel (of the
+    source's pixels) at which each one does, interpolated along the image's (JOD, log-size) curve as in bd_rate;
+    medians over the images that reach it, and over the images that every codec reaches"""
+    bpp = {}
+    for codec, rows in quality.items():
+        per = {}
+        for r in rows:
+            per.setdefault(r["image"], []).append((r["bytes"], r.get("cvvdp")))
+        for im, pts in per.items():
+            x, y = _curve(pts)
+            v = None
+            if len(x) and x[-1] >= target:  # at or above it already at the lowest point: that point's size
+                lb = y[0] if x[0] >= target else _pchip_eval(x, y, np.array([float(target)]))[0]
+                v = float(np.exp(lb)) * 8 / (sizes[im] * 1e6)
+            bpp.setdefault(codec, {})[im] = v
+    common = set.intersection(*({im for im, v in d.items() if v is not None} for d in bpp.values())) if bpp else set()
+    out = {}
+    for codec, d in bpp.items():
+        hit = [v for v in d.values() if v is not None]
+        out[codec] = dict(images=len(d), reached=len(hit), median_bpp=statistics.median(hit) if hit else None,
+                          common_images=len(common),
+                          common_median_bpp=statistics.median(d[im] for im in common) if common else None,
+                          per_image_bpp=d)
+    return dict(target=target, codecs=out)
+
+
+def mean_by_q(quality, target=None):
+    """per codec and quality point: images, total bytes, mean SSIMULACRA2, mean JOD and images at or above `target`"""
+    out = {}
+    for codec, rows in quality.items():
+        for q in sorted({r["q"] for r in rows}):
+            sel = [r for r in rows if r["q"] == q]
+            s2 = [r["ssimulacra2"] for r in sel if r.get("ssimulacra2") is not None]
+            jod = [r["cvvdp"] for r in sel if r.get("cvvdp") is not None]
+            out.setdefault(codec, {})[str(q)] = dict(
+                n=len(sel), bytes=sum(r["bytes"] for r in sel), ssimulacra2=statistics.fmean(s2) if s2 else None,
+                cvvdp=statistics.fmean(jod) if jod else None, cvvdp_n=len(jod),
+                at_target=sum(j >= target for j in jod) if target is not None else None)
+    return out
 
 
 def encode_cpu_set(a, codec, files, qualities, outdir, tune_iq):
@@ -316,11 +482,19 @@ def main():
     ap.add_argument("--skip-speed", action="store_true")
     ap.add_argument("--skip-quality", action="store_true")
     ap.add_argument("--keep", action="store_true", help="keep the encoded files under OUT/files")
+    ap.add_argument("--avifdec-codec", default="", help="avifdec -c CODEC for decoding AVIF before scoring (e.g. dav1d)")
+    ap.add_argument("--cvvdp", default="", metavar="DISPLAY",
+                    help="also score with ColorVideoVDP on this display model (e.g. standard_fhd; needs pip install cvvdp)")
+    ap.add_argument("--cvvdp-device", default="", help="torch device for CVVDP (default: cuda if available, else cpu)")
+    ap.add_argument("--cvvdp-target", type=float, default=9.5, help="JOD for the bits-per-pixel-to-reach table")
+    ap.add_argument("--cvvdp-min-overlap", type=float, default=0.1,
+                    help="least JOD range two curves must share for a BD-rate (SSIMULACRA2: 2 points)")
     a = ap.parse_args()
     a.aom_speeds = sorted({6} | {int(x) for x in a.aom_speeds.split(",")})
     a.svt_presets = [int(x) for x in a.svt_presets.split(",") if x]
     if a.avifenc_threads < 1:
         sys.exit("--avifenc-threads must be at least 1")
+    cv = Cvvdp(a.cvvdp, a.cvvdp_device or None) if a.cvvdp and not a.skip_quality else None
 
     files = sorted(f for f in glob.glob(os.path.join(a.images, "*")) if f.lower().endswith(EXTS))
     if not files:
@@ -340,6 +514,8 @@ def main():
     if a.avifenc_threads != 1 or a.no_tiling:
         res.update(avifenc_threads=a.avifenc_threads, avifenc_parallel=avifenc_parallel(a, os.cpu_count()),
                    no_tiling=a.no_tiling)
+    if a.avifdec_codec:
+        res["avifdec_codec"] = a.avifdec_codec
     print(f"{len(files)} images, {mp:.1f} MP; avifenc tune=iq: {'yes' if tune_iq else 'no (libaom too old)'}", flush=True)
 
     if not a.skip_speed:
@@ -368,31 +544,22 @@ def main():
         for codec, outs in enc.items():
             print(f"scoring {codec}: {len(outs)} files", flush=True)
             with cf.ThreadPoolExecutor(a.jobs) as ex:
-                scores = list(ex.map(lambda t: score(a, t[0], t[2], work), outs))
-            res["quality"][codec] = [dict(image=os.path.basename(src), q=q, bytes=os.path.getsize(dst), ssimulacra2=s)
-                                     for (src, q, dst), s in zip(outs, scores)]
-        per = {}
-        for codec, rows in res["quality"].items():
-            for r in rows:
-                per.setdefault(codec, {}).setdefault(r["image"], []).append((r["bytes"], r["ssimulacra2"]))
-        for anchor in ("aom_s6", "webp"):
-            for codec in per:
-                if codec == anchor:
-                    continue
-                vals = [bd_rate(per[codec][im], per[anchor][im]) for im in per[codec] if im in per[anchor]]
-                vals = [v for v in vals if v is not None]
-                if vals:
-                    res["bd_rate"][f"{codec}_vs_{anchor}"] = dict(n=len(vals), median=statistics.median(vals),
-                                                                   mean=statistics.fmean(vals))
-                if anchor != "aom_s6":
-                    continue
-                for cls, lo, hi in SIZE_CLASSES:
-                    v = [bd_rate(per[codec][im], per[anchor][im]) for im in per[codec]
-                         if im in per[anchor] and lo <= sizes[im] < hi]
-                    v = [x for x in v if x is not None]
-                    if v:
-                        res.setdefault("bd_rate_by_size", {}).setdefault(f"{codec}_vs_{anchor}", {})[cls] = dict(
-                            n=len(v), median=statistics.median(v))
+                scores = list(ex.map(lambda t: score(a, t[0], t[2], work, cv), outs))
+            if cv:
+                res["quality"][codec] = [dict(image=os.path.basename(src), q=q, bytes=os.path.getsize(dst),
+                                              ssimulacra2=s, cvvdp=j) for (src, q, dst), (s, j) in zip(outs, scores)]
+            else:
+                res["quality"][codec] = [dict(image=os.path.basename(src), q=q, bytes=os.path.getsize(dst), ssimulacra2=s)
+                                         for (src, q, dst), s in zip(outs, scores)]
+        res["bd_rate"], by_size = bd_table(res["quality"], sizes)
+        if by_size:
+            res["bd_rate_by_size"] = by_size
+        if cv:
+            res["cvvdp"] = dict(cv.info, target=a.cvvdp_target, min_overlap=a.cvvdp_min_overlap)
+            res["bd_rate_cvvdp"], res["bd_rate_cvvdp_by_size"] = bd_table(res["quality"], sizes, "cvvdp",
+                                                                          a.cvvdp_min_overlap)
+            res["cvvdp_target"] = jod_target(res["quality"], sizes, a.cvvdp_target)
+            res["by_quality"] = mean_by_q(res["quality"], a.cvvdp_target)
 
     json.dump(res, open(os.path.join(a.out, "results.json"), "w"), indent=1)
     write_summary(res, os.path.join(a.out, "summary.md"))
@@ -417,21 +584,64 @@ def write_summary(res, path):
         for s in res["speed"]:
             L.append(f"| {s['codec']} | {s['mp_s']:.1f} | {s['img_s']:.1f} | {s['cpu_cores']:.1f} | {s['bytes'] / 1e6:.2f} |")
         L.append("")
-    if res["bd_rate"]:
-        L += ["## Compression (BD-rate on SSIMULACRA2, per image; negative = smaller files at equal quality)", "",
+    L += summary_bd(res["bd_rate"], res.get("bd_rate_by_size"), "SSIMULACRA2")
+    if res.get("cvvdp"):
+        L += summary_cvvdp(res)
+    open(path, "w").write("\n".join(L))
+
+
+def summary_bd(bd, by_size, metric, suffix=""):
+    L = []
+    if bd:
+        L += [f"## Compression (BD-rate on {metric}, per image; negative = smaller files at equal quality){suffix}", "",
               "| Codec | vs | images | median | mean |", "|---|---|---:|---:|---:|"]
-        for k, v in res["bd_rate"].items():
+        for k, v in bd.items():
             c, anchor = k.split("_vs_")
             L.append(f"| {c} | {anchor} | {v['n']} | {100 * v['median']:+.1f}% | {100 * v['mean']:+.1f}% |")
         L.append("")
-    if res.get("bd_rate_by_size"):
-        L += ["## BD-rate vs libaom s6 by image size (median; images in brackets)", "",
+    if by_size:
+        L += [f"## BD-rate{'' if metric == 'SSIMULACRA2' else ' on ' + metric} vs libaom s6 by image size "
+              "(median; images in brackets)", "",
               "| Codec | " + " | ".join(c for c, _, _ in SIZE_CLASSES) + " |", "|---|" + "---:|" * len(SIZE_CLASSES)]
-        for k, by in res["bd_rate_by_size"].items():
+        for k, by in by_size.items():
             cells = [f"{100 * by[c]['median']:+.1f}% ({by[c]['n']})" if c in by else "—" for c, _, _ in SIZE_CLASSES]
             L.append(f"| {k.split('_vs_')[0]} | " + " | ".join(cells) + " |")
         L.append("")
-    open(path, "w").write("\n".join(L))
+    return L
+
+
+def summary_cvvdp(res):
+    c = res["cvvdp"]
+    L = [f"## CVVDP", "",
+         f"- cvvdp {c['cvvdp']} (parameters {c['parameters_version']}), torch {c['torch']} (CUDA {c['torch_cuda']}) "
+         f"on {c['device']}",
+         f"- display `{c['display']}`: {c['display_name']}; {c['resolution'][0]} x {c['resolution'][1]}, "
+         f"{c['peak_cd_m2']} cd/m^2, contrast {c['contrast']}:1, {c['ambient_lux']} lux, {c['distance_m']} m, "
+         f"{c['pixels_per_degree']:.1f} pixels per degree; EOTF {c['eotf']}",
+         f"- inputs: {c['inputs']}", ""]
+    L += summary_bd(res["bd_rate_cvvdp"], res.get("bd_rate_cvvdp_by_size"), "CVVDP JOD",
+                    f" (curves must share {c['min_overlap']} JOD)")
+    t = res["cvvdp_target"]
+    any_codec = next(iter(t["codecs"].values()), None)
+    if any_codec:
+        L += [f"## Bits per pixel to reach {t['target']} JOD", "",
+              f"Interpolated per image within the tested qualities. The last column is over the "
+              f"{any_codec['common_images']} images that every codec reaches.", "",
+              "| Codec | images reaching | median bpp | median bpp, common images |", "|---|---:|---:|---:|"]
+        f = lambda v: f"{v:.3f}" if v is not None else "—"
+        for codec, v in t["codecs"].items():
+            L.append(f"| {codec} | {v['reached']}/{v['images']} | {f(v['median_bpp'])} | {f(v['common_median_bpp'])} |")
+        L.append("")
+    L += ["## Mean scores per quality point", "",
+          f"| Codec | q | images | MB | mean SSIMULACRA2 | mean JOD | images >= {t['target']} JOD |",
+          "|---|---:|---:|---:|---:|---:|---:|"]
+    f = lambda v, d: f"{v:.{d}f}" if v is not None else "—"
+    for codec, by in res["by_quality"].items():
+        for q, v in by.items():
+            L.append(f"| {codec} | {q} | {v['n']} | {v['bytes'] / 1e6:.2f} | {f(v['ssimulacra2'], 2)} | "
+                     f"{f(v['cvvdp'], 3)} | {v['at_target']} |")
+    L.append("")
+    return L
 
 
 if __name__ == "__main__":
