@@ -1,6 +1,6 @@
 // AVIF (ISOBMFF) writer: a byte-exact C++ port of
 // avif_conversion/hybrid_nvenc_libavif/avif_muxer.py:mux_avif() for still images.
-// av1C is derived from the sequence header OBU contained in the stream.
+// av1C, pixi and the nclx colr box are derived from the sequence header OBU contained in the stream.
 #include "av1g/av1g.h"
 
 #include <cstdlib>
@@ -45,7 +45,10 @@ struct BitReader {
     }
 };
 
-struct Cfg { int profile = 0, level = 0, tier = 0, hbd = 0, twelve = 0, mono = 0, ssx = 1, ssy = 1, csp = 0; };
+struct Cfg {
+    int profile = 0, level = 0, tier = 0, hbd = 0, twelve = 0, mono = 0, ssx = 1, ssy = 1, csp = 0;
+    int cp = 2, tc = 2, mc = 2, fullRange = 0;   // colour description (CICP) and color_range of the sequence header
+};
 
 bool read_leb128(const uint8_t *p, size_t n, size_t &pos, uint64_t &v) {
     v = 0;
@@ -82,10 +85,11 @@ bool parse_seq(const uint8_t *obus, size_t n, Cfg &c) {
             c.mono = c.profile == 1 ? 0 : br.get(1);
             int cp = 2, tc = 2, mc = 2;
             if (br.get(1)) { cp = br.get(8); tc = br.get(8); mc = br.get(8); }
-            if (c.mono) { c.ssx = c.ssy = 1; c.csp = 0; }
-            else if (cp == 1 && tc == 13 && mc == 0) { c.ssx = c.ssy = 0; c.csp = 0; }
+            c.cp = cp; c.tc = tc; c.mc = mc;
+            if (c.mono) { c.fullRange = br.get(1); c.ssx = c.ssy = 1; c.csp = 0; }
+            else if (cp == 1 && tc == 13 && mc == 0) { c.fullRange = 1; c.ssx = c.ssy = 0; c.csp = 0; }
             else {
-                br.get(1);  // color_range
+                c.fullRange = br.get(1);  // color_range
                 if (c.profile == 0) { c.ssx = c.ssy = 1; }
                 else if (c.profile == 1) { c.ssx = c.ssy = 0; }
                 else { c.ssx = 1; c.ssy = 0; }
@@ -143,10 +147,10 @@ extern "C" int av1g_mux_avif_ex(const uint8_t *obus, size_t obu_size, uint32_t w
     if (cfg.mono) { pixi_d.push_back(1); pixi_d.push_back(bpc); }
     else { pixi_d.push_back(3); pixi_d.push_back(bpc); pixi_d.push_back(bpc); pixi_d.push_back(bpc); }
     Bytes pixi = fullbox("pixi", 0, 0, pixi_d);
-    Bytes colr_d;
+    Bytes colr_d;   // the stream's colour description (av1core default: BT.709 primaries, sRGB TC, BT.601 matrix, full range)
     app(colr_d, "nclx", 4);
-    be16(colr_d, 1); be16(colr_d, 13); be16(colr_d, 6);  // BT.709 primaries, sRGB TC, BT.601 matrix
-    colr_d.push_back(0x80);                                 // full range
+    be16(colr_d, (uint32_t)cfg.cp); be16(colr_d, (uint32_t)cfg.tc); be16(colr_d, (uint32_t)cfg.mc);
+    colr_d.push_back(cfg.fullRange ? 0x80 : 0x00);          // full_range_flag
     Bytes colr = box("colr", colr_d);
     // property order: ispe, av1C, pixi, [colr prof], colr nclx, [irot], [imir]
     // (descriptive before transformative; irot before imir as in libavif)

@@ -52,6 +52,10 @@ struct TileInfo {
 };
 
 bool compute_tiles(uint32_t W, uint32_t H, int colsLog2, int rowsLog2, TileInfo &t);
+// seq_level_idx of the smallest level that fits (31 if a side < 16)
+int choose_level(uint32_t W, uint32_t H, int ntiles, int tcols);
+// sequence header (seq) and uncompressed frame header (fh) of a record; tiles.tileSizeBytes must be set
+void write_headers(const av1g_frame_params *fp, const TileInfo &tiles, int level, BitWriter &seq, BitWriter &fh);
 
 // Closed-loop hook: called for every coded tx block of a non-skip block after its
 // exact prediction has been written to the reconstruction buffer and before the
@@ -60,7 +64,9 @@ bool compute_tiles(uint32_t W, uint32_t H, int colsLog2, int rowsLog2, TileInfo 
 struct TxbHook {
     virtual ~TxbHook() {}
     // qmLevel: quantizer-matrix level of this plane (15 = none); weights for a tx type
-    // are av1g_qm(1, qmLevel, plane, txSz, txType)
+    // are av1g_qm(1, qmLevel, plane, txSz, txType).  recon points at the tx block's top-left sample
+    // (the prediction): uint8_t samples in 8-bit records, uint16_t samples (cast) in 10-bit ones;
+    // reconStride is in samples.  Lossless records: dcQ = acQ = 4, the levels are av1g_fwht4x4 outputs.
     virtual void on_txb(const av1g_block &b, uint32_t blockIdx, av1g_txb &t, int16_t *coeffs,
                         const uint8_t *recon, int reconStride, int dcQ, int acQ, int derivedTxType, int qmLevel) = 0;
 };
