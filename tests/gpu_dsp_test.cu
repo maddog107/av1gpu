@@ -7,6 +7,9 @@
 //   4. od_ec range coder + CDF adaptation (one thread per stream; M4 building block)
 //   5. sections 1 and 2/3 again at BitDepth 10 (10-bit quantizer tables, uint16_t samples, the BD = 10
 //      template instantiations: dequant clamp, row clamp range, Clip1, edge base values, upsampling, CfL)
+//   6. lossless 4x4 WHT at 8 and 10 bits: forward (av1g_fwht4x4) on the device == host, and dequantization at
+//      qindex 0 + the spec inverse (av1g_inv_wht4x4) gives the residual back exactly (with the conformance flag
+//      for residuals outside 1 + BitDepth bits)
 // Small memory footprint (< 64 MB).  Not a benchmark.
 #include <cstdio>
 #include <cstdlib>
@@ -37,6 +40,61 @@ template <int BD>
 __global__ void k_itx(const ItxCase *cs, const int16_t *q, int32_t *res, uint32_t *err, int32_t *scratch, int n) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i < n) itx_case<BD>(cs[i], q + (size_t)i * 1024, res + (size_t)i * 4096, err + i, scratch + (size_t)i * 1024);
+}
+
+// ---------------- 6. lossless WHT ----------------
+template <int BD>
+__host__ __device__ void wht_case(const int32_t *res, int16_t *q, int32_t *back, uint32_t *err) {
+    av1g_fwht4x4(res, q);
+    int32_t dq[16];
+    av1g_dequant<BD>(q, dq, AV1G_TX_4X4, av1g_dc_q<BD>(0), av1g_ac_q<BD>(0), nullptr);
+    *err = 0;
+    av1g_inv_wht4x4<BD>(dq, back, err);
+}
+template <int BD>
+__global__ void k_wht(const int32_t *res, int16_t *q, int32_t *back, uint32_t *err, int n) {
+    const int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < n) wht_case<BD>(res + 16 * i, q + 16 * i, back + 16 * i, err + i);
+}
+template <int BD>
+static int run_wht() {
+    const int n = 200000, mx = (1 << BD) - 1;
+    std::vector<int32_t> res((size_t)n * 16), back((size_t)n * 16), dback((size_t)n * 16);
+    std::vector<int16_t> q((size_t)n * 16), dq((size_t)n * 16);
+    std::vector<uint32_t> err(n), derr(n);
+    for (int i = 0; i < n; i++) {
+        const int style = (int)(rnd() % 4);
+        for (int k = 0; k < 16; k++) {
+            int v;
+            if (style == 0) v = (int)(rnd() % (2 * mx + 1)) - mx;
+            else if (style == 1) v = (rnd() & 1) ? mx : -mx;
+            else if (style == 2) v = (int)(rnd() % 7) - 3;
+            else v = (int)(rnd() % (4 * mx + 1)) - 2 * mx;   // beyond 1 + BitDepth bits: must be flagged
+            res[(size_t)i * 16 + k] = v;
+        }
+        wht_case<BD>(&res[(size_t)i * 16], &q[(size_t)i * 16], &back[(size_t)i * 16], &err[i]);
+    }
+    int32_t *dr, *db; int16_t *dqq; uint32_t *de;
+    CK(cudaMalloc(&dr, res.size() * 4)); CK(cudaMalloc(&db, res.size() * 4)); CK(cudaMalloc(&dqq, q.size() * 2)); CK(cudaMalloc(&de, n * 4));
+    CK(cudaMemcpy(dr, res.data(), res.size() * 4, cudaMemcpyHostToDevice));
+    k_wht<BD><<<(n + 127) / 128, 128>>>(dr, dqq, db, de, n);
+    CK(cudaGetLastError());
+    CK(cudaMemcpy(dq.data(), dqq, q.size() * 2, cudaMemcpyDeviceToHost));
+    CK(cudaMemcpy(dback.data(), db, res.size() * 4, cudaMemcpyDeviceToHost));
+    CK(cudaMemcpy(derr.data(), de, n * 4, cudaMemcpyDeviceToHost));
+    int bad = 0, notExact = 0, flagged = 0, wrongFlag = 0;
+    for (int i = 0; i < n; i++) {
+        if (memcmp(&q[(size_t)i * 16], &dq[(size_t)i * 16], 32) || memcmp(&back[(size_t)i * 16], &dback[(size_t)i * 16], 64) || err[i] != derr[i]) bad++;
+        bool inRange = true;
+        for (int k = 0; k < 16; k++) inRange &= res[(size_t)i * 16 + k] >= -(1 << BD) && res[(size_t)i * 16 + k] <= (1 << BD) - 1;
+        if (inRange && memcmp(&res[(size_t)i * 16], &back[(size_t)i * 16], 64)) notExact++;
+        flagged += err[i] != 0;
+        if (inRange != (err[i] == 0)) wrongFlag++;
+    }
+    printf("6. lossless WHT (%d bits): %d blocks, %d host/device mismatches, %d in-range residuals not reconstructed exactly, "
+           "%d flagged out of range, %d wrong flags\n", BD, n, bad, notExact, flagged, wrongFlag);
+    cudaFree(dr); cudaFree(db); cudaFree(dqq); cudaFree(de);
+    return bad + notExact + wrongFlag;
 }
 
 // ---------------- 2./3. prediction + CFL ----------------
@@ -268,6 +326,9 @@ int main() {
     // ---- 5: 10 bits (after section 4, so sections 1-4 keep their random inputs) ----
     failures += run_itx<10>();
     failures += run_pred<10>();
+    // ---- 6: lossless WHT ----
+    failures += run_wht<8>();
+    failures += run_wht<10>();
     printf("%s\n", failures ? "GPU_DSP_TEST FAILED" : "GPU_DSP_TEST PASSED");
     return failures ? 1 : 0;
 }
