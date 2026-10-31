@@ -183,6 +183,45 @@ void gp_launch_to10(const uint8_t *src, int spitch, uint16_t *dst, int dpitch, i
     k_to10<<<dim3((w + 255) / 256, h), 256, 0, st>>>(src, spitch, dst, dpitch, w, h, chroma);
 }
 
+// Crop + resize (gp_frames_transform), separable: a vertical pass into a float plane (all columns of the source
+// window), then a horizontal pass that also converts to the output depth and replicates the edges to aw x ah.  The
+// filter taps come from the host (one row of `taps` weights per output coordinate, starting at a source index; taps
+// past a coordinate's own count have weight 0).  in10 / out10: uint16_t samples; out10 from 8-bit input applies the
+// k_to10 mapping to the filtered value.
+template <typename T>
+__global__ void k_rz_v(const T *src, int sp, int x0, int tw, const int *start, const float *w, int taps, float *tmp, int oh) {
+    const int x = blockIdx.x * blockDim.x + threadIdx.x, y = blockIdx.y;
+    if (x >= tw || y >= oh) return;
+    const T *s = src + (size_t)start[y] * sp + x0 + x;
+    const float *wy = w + (size_t)y * taps;
+    float a = 0.f;
+    for (int k = 0; k < taps; k++) a += wy[k] * (float)s[(size_t)k * sp];
+    tmp[(size_t)y * tw + x] = a;
+}
+__global__ void k_rz_h(const float *tmp, int tw, int x0, const int *start, const float *w, int taps, int ow, int oh, void *dst,
+                       int dp, int aw, int ah, int in10, int out10, int chroma) {
+    const int x = blockIdx.x * blockDim.x + threadIdx.x, y = blockIdx.y;
+    if (x >= aw || y >= ah) return;
+    const int ox = min(x, ow - 1), oy = min(y, oh - 1);
+    const float *t = tmp + (size_t)oy * tw + (start[ox] - x0);
+    const float *wx = w + (size_t)ox * taps;
+    float a = 0.f;
+    for (int k = 0; k < taps; k++) a += wx[k] * t[k];
+    if (out10) {
+        if (!in10) a = chroma ? (a - 128.f) * (1023.f / 255.f) + 512.f : a * (1023.f / 255.f);
+        ((uint16_t *)dst)[(size_t)y * dp + x] = (uint16_t)fminf(fmaxf(a + 0.5f, 0.f), 1023.f);
+    } else {
+        ((uint8_t *)dst)[(size_t)y * dp + x] = (uint8_t)fminf(fmaxf(a + 0.5f, 0.f), 255.f);
+    }
+}
+void gp_launch_resize(const void *src, int spitch, int in10, int sx0, int tw, const int *ystart, const float *yw, int ytaps,
+                      const int *xstart, const float *xw, int xtaps, float *tmp, void *dst, int dpitch, int ow, int oh, int aw,
+                      int ah, int out10, int chroma, cudaStream_t st) {
+    if (in10) k_rz_v<<<dim3((tw + 127) / 128, oh), 128, 0, st>>>((const uint16_t *)src, spitch, sx0, tw, ystart, yw, ytaps, tmp, oh);
+    else k_rz_v<<<dim3((tw + 127) / 128, oh), 128, 0, st>>>((const uint8_t *)src, spitch, sx0, tw, ystart, yw, ytaps, tmp, oh);
+    k_rz_h<<<dim3((aw + 127) / 128, ah), 128, 0, st>>>(tmp, tw, sx0, xstart, xw, xtaps, ow, oh, dst, dpitch, aw, ah, in10, out10, chroma);
+}
+
 void gp_launch_analysis(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st, int bd) {
     gp_launch_an_d(B, P, shTotal, st, bd);
     gp_launch_an_c(B, P, shTotal, st, bd);

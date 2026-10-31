@@ -148,8 +148,46 @@ bool make_dirs(const std::string &dir) {
     return stat(dir.c_str(), &st) == 0 && S_ISDIR(st.st_mode);
 #endif
 }
-// LIST is a text file with one path per line, or a directory (its JPEG/PNG/WebP files, sorted)
-bool list_inputs(const std::string &list, std::vector<std::string> &paths) {
+// LIST is a text file with one path per line, or a directory (its JPEG/PNG/WebP files, sorted).  A line may add
+// TAB-separated options for its image: crop=WxH+X+Y (or X,Y,W,H) and max-size=WxH (xH, Wx); they replace the
+// command line's --crop / --max-size for that image.  A line that names an existing file as a whole is a path.
+bool list_inputs(const std::string &list, std::vector<std::string> &paths, std::vector<GpXform> &xf, const GpXform &def,
+                 std::string &err) {
+    auto exists = [](const std::string &p) {
+#ifdef _WIN32
+        std::error_code ec;
+        return std::filesystem::exists(std::filesystem::u8path(p), ec);
+#else
+        struct stat st;
+        return stat(p.c_str(), &st) == 0;
+#endif
+    };
+    auto add = [&](std::string l, int line) {
+        GpXform x = def;
+        const size_t tab = l.find('\t');
+        if (tab != std::string::npos && !exists(l)) {
+            size_t at = tab;
+            while (at != std::string::npos) {
+                const size_t nx = l.find('\t', at + 1);
+                const std::string o = l.substr(at + 1, nx == std::string::npos ? std::string::npos : nx - at - 1);
+                GpXform t;
+                if (o.empty()) {
+                } else if (!o.compare(0, 5, "crop=") && gp_parse_crop(o.c_str() + 5, t)) {
+                    x.cx = t.cx; x.cy = t.cy; x.cw = t.cw; x.ch = t.ch;
+                } else if (!o.compare(0, 9, "max-size=") && gp_parse_max_size(o.c_str() + 9, t)) {
+                    x.maxW = t.maxW; x.maxH = t.maxH;
+                } else {
+                    err = list + ":" + std::to_string(line) + ": unknown option '" + o + "'";
+                    return false;
+                }
+                at = nx;
+            }
+            l.resize(tab);
+        }
+        paths.push_back(l);
+        xf.push_back(x);
+        return true;
+    };
 #ifdef _WIN32
     namespace fs = std::filesystem;
     std::error_code ec;
@@ -162,14 +200,17 @@ bool list_inputs(const std::string &list, std::vector<std::string> &paths) {
         }
         if (ec) return false;
         std::sort(paths.begin(), paths.end());
+        xf.assign(paths.size(), def);
         return true;
     }
     std::ifstream f(lp);
     std::string l;
+    int line = 0;
     for (bool first = true; std::getline(f, l); first = false) {
+        line++;
         if (first && l.compare(0, 3, "\xEF\xBB\xBF") == 0) l.erase(0, 3);   // UTF-8 byte order mark (Notepad)
         if (!l.empty() && l.back() == '\r') l.pop_back();
-        if (!l.empty()) paths.push_back(l);
+        if (!l.empty() && !add(l, line)) return false;
     }
     return true;
 #else
@@ -182,12 +223,16 @@ bool list_inputs(const std::string &list, std::vector<std::string> &paths) {
             if (e->d_name[0] != '.' && has_image_ext(e->d_name)) paths.push_back(list + "/" + e->d_name);
         closedir(dp);
         std::sort(paths.begin(), paths.end());
+        xf.assign(paths.size(), def);
         return true;
     }
     std::ifstream f(list);
     std::string l;
-    while (std::getline(f, l))
-        if (!l.empty()) paths.push_back(l);
+    int line = 0;
+    while (std::getline(f, l)) {
+        line++;
+        if (!l.empty() && !add(l, line)) return false;
+    }
     return true;
 #endif
 }
@@ -259,7 +304,19 @@ const char *gp_fallback_reason(int r) {
 int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::string &outdir, bool gpuEntropy, bool stats,
                    const std::string &suffix) {
     std::vector<std::string> paths;
-    if (!list_inputs(list, paths)) { fprintf(stderr, "cannot read %s\n", list.c_str()); return 2; }
+    std::vector<GpXform> xforms;   // per input: crop / fit-inside (command line, or the list line's options)
+    {
+        std::string lerr;
+        if (!list_inputs(list, paths, xforms, cfg.xform, lerr)) {
+            fprintf(stderr, "%s\n", lerr.empty() ? ("cannot read " + list).c_str() : lerr.c_str());
+            return 2;
+        }
+    }
+    const bool anyXform = std::any_of(xforms.begin(), xforms.end(), [](const GpXform &x) { return x.active(); });
+    if (anyXform && cfg.lossless) { fprintf(stderr, "--lossless cannot be combined with crop / max-size\n"); return 2; }
+    // the largest picture encoded (--max-mp) and source decoded (--max-input-mp: sources that a crop / max-size brings
+    // under --max-mp)
+    const double encMaxMp = cfg.maxMp, decMaxMp = std::max(cfg.maxInputMp > 0 ? cfg.maxInputMp : cfg.maxMp, cfg.maxMp);
     if (paths.empty()) { fprintf(stderr, "no input files in %s\n", list.c_str()); return 2; }
     const bool write = !outdir.empty();
     if (write && !make_dirs(outdir)) { fprintf(stderr, "cannot create %s: %s\n", outdir.c_str(), strerror(errno)); return 2; }
@@ -293,6 +350,16 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
     if (getenv("GP_INGEST_DECODER")) ic.decoder = atoi(getenv("GP_INGEST_DECODER"));   // 1 = CPU entropy decode + GPU IDCT (no nvJPEG/NVJPG)
     if (getenv("GP_INGEST_HWBATCH")) ic.hw_batch = atoi(getenv("GP_INGEST_HWBATCH"));
     ic.out_444 = cfg.lossless ? 2 : cfg.yuv444;   // --yuv 444: full-resolution chroma planes; --lossless: the JPEG's own format
+    ic.max_mp = decMaxMp;
+    if (decMaxMp > 35.6) ic.pinned_bytes = std::max<int64_t>(ic.pinned_bytes, (int64_t)(decMaxMp * 1e6 * 3 * 2) + (16ll << 20));   // CPU-route coefficients of one image
+    // size of image i once cropped / shrunk (its EXIF orientation turns the box when it swaps the sides: the box is
+    // what is displayed)
+    auto outSize = [&](int i, int W, int H, int orient, int *ow, int *oh) {
+        GpXform x = xforms[i];
+        if (orient >= 5) std::swap(x.maxW, x.maxH);
+        if (!x.active() || !gp_xform_size(x, W, H, ow, oh)) { *ow = W; *oh = H; }
+        return x;
+    };
     char eb[256] = {0};
     const double t0 = now_ms(), c0 = cpu_ms();
     ingest_ctx *ictx = ingest_create(&ic, eb, sizeof eb);
@@ -485,7 +552,7 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
     // ingest images (GPU entropy, overlapped).  The rest (giant, CMYK, ...) -> CPU avifenc (not done here).
     // (Before: serial CPU decode + single-image encode + host-path entropy after the main loop, ~0.45 s per
     // image with the GPU mostly idle.)
-    struct FbFrame { GpFrameIn f, a; uint8_t *d = nullptr; std::string name; };   // a: alpha frame (W = 0: none)
+    struct FbFrame { GpFrameIn f, a; uint8_t *d = nullptr; std::string name; GpXform x; };   // a: alpha frame (W = 0: none)
     std::mutex fbMu;
     std::condition_variable fbCv;   // an encoder took frames out of fbReady, or an encoder thread ended
     std::deque<FbFrame> fbReady;
@@ -509,7 +576,11 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
             const std::string &p = paths[fe.index];
             const GpFileKind kind = gp_sniff(p);
             if (kind != GP_FILE_WEBP && kind != GP_FILE_PNG) {
-                fprintf(stderr, "[av1gpu] skipped %s: %s\n", p.c_str(), gp_fallback_reason(fe.reason));
+                if (fe.reason == INGEST_FB_GIANT)
+                    fprintf(stderr, "[av1gpu] skipped %s: %dx%d is larger than %.1f megapixels (--max-input-mp)\n", p.c_str(), fe.width,
+                            fe.height, decMaxMp);
+                else
+                    fprintf(stderr, "[av1gpu] skipped %s: %s\n", p.c_str(), gp_fallback_reason(fe.reason));
                 cpuFallbackA++;
                 return;
             }
@@ -520,8 +591,11 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
             const bool dec = cfg.lossless ? gp_decode_lossless(p, hp, cfg.ycgcoRe, &matrix, note, e2, keepAlpha)
                                           : gp_decode_cpu(p, hp, e2, cfg.yuv444, cfg.depth, keepAlpha, &note);
             if (dec && !note.empty()) fprintf(stderr, "[av1gpu] %s: %s\n", p.c_str(), note.c_str());
-            if (!dec || (double)hp.W * hp.H > 35.6e6) {
-                fprintf(stderr, "[av1gpu] skipped %s: %s\n", p.c_str(), e2.empty() ? "larger than 35.6 megapixels" : e2.c_str());
+            int ow = hp.W, oh = hp.H;
+            const GpXform fx = dec ? outSize(fe.index, hp.W, hp.H, 1, &ow, &oh) : GpXform();
+            if (!dec || (double)hp.W * hp.H > decMaxMp * 1e6 || (double)ow * oh > encMaxMp * 1e6) {
+                if (e2.empty()) e2 = "larger than " + std::to_string(decMaxMp).substr(0, std::to_string(decMaxMp).find('.') + 2) + " megapixels";
+                fprintf(stderr, "[av1gpu] skipped %s: %s\n", p.c_str(), e2.c_str());
                 cpuFallbackA++;
                 return;
             }
@@ -562,6 +636,7 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
             FbFrame F;
             F.d = d;
             F.name = base_name(p);
+            F.x = fx;
             F.f.W = hp.W; F.f.H = hp.H; F.f.aw = hp.aw; F.f.ah = hp.ah; F.f.yuv444 = hp.yuv444; F.f.bitDepth = hp.bitDepth;
             F.f.mono = hp.mono; F.f.colorMatrix = matrix;
             F.f.dsrc[0] = d; F.f.dsrc[1] = d + ys; F.f.dsrc[2] = d + ys + cs;
@@ -650,9 +725,10 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
             std::vector<ingest_batch> held;
             std::vector<GpFrameIn> fin;
             Job *job = new Job;
-            double mpAcc = 0;
+            double mpAcc = 0;   // megapixels encoded (after crop / resize)
             std::vector<uint8_t *> fbHeld;
-            int fbConv = 0;   // 1 when fbHeld also holds the 10-bit conversion buffer (not a fallback image)
+            std::vector<GpXform> xfin;   // per fin entry
+            int fbConv = 0;   // how many of fbHeld are conversion buffers (10-bit, crop / resize), not fallback images
             // ingest batches up to timeoutMs (-1: wait for one), until the batch has GP_ENCODE_MP
             auto takeIngest = [&](int timeoutMs) {
                 std::lock_guard<std::mutex> lk(inMu);
@@ -675,6 +751,14 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
                             cpuFallbackA++;
                             continue;
                         }
+                        int ow, oh;
+                        const GpXform x = outSize(im.index, im.width, im.height, im.oriented ? 1 : im.orientation, &ow, &oh);
+                        if ((double)ow * oh > encMaxMp * 1e6) {
+                            fprintf(stderr, "[av1gpu] skipped %s: %dx%d is larger than %.1f megapixels\n", paths[im.index].c_str(), ow, oh, encMaxMp);
+                            cpuFallbackA++;
+                            continue;
+                        }
+                        xfin.push_back(x);
                         GpFrameIn f;
                         f.W = im.width; f.H = im.height; f.mono = im.mono; f.aw = im.aw; f.ah = im.ah; f.yuv444 = im.chroma_full;
                         f.dsrc[0] = b.pool + im.y_off; f.spitch[0] = im.y_pitch;
@@ -684,7 +768,7 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
                         job->orients.push_back(im.oriented ? 1 : im.orientation);
                         job->names.push_back(base_name(paths[im.index]));
                         job->afin.emplace_back();   // (JPEG: no alpha)
-                        mpAcc += im.width * (double)im.height / 1e6;
+                        mpAcc += ow * (double)oh / 1e6;
                     }
                 }
             };
@@ -705,16 +789,28 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
                     job->names.push_back(F.name);
                     job->afin.push_back(F.a);
                     fbHeld.push_back(F.d);
-                    mpAcc += F.f.W * (double)F.f.H / 1e6;
+                    xfin.push_back(F.x);
+                    int ow = F.f.W, oh = F.f.H;
+                    if (F.x.active()) gp_xform_size(F.x, F.f.W, F.f.H, &ow, &oh);
+                    mpAcc += ow * (double)oh / 1e6;
                 }
             }
             if (!fbHeld.empty()) fbCv.notify_all();   // room in the fallback queue
             takeIngest(-1);
+            if (!fin.empty() && anyXform) {
+                // crop / shrink (straight to 10 bits with --depth 10); freed with the fallback planes
+                uint8_t *cb = nullptr;
+                if (gp_frames_transform(fin, xfin, cfg.depth, s, &cb, eerr)) { fprintf(stderr, "crop / resize: %s\n", eerr.c_str()); encFail++; delete job; return; }
+                if (cb) { fbHeld.push_back(cb); fbConv++; }
+                // the alpha frames (PNG / WebP transparency) the same way: monochrome, already at the colour's depth
+                if (gp_frames_transform(job->afin, xfin, cfg.depth, s, &cb, eerr)) { fprintf(stderr, "crop / resize: %s\n", eerr.c_str()); encFail++; delete job; return; }
+                if (cb) { fbHeld.push_back(cb); fbConv++; }
+            }
             if (!fin.empty() && cfg.depth == 10 && !cfg.lossless) {
                 // --depth 10: ingest frames (8-bit JPEG samples) -> 10-bit planes; freed with the fallback planes
                 uint8_t *cb = nullptr;
                 if (gp_frames_to_10bit(fin, s, &cb, eerr)) { fprintf(stderr, "10-bit conversion: %s\n", eerr.c_str()); encFail++; delete job; return; }
-                if (cb) { fbHeld.push_back(cb); fbConv = 1; }
+                if (cb) { fbHeld.push_back(cb); fbConv++; }
             }
             if (fin.empty()) {
                 // --lossless: ingest batches whose JPEGs were all skipped; holding them filled ingest's in-flight limit

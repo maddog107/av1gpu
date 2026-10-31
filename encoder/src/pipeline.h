@@ -10,6 +10,14 @@
 #include "gp.h"
 #include "entropy_dev.h"
 
+// Front ends (--crop / --max-size, per-line batch options): a crop rectangle and a box to fit in, applied to the
+// decoded planes on the GPU before the encode.
+struct GpXform {
+    int cx = 0, cy = 0, cw = 0, ch = 0;   // crop rectangle in source pixels (stored orientation); cw = 0: no crop
+    int maxW = 0, maxH = 0;               // fit inside maxW x maxH (0: unbounded), aspect kept, never enlarged
+    bool active() const { return cw > 0 || maxW > 0 || maxH > 0; }
+};
+
 struct GpConfig {
     int qindex = 100;
     GpParams P;
@@ -57,6 +65,11 @@ struct GpConfig {
     int alpha = 1;            // front ends: PNG / WebP transparency is coded as an AVIF alpha item (monochrome frames
                               // encoded with gp_alpha_config(); 0 = --no-alpha: not coded, as before)
     int alphaQindex = -1;     // alpha frames: 0 = lossless, 1..255 = qindex; -1 = the colour frames' qindex
+    GpXform xform;            // front ends: crop / fit-inside for every image (batch lines may override it)
+    double maxMp = 35.6;      // front ends: largest picture encoded (35.65 MP = AV1 level 6.3, the most AVIF's Advanced
+                              // profile allows; larger pictures are written with seq_level_idx 31, no level limits)
+    double maxInputMp = 0;    // front ends: largest source decoded (0: maxMp); larger than maxMp only helps sources
+                              // that a crop / max-size brings under maxMp
     GpConfig();
 };
 
@@ -131,6 +144,20 @@ private:
 // device allocation on st for all of them is returned in *buf (NULL if nothing was converted); free it with
 // cudaFreeAsync(*buf, st) after the encode.  The source planes must stay valid until the work on st is done.
 int gp_frames_to_10bit(std::vector<GpFrameIn> &frames, cudaStream_t st, uint8_t **buf, std::string &err);
+
+// Output size of a W x H source: the crop (clipped to the image), then ImageMagick's -resize 'WxH>' geometry
+// (scale = min(maxW / w, maxH / h) if it is < 1, each side floor(side * scale + 0.5)).  false: empty crop.
+bool gp_xform_size(const GpXform &x, int W, int H, int *ow, int *oh);
+// Option values: crop "WxH+X+Y" (ImageMagick geometry, e.g. from -format %@) or "X,Y,W,H"; max-size "WxH", "xH" or "Wx".
+bool gp_parse_crop(const char *v, GpXform &x);
+bool gp_parse_max_size(const char *v, GpXform &x);
+// Apply xf[i] to frames[i] (frames whose transform is not active, or is an identity, are left alone): crop, then
+// shrink with ImageMagick's default -resize filter for shrinking (Lanczos, 3 lobes, support stretched by the shrink
+// factor, taps clipped to the crop and renormalised, in the planes' own (YCbCr, gamma-encoded) samples), written at
+// outDepth (10: the k_to10 mapping applied to the filtered 8-bit values, i.e. without an 8-bit rounding in between).
+// The new planes share one device allocation on st returned in *buf (NULL if none); free it like gp_frames_to_10bit's.
+int gp_frames_transform(std::vector<GpFrameIn> &frames, const std::vector<GpXform> &xf, int outDepth, cudaStream_t st,
+                        uint8_t **buf, std::string &err);
 
 // Entropy coding.  CPU: av1core's writer (av1g_encode, bitstream only).  GPU: av1core GPU entropy
 // (symbolize + od_ec on the GPU) + OBU assembly.  Both produce identical bytes.

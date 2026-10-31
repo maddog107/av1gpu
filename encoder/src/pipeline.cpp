@@ -4,6 +4,11 @@
 #include "pinned.h"
 #include "kernels.h"
 size_t gp_recon_scratch_bytes();   // k_recon.cu (W5/W3)
+// k_misc.cu: one plane of gp_frames_transform: source columns [sx0, sx0 + tw) filtered vertically into tmp (oh x tw
+// floats), then horizontally into dst (ow x oh, edge-replicated to aw x ah); in10 / out10: uint16_t samples (10-bit)
+void gp_launch_resize(const void *src, int spitch, int in10, int sx0, int tw, const int *ystart, const float *yw, int ytaps,
+                      const int *xstart, const float *xw, int xtaps, float *tmp, void *dst, int dpitch, int ow, int oh, int aw,
+                      int ah, int out10, int chroma, cudaStream_t st);
 #include "av1g/av1g.h"
 #include "av1g/blockinfo.h"
 #include "av1g/dsp.h"
@@ -845,6 +850,188 @@ int gp_frames_to_10bit(std::vector<GpFrameIn> &frames, cudaStream_t st, uint8_t 
         f.bitDepth = 10;
     }
     GPCK(cudaGetLastError());
+    *buf = d;
+    return 0;
+}
+
+bool gp_xform_size(const GpXform &x, int W, int H, int *ow, int *oh) {
+    int w = W, h = H;
+    if (x.cw > 0) {
+        w = std::min(x.cx + x.cw, W) - std::max(x.cx, 0);
+        h = std::min(x.cy + x.ch, H) - std::max(x.cy, 0);
+        if (w <= 0 || h <= 0) return false;
+    }
+    double s = 1.0;
+    if (x.maxW > 0) s = std::min(s, (double)x.maxW / w);
+    if (x.maxH > 0) s = std::min(s, (double)x.maxH / h);
+    *ow = w;
+    *oh = h;
+    if (s < 1.0) {
+        *ow = std::max(1, (int)std::floor(w * s + 0.5));
+        *oh = std::max(1, (int)std::floor(h * s + 0.5));
+    }
+    return true;
+}
+
+bool gp_parse_crop(const char *v, GpXform &x) {
+    int a, b, c, d;
+    char t;
+    if (sscanf(v, "%dx%d+%d+%d%c", &a, &b, &c, &d, &t) == 4 && a > 0 && b > 0 && c >= 0 && d >= 0) {
+        x.cw = a; x.ch = b; x.cx = c; x.cy = d;
+        return true;
+    }
+    if (sscanf(v, "%d,%d,%d,%d%c", &a, &b, &c, &d, &t) == 4 && a >= 0 && b >= 0 && c > 0 && d > 0) {
+        x.cx = a; x.cy = b; x.cw = c; x.ch = d;
+        return true;
+    }
+    return false;
+}
+
+bool gp_parse_max_size(const char *v, GpXform &x) {
+    const char *s = strchr(v, 'x');
+    if (!s) return false;
+    char *e;
+    const long w = s == v ? 0 : strtol(v, &e, 10);
+    if (s != v && e != s) return false;
+    const long h = s[1] ? strtol(s + 1, &e, 10) : 0;
+    if (s[1] && *e) return false;
+    if (w < 0 || h < 0 || (w == 0 && h == 0)) return false;
+    x.maxW = (int)w;
+    x.maxH = (int)h;
+    return true;
+}
+
+namespace {
+// ImageMagick's Lanczos (resize.c: Sinc windowed by Sinc, support 3)
+double rz_lanczos(double x) {
+    x = std::fabs(x);
+    if (x >= 3.0) return 0.0;
+    if (x < 1e-9) return 1.0;
+    const double a = M_PI * x, b = a / 3.0;
+    return std::sin(a) / a * std::sin(b) / b;
+}
+// Filter taps of one axis, as resize.c's HorizontalFilter / VerticalFilter: output o of n samples from the source
+// window [lo, lo + len) (plane samples, lo may be fractional for subsampled chroma), clipped to whole samples
+// [wlo, whi).  Each row is shifted so that start + taps <= whi (the kernels read `taps` samples unconditionally).
+void rz_taps(double lo, double len, int n, int wlo, int whi, std::vector<int> &start, std::vector<float> &w, int &taps) {
+    const double f = n / len, support = 3.0 * std::max(1.0 / f, 1.0), sc = std::min(f, 1.0);
+    std::vector<int> s0(n), cnt(n);
+    std::vector<double> wd;
+    taps = 1;
+    for (int o = 0; o < n; o++) {
+        const double c = lo + (o + 0.5) / f;
+        int a = (int)std::floor(c - support + 0.5), b = (int)std::floor(c + support + 0.5);
+        a = std::max(a, wlo);
+        b = std::min(b, whi);
+        if (b <= a) { a = std::min(std::max((int)std::floor(c), wlo), whi - 1); b = a + 1; }
+        s0[o] = a;
+        cnt[o] = b - a;
+        taps = std::max(taps, b - a);
+    }
+    taps = std::min(taps, whi - wlo);
+    start.resize(n);
+    w.assign((size_t)n * taps, 0.f);
+    for (int o = 0; o < n; o++) {
+        const double c = lo + (o + 0.5) / f;
+        const int st = std::max(wlo, std::min(s0[o], whi - taps)), k0 = s0[o] - st;
+        start[o] = st;
+        double sum = 0;
+        wd.assign(cnt[o], 0.0);
+        for (int k = 0; k < cnt[o]; k++) sum += wd[k] = rz_lanczos(sc * (s0[o] + k + 0.5 - c));
+        for (int k = 0; k < cnt[o] && k0 + k < taps; k++) w[(size_t)o * taps + k0 + k] = (float)(sum != 0 ? wd[k] / sum : (k == 0));
+    }
+}
+}  // namespace
+
+int gp_frames_transform(std::vector<GpFrameIn> &frames, const std::vector<GpXform> &xf, int outDepth, cudaStream_t st,
+                        uint8_t **buf, std::string &err) {
+    *buf = nullptr;
+    struct Pl { int fi, p, s, in10, wlo, tw, ow, oh, aw, ah; size_t dst, tab, ys, yw, xs, xw; int yt, xt; };
+    std::vector<Pl> pls;
+    auto *host = new std::vector<uint8_t>;   // taps of every plane, uploaded at once; freed by a host callback
+    auto put = [&](const void *d, size_t n) {
+        const size_t at = (host->size() + 255) & ~(size_t)255;
+        host->resize(at + n);
+        memcpy(host->data() + at, d, n);
+        return at;
+    };
+    size_t outBytes = 0, tmpMax = 0;
+    std::vector<int> newW(frames.size()), newH(frames.size());
+    for (size_t i = 0; i < frames.size() && i < xf.size(); i++) {
+        const GpFrameIn &f = frames[i];
+        int ow, oh;
+        if (f.W <= 0 || !xf[i].active() || !gp_xform_size(xf[i], f.W, f.H, &ow, &oh)) continue;
+        const int cx = xf[i].cw > 0 ? std::max(xf[i].cx, 0) : 0, cy = xf[i].cw > 0 ? std::max(xf[i].cy, 0) : 0;
+        const int cw = xf[i].cw > 0 ? std::min(xf[i].cx + xf[i].cw, f.W) - cx : f.W;
+        const int ch = xf[i].cw > 0 ? std::min(xf[i].cy + xf[i].ch, f.H) - cy : f.H;
+        if (cx == 0 && cy == 0 && cw == f.W && ch == f.H && ow == f.W && oh == f.H) continue;   // identity
+        newW[i] = ow;
+        newH[i] = oh;
+        const int aw = (ow + 63) & ~63, ah = (oh + 63) & ~63, out10 = outDepth == 10 || f.bitDepth == 10;
+        for (int p = 0; p < (f.mono ? 1 : 3); p++) {
+            Pl q{};
+            q.fi = (int)i;
+            q.p = p;
+            q.s = (p && !f.yuv444) ? 1 : 0;
+            q.in10 = f.bitDepth == 10;
+            const double d = 1 << q.s;
+            const int pw = (f.W + q.s) >> q.s, ph = (f.H + q.s) >> q.s;   // visible plane size
+            q.ow = (ow + q.s) >> q.s;
+            q.oh = (oh + q.s) >> q.s;
+            q.aw = aw >> q.s;
+            q.ah = ah >> q.s;
+            const int xlo = (int)std::floor(cx / d), xhi = std::min(pw, (int)std::ceil((cx + cw) / d));
+            const int ylo = (int)std::floor(cy / d), yhi = std::min(ph, (int)std::ceil((cy + ch) / d));
+            std::vector<int> s;
+            std::vector<float> w;
+            rz_taps(cy / d, ch / d, q.oh, ylo, yhi, s, w, q.yt);
+            q.ys = put(s.data(), s.size() * 4);
+            q.yw = put(w.data(), w.size() * 4);
+            rz_taps(cx / d, cw / d, q.ow, xlo, xhi, s, w, q.xt);
+            q.xs = put(s.data(), s.size() * 4);
+            q.xw = put(w.data(), w.size() * 4);
+            q.wlo = xlo;
+            q.tw = xhi - xlo;
+            q.dst = outBytes;
+            outBytes += ((size_t)q.aw * q.ah * (out10 ? 2 : 1) + 255) & ~(size_t)255;
+            tmpMax = std::max(tmpMax, (size_t)q.oh * q.tw * 4);
+            pls.push_back(q);
+        }
+    }
+    if (pls.empty()) { delete host; return 0; }
+    uint8_t *d = nullptr, *scr = nullptr;
+    const size_t tabAt = (tmpMax + 255) & ~(size_t)255;
+    if (cudaMallocAsync((void **)&d, outBytes, st) != cudaSuccess || cudaMallocAsync((void **)&scr, tabAt + host->size(), st) != cudaSuccess) {
+        delete host;
+        if (d) cudaFreeAsync(d, st);
+        err = "cudaMallocAsync (crop / resize planes)";
+        return -1;
+    }
+    GPCK(cudaMemcpyAsync(scr + tabAt, host->data(), host->size(), cudaMemcpyHostToDevice, st));
+    GPCK(cudaLaunchHostFunc(st, [](void *p) { delete (std::vector<uint8_t> *)p; }, host));
+    float *tmp = (float *)scr;
+    const uint8_t *tab = scr + tabAt;
+    for (const Pl &q : pls) {
+        const GpFrameIn &f = frames[q.fi];
+        const int out10 = outDepth == 10 || f.bitDepth == 10;
+        gp_launch_resize(f.dsrc[q.p], f.spitch[q.p], q.in10, q.wlo, q.tw, (const int *)(tab + q.ys), (const float *)(tab + q.yw), q.yt,
+                         (const int *)(tab + q.xs), (const float *)(tab + q.xw), q.xt, tmp, d + q.dst, q.aw, q.ow, q.oh, q.aw, q.ah,
+                         out10, q.p > 0, st);
+    }
+    GPCK(cudaGetLastError());
+    GPCK(cudaFreeAsync(scr, st));
+    for (const Pl &q : pls) {   // after every launch: the launches read the old frame fields
+        GpFrameIn &f = frames[q.fi];
+        f.dsrc[q.p] = d + q.dst;
+        f.spitch[q.p] = q.aw;
+        if (q.p == (f.mono ? 0 : 2)) {
+            f.bitDepth = outDepth == 10 || f.bitDepth == 10 ? 10 : 8;
+            f.W = newW[q.fi];
+            f.H = newH[q.fi];
+            f.aw = (f.W + 63) & ~63;
+            f.ah = (f.H + 63) & ~63;
+        }
+    }
     *buf = d;
     return 0;
 }

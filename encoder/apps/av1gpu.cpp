@@ -13,6 +13,7 @@
 
 #include <cuda_runtime.h>
 
+#include <algorithm>
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
@@ -95,8 +96,19 @@ static void usage() {
             "                          bits like the colour samples.\n"
             "  --no-alpha              do not code the alpha channel (as before alpha support): PNG colour is composited onto\n"
             "                          black, WebP and --lossless keep the stored RGB; a note says so\n"
+            "  --crop WxH+X+Y          crop the decoded image (also X,Y,W,H; source pixels, before the EXIF rotation)\n"
+            "  --max-size WxH          shrink to fit inside WxH (xH or Wx: one side only), aspect kept, never enlarged:\n"
+            "                          ImageMagick's -resize 'WxH>' size and filter (Lanczos), on the GPU after the decode\n"
+            "  --max-height H          same as --max-size xH\n"
+            "  --max-mp MP             largest picture encoded (default 35.6 = AV1 level 6.3, the most AVIF's Advanced\n"
+            "                          profile allows); larger ones are skipped.  Above it the stream says level 31 (no\n"
+            "                          limits): dav1d / libavif decode it, decoders that enforce levels may not\n"
+            "  --max-input-mp MP       largest source decoded (default: --max-mp); with --crop / --max-size, a larger source\n"
+            "                          is decoded at full size on the GPU and encoded once it fits --max-mp\n"
             "  --cpu-entropy           entropy-code on the CPU instead of the GPU (identical bytes)\n"
-            "  --batch LIST|DIR        encode every file in LIST (one path per line) or DIR; outputs <name>.avif\n"
+            "  --batch LIST|DIR        encode every file in LIST (one path per line) or DIR; outputs <name>.avif.  A LIST line\n"
+            "                          may add TAB-separated crop=WxH+X+Y and max-size=WxH for its image (they replace\n"
+            "                          --crop / --max-size for it)\n"
             "  --outdir DIR            batch output directory (outputs are named <input file name>.avif)\n"
             "  --stats                 print one JSON line with timings / counts\n"
             "  --debug-outputs         also write <out>.obu and <out>.recon.yuv (decoder identity tests)\n"
@@ -295,6 +307,24 @@ static bool parse(int argc, char **argv, GpConfig &cfg, Opts &o) {
         }
         else if (a == "--dump-source") o.dumpSource = nxt();
         else if (a == "--lossless") cfg.lossless = 1;
+        else if (a == "--crop") {
+            const char *v = nxt();
+            if (!gp_parse_crop(v, cfg.xform)) { fprintf(stderr, "bad --crop %s (WxH+X+Y or X,Y,W,H)\n", v); return false; }
+        }
+        else if (a == "--max-size") {
+            const char *v = nxt();
+            if (!gp_parse_max_size(v, cfg.xform)) { fprintf(stderr, "bad --max-size %s (WxH, xH or Wx)\n", v); return false; }
+        }
+        else if (a == "--max-mp" || a == "--max-input-mp") {
+            const double v = atof(nxt());
+            if (!(v > 0 && v <= 1000)) { fprintf(stderr, "bad %s (megapixels, 0 < MP <= 1000)\n", a.c_str()); return false; }
+            (a == "--max-mp" ? cfg.maxMp : cfg.maxInputMp) = v;
+        }
+        else if (a == "--max-height") {
+            cfg.xform.maxW = 0;
+            cfg.xform.maxH = atoi(nxt());
+            if (cfg.xform.maxH <= 0) { fprintf(stderr, "bad --max-height\n"); return false; }
+        }
         else if (a == "--ycgco-re") cfg.ycgcoRe = 1;
         else if (a == "--no-lossless-cfl") cfg.losslessCfl = 0;
         else if (a == "--ll-tile-area") cfg.llTileArea = atoi(nxt());
@@ -364,6 +394,7 @@ static bool parse(int argc, char **argv, GpConfig &cfg, Opts &o) {
         cfg.smallMp = 0;
     }
     if (cfg.ycgcoRe && !cfg.lossless) { fprintf(stderr, "--ycgco-re needs --lossless\n"); return false; }
+    if (cfg.lossless && cfg.xform.active()) { fprintf(stderr, "--crop / --max-size cannot be combined with --lossless\n"); return false; }
     if (cfg.lossless && (o.yuvSet || o.depthSet)) {
         fprintf(stderr, "--yuv / --depth cannot be combined with --lossless (the format follows the input; --ycgco-re for 10-bit 4:4:4)\n");
         return false;
@@ -404,7 +435,7 @@ static int run_single(const GpConfig &cfg, const Opts &o) {
     ingest_ctx *ictx = nullptr;
     ingest_batch ib;
     memset(&ib, 0, sizeof ib);
-    uint8_t *dplanes = nullptr, *dconv = nullptr;
+    uint8_t *dplanes = nullptr, *dconv = nullptr, *dxf = nullptr;
     auto t0 = std::chrono::steady_clock::now();
     if (kind == GP_FILE_JPEG) {
         ingest_config ic;
@@ -414,6 +445,8 @@ static int run_single(const GpConfig &cfg, const Opts &o) {
         ic.activity = 0;
         ic.pinned_bytes = 256ll << 20;   // D round 2: > 6000 px sides go to the CPU route (coefficients staged in this arena)
         ic.out_444 = cfg.yuv444;
+        ic.max_mp = std::max(cfg.maxInputMp > 0 ? cfg.maxInputMp : cfg.maxMp, cfg.maxMp);   // --max-mp / --max-input-mp
+        if (ic.max_mp > 35.6) ic.pinned_bytes = std::max<int64_t>(ic.pinned_bytes, (int64_t)(ic.max_mp * 1e6 * 3 * 2) + (16ll << 20));
         if (getenv("GP_INGEST_DECODER")) ic.decoder = atoi(getenv("GP_INGEST_DECODER"));   // 1: CPU entropy decode + GPU IDCT
         char eb[256] = {0};
         ictx = ingest_create(&ic, eb, sizeof eb);
@@ -439,6 +472,16 @@ static int run_single(const GpConfig &cfg, const Opts &o) {
         }
         if (im.icc_size > 0) icc.assign(im.icc, im.icc + im.icc_size);
         if (!im.oriented) orientation = im.orientation;
+        if (cfg.xform.active()) {
+            GpXform x = cfg.xform;
+            if (orientation >= 5) std::swap(x.maxW, x.maxH);   // the box is what is displayed
+            std::vector<GpFrameIn> v = {fin};
+            if (gp_frames_transform(v, {x}, cfg.depth, 0, &dxf, err) || cudaDeviceSynchronize() != cudaSuccess) {
+                fprintf(stderr, "crop / resize: %s\n", err.c_str());
+                return 1;
+            }
+            fin = v[0];
+        }
         if (cfg.depth == 10 && !cfg.lossless) {   // 8-bit JPEG samples -> 10-bit planes (libavif's full-range rescaling)
             std::vector<GpFrameIn> v = {fin};
             if (gp_frames_to_10bit(v, 0, &dconv, err) || cudaDeviceSynchronize() != cudaSuccess) {
@@ -475,6 +518,21 @@ static int run_single(const GpConfig &cfg, const Opts &o) {
             afin.dsrc[0] = dplanes + ys + 2 * cs;
             afin.spitch[0] = hp.aw;
         }
+        if (cfg.xform.active()) {
+            std::vector<GpFrameIn> v = {fin};
+            if (afin.W > 0) v.push_back(afin);
+            if (gp_frames_transform(v, std::vector<GpXform>(v.size(), cfg.xform), cfg.depth, 0, &dxf, err) ||
+                cudaDeviceSynchronize() != cudaSuccess) {
+                fprintf(stderr, "crop / resize: %s\n", err.c_str());
+                return 1;
+            }
+            fin = v[0];
+            if (afin.W > 0) afin = v[1];
+        }
+    }
+    if ((double)fin.W * fin.H > cfg.maxMp * 1e6) {
+        fprintf(stderr, "%s: %dx%d is larger than %.1f megapixels (--max-mp)\n", o.in.c_str(), fin.W, fin.H, cfg.maxMp);
+        return 3;
     }
     const bool hasAlpha = afin.W > 0;
     if (!o.dumpSource.empty()) {   // debug: the visible input planes as the encoder sees them (Y, then U, V; 10-bit: 16-bit LE)
@@ -521,6 +579,7 @@ static int run_single(const GpConfig &cfg, const Opts &o) {
     if (ictx) { ingest_release_batch(ictx, ib.batch_id, nullptr); ingest_destroy(ictx); }
     if (dplanes) cudaFree(dplanes);
     if (dconv) cudaFree(dconv);
+    if (dxf) cudaFree(dxf);
     auto t2 = std::chrono::steady_clock::now();
     GpFrameOut &f = outs[0];
     GpFrameOut *fa = hasAlpha ? &aouts[0] : nullptr;
