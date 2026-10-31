@@ -14,6 +14,8 @@
 /* subsampling_x / subsampling_y of a frame (monochrome: 1, as in the spec) */
 AV1G_HD int av1g_ssx(const av1g_frame_params *fp) { return (!fp->monochrome && fp->chroma_format == AV1G_CHROMA_444) ? 0 : 1; }
 AV1G_HD int av1g_ssy(const av1g_frame_params *fp) { return (!fp->monochrome && fp->chroma_format == AV1G_CHROMA_444) ? 0 : 1; }
+/* BitDepth of a frame (fp.bit_depth, v3): 8 or 10; 0 (version 1 / 2 records) means 8 */
+AV1G_HD int av1g_bit_depth(const av1g_frame_params *fp) { return fp->bit_depth == 10 ? 10 : 8; }
 
 AV1G_HD int av1g_bw4(int bsize) { return AV1G_T(Num_4x4_Blocks_Wide)[bsize]; }
 AV1G_HD int av1g_bh4(int bsize) { return AV1G_T(Num_4x4_Blocks_High)[bsize]; }

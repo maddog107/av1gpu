@@ -11,9 +11,16 @@
  * Order (spec 7.14 / 7.15): deblock every plane - pass 0 (vertical edges) of a plane
  * completes before its pass 1 (horizontal edges); within a pass all edges are independent
  * - then CDEF reads the deblocked frame and writes a separate output frame; all 8x8 blocks
- * are independent.  8-bit, 4:2:0, 4:4:4 or monochrome (ssx/ssy from fp.chroma_format), no
+ * are independent.  8-bit or 10-bit, 4:2:0, 4:4:4 or monochrome (ssx/ssy from fp.chroma_format), no
  * segmentation / delta-lf / lossless; lfLevel[] are the effective levels (Y vertical,
  * Y horizontal, U, V).
+ *
+ * Bit depth: the filter functions are templates on BD (default 8, see av1g/dsp.h).  At 10 bits
+ * the plane pointers of av1g_pf_frame (and CDEF destinations) point at uint16_t samples (strides
+ * in samples); the spec's BitDepth scaling is applied inside: deblocking limit / blimit / thresh
+ * << (BitDepth - 8), flat threshold 1 << (BitDepth - 8), the narrow filter's 0x80 << (BitDepth - 8)
+ * offset and filter4_clamp range; CDEF directions on samples >> (BitDepth - 8), strengths
+ * << (BitDepth - 8) before the variance adjustment, damping + (BitDepth - 8) (see av1g_cdef_damping).
  *
  * Define AV1G_PF_STAT(kind) before including to count filter paths (tests only). */
 #ifndef AV1G_POSTFILTER_H
@@ -35,7 +42,7 @@ enum { AV1G_PF_LF_MASKED = 0, AV1G_PF_LF_NARROW_HEV, AV1G_PF_LF_NARROW, AV1G_PF_
 typedef struct av1g_pf_frame {
     int W, H, MiRows, MiCols, mono;
     int ssx, ssy;               /* chroma subsampling: 1, 1 (4:2:0, monochrome) or 0, 0 (4:4:4) */
-    uint8_t *plane[3];          /* frame being deblocked in place / CDEF source */
+    uint8_t *plane[3];          /* frame being deblocked in place / CDEF source (10-bit: uint16_t samples) */
     int stride[3];
     uint8_t *skip;              /* Skips, MiRows x MiCols, stride MiCols */
     uint8_t *lfTx[3];           /* LoopfilterTxSizes: luma like skip; chroma (MiRows >> ssy) x (MiCols >> ssx),
@@ -48,6 +55,7 @@ typedef struct av1g_pf_frame {
     int enableCdef;
     int cdefDamping;            /* CdefDamping = cdef_damping_minus_3 + 3 */
     int cdefYPri[8], cdefYSec[8], cdefUVPri[8], cdefUVSec[8];  /* sec strengths are 0, 1, 2, 4 */
+    int bitDepth;               /* 8 or 10 (selects the template instantiation; appended field) */
 } av1g_pf_frame;
 
 /* Copies the frame-level parameters; pointers are left for the caller. */
@@ -72,6 +80,7 @@ AV1G_HD void av1g_pf_frame_init(const av1g_frame_params *fp, av1g_pf_frame *f) {
         f->cdefUVPri[i] = fp->cdef_uv_pri[i];
         f->cdefUVSec[i] = fp->cdef_uv_sec[i];
     }
+    f->bitDepth = av1g_bit_depth(fp);
 }
 
 /* Writes one block's entries into the maps (Skips / LoopfilterTxSizes / cdef_idx). */
@@ -103,10 +112,16 @@ AV1G_HD int av1g_iabs(int x) { return x < 0 ? -x : x; }
 
 /* Sample filtering process (7.14.6) for one line across an edge.  q0p points at q0 and
  * step is the distance between successive samples across the edge (1 or the stride). */
-AV1G_HD void av1g_lf_line(uint8_t *q0p, ptrdiff_t step, int plane, int filterSize, int limit, int blimit, int thresh) {
+template <int BD = 8, typename P>
+AV1G_HD void av1g_lf_line(P *q0p, ptrdiff_t step, int plane, int filterSize, int limit, int blimit, int thresh) {
+    AV1G_PIX_CHECK(BD, P);
 #define S_(k) ((int)q0p[(k) * step])
     const int q0 = S_(0), q1 = S_(1), p0 = S_(-1), p1 = S_(-2);
     const int filterLen = filterSize == 4 ? 4 : plane ? 6 : filterSize == 8 ? 8 : 16;
+    limit <<= BD - 8;    /* limitBd, blimitBd, threshBd (7.14.6.2) */
+    blimit <<= BD - 8;
+    thresh <<= BD - 8;
+    const int flatTh = 1 << (BD - 8);   /* thresholdBd */
     int mask = (av1g_iabs(p1 - p0) > limit) | (av1g_iabs(q1 - q0) > limit) |
                (av1g_iabs(p0 - q0) * 2 + av1g_iabs(p1 - q1) / 2 > blimit);
     int q2 = 0, p2 = 0, q3 = 0, p3 = 0;
@@ -116,29 +131,31 @@ AV1G_HD void av1g_lf_line(uint8_t *q0p, ptrdiff_t step, int plane, int filterSiz
     const int hevMask = (av1g_iabs(p1 - p0) > thresh) | (av1g_iabs(q1 - q0) > thresh);
     int flatMask = 0, flatMask2 = 0;
     if (filterSize >= 8) {
-        int m = (av1g_iabs(p1 - p0) > 1) | (av1g_iabs(q1 - q0) > 1) | (av1g_iabs(p2 - p0) > 1) | (av1g_iabs(q2 - q0) > 1);
-        if (filterLen >= 8) m |= (av1g_iabs(p3 - p0) > 1) | (av1g_iabs(q3 - q0) > 1);
+        int m = (av1g_iabs(p1 - p0) > flatTh) | (av1g_iabs(q1 - q0) > flatTh) | (av1g_iabs(p2 - p0) > flatTh) |
+                (av1g_iabs(q2 - q0) > flatTh);
+        if (filterLen >= 8) m |= (av1g_iabs(p3 - p0) > flatTh) | (av1g_iabs(q3 - q0) > flatTh);
         flatMask = !m;
     }
     if (filterSize >= 16 && flatMask) {
         const int q4 = S_(4), q5 = S_(5), q6 = S_(6), p4 = S_(-5), p5 = S_(-6), p6 = S_(-7);
-        const int m = (av1g_iabs(p6 - p0) > 1) | (av1g_iabs(q6 - q0) > 1) | (av1g_iabs(p5 - p0) > 1) | (av1g_iabs(q5 - q0) > 1) |
-                      (av1g_iabs(p4 - p0) > 1) | (av1g_iabs(q4 - q0) > 1);
+        const int m = (av1g_iabs(p6 - p0) > flatTh) | (av1g_iabs(q6 - q0) > flatTh) | (av1g_iabs(p5 - p0) > flatTh) |
+                      (av1g_iabs(q5 - q0) > flatTh) | (av1g_iabs(p4 - p0) > flatTh) | (av1g_iabs(q4 - q0) > flatTh);
         flatMask2 = !m;
     }
     if (filterSize == 4 || !flatMask) {  /* narrow filter (7.14.6.3) */
         AV1G_PF_STAT(hevMask ? AV1G_PF_LF_NARROW_HEV : AV1G_PF_LF_NARROW);
-#define C4(v) av1g_clip3(-128, 127, (v))
-        const int ps1 = p1 - 128, ps0 = p0 - 128, qs0 = q0 - 128, qs1 = q1 - 128;
+#define C4(v) av1g_clip3(-(1 << (BD - 1)), (1 << (BD - 1)) - 1, (v))   /* filter4_clamp */
+        const int off = 0x80 << (BD - 8);
+        const int ps1 = p1 - off, ps0 = p0 - off, qs0 = q0 - off, qs1 = q1 - off;
         int filter = hevMask ? C4(ps1 - qs1) : 0;
         filter = C4(filter + 3 * (qs0 - ps0));
         const int filter1 = C4(filter + 4) >> 3, filter2 = C4(filter + 3) >> 3;
-        q0p[0] = (uint8_t)(C4(qs0 - filter1) + 128);
-        q0p[-step] = (uint8_t)(C4(ps0 + filter2) + 128);
+        q0p[0] = (P)(C4(qs0 - filter1) + off);
+        q0p[-step] = (P)(C4(ps0 + filter2) + off);
         if (!hevMask) {
             const int fr = av1g_round2(filter1, 1);
-            q0p[step] = (uint8_t)(C4(qs1 - fr) + 128);
-            q0p[-2 * step] = (uint8_t)(C4(ps1 + fr) + 128);
+            q0p[step] = (P)(C4(qs1 - fr) + off);
+            q0p[-2 * step] = (P)(C4(ps1 + fr) + off);
         }
 #undef C4
         return;
@@ -157,14 +174,16 @@ AV1G_HD void av1g_lf_line(uint8_t *q0p, ptrdiff_t step, int plane, int filterSiz
         }
         F[i + n] = av1g_round2(t, log2Size);
     }
-    for (int i = -n; i < n; i++) q0p[i * step] = (uint8_t)F[i + n];
+    for (int i = -n; i < n; i++) q0p[i * step] = (P)F[i + n];
 #undef S_
 }
 
 /* Edge loop filter process (7.14.2): plane, pass, luma 4x4 position (row, col) - the 4
  * lines of one edge segment.  Callers visit row/col in steps of 1 << ssy / 1 << ssx for
  * chroma (every 4x4 in 4:4:4). */
+template <int BD = 8>
 AV1G_HD void av1g_lf_edge(const av1g_pf_frame *f, int plane, int pass, int row, int col) {
+    typedef av1g_pixel_t(BD) P;
     const int subX = plane ? f->ssx : 0, subY = plane ? f->ssy : 0;
     const int x = col * 4, y = row * 4;
     if (x >= f->W || y >= f->H) return;
@@ -197,16 +216,17 @@ AV1G_HD void av1g_lf_edge(const av1g_pf_frame *f, int plane, int pass, int row, 
     const int shift = f->sharpness > 4 ? 2 : f->sharpness > 0 ? 1 : 0;
     const int limit = f->sharpness > 0 ? av1g_clip3(1, 9 - f->sharpness, lvl >> shift) : ((lvl >> shift) > 1 ? lvl >> shift : 1);
     const int blimit = 2 * (lvl + 2) + limit, thresh = lvl >> 4;
-    uint8_t *pl = f->plane[plane];
+    P *pl = (P *)f->plane[plane];
     const int st = f->stride[plane];
     const ptrdiff_t step = pass == 0 ? 1 : st;
     for (int i = 0; i < 4; i++) {
-        uint8_t *q0 = pl + (size_t)(yP + (pass == 0) * i) * st + xP + (pass == 1) * i;
-        av1g_lf_line(q0, step, plane, filterSize, limit, blimit, thresh);
+        P *q0 = pl + (size_t)(yP + (pass == 0) * i) * st + xP + (pass == 1) * i;
+        av1g_lf_line<BD>(q0, step, plane, filterSize, limit, blimit, thresh);
     }
 }
 
 /* Whole-frame deblocking in the spec's order (host reference). */
+template <int BD = 8>
 AV1G_HD void av1g_deblock_frame(const av1g_pf_frame *f) {
     if (!f->lfLevel[0] && !f->lfLevel[1]) return;
     for (int p = 0; p < (f->mono ? 1 : 3); p++) {
@@ -214,7 +234,7 @@ AV1G_HD void av1g_deblock_frame(const av1g_pf_frame *f) {
         const int rowStep = p ? 1 << f->ssy : 1, colStep = p ? 1 << f->ssx : 1;
         for (int pass = 0; pass < 2; pass++)
             for (int row = 0; row < f->MiRows; row += rowStep)
-                for (int col = 0; col < f->MiCols; col += colStep) av1g_lf_edge(f, p, pass, row, col);
+                for (int col = 0; col < f->MiCols; col += colStep) av1g_lf_edge<BD>(f, p, pass, row, col);
     }
 }
 
@@ -228,14 +248,16 @@ AV1G_HD int av1g_floor_log2(uint32_t x) {  /* FloorLog2; -1 for 0 */
 }
 
 /* CDEF direction process (7.15.2) for the 8x8 luma block at src */
-AV1G_HD void av1g_cdef_direction(const uint8_t *src, int stride, int *yDir, int *var) {
+template <int BD = 8, typename P>
+AV1G_HD void av1g_cdef_direction(const P *src, int stride, int *yDir, int *var) {
+    AV1G_PIX_CHECK(BD, P);
     int cost[8] = {0, 0, 0, 0, 0, 0, 0, 0};
     int partial[8][15];
     for (int i = 0; i < 8; i++)
         for (int j = 0; j < 15; j++) partial[i][j] = 0;
     for (int i = 0; i < 8; i++)
         for (int j = 0; j < 8; j++) {
-            const int x = src[i * stride + j] - 128;
+            const int x = (src[i * stride + j] >> (BD - 8)) - 128;
             partial[0][i + j] += x;
             partial[1][i + j / 2] += x;
             partial[2][i] += x;
@@ -303,24 +325,31 @@ AV1G_HD int av1g_cdef_active_idx(const av1g_pf_frame *f, int r, int c) {
     return idx;
 }
 
-/* Strengths / directions of an active block from its direction-process outputs (7.15.1). */
+/* Strengths / directions of an active block from its direction-process outputs (7.15.1).  The
+ * strengths are the filter process inputs: << (BitDepth - 8), luma primary variance-adjusted. */
+template <int BD = 8>
 AV1G_HD av1g_cdef_blk av1g_cdef_params(const av1g_pf_frame *f, int idx, int yDir, int var) {
     av1g_cdef_blk o;
     o.filtered = 1;
-    const int pri = f->cdefYPri[idx];
+    const int pri = f->cdefYPri[idx] << (BD - 8);
     o.yDir = pri == 0 ? 0 : yDir;
     int varStr = 0;
     if (var >> 6) { varStr = av1g_floor_log2((uint32_t)(var >> 6)); if (varStr > 12) varStr = 12; }
     o.yPri = var ? (pri * (4 + varStr) + 8) >> 4 : 0;
-    o.ySec = f->cdefYSec[idx];
-    o.uvPri = f->cdefUVPri[idx];
-    o.uvSec = f->cdefUVSec[idx];
+    o.ySec = f->cdefYSec[idx] << (BD - 8);
+    o.uvPri = f->cdefUVPri[idx] << (BD - 8);
+    o.uvSec = f->cdefUVSec[idx] << (BD - 8);
     o.uvDir = o.uvPri == 0 ? 0 : yDir;  /* Cdef_Uv_Dir[ssx][ssy] is the identity for 4:2:0 and 4:4:4 */
     return o;
 }
+/* damping of the CDEF filter process: CdefDamping + (BitDepth - 8), minus 1 for chroma */
+template <int BD = 8> AV1G_HD int av1g_cdef_damping(const av1g_pf_frame *f, int plane) {
+    return f->cdefDamping + (BD - 8) - (plane > 0);
+}
 
 /* r, c: 8x8 block position in luma 4x4 units (even).  src0: deblocked luma plane. */
-AV1G_HD av1g_cdef_blk av1g_cdef_setup(const av1g_pf_frame *f, const uint8_t *src0, int stride0, int r, int c) {
+template <int BD = 8, typename P>
+AV1G_HD av1g_cdef_blk av1g_cdef_setup(const av1g_pf_frame *f, const P *src0, int stride0, int r, int c) {
     av1g_cdef_blk o = {0, 0, 0, 0, 0, 0, 0};
     const int idx = av1g_cdef_active_idx(f, r, c);
     if (idx < 0) {
@@ -328,14 +357,17 @@ AV1G_HD av1g_cdef_blk av1g_cdef_setup(const av1g_pf_frame *f, const uint8_t *src
         return o;
     }
     int yDir, var;
-    av1g_cdef_direction(src0 + (size_t)(r * 4) * stride0 + c * 4, stride0, &yDir, &var);
-    return av1g_cdef_params(f, idx, yDir, var);
+    av1g_cdef_direction<BD>(src0 + (size_t)(r * 4) * stride0 + c * 4, stride0, &yDir, &var);
+    return av1g_cdef_params<BD>(f, idx, yDir, var);
 }
 
 /* CDEF filter process (7.15.3) for the sample at plane coordinates (x, y) of the deblocked
- * plane src.  damping: CdefDamping for luma, CdefDamping - 1 for chroma. */
-AV1G_HD int av1g_cdef_pixel(const av1g_pf_frame *f, const uint8_t *src, int sstride, int plane, int x, int y, int priStr,
+ * plane src.  priStr / secStr as returned by av1g_cdef_params; damping: av1g_cdef_damping()
+ * (CdefDamping for luma, CdefDamping - 1 for chroma at 8 bits). */
+template <int BD = 8, typename P>
+AV1G_HD int av1g_cdef_pixel(const av1g_pf_frame *f, const P *src, int sstride, int plane, int x, int y, int priStr,
                             int secStr, int damping, int dir) {
+    AV1G_PIX_CHECK(BD, P);
     const int subX = plane ? f->ssx : 0, subY = plane ? f->ssy : 0;
     const int8_t Dirs[8][2][2] = {{{-1, 1}, {-2, 2}}, {{0, 1}, {-1, 2}}, {{0, 1}, {0, 2}}, {{0, 1}, {1, 2}},  /* Cdef_Directions */
                                   {{1, 1}, {2, 2}},   {{1, 0}, {2, 1}},  {{1, 0}, {2, 0}}, {{1, 0}, {2, -1}}};
@@ -351,7 +383,7 @@ AV1G_HD int av1g_cdef_pixel(const av1g_pf_frame *f, const uint8_t *src, int sstr
                 /* is_inside_filter_region: the frame (MiRows x MiCols in luma 4x4 units) */
                 if (yy < 0 || xx < 0 || ((yy << subY) >> 2) >= f->MiRows || ((xx << subX) >> 2) >= f->MiCols) continue;
                 const int p = src[(size_t)yy * sstride + xx];
-                if (t == 0) sum += PriTaps[priStr & 1][k] * av1g_cdef_constrain_adj(p - x0v, priStr, priAdj);
+                if (t == 0) sum += PriTaps[(priStr >> (BD - 8)) & 1][k] * av1g_cdef_constrain_adj(p - x0v, priStr, priAdj);
                 else sum += SecTaps[k] * av1g_cdef_constrain_adj(p - x0v, secStr, secAdj);
                 mx = p > mx ? p : mx;
                 mn = p < mn ? p : mn;
@@ -363,29 +395,33 @@ AV1G_HD int av1g_cdef_pixel(const av1g_pf_frame *f, const uint8_t *src, int sstr
 
 /* CDEF block process (7.15.1) for the 8x8 luma block at 4x4 position (r, c), all planes:
  * source = deblocked frame (f->plane / f->stride), dst = CdefFrame. */
+template <int BD = 8>
 AV1G_HD void av1g_cdef_block(const av1g_pf_frame *f, uint8_t *const dst[3], const int dstride[3], int r, int c) {
-    const av1g_cdef_blk o = av1g_cdef_setup(f, f->plane[0], f->stride[0], r, c);
+    typedef av1g_pixel_t(BD) P;
+    const av1g_cdef_blk o = av1g_cdef_setup<BD>(f, (const P *)f->plane[0], f->stride[0], r, c);
     if (o.filtered) AV1G_PF_STAT(AV1G_PF_CDEF_FILTERED);
     for (int p = 0; p < (f->mono ? 1 : 3); p++) {
         const int subX = p ? f->ssx : 0, subY = p ? f->ssy : 0;
         const int x0 = (c * 4) >> subX, y0 = (r * 4) >> subY, w = 8 >> subX, h = 8 >> subY;
-        const uint8_t *src = f->plane[p];
+        const P *src = (const P *)f->plane[p];
         const int ss = f->stride[p];
         for (int i = 0; i < h; i++)
             for (int j = 0; j < w; j++) {
                 int v = src[(size_t)(y0 + i) * ss + x0 + j];
                 if (o.filtered)
-                    v = p == 0 ? av1g_cdef_pixel(f, src, ss, 0, x0 + j, y0 + i, o.yPri, o.ySec, f->cdefDamping, o.yDir)
-                               : av1g_cdef_pixel(f, src, ss, p, x0 + j, y0 + i, o.uvPri, o.uvSec, f->cdefDamping - 1, o.uvDir);
-                dst[p][(size_t)(y0 + i) * dstride[p] + x0 + j] = (uint8_t)v;
+                    v = p == 0 ? av1g_cdef_pixel<BD>(f, src, ss, 0, x0 + j, y0 + i, o.yPri, o.ySec, av1g_cdef_damping<BD>(f, 0), o.yDir)
+                               : av1g_cdef_pixel<BD>(f, src, ss, p, x0 + j, y0 + i, o.uvPri, o.uvSec, av1g_cdef_damping<BD>(f, p), o.uvDir);
+                ((P *)dst[p])[(size_t)(y0 + i) * dstride[p] + x0 + j] = (P)v;
             }
     }
 }
 
-/* Whole-frame CDEF (host reference): f->plane = deblocked frame, dst = output frame. */
+/* Whole-frame CDEF (host reference): f->plane = deblocked frame, dst = output frame (10-bit:
+ * uint16_t planes, strides in samples). */
+template <int BD = 8>
 AV1G_HD void av1g_cdef_frame(const av1g_pf_frame *f, uint8_t *const dst[3], const int dstride[3]) {
     for (int r = 0; r < f->MiRows; r += 2)
-        for (int c = 0; c < f->MiCols; c += 2) av1g_cdef_block(f, dst, dstride, r, c);
+        for (int c = 0; c < f->MiCols; c += 2) av1g_cdef_block<BD>(f, dst, dstride, r, c);
 }
 
 #endif

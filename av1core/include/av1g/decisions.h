@@ -1,6 +1,6 @@
 /* av1g/decisions.h - the DecisionRecord: every coding decision + quantized
- * coefficients for ONE AV1 intra-only still picture (8-bit; 4:2:0, 4:4:4 or
- * monochrome; 64x64 superblocks, reduced_still_picture_header).  Interface version 2.
+ * coefficients for ONE AV1 intra-only still picture (8-bit or 10-bit; 4:2:0, 4:4:4 or
+ * monochrome; 64x64 superblocks, reduced_still_picture_header).  Interface version 3.
  *
  * Any search engine that fills this record gets (a) the exact decoder
  * reconstruction and (b) a conformant OBU stream / AVIF from av1core (av1g.h).
@@ -16,6 +16,15 @@
  *   av1g/blockinfo.h), "plane units" are luma units >> ssx/ssy for planes 1 and 2.  Everything
  *   that differs between the formats is derived by the spec rules from ssx/ssy (HasChroma,
  *   get_plane_residual_size, AvailU/LChroma, the chroma tx size, the context and filter maps).
+ *
+ * Bit depth (fp.bit_depth, v3).  8 (or 0, as in version 1 / 2 records) or 10.  10-bit streams set
+ *   high_bitdepth = 1 in the sequence header: Main profile for 4:2:0 and monochrome, High profile
+ *   for 4:4:4.  The decisions and coefficient syntax are the same; what the bit depth changes is the
+ *   decoding process, which the backend applies: the quantizer tables (Dc_Qlookup / Ac_Qlookup
+ *   [(BitDepth - 8) >> 1]: steps ~4x the 8-bit ones), the dequantization clamp (+-2^(7 + BitDepth)),
+ *   the inverse transform's clamp ranges (rowClampRange BitDepth + 8, colClampRange
+ *   Max(BitDepth + 6, 16)), Clip1 / the intra edge base values (1 << (BitDepth - 1)), and the
+ *   post-filters' BitDepth scaling.  Reconstructions are uint16_t samples (av1g.h).
  *
  * Coordinates.  mi_row/mi_col are in units of 4 luma samples.  MiCols =
  *   2*((width+7)>>3), MiRows = 2*((height+7)>>3): the coded area is the picture
@@ -112,7 +121,8 @@
  *   col), i.e. exactly the spec's Quant[] array (quantized levels, signed, NOT
  *   dequantized, natural order - the backend applies the scan).  For 64-point
  *   transforms only the top-left 32x32 (16x32/32x16) quadrant exists.  |value| <=
- *   32767 (larger is pointless: dequantized values saturate at 2^15 for 8-bit).
+ *   32767 (larger is pointless: dequantized values saturate at 2^(7 + BitDepth), i.e. 2^15 at
+ *   8 bits and 2^17 at 10 bits, where the smallest quantizer step is 4).
  *   Bitstream conformance also requires every intermediate of the inverse transform
  *   to stay in range (AV1 spec 7.13.2); av1g_encode() checks this and, with
  *   AV1G_ENC_FIX_RANGE, repairs offending tx blocks by halving their coefficients
@@ -136,11 +146,12 @@
  *
  * Frame-level decisions are in av1g_frame_params.  Lossless (base_q_idx 0), loop
  * restoration, segmentation, delta-lf, palette, intra block copy, 4:2:2 and bit depths
- * other than 8 are not supported.
+ * other than 8 and 10 are not supported.
  *
- * Versions.  2 added fp.chroma_format (formerly reserved[0]).  av1g_encode() accepts
- * version 1 records unchanged: their reserved bytes are 0, i.e. 4:2:0.  New fields are
- * taken from reserved[] (which must be 0) so the struct layout stays fixed.
+ * Versions.  2 added fp.chroma_format (formerly reserved[0]), 3 fp.bit_depth (formerly
+ * reserved[1] of v2).  av1g_encode() accepts version 1 and 2 records unchanged: their reserved
+ * bytes are 0, i.e. 4:2:0 / 8-bit.  New fields are taken from reserved[] (which must be 0) so
+ * the struct layout stays fixed.
  * ==============================================================================
  */
 #ifndef AV1G_DECISIONS_H
@@ -153,7 +164,7 @@
 extern "C" {
 #endif
 
-#define AV1G_DECISIONS_VERSION 2
+#define AV1G_DECISIONS_VERSION 3
 
 /* av1g_frame_params.chroma_format */
 #define AV1G_CHROMA_420 0   /* Main profile, ssx = ssy = 1 */
@@ -222,7 +233,9 @@ typedef struct av1g_frame_params {
                                             replay libaom streams whose screen-content detection set it. */
     /* ---- v2 ---- */
     uint8_t  chroma_format;  /* AV1G_CHROMA_420 / AV1G_CHROMA_444 (see "Chroma format"); 0 if monochrome */
-    uint8_t  reserved[14];   /* must be 0 (future fields, e.g. a bit depth, are taken from here) */
+    /* ---- v3 ---- */
+    uint8_t  bit_depth;      /* 8 or 10 (see "Bit depth"); 0 = 8 (version 1 / 2 records) */
+    uint8_t  reserved[13];   /* must be 0 (future fields are taken from here) */
 } av1g_frame_params;
 
 typedef struct av1g_decision_record {

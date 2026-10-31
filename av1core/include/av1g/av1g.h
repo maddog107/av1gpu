@@ -42,11 +42,14 @@ typedef struct av1g_encode_opts {
 } av1g_encode_opts;
 
 typedef struct av1g_output {
-    uint8_t *obu;            /* [TD] + OBU_SEQUENCE_HEADER (seq_profile 0, or 1 for 4:4:4) + OBU_FRAME */
+    uint8_t *obu;            /* [TD] + OBU_SEQUENCE_HEADER (seq_profile 0, or 1 for 4:4:4; high_bitdepth for
+                                10-bit) + OBU_FRAME */
     size_t   obu_size;
     uint8_t *avif;           /* AVIF file (AV1G_ENC_AVIF) */
     size_t   avif_size;
-    uint8_t *recon[3];       /* cropped planes: Y w x h, U/V ((w+1)/2) x ((h+1)/2) (4:2:0) or w x h (4:4:4) */
+    uint8_t *recon[3];       /* cropped planes: Y w x h, U/V ((w+1)/2) x ((h+1)/2) (4:2:0) or w x h (4:4:4).
+                                8-bit records: one byte per sample; 10-bit (fp.bit_depth = 10): uint16_t
+                                samples (native byte order, recon_w * recon_h * 2 bytes per plane) */
     uint32_t recon_w[3], recon_h[3];
     /* stats */
     uint32_t seq_level_idx;
@@ -90,8 +93,11 @@ int av1g_apply_sb_qindex(av1g_decision_record *rec, const uint8_t *sb_map);
  * pre-filter reconstruction (av1g_encode with AV1G_ENC_PREFILTER_RECON).  Uses fp's
  * loop_filter_* / cdef_* fields and the blocks' skip / tx_depth / cdef_idx.  planes: Y, U, V
  * (U/V ignored for monochrome), each at least MiCols*4 x MiRows*4 (>> ssx / ssy for chroma, i.e.
- * halved for 4:2:0, full size for 4:4:4) with the given strides.  Building blocks for GPU kernels are in av1g/postfilter.h (host + device). */
+ * halved for 4:2:0, full size for 4:4:4) with the given strides.  Building blocks for GPU kernels are in av1g/postfilter.h (host + device).
+ * av1g_postfilter takes 8-bit records, av1g_postfilter16 10-bit ones (uint16_t samples, strides in samples);
+ * either returns AV1G_ERR_INVALID for the other bit depth. */
 int av1g_postfilter(const av1g_decision_record *rec, uint8_t *const planes[3], const int stride[3]);
+int av1g_postfilter16(const av1g_decision_record *rec, uint16_t *const planes[3], const int stride[3]);
 
 /* Validate a record (block sequence / partition derivation, field ranges).
  * err may be NULL.  Returns AV1G_OK or AV1G_ERR_INVALID. */
@@ -104,7 +110,7 @@ int av1g_validate(const av1g_decision_record *rec, char *err, size_t errlen);
 int av1g_encode(av1g_decision_record *rec, const av1g_encode_opts *opts, av1g_output *out);
 void av1g_output_free(av1g_output *out);
 
-/* Parse an AV1 OBU stream (Main or High profile 8-bit sequence header + one intra OBU_FRAME
+/* Parse an AV1 OBU stream (Main or High profile 8- or 10-bit sequence header + one intra OBU_FRAME
  * using only the Wave-1 toolset: no deblocking/CDEF/LR/QM/delta-q/segmentation/filter-intra/
  * edge filter/palette/intrabc, 64x64 superblocks, uniform tiles) back into a
  * DecisionRecord with all decisions and quantized coefficients.  Used for libaom

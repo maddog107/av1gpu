@@ -1,5 +1,11 @@
 /* av1g/dsp.h - decoder-mirroring math of the AV1 spec, header-only, shared by the
- * CPU writer, the tests and CUDA kernels (__host__ __device__).  8-bit only.
+ * CPU writer, the tests and CUDA kernels (__host__ __device__).  8-bit and 10-bit.
+ *
+ * Bit depth: every function whose result depends on BitDepth, or that stores samples, is a
+ * template on BD (8 or 10, default 8); the 8-bit instantiations are the original 8-bit code.
+ * Samples are av1g_pixel_t(BD): uint8_t at 8 bits, uint16_t at 10 bits.  The sample type of
+ * pointer arguments is deduced and must match BD (static_assert), so 10-bit callers write e.g.
+ * av1g_build_edges<10>(...) with uint16_t pointers.
  *
  *   av1g_dequant()            spec 7.12.3 step 1 (incl. quantizer matrices, & 0xFFFFFF, clamps)
  *   av1g_qm(), av1g_qm_step() quantizer-matrix weights (also for engines' forward quantizers)
@@ -25,8 +31,16 @@
 #define AV1G_ERR_B_RANGE     1u  /* butterfly output outside r bits (7.13.2.1) */
 #define AV1G_ERR_ADST4_RANGE 2u  /* ADST4 intermediates outside range (7.13.2.6) */
 
+/* sample storage type of a bit depth */
+template <int BD> struct av1g_pixel_of { typedef uint16_t type; };
+template <> struct av1g_pixel_of<8> { typedef uint8_t type; };
+#define av1g_pixel_t(BD) typename av1g_pixel_of<BD>::type
+#define AV1G_PIX_CHECK(BD, P) \
+    static_assert(((BD) == 8 || (BD) == 10) && sizeof(P) == ((BD) > 8 ? 2 : 1), "av1g: sample type does not match the bit depth")
+
 AV1G_HD int av1g_clip3(int lo, int hi, int x) { return x < lo ? lo : (x > hi ? hi : x); }
-AV1G_HD int av1g_clip1(int x) { return x < 0 ? 0 : (x > 255 ? 255 : x); }
+/* Clip1 (spec 4.7): 0 .. 2^BitDepth - 1 */
+template <int BD = 8> AV1G_HD int av1g_clip1(int x) { return x < 0 ? 0 : (x > (1 << BD) - 1 ? (1 << BD) - 1 : x); }
 /* Round2 for n >= 0 with arithmetic shift (spec 4.7) */
 AV1G_HD int32_t av1g_round2(int32_t x, int n) { return n == 0 ? x : ((x + (1 << (n - 1))) >> n); }
 AV1G_HD int64_t av1g_round2_64(int64_t x, int n) { return n == 0 ? x : ((x + ((int64_t)1 << (n - 1))) >> n); }
@@ -117,8 +131,12 @@ AV1G_HD const uint16_t *av1g_get_scan(int txSz, int txType) {
 /* ------------------------------------------------------------------------- */
 /* quantizer (spec 7.12.2)                                                   */
 /* ------------------------------------------------------------------------- */
-AV1G_HD int av1g_dc_q(int b) { return AV1G_T(Dc_Qlookup)[0][av1g_clip3(0, 255, b)]; }
-AV1G_HD int av1g_ac_q(int b) { return AV1G_T(Ac_Qlookup)[0][av1g_clip3(0, 255, b)]; }
+/* dc_q( b ) / ac_q( b ) = Dc_Qlookup / Ac_Qlookup[ (BitDepth - 8) >> 1 ][ Clip3( 0, 255, b ) ] */
+template <int BD = 8> AV1G_HD int av1g_dc_q(int b) { return AV1G_T(Dc_Qlookup)[(BD - 8) >> 1][av1g_clip3(0, 255, b)]; }
+template <int BD = 8> AV1G_HD int av1g_ac_q(int b) { return AV1G_T(Ac_Qlookup)[(BD - 8) >> 1][av1g_clip3(0, 255, b)]; }
+/* the same with a run-time bit depth (8 or 10) */
+AV1G_HD int av1g_dc_q_bd(int b, int bd) { return AV1G_T(Dc_Qlookup)[(bd - 8) >> 1][av1g_clip3(0, 255, b)]; }
+AV1G_HD int av1g_ac_q_bd(int b, int bd) { return AV1G_T(Ac_Qlookup)[(bd - 8) >> 1][av1g_clip3(0, 255, b)]; }
 
 AV1G_HD int av1g_dq_denom(int txSz) {
     if (txSz == AV1G_TX_32X32 || txSz == AV1G_TX_16X32 || txSz == AV1G_TX_32X16 ||
@@ -127,13 +145,14 @@ AV1G_HD int av1g_dq_denom(int txSz) {
     return 1;
 }
 
-/* Dequantize one coefficient (spec 7.12.3 step 1 c..f, no quantizer matrix). */
-AV1G_HD int32_t av1g_dequant_coef(int32_t quant, int q, int dqDenom) {
+/* Dequantize one coefficient (spec 7.12.3 step 1 c..f, no quantizer matrix); the result is
+ * clamped to +-2^(7 + BitDepth). */
+template <int BD = 8> AV1G_HD int32_t av1g_dequant_coef(int32_t quant, int q, int dqDenom) {
     int32_t dq = quant * q;
     int32_t a = (dq < 0 ? -dq : dq) & 0xFFFFFF;
     int32_t dq2 = a / dqDenom;
     if (dq < 0) dq2 = -dq2;
-    return av1g_clip3(-(1 << 15), (1 << 15) - 1, dq2);
+    return av1g_clip3(-(1 << (7 + BD)), (1 << (7 + BD)) - 1, dq2);
 }
 
 /* ---- quantizer matrices (spec 7.12.3 step 1b) ----
@@ -165,12 +184,13 @@ AV1G_HD int av1g_qm_level_allintra(int qindex) {
 
 /* Dequantize a whole tx block: quant/out are th x tw row-major (tw,th <= 32).
  * qm: av1g_qm(...) of the tx block, or NULL. */
+template <int BD = 8>
 AV1G_HD void av1g_dequant(const int16_t *quant, int32_t *out, int txSz, int dcQ, int acQ, const uint8_t *qm) {
     int tw = av1g_tx_w(txSz); if (tw > 32) tw = 32;
     int th = av1g_tx_h(txSz); if (th > 32) th = 32;
     int den = av1g_dq_denom(txSz);
     for (int i = 0; i < th * tw; i++)
-        out[i] = quant[i] ? av1g_dequant_coef(quant[i], av1g_qm_step(i == 0 ? dcQ : acQ, qm, i), den) : 0;
+        out[i] = quant[i] ? av1g_dequant_coef<BD>(quant[i], av1g_qm_step(i == 0 ? dcQ : acQ, qm, i), den) : 0;
 }
 
 /* ------------------------------------------------------------------------- */
@@ -388,16 +408,17 @@ AV1G_HD void av1g_inv_1d(int32_t *T, int kind, int n, int r, uint32_t *err) {
     } else av1g_iidentity(T, n);
 }
 
-/* 2-D inverse transform (spec 7.13.3, Lossless = 0, BitDepth = 8).
+/* 2-D inverse transform (spec 7.13.3, Lossless = 0).
  * dq:  Dequant, th x tw row-major (tw = min(32,w), th = min(32,h))
  * res: Residual output, h x w row-major (int32, caller-provided, up to 64*64)
  * err: OR-ed AV1G_ERR_* flags for conformance violations (0 = conformant) */
+template <int BD = 8>
 AV1G_HD void av1g_inv_txfm2d(const int32_t *dq, int txSz, int txType, int32_t *res, uint32_t *err) {
     const int log2W = AV1G_T(Tx_Width_Log2)[txSz], log2H = AV1G_T(Tx_Height_Log2)[txSz];
     const int w = 1 << log2W, h = 1 << log2H;
     const int tw = w > 32 ? 32 : w, th = h > 32 ? 32 : h;
     const int rowShift = AV1G_T(Transform_Row_Shift)[txSz];
-    const int rowR = 8 + 8, colR = 16; /* BitDepth + 8, Max(BitDepth + 6, 16) */
+    const int rowR = BD + 8, colR = BD + 6 > 16 ? BD + 6 : 16; /* rowClampRange, colClampRange (16 / 16 at 8 bits, 18 / 16 at 10) */
     const int rk = av1g_row_kind(txType), ck = av1g_col_kind(txType);
     const int rect = (log2W - log2H == 1 || log2H - log2W == 1);
     int32_t T[64];
@@ -424,15 +445,17 @@ AV1G_HD void av1g_inv_txfm2d(const int32_t *dq, int txSz, int txType, int32_t *r
 }
 
 /* Reconstruction add (spec 7.12.3 step 3). */
-AV1G_HD void av1g_add_residual(uint8_t *dst, int stride, const int32_t *res, int txSz, int txType) {
+template <int BD = 8, typename P>
+AV1G_HD void av1g_add_residual(P *dst, int stride, const int32_t *res, int txSz, int txType) {
+    AV1G_PIX_CHECK(BD, P);
     const int w = av1g_tx_w(txSz), h = av1g_tx_h(txSz);
     const int fud = av1g_flip_ud(txType), flr = av1g_flip_lr(txType);
     for (int i = 0; i < h; i++)
         for (int j = 0; j < w; j++) {
             int xx = flr ? (w - j - 1) : j;
             int yy = fud ? (h - i - 1) : i;
-            uint8_t *p = dst + yy * stride + xx;
-            *p = (uint8_t)av1g_clip1(*p + res[i * w + j]);
+            P *p = dst + yy * stride + xx;
+            *p = (P)av1g_clip1<BD>(*p + res[i * w + j]);
         }
 }
 
@@ -445,36 +468,38 @@ AV1G_HD void av1g_add_residual(uint8_t *dst, int stride, const int32_t *res, int
 /* Build AboveRow[-1 .. w+h-1] and LeftCol[-1 .. w+h-1].
  * plane points at sample (0,0) of the plane; (x,y) is the tx block top-left.
  * above/left must point at index 0 of arrays with room for index -1. */
-AV1G_HD void av1g_build_edges(const uint8_t *plane, int stride, int x, int y, int log2W, int log2H,
+template <int BD = 8, typename P>
+AV1G_HD void av1g_build_edges(const P *plane, int stride, int x, int y, int log2W, int log2H,
                               int haveLeft, int haveAbove, int haveAboveRight, int haveBelowLeft,
-                              int maxX, int maxY, uint8_t *above, uint8_t *left) {
+                              int maxX, int maxY, P *above, P *left) {
+    AV1G_PIX_CHECK(BD, P);
     const int w = 1 << log2W, h = 1 << log2H, n = w + h;
     if (!haveAbove && haveLeft) {
-        uint8_t v = plane[y * stride + x - 1];
+        P v = plane[y * stride + x - 1];
         for (int i = 0; i < n; i++) above[i] = v;
     } else if (!haveAbove && !haveLeft) {
-        for (int i = 0; i < n; i++) above[i] = (1 << 7) - 1;
+        for (int i = 0; i < n; i++) above[i] = (1 << (BD - 1)) - 1;
     } else {
         int aboveLimit = x + (haveAboveRight ? 2 * w : w) - 1;
         if (aboveLimit > maxX) aboveLimit = maxX;
-        const uint8_t *row = plane + (y - 1) * stride;
+        const P *row = plane + (y - 1) * stride;
         for (int i = 0; i < n; i++) above[i] = row[(x + i) < aboveLimit ? (x + i) : aboveLimit];
     }
     if (!haveLeft && haveAbove) {
-        uint8_t v = plane[(y - 1) * stride + x];
+        P v = plane[(y - 1) * stride + x];
         for (int i = 0; i < n; i++) left[i] = v;
     } else if (!haveLeft && !haveAbove) {
-        for (int i = 0; i < n; i++) left[i] = (1 << 7) + 1;
+        for (int i = 0; i < n; i++) left[i] = (1 << (BD - 1)) + 1;
     } else {
         int leftLimit = y + (haveBelowLeft ? 2 * h : h) - 1;
         if (leftLimit > maxY) leftLimit = maxY;
         for (int i = 0; i < n; i++) left[i] = plane[((y + i) < leftLimit ? (y + i) : leftLimit) * stride + x - 1];
     }
-    uint8_t c;
+    P c;
     if (haveAbove && haveLeft) c = plane[(y - 1) * stride + x - 1];
     else if (haveAbove) c = plane[(y - 1) * stride + x];
     else if (haveLeft) c = plane[y * stride + x - 1];
-    else c = 1 << 7;
+    else c = 1 << (BD - 1);
     above[-1] = c;
     left[-1] = c;
 }
@@ -492,7 +517,9 @@ AV1G_HD const uint8_t *av1g_sm_weights(int log2) {
 }
 
 /* DC value (spec 7.11.2.5) */
-AV1G_HD int av1g_dc_value(const uint8_t *above, const uint8_t *left, int haveLeft, int haveAbove, int log2W, int log2H) {
+template <int BD = 8, typename P>
+AV1G_HD int av1g_dc_value(const P *above, const P *left, int haveLeft, int haveAbove, int log2W, int log2H) {
+    AV1G_PIX_CHECK(BD, P);
     const int w = 1 << log2W, h = 1 << log2H;
     int sum = 0;
     if (haveLeft && haveAbove) {
@@ -503,20 +530,21 @@ AV1G_HD int av1g_dc_value(const uint8_t *above, const uint8_t *left, int haveLef
     }
     if (haveLeft) {
         for (int k = 0; k < h; k++) sum += left[k];
-        return av1g_clip1((sum + (h >> 1)) >> log2H);
+        return av1g_clip1<BD>((sum + (h >> 1)) >> log2H);
     }
     if (haveAbove) {
         for (int k = 0; k < w; k++) sum += above[k];
-        return av1g_clip1((sum + (w >> 1)) >> log2W);
+        return av1g_clip1<BD>((sum + (w >> 1)) >> log2W);
     }
-    return 1 << 7;
+    return 1 << (BD - 1);
 }
 
 /* One predicted sample of a non-DC mode (spec 7.11.2.2/4/6), (i,j) = (row,col).
  * pAngle is only used for directional modes; upA/upL are the edge upsampling flags
  * (0 unless the intra edge filter upsampled the arrays, see av1g_edge_prepare). */
+template <typename P>
 AV1G_HD int av1g_pred_pixel_up(int mode, int pAngle, int i, int j, int log2W, int log2H,
-                               const uint8_t *above, const uint8_t *left, int upA, int upL) {
+                               const P *above, const P *left, int upA, int upL) {
     const int w = 1 << log2W, h = 1 << log2H;
     if (av1g_is_directional(mode)) {
         if (pAngle == 90) return above[j];
@@ -576,8 +604,9 @@ AV1G_HD int av1g_pred_pixel_up(int mode, int pAngle, int i, int j, int log2W, in
         return above[-1];
     }
 }
+template <typename P>
 AV1G_HD int av1g_pred_pixel(int mode, int pAngle, int i, int j, int log2W, int log2H,
-                            const uint8_t *above, const uint8_t *left) {
+                            const P *above, const P *left) {
     return av1g_pred_pixel_up(mode, pAngle, i, j, log2W, log2H, above, left, 0, 0);
 }
 
@@ -606,9 +635,10 @@ AV1G_HD int av1g_edge_use_upsample(int w, int h, int filterType, int delta) {  /
     return filterType == 0 ? (blkWh <= 16) : (blkWh <= 8);
 }
 /* 7.11.2.12: filter buf[0 .. sz-2] (edge[i] = buf[i-1]) */
-AV1G_HD void av1g_edge_filter(uint8_t *buf, int sz, int strength) {
+template <typename P>
+AV1G_HD void av1g_edge_filter(P *buf, int sz, int strength) {
     if (!strength) return;
-    uint8_t edge[160];
+    P edge[160];
     for (int i = 0; i < sz; i++) edge[i] = buf[i - 1];
     for (int i = 1; i < sz; i++) {
         int s = 0;
@@ -616,20 +646,22 @@ AV1G_HD void av1g_edge_filter(uint8_t *buf, int sz, int strength) {
             int k = av1g_clip3(0, sz - 1, i - 2 + j);
             s += AV1G_T(Intra_Edge_Kernel)[strength - 1][j] * edge[k];
         }
-        buf[i - 1] = (uint8_t)((s + 8) >> 4);
+        buf[i - 1] = (P)((s + 8) >> 4);
     }
 }
 /* 7.11.2.11: upsample buf[-1 .. numPx-1] into buf[-2 .. 2*numPx-2] */
-AV1G_HD void av1g_edge_upsample(uint8_t *buf, int numPx) {
-    uint8_t dup[40];
+template <int BD = 8, typename P>
+AV1G_HD void av1g_edge_upsample(P *buf, int numPx) {
+    AV1G_PIX_CHECK(BD, P);
+    P dup[40];
     dup[0] = buf[-1];
     for (int i = -1; i < numPx; i++) dup[i + 2] = buf[i];
     dup[numPx + 2] = buf[numPx - 1];
     buf[-2] = dup[0];
     for (int i = 0; i < numPx; i++) {
         int s = -dup[i] + 9 * dup[i + 1] + 9 * dup[i + 2] - dup[i + 3];
-        s = av1g_clip1(av1g_round2(s, 4));
-        buf[2 * i - 1] = (uint8_t)s;
+        s = av1g_clip1<BD>(av1g_round2(s, 4));
+        buf[2 * i - 1] = (P)s;
         buf[2 * i] = dup[i + 2];
     }
 }
@@ -638,13 +670,15 @@ AV1G_HD void av1g_edge_upsample(uint8_t *buf, int numPx) {
  * (they need valid storage for index -2 .. 2*(w+h)); returns the upsampling flags.
  * filterType: 1 if the above or left block uses a SMOOTH* mode (spec get_filter_type,
  * av1g_get_filter_type helps).  (x, y, maxX, maxY) as for av1g_build_edges. */
+template <int BD = 8, typename P>
 AV1G_HD void av1g_edge_prepare(int pAngle, int log2W, int log2H, int filterType, int haveLeft, int haveAbove, int x, int y,
-                               int maxX, int maxY, uint8_t *above, uint8_t *left, int *upA, int *upL) {
+                               int maxX, int maxY, P *above, P *left, int *upA, int *upL) {
+    AV1G_PIX_CHECK(BD, P);
     const int w = 1 << log2W, h = 1 << log2H;
     *upA = *upL = 0;
     if (pAngle != 90 && pAngle != 180) {
         if (pAngle > 90 && pAngle < 180 && (w + h) >= 24) {
-            const uint8_t c = (uint8_t)av1g_round2(left[0] * 5 + above[-1] * 6 + above[0] * 5, 4);
+            const P c = (P)av1g_round2(left[0] * 5 + above[-1] * 6 + above[0] * 5, 4);
             left[-1] = c;
             above[-1] = c;
         }
@@ -660,15 +694,17 @@ AV1G_HD void av1g_edge_prepare(int pAngle, int log2W, int log2H, int filterType,
         }
     }
     *upA = av1g_edge_use_upsample(w, h, filterType, pAngle - 90);
-    if (*upA) av1g_edge_upsample(above, w + (pAngle < 90 ? h : 0));
+    if (*upA) av1g_edge_upsample<BD>(above, w + (pAngle < 90 ? h : 0));
     *upL = av1g_edge_use_upsample(w, h, filterType, pAngle - 180);
-    if (*upL) av1g_edge_upsample(left, h + (pAngle > 180 ? w : 0));
+    if (*upL) av1g_edge_upsample<BD>(left, h + (pAngle > 180 ? w : 0));
 }
 
 /* Recursive (filter-intra) prediction, spec 7.11.2.3, mode = filter_intra_mode 0..4.
  * dst doubles as the pred array (row stride). */
-AV1G_HD void av1g_predict_filter_intra(int mode, int log2W, int log2H, const uint8_t *above, const uint8_t *left,
-                                       uint8_t *dst, int stride) {
+template <int BD = 8, typename P>
+AV1G_HD void av1g_predict_filter_intra(int mode, int log2W, int log2H, const P *above, const P *left,
+                                       P *dst, int stride) {
+    AV1G_PIX_CHECK(BD, P);
     const int w4 = (1 << log2W) >> 2, h2 = (1 << log2H) >> 1;
     for (int i2 = 0; i2 < h2; i2++)
         for (int j4 = 0; j4 < w4; j4++) {
@@ -684,55 +720,61 @@ AV1G_HD void av1g_predict_filter_intra(int mode, int log2W, int log2H, const uin
                 for (int j1 = 0; j1 < 4; j1++) {
                     int pr = 0;
                     for (int i = 0; i < 7; i++) pr += AV1G_T(Intra_Filter_Taps)[mode][(i1 << 2) + j1][i] * p[i];
-                    dst[((i2 << 1) + i1) * stride + (j4 << 2) + j1] = (uint8_t)av1g_clip1(av1g_round2signed(pr, 4));
+                    dst[((i2 << 1) + i1) * stride + (j4 << 2) + j1] = (P)av1g_clip1<BD>(av1g_round2signed(pr, 4));
                 }
         }
 }
 
 /* Predict a whole tx block into dst (stride).  mode is the effective mode
  * (DC for CFL), angleDelta is AngleDeltaY/UV. */
+template <int BD = 8, typename P>
 AV1G_HD void av1g_predict_intra(int mode, int angleDelta, int haveLeft, int haveAbove, int log2W, int log2H,
-                                const uint8_t *above, const uint8_t *left, uint8_t *dst, int stride) {
+                                const P *above, const P *left, P *dst, int stride) {
+    AV1G_PIX_CHECK(BD, P);
     const int w = 1 << log2W, h = 1 << log2H;
     if (mode == AV1G_DC_PRED) {
-        uint8_t v = (uint8_t)av1g_dc_value(above, left, haveLeft, haveAbove, log2W, log2H);
+        P v = (P)av1g_dc_value<BD>(above, left, haveLeft, haveAbove, log2W, log2H);
         for (int i = 0; i < h; i++) for (int j = 0; j < w; j++) dst[i * stride + j] = v;
         return;
     }
     int pAngle = av1g_is_directional(mode) ? AV1G_T(Mode_To_Angle)[mode] + angleDelta * AV1G_ANGLE_STEP : 0;
     for (int i = 0; i < h; i++)
         for (int j = 0; j < w; j++)
-            dst[i * stride + j] = (uint8_t)av1g_pred_pixel(mode, pAngle, i, j, log2W, log2H, above, left);
+            dst[i * stride + j] = (P)av1g_pred_pixel(mode, pAngle, i, j, log2W, log2H, above, left);
 }
 
 /* Full intra prediction of one tx block (spec 7.11.2): filter intra (filterIntraMode >= 0,
  * luma only), directional with optional edge filter / upsampling (edgeFilter =
  * enable_intra_edge_filter; above/left are modified), or the other modes. */
+template <int BD = 8, typename P>
 AV1G_HD void av1g_predict_intra_ex(int mode, int angleDelta, int filterIntraMode, int edgeFilter, int filterType,
                                    int haveLeft, int haveAbove, int log2W, int log2H, int x, int y, int maxX, int maxY,
-                                   uint8_t *above, uint8_t *left, uint8_t *dst, int stride) {
+                                   P *above, P *left, P *dst, int stride) {
+    AV1G_PIX_CHECK(BD, P);
     if (filterIntraMode >= 0) {
-        av1g_predict_filter_intra(filterIntraMode, log2W, log2H, above, left, dst, stride);
+        av1g_predict_filter_intra<BD>(filterIntraMode, log2W, log2H, above, left, dst, stride);
         return;
     }
     if (av1g_is_directional(mode)) {
         const int w = 1 << log2W, h = 1 << log2H;
         const int pAngle = AV1G_T(Mode_To_Angle)[mode] + angleDelta * AV1G_ANGLE_STEP;
         int upA = 0, upL = 0;
-        if (edgeFilter) av1g_edge_prepare(pAngle, log2W, log2H, filterType, haveLeft, haveAbove, x, y, maxX, maxY, above, left, &upA, &upL);
+        if (edgeFilter) av1g_edge_prepare<BD>(pAngle, log2W, log2H, filterType, haveLeft, haveAbove, x, y, maxX, maxY, above, left, &upA, &upL);
         for (int i = 0; i < h; i++)
-            for (int j = 0; j < w; j++) dst[i * stride + j] = (uint8_t)av1g_pred_pixel_up(mode, pAngle, i, j, log2W, log2H, above, left, upA, upL);
+            for (int j = 0; j < w; j++) dst[i * stride + j] = (P)av1g_pred_pixel_up(mode, pAngle, i, j, log2W, log2H, above, left, upA, upL);
         return;
     }
-    av1g_predict_intra(mode, angleDelta, haveLeft, haveAbove, log2W, log2H, above, left, dst, stride);
+    av1g_predict_intra<BD>(mode, angleDelta, haveLeft, haveAbove, log2W, log2H, above, left, dst, stride);
 }
 
 /* Chroma from luma (spec 7.11.5).  chroma/luma point at sample (0,0) of their
  * planes; (startX,startY) in chroma samples; the DC prediction must already be in
  * the chroma plane. */
-AV1G_HD void av1g_cfl_predict(uint8_t *chroma, int cstride, const uint8_t *luma, int lstride,
+template <int BD = 8, typename P>
+AV1G_HD void av1g_cfl_predict(P *chroma, int cstride, const P *luma, int lstride,
                               int startX, int startY, int txSz, int subX, int subY,
                               int maxLumaW, int maxLumaH, int alpha) {
+    AV1G_PIX_CHECK(BD, P);
     const int log2W = AV1G_T(Tx_Width_Log2)[txSz], log2H = AV1G_T(Tx_Height_Log2)[txSz];
     const int w = 1 << log2W, h = 1 << log2H;
     int lumaAvg = 0;
@@ -749,9 +791,9 @@ AV1G_HD void av1g_cfl_predict(uint8_t *chroma, int cstride, const uint8_t *luma,
                 int v = t << (3 - subX - subY);
                 if (pass == 0) lumaAvg += v;
                 else {
-                    uint8_t *p = chroma + (startY + i) * cstride + startX + j;
+                    P *p = chroma + (startY + i) * cstride + startX + j;
                     int scaled = av1g_round2signed(alpha * (v - lumaAvg), 6);
-                    *p = (uint8_t)av1g_clip1(*p + scaled);
+                    *p = (P)av1g_clip1<BD>(*p + scaled);
                 }
             }
         }
