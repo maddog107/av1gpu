@@ -257,6 +257,63 @@ def tradeoff_chart(t):
     s.save(os.path.join(HERE, f"tradeoff-{t['name']}.svg"))
 
 
+def formats_chart(t):
+    """av1gpu against libaom speed 6 in each output format (bench/results/aws-g6-l4-formats)"""
+    r = load("aws-g6-l4-formats")
+    names = {"420_8": "8-bit 4:2:0", "444_8": "8-bit 4:4:4", "420_10": "10-bit 4:2:0", "444_10": "10-bit 4:4:4"}
+    sp = {(x["encoder"], x["format"]): x["mp_s"] for x in r["speed"]}
+    rows = []
+    for f, name in names.items():
+        b = r["bd_rate"][f"av1gpu_{f}_vs_aom_s6_{f}"]["median"]
+        rows.append((f"av1gpu, {name}", f"one L4; files {b * 100:+.1f} % vs libaom".replace("-", "−"), "av1gpu",
+                     sp[("av1gpu", f)], 0))
+        rows.append((f"libaom speed 6, {name}", "16 CPU threads", "aom_s6", sp[("aom_s6", f)], 0))
+    matchup_chart(t, "formats", "Every output format: av1gpu vs libaom speed 6",
+                  ["Speed at quality 60 on the 100 size-range photos. In each format av1gpu's files are within",
+                   "0.4 % of libaom speed 6's in the same format (median BD-rate, SSIMULACRA2)."],
+                  rows, sizes=False, speed=(125, 25))
+
+
+def metrics_chart(t):
+    """median BD-rate vs libaom speed 6 on SSIMULACRA2 and on CVVDP (bench/results/aws-g6-l4-cvvdp)"""
+    r = load("aws-g6-l4-cvvdp")
+    s2, jod = r["bd_rate_ssimulacra2_as_published"], r["bd_rate_cvvdp"]
+    enc = [("av1gpu", "av1gpu default", "av1gpu"), ("svt_p4", "SVT-AV1 preset 4", "svt"),
+           ("svt_p6", "SVT-AV1 preset 6", "svt"), ("svt_p9", "SVT-AV1 preset 9", "svt"),
+           ("aom_s9", "libaom speed 9", "aom_s9"), ("nvenc", "NVENC AV1", "nvenc")]
+    band, top = 40, 150
+    s = Svg(760, top + band * len(enc) + 50, t, "BD-rate against libaom speed 6 on SSIMULACRA2 and on CVVDP")
+    s.header("Two metrics: SSIMULACRA2 and CVVDP",
+             ["Median BD-rate against libaom speed 6, same files. CVVDP (standard_fhd display) agrees with",
+              "SSIMULACRA2 within about a point for every encoder except av1gpu."])
+    marker(s, t, "circle", 30, 112, t["ink2"])
+    s.text(42, 116, "SSIMULACRA2", 13, "ink2")
+    marker(s, t, "diamond", 160, 112, t["ink2"])
+    s.text(172, 116, "CVVDP (JOD)", 13, "ink2")
+    L, R, xmin, xmax = 200, 730, -5, 30
+    X = lambda v: L + (R - L) * (v * 100 - xmin) / (xmax - xmin)
+    for v in range(xmin, xmax + 1, 5):
+        s.line(X(v / 100), top - 10, X(v / 100), top + band * len(enc) - 10, "axis" if v == 0 else "grid")
+        s.text(X(v / 100), top + band * len(enc) + 8, (f"{v:+d} %" if v else "0").replace("-", "−"), 12, "muted",
+               "middle")
+    s.text((L + R) / 2, top + band * len(enc) + 28, "files vs libaom speed 6 (smaller is better)", 12, "muted",
+           "middle")
+    for i, (k, label, col) in enumerate(enc):
+        y = top + band * i + 10
+        a, b = s2[f"{k}_vs_aom_s6"]["median"], jod[f"{k}_vs_aom_s6"]["median"]
+        s.text(24, y + 4, label, 13, "ink", weight=600 if k == "av1gpu" else 400)
+        s.add(f'<line x1="{X(a):.1f}" y1="{y}" x2="{X(b):.1f}" y2="{y}" stroke="{t[col]}" stroke-width="2"/>')
+        marker(s, t, "circle", X(a), y, t[col])
+        marker(s, t, "diamond", X(b), y, t[col])
+        lo, hi = sorted((a, b))
+        lab = f"{a * 100:+.1f} / {b * 100:+.1f} %".replace("-", "−")
+        if X(hi) + 12 + 7 * len(lab) > 745:  # no room on the right: label left of the pair
+            s.text(X(lo) - 12, y + 4, lab, 12, "ink2", "end")
+        else:
+            s.text(X(hi) + 12, y + 4, lab, 12, "ink2")
+    s.save(os.path.join(HERE, f"metrics-{t['name']}.svg"))
+
+
 def marker(s, t, kind, x, y, color, r=5):
     ring = f'stroke="{t["surface"]}" stroke-width="2"'
     if kind == "circle":
@@ -271,8 +328,16 @@ def marker(s, t, kind, x, y, color, r=5):
               f'L{x - r - 1:.1f},{y:.1f} Z" fill="{color}" {ring}/>')
 
 
+def webp_icc_fixed(rows):
+    """the published WebP rows with SSIMULACRA2 re-scored with the .webp's ICC profile (bench/results/aws-g6-l4-cvvdp:
+    dwebp drops it, so 13 photos with non-sRGB profiles were scored as colour-shifted)"""
+    fix = {(x["image"], x["q"]): x["ssimulacra2_icc"] for x in load("aws-g6-l4-cvvdp")["webp_icc_check"]["rows"]}
+    return [dict(x, ssimulacra2=fix.get((x["image"], x["q"]), x["ssimulacra2"])) for x in rows]
+
+
 def quality_chart(t):
     r = load("aws-g6-l4-gamut")
+    r["quality"]["webp"] = webp_icc_fixed(r["quality"]["webp"])
     man = {m["file"]: int(m["width"]) * int(m["height"])
            for m in csv.DictReader(open(os.path.join(ROOT, "bench", "openimages_v4_gamut.csv")))}
     curves = {}
@@ -444,6 +509,8 @@ if __name__ == "__main__":
         tradeoff_chart(t)
         quality_chart(t)
         by_size_chart(t)
+        formats_chart(t)
+        metrics_chart(t)
         pipeline_diagram(t)
         banner(t)
     print("wrote", ", ".join(sorted(f for f in os.listdir(HERE) if f.endswith(".svg"))))

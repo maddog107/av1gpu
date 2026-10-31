@@ -49,13 +49,13 @@
 <circle cx="177.8" cy="237.2" r="4" fill="#d55181" stroke="#1a1a19" stroke-width="2"/>
 <circle cx="131.0" cy="280.0" r="4" fill="#d55181" stroke="#1a1a19" stroke-width="2"/>
 <circle cx="102.0" cy="341.2" r="4" fill="#d55181" stroke="#1a1a19" stroke-width="2"/>
-<path d="M177.5,243.0 L195.7,229.4 L216.9,216.9 L276.6,194.8 L454.2,163.3 L671.7,149.1" fill="none" stroke="#c98500" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
-<circle cx="177.5" cy="243.0" r="4" fill="#c98500" stroke="#1a1a19" stroke-width="2"/>
-<circle cx="195.7" cy="229.4" r="4" fill="#c98500" stroke="#1a1a19" stroke-width="2"/>
-<circle cx="216.9" cy="216.9" r="4" fill="#c98500" stroke="#1a1a19" stroke-width="2"/>
-<circle cx="276.6" cy="194.8" r="4" fill="#c98500" stroke="#1a1a19" stroke-width="2"/>
-<circle cx="454.2" cy="163.3" r="4" fill="#c98500" stroke="#1a1a19" stroke-width="2"/>
-<circle cx="671.7" cy="149.1" r="4" fill="#c98500" stroke="#1a1a19" stroke-width="2"/>
+<path d="M177.5,239.0 L195.7,225.2 L216.9,212.4 L276.6,189.6 L454.2,156.8 L671.7,141.8" fill="none" stroke="#c98500" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="177.5" cy="239.0" r="4" fill="#c98500" stroke="#1a1a19" stroke-width="2"/>
+<circle cx="195.7" cy="225.2" r="4" fill="#c98500" stroke="#1a1a19" stroke-width="2"/>
+<circle cx="216.9" cy="212.4" r="4" fill="#c98500" stroke="#1a1a19" stroke-width="2"/>
+<circle cx="276.6" cy="189.6" r="4" fill="#c98500" stroke="#1a1a19" stroke-width="2"/>
+<circle cx="454.2" cy="156.8" r="4" fill="#c98500" stroke="#1a1a19" stroke-width="2"/>
+<circle cx="671.7" cy="141.8" r="4" fill="#c98500" stroke="#1a1a19" stroke-width="2"/>
 <path d="M113.6,300.5 L141.7,251.3 L192.6,210.9 L255.3,184.1 L332.0,164.4 L435.4,149.2" fill="none" stroke="#199e70" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
 <circle cx="113.6" cy="300.5" r="4" fill="#199e70" stroke="#1a1a19" stroke-width="2"/>
 <circle cx="141.7" cy="251.3" r="4" fill="#199e70" stroke="#1a1a19" stroke-width="2"/>
