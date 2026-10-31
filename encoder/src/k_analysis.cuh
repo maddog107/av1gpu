@@ -243,7 +243,7 @@ __global__ void __launch_bounds__(NW * 32, (W * H <= 64 ? 768 : 512) / (NW * 32)
         }
         }
         // ---- RD of the top-K with DCT_DCT ----
-        const int hasC = av1g_has_chroma(BS, y >> 2, x >> 2, I.mono);
+        const int hasC = av1g_has_chroma(BS, y >> 2, x >> 2, I.mono, I.ssx, I.ssy);
         const float overhead = (hasC ? P.uvOverheadBits : 0.f) + g_avgSkip0;
         EvalIn e;
         e.txSz = txSz; e.plane = 0;

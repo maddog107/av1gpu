@@ -11,7 +11,8 @@ static void launch_uv(const GpBatch &B, const GpParams &P, uint32_t n, cudaStrea
     uint32_t grid = (n + 3) / 4;
     // non-persistent grid: short CTAs let the hardware scheduler interleave other streams (recon wavefronts)
     if (grid > (1u << 30)) grid = 1u << 30;
-    k_analysis_uv<W, H, BS, 4><<<grid, 128, 0, st>>>(B, P, n);
+    if (B.any420) k_analysis_uv<W, H, BS, 4, 1><<<grid, 128, 0, st>>>(B, P, n);   // 4:2:0 images
+    if (B.any444) k_analysis_uv<W, H, BS, 4, 0><<<grid, 128, 0, st>>>(B, P, n);   // 4:4:4 images
 }
 
 void gp_launch_an_uv(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st) {

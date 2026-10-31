@@ -196,7 +196,7 @@ __global__ void __launch_bounds__(128) k_analysis_small(GpBatch B, GpParams P, u
         while (nc < K && cands[nc] >= 0) nc++;
     }
     // ---- RD ----
-    const int hasC = av1g_has_chroma(BS, y >> 2, x >> 2, I.mono);
+    const int hasC = av1g_has_chroma(BS, y >> 2, x >> 2, I.mono, I.ssx, I.ssy);
     const float overhead = (hasC ? P.uvOverheadBits : 0.f) + g_avgSkip0;
     EvalIn e;
     e.txSz = txSz; e.plane = 0;

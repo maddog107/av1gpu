@@ -70,7 +70,7 @@ struct DevBatch {
     const av1g_txb *txb = nullptr;        // device
     const int16_t *coeffs = nullptr;      // device
     // Symbol buffer capacity: scratch needs ~5 bytes per symbol of capacity (4 symbol + 1 payload
-    // staging/packing).  0 = default 0.75 * luma pixels + 16 * blocks + 8 * tx blocks.  Measured:
+    // staging/packing).  0 = default 0.75 * luma pixels (x 2 for 4:4:4 frames) + 16 * blocks + 8 * tx blocks.  Measured:
     // 0.41 symbols/pixel for the encoder's dev batch (q120 class), 0.54 for libaom s6 q60 decisions;
     // lower qindex means more.  Too small -> AV1G_GPU_ERR_SYMBOLS with the exact count; rerun.
     uint64_t symbolCapacity = 0;

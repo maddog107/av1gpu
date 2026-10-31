@@ -8,8 +8,8 @@
  *
  * Inputs (device): the record's blocks (skip / tx_depth / bsize decide edges and CDEF skip),
  * the PADDED pre-filter reconstruction (av1g_encode AV1G_ENC_PREFILTER_RECON: MiCols*4 x
- * MiRows*4, chroma >> 1) and the source planes padded at least as far.  fp supplies width,
- * height, monochrome and base_q_idx.
+ * MiRows*4, chroma >> ssx / ssy) and the source planes padded at least as far.  fp supplies width,
+ * height, monochrome, chroma_format and base_q_idx.
  * On return: d_recon is DEBLOCKED with the chosen levels (CDEF not applied), res holds the frame
  * header values (deblocking levels/sharpness, CDEF damping/bits/presets with secondary strengths
  * as applied values 0/1/2/4), d_sb_cdef_idx[sbRows * sbCols] the preset of every 64x64

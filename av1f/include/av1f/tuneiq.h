@@ -162,13 +162,15 @@ AV1G_HD void av1f_tuneiq_frame_init(int base, int ssx, int ssy, int mono, av1f_t
     f->rdmult = av1f_frame_rdmult(base);
 }
 
-/* Writes every frame-header decision of libaom tune=iq into fp (4:2:0 or monochrome): base qindex,
- * chroma delta-q, QM levels, deblocking from Q (effective levels) + sharpness, CDEF damping with
- * enable_cdef = 1 (presets / cdef_bits / per-SB cdef_idx come from av1f_lf_search), and
- * delta_q_res; delta_q_present is left to the caller (1 iff some SB qindex != base). */
+/* Writes every frame-header decision of libaom tune=iq into fp (4:2:0 or 4:4:4 as set in
+ * fp->chroma_format, or monochrome): base qindex, chroma delta-q, QM levels, deblocking from Q
+ * (effective levels) + sharpness, CDEF damping with enable_cdef = 1 (presets / cdef_bits / per-SB
+ * cdef_idx come from av1f_lf_search), and delta_q_res; delta_q_present is left to the caller (1 iff
+ * some SB qindex != base). */
 AV1G_HD void av1f_tuneiq_fill_fp(av1g_frame_params *fp, int base, int mono) {
     av1f_tuneiq_frame t;
-    av1f_tuneiq_frame_init(base, 1, 1, mono, &t);
+    const int ss = (!mono && fp->chroma_format == AV1G_CHROMA_444) ? 0 : 1;
+    av1f_tuneiq_frame_init(base, ss, ss, mono, &t);
     fp->base_q_idx = (uint8_t)base;
     fp->monochrome = (uint8_t)mono;
     fp->delta_q_y_dc = 0;

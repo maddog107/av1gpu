@@ -44,12 +44,16 @@ struct GpConfig {
     float tileMinMp = 0;      // > 0: images of >= tileMinMp megapixels get tileColsLog2 / tileRowsLog2 uniform tiles
     int tileColsLog2 = 1, tileRowsLog2 = 0;
     int ssimLambda = 0;       // tune=iq per-16x16 SSIM rdmult scaling of lambda
+    int yuv444 = 0;           // front ends (CLI, batch mode): produce full-resolution chroma input planes and
+                              // code colour frames 4:4:4 (the encoder itself follows GpFrameIn::yuv444)
     GpConfig();
 };
 
-// One input frame: device planes, padded (edge replicated) to aw x ah (multiples of 64).
+// One input frame: device planes, padded (edge replicated) to aw x ah (multiples of 64); chroma
+// (aw/2 x ah/2, or aw x ah with yuv444).
 struct GpFrameIn {
     int W = 0, H = 0, mono = 0;
+    int yuv444 = 0;            // 1: chroma planes are full size and the frame is coded 4:4:4 (High profile)
     const uint8_t *dsrc[3] = {nullptr, nullptr, nullptr};
     int spitch[3] = {0, 0, 0};
     int aw = 0, ah = 0;
@@ -62,7 +66,7 @@ struct GpFrameOut {
     std::vector<uint32_t> block_txb;
     std::vector<av1g_txb> txb;
     std::vector<int16_t> coeffs;
-    std::vector<uint8_t> recon[3];   // cropped: Y W x H, U/V ((W+1)/2) x ((H+1)/2)
+    std::vector<uint8_t> recon[3];   // cropped: Y W x H, U/V ((W+1)/2) x ((H+1)/2) (4:4:4: W x H)
     int orientation = 1;             // EXIF orientation of the source (set by the caller; AVIF irot/imir)
     av1g_decision_record record();   // points into the vectors above
 };

@@ -2,15 +2,17 @@
 // shape that carries chroma, the best exact-rate U+V RD cost over {DC_PRED, the luma winner's mode}
 // (source edges, delta 0, no CfL) is added to the block's J, so the partition DP decides on
 // luma + chroma cost (measured -0.9 % total J for chroma-aware partitioning).
-// One warp per block, launched after the luma analysis of the shape.
+// One warp per block, launched after the luma analysis of the shape.  SS = chroma subsampling of the
+// images it handles (1: 4:2:0, 0: 4:4:4; one instantiation per layout, other images are skipped); 4:4:4
+// blocks with a 64-sample side are estimated on their first (32-sample) chroma tx block.
 #pragma once
 #include "dev_tx.cuh"
 #include "k_analysis.cuh"
 
-template <int W, int H>
+template <int W, int H, int SS>
 struct UvDims {
-    static constexpr int w = W / 2 < 4 ? 4 : (W / 2 > 32 ? 32 : W / 2);
-    static constexpr int h = H / 2 < 4 ? 4 : (H / 2 > 32 ? 32 : H / 2);
+    static constexpr int w = (W >> SS) < 4 ? 4 : ((W >> SS) > 32 ? 32 : (W >> SS));
+    static constexpr int h = (H >> SS) < 4 ? 4 : ((H >> SS) > 32 ? 32 : (H >> SS));
 };
 
 template <int UW, int UH>
@@ -22,9 +24,9 @@ struct UvSmem {
     int dcv[2];
 };
 
-template <int W, int H, int BS, int NW>
+template <int W, int H, int BS, int NW, int SS>
 __global__ void __launch_bounds__(NW * 32) k_analysis_uv(GpBatch B, GpParams P, uint32_t nTotal) {
-    constexpr int UW = UvDims<W, H>::w, UH = UvDims<W, H>::h;
+    constexpr int UW = UvDims<W, H, SS>::w, UH = UvDims<W, H, SS>::h;
     typedef TxD<UW, UH> T;
     __shared__ UvSmem<UW, UH> smem[NW];
     const int warp = threadIdx.x >> 5, lane = threadIdx.x & 31;
@@ -47,13 +49,13 @@ __global__ void __launch_bounds__(NW * 32) k_analysis_uv(GpBatch B, GpParams P, 
         const int x = (int)(li % nbx) * W, y = (int)(li / nbx) * H;
         GpBlockRes &out = B.blk[I.shOff[BS] + li];
         if (x >= I.MiCols * 4 || y >= I.MiRows * 4 || out.ncand == 0 || out.J >= GP_INF) continue;
-        if (!av1g_has_chroma(BS, y >> 2, x >> 2, I.mono)) continue;
-        const int cx = ((x >> 2) >> 1) * 4, cy = ((y >> 2) >> 1) * 4;   // chroma block origin (sub-8x8: the 8x8 area)
+        if (I.ssx != SS || !av1g_has_chroma(BS, y >> 2, x >> 2, I.mono, SS, SS)) continue;
+        const int cx = ((x >> 2) >> SS) * 4, cy = ((y >> 2) >> SS) * 4;   // chroma block origin (4:2:0 sub-8x8: the 8x8 area)
         const TileBox tb = tile_of(I, x, y);
-        const int haveLeft = cx > (tb.x0 >> 1), haveAbove = cy > (tb.y0 >> 1);
-        const int haveAR = ol_decoded(cx + UW, cy - 1, cx, cy, 1, tb);
-        const int haveBL = ol_decoded(cx - 1, cy + UH, cx, cy, 1, tb);
-        const int maxX = ((I.MiCols * 4) >> 1) - 1, maxY = ((I.MiRows * 4) >> 1) - 1;
+        const int haveLeft = cx > (tb.x0 >> SS), haveAbove = cy > (tb.y0 >> SS);
+        const int haveAR = ol_decoded(cx + UW, cy - 1, cx, cy, SS, tb);
+        const int haveBL = ol_decoded(cx - 1, cy + UH, cx, cy, SS, tb);
+        const int maxX = ((I.MiCols * 4) >> SS) - 1, maxY = ((I.MiRows * 4) >> SS) - 1;
         const int qidx = sb_qindex(I, x, y);
         const float lambda = gp_lambda(qidx, P.lambdaMul) * ssim_scale(I, x, y, W, H) * P.lambdaCMul;
         const BlockQ bq = block_q(I, qidx);

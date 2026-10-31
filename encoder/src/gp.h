@@ -19,8 +19,10 @@
 #define GP_MAXK 6            // max top-K luma candidates kept per block by the analysis
 #define GP_NSHAPES 22        // indexed by AV1 bsize (13..15 = 128-sizes, unused)
 #define GP_MAX_LEAVES 256    // per 64x64 SB
-#define GP_MAX_TXB 384       // per SB: 256 luma + 2 x 64 chroma
+#define GP_MAX_TXB 384       // per SB: 256 luma + 2 x 64 chroma (4:2:0)
 #define GP_SB_COEFFS 6144    // per SB: 64*64 + 2*32*32 (64-point tx store 32x32 only)
+#define GP_MAX_TXB_444 768   // per SB in batches with 4:4:4 frames: 3 x 256
+#define GP_SB_COEFFS_444 12288  // 3 x 64*64
 #define GP_RC_BIG_BYTES 18560  // per-CTA global scratch of k_recon for 32/64-point evaluations
 #define GP_NCDF (sizeof(av1g_cdfs) / 2)
 
@@ -68,6 +70,7 @@ struct GpImage {
     int MiCols, MiRows;      // coded area in 4x4 units (picture padded to a multiple of 8)
     int sbCols, sbRows;
     int mono;
+    int ssx, ssy;            // chroma subsampling: 1, 1 (4:2:0, monochrome) or 0, 0 (4:4:4)
     int baseQ, qctx;         // base_q_idx, coefficient-CDF quantizer context (0..3)
     int dqRes;               // delta_q_res
     const uint8_t *sbQ;      // per-SB qindex (raster sbRows x sbCols); NULL = baseQ everywhere
@@ -77,7 +80,7 @@ struct GpImage {
     const float *ssimLog;    // per 16x16 cell: log of the normalised tune=iq SSIM rdmult scale (NULL = off)
     int cols16, rows16;
     const float *var16;      // per 16x16 cell: max per-pixel variance of its 8x8 blocks (flat pruning; NULL = off)
-    const uint8_t *src[3];   // source planes, padded (replicated) to aw x ah (chroma aw/2 x ah/2)
+    const uint8_t *src[3];   // source planes, padded (replicated) to aw x ah (chroma (aw >> ssx) x (ah >> ssy))
     int spitch[3];
     uint8_t *rec[3];         // reconstruction planes, same geometry
     int rpitch[3];
@@ -91,7 +94,7 @@ struct GpImage {
     uint32_t sbBase;         // first SB of this image in the global SB arrays (raster per image)
     // 4x4 maps (MiRows x MiCols, raster) for closed-loop contexts
     uint8_t *mYMode, *mUVMode, *mSkip, *mMiSize, *mTx;
-    // per-plane 4x4 coefficient-context maps (culLevel, dcCategory); chroma (MiRows/2)x(MiCols/2)
+    // per-plane 4x4 coefficient-context maps (culLevel, dcCategory); chroma (MiRows >> ssy) x (MiCols >> ssx)
     uint8_t *cLvl[3], *cDc[3];
 };
 
@@ -141,8 +144,11 @@ struct GpBatch {
     GpSbOut *sbOut;            // [nSb]
     av1g_block *oBlocks;       // [nSb * GP_MAX_LEAVES]
     uint16_t *oBlockTxb;       // [nSb * GP_MAX_LEAVES] first txb (SB-local) of each block
-    av1g_txb *oTxb;            // [nSb * GP_MAX_TXB]  (coeff_off SB-local)
-    int16_t *oCoeffs;          // [nSb * GP_SB_COEFFS]
+    av1g_txb *oTxb;            // [nSb * sbTxbCap]  (coeff_off SB-local)
+    int16_t *oCoeffs;          // [nSb * sbCoefCap]
+    uint32_t sbTxbCap, sbCoefCap;  // per-SB output slots: GP_MAX_TXB / GP_SB_COEFFS, or the _444 sizes when the
+                                   // batch has a 4:4:4 frame
+    int any420, any444;        // the batch has 4:2:0 / 4:4:4 colour frames (chroma kernels per layout)
     uint32_t *stats;           // [16] counters
     // optional external screener: per shape [nblocks][extTopK] candidates, index extOff[s * nimg + img] + local
     const void *extCand[GP_NSHAPES];

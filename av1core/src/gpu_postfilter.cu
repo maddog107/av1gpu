@@ -14,7 +14,8 @@ struct ScratchLayout {
 ScratchLayout layout(const av1g_frame_params *fp) {
     av1g_pf_frame f;
     av1g_pf_frame_init(fp, &f);
-    const size_t nmi = (size_t)f.MiRows * f.MiCols, nuv = (size_t)(f.MiRows / 2) * (f.MiCols / 2);
+    const size_t nmi = (size_t)f.MiRows * f.MiCols, nuv = (size_t)(f.MiRows >> f.ssy) * (f.MiCols >> f.ssx);
+    const size_t n8 = (size_t)(f.MiRows / 2) * (f.MiCols / 2);   // 8x8 luma blocks
     ScratchLayout L;
     size_t o = 0;
     L.skip = o; o = align256(o + nmi);
@@ -22,7 +23,7 @@ ScratchLayout layout(const av1g_frame_params *fp) {
     L.txU = o; o = align256(o + nuv);
     L.txV = o; o = align256(o + nuv);
     L.cdef = o; o = align256(o + (size_t)f.sbCols * f.sbRows);
-    L.dirvar = o; o = align256(o + 4 * nuv);  // one int32 per 8x8 luma block
+    L.dirvar = o; o = align256(o + 4 * n8);   // one int32 per 8x8 luma block
     L.total = o;
     return L;
 }
@@ -33,13 +34,13 @@ __global__ void k_mark(av1g_pf_frame f, const av1g_block *blocks, uint32_t n) {
 }
 
 // One thread per (plane, 4x4 edge position); blockIdx.z = plane.  Chroma positions are in
-// chroma 4x4 units (luma row/col = 2 * index).
+// chroma 4x4 units (luma row/col = index << ssy / ssx: 2 * index in 4:2:0, the same in 4:4:4).
 __global__ void k_deblock(av1g_pf_frame f, int pass) {
     const int plane = blockIdx.z;
-    const int sub = plane ? 1 : 0;
+    const int subX = plane ? f.ssx : 0, subY = plane ? f.ssy : 0;
     const int col = blockIdx.x * blockDim.x + threadIdx.x, row = blockIdx.y * blockDim.y + threadIdx.y;
-    if (col >= (f.MiCols >> sub) || row >= (f.MiRows >> sub)) return;
-    av1g_lf_edge(&f, plane, pass, row << sub, col << sub);
+    if (col >= (f.MiCols >> subX) || row >= (f.MiRows >> subY)) return;
+    av1g_lf_edge(&f, plane, pass, row << subY, col << subX);
 }
 
 __global__ void k_cdef_dir(av1g_pf_frame f) {
@@ -58,10 +59,10 @@ struct OutPlanes {
     int s[3];
 };
 __global__ void k_cdef(av1g_pf_frame f, OutPlanes o) {
-    const int plane = blockIdx.z, sub = plane ? 1 : 0;
+    const int plane = blockIdx.z, subX = plane ? f.ssx : 0, subY = plane ? f.ssy : 0;
     const int x = blockIdx.x * blockDim.x + threadIdx.x, y = blockIdx.y * blockDim.y + threadIdx.y;
-    if (x >= (f.MiCols * 4) >> sub || y >= (f.MiRows * 4) >> sub) return;
-    const int bx = x >> (3 - sub), by = y >> (3 - sub);  // 8x8 luma block index
+    if (x >= (f.MiCols * 4) >> subX || y >= (f.MiRows * 4) >> subY) return;
+    const int bx = x >> (3 - subX), by = y >> (3 - subY);  // 8x8 luma block index
     const int idx = av1g_cdef_active_idx(&f, by * 2, bx * 2);
     const uint8_t *src = f.plane[plane];
     const int ss = f.stride[plane];

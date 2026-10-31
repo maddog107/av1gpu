@@ -39,6 +39,7 @@ namespace av1g_gpu {
 
 struct FrameG {
     int W, H, MiCols, MiRows, mono, qidx, reduced, txsel, sct, dq, dqRes, fi, cdefBits;  // cdefBits -1: CDEF off
+    int ssx, ssy;                                // chroma subsampling (4:2:0 / monochrome 1, 4:4:4 0)
     uint64_t miBase;
     uint64_t ctxBase[3];
     int ctxStride[3], ctxRows[3];
@@ -150,23 +151,24 @@ __global__ void k_txsym(const av1g_block *blocks, const uint32_t *blockFrame, co
     const FrameG &F = frames[blockFrame[b]];
     const TileG &T = tiles[blockTile[b]];
     const av1g_txb x = txb[t];
-    const int plane = x.plane, txSz = x.tx_size, sub = plane ? 1 : 0, ptype = plane > 0;
+    const int plane = x.plane, txSz = x.tx_size, ptype = plane > 0;
+    const int subX = plane ? F.ssx : 0, subY = plane ? F.ssy : 0;
     const int x4 = x.x4, y4 = x.y4;
     const int eob = txbEob[t], txType = txbType[t];
     const int16_t *q = coeffs + F.coeffBase + x.coeff_off;
     const int txSzCtx = (AV1G_T(Tx_Size_Sqr)[txSz] + AV1G_T(Tx_Size_Sqr_Up)[txSz] + 1) >> 1;
     const int w = AV1G_T(Tx_Width)[txSz], h = AV1G_T(Tx_Height)[txSz], w4 = w >> 2, h4 = h >> 2;
-    const int maxX4 = F.MiCols >> sub, maxY4 = F.MiRows >> sub;
+    const int maxX4 = F.MiCols >> subX, maxY4 = F.MiRows >> subY;
     const int stride = F.ctxStride[plane];
     const uint8_t *L = ctxLvl + F.ctxBase[plane], *Dc = ctxDc + F.ctxBase[plane];
-    const bool hasAbove = y4 > (T.miRowStart >> sub), hasLeft = x4 > (T.miColStart >> sub);
+    const bool hasAbove = y4 > (T.miRowStart >> subY), hasLeft = x4 > (T.miColStart >> subX);
     auto aLvl = [&](int k_) -> int { return hasAbove ? L[(uint64_t)(y4 - 1) * stride + x4 + k_] : 0; };
     auto aDc = [&](int k_) -> int { return hasAbove ? Dc[(uint64_t)(y4 - 1) * stride + x4 + k_] : 0; };
     auto lLvl = [&](int k_) -> int { return hasLeft ? L[(uint64_t)(y4 + k_) * stride + x4 - 1] : 0; };
     auto lDc = [&](int k_) -> int { return hasLeft ? Dc[(uint64_t)(y4 + k_) * stride + x4 - 1] : 0; };
     int ctx;
     {
-        const int bsz = plane ? av1g_uv_bsize(k.bsize) : k.bsize;
+        const int bsz = plane ? av1g_uv_bsize(k.bsize, F.ssx, F.ssy) : k.bsize;
         const int bw = 4 * av1g_bw4(bsz), bh = 4 * av1g_bh4(bsz);
         if (plane == 0) {
             int top = 0, left = 0;
@@ -368,7 +370,7 @@ __device__ void w_block(Walk &w, int r, int c, int bsize) {
     for (int i = 0; i < w.npend; i++) o.put(w.pend[i]);
     w.npend = 0;
     const int bw4 = av1g_bw4(bsize), bh4 = av1g_bh4(bsize);
-    const int hasChroma = av1g_has_chroma(bsize, r, c, F.mono);
+    const int hasChroma = av1g_has_chroma(bsize, r, c, F.mono, F.ssx, F.ssy);
     const int aU = w.inside(r - 1, c), aL = w.inside(r, c - 1);
     o.sym(CID(skip[(aU ? w.map(w.mSkip, r - 1, c) : 0) + (aL ? w.map(w.mSkip, r, c - 1) : 0)]), k.skip, 2);
     if (F.cdefBits >= 0 && !k.skip && !w.cdefDone) {  // read_cdef: first non-skip block of the 64x64
@@ -1134,22 +1136,22 @@ int build_plan(const DevBatch &b, Plan &P, std::string &err) {
         g.W = fp.width; g.H = fp.height;
         g.MiCols = av1g_mi_cols(g.W); g.MiRows = av1g_mi_rows(g.H);
         g.mono = fp.monochrome; g.qidx = fp.base_q_idx; g.reduced = fp.reduced_tx_set;
+        g.ssx = av1g_ssx(&fp); g.ssy = av1g_ssy(&fp);
         g.txsel = fp.tx_mode_select; g.sct = fp.allow_screen_content_tools;
         g.dq = fp.delta_q_present; g.dqRes = fp.delta_q_res; g.fi = fp.enable_filter_intra;
         g.cdefBits = fp.enable_cdef ? fp.cdef_bits : -1;
         g.miBase = miTotal;
         miTotal += (uint64_t)g.MiCols * g.MiRows;
         for (int p = 0; p < 3; p++) {
-            const int sub = p ? 1 : 0;
-            g.ctxStride[p] = g.MiCols >> sub;
-            g.ctxRows[p] = g.MiRows >> sub;
+            g.ctxStride[p] = g.MiCols >> (p ? g.ssx : 0);
+            g.ctxRows[p] = g.MiRows >> (p ? g.ssy : 0);
             g.ctxBase[p] = ctxTotal[p];
             if (p == 0 || !g.mono) ctxTotal[p] += (uint64_t)g.ctxStride[p] * g.ctxRows[p];
         }
         g.blockBase = P.nB; g.nBlocks = d.nBlocks; g.txbBase = P.nT; g.nTxb = d.nTxb; g.coeffBase = d.coeffBase;
         P.nB += d.nBlocks;
         P.nT += d.nTxb;
-        pixels += (uint64_t)fp.width * fp.height;
+        pixels += (uint64_t)fp.width * fp.height * (g.ssx ? 1 : 2);   // 4:4:4: twice the samples of 4:2:0
         av1g::TileInfo ti;
         if (!av1g::compute_tiles(fp.width, fp.height, fp.tile_cols_log2, fp.tile_rows_log2, ti)) {
             err = "bad tiling in frame " + std::to_string(f);

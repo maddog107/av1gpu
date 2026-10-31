@@ -39,16 +39,16 @@ __global__ void k_pack(GpBatch B, const GpPackOff *off, av1g_block *oB, uint32_t
             aux.blockTxbG[o.gBlk + k] = o.gTxb + t0;
             for (uint32_t t = t0; t < t1; t++) {
                 aux.txbBlock[o.gTxb + t] = o.gBlk + k;
-                aux.txbCoeff[o.gTxb + t] = o.gCoef + B.oTxb[(size_t)sb * GP_MAX_TXB + t].coeff_off;
+                aux.txbCoeff[o.gTxb + t] = o.gCoef + B.oTxb[(size_t)sb * B.sbTxbCap + t].coeff_off;
             }
         }
     }
     for (uint32_t k = threadIdx.x; k < so.nTxb; k += blockDim.x) {
-        av1g_txb t = B.oTxb[(size_t)sb * GP_MAX_TXB + k];
+        av1g_txb t = B.oTxb[(size_t)sb * B.sbTxbCap + k];
         t.coeff_off += o.rCoef;
         oT[o.gTxb + k] = t;
     }
-    const int16_t *src = B.oCoeffs + (size_t)sb * GP_SB_COEFFS;
+    const int16_t *src = B.oCoeffs + (size_t)sb * B.sbCoefCap;
     for (uint32_t k = threadIdx.x; k < so.nCoeffs; k += blockDim.x) oC[o.gCoef + k] = src[k];
 }
 

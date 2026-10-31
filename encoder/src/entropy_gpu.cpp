@@ -27,7 +27,8 @@ void write_headers(const av1g_frame_params *fp, const av1g::TileInfo &tiles, int
     const int W = (int)fp->width, H = (int)fp->height, mono = fp->monochrome;
     const int diff_uv = (fp->delta_q_v_dc != fp->delta_q_u_dc || fp->delta_q_v_ac != fp->delta_q_u_ac);
     const int separate_uv = !mono && (diff_uv || (fp->using_qmatrix && fp->qm_v != fp->qm_u));
-    seq.put(0, 3);
+    const int high = !mono && fp->chroma_format == AV1G_CHROMA_444;   // seq_profile 1 (High) for 4:4:4
+    seq.put(high ? 1 : 0, 3);
     seq.put(1, 1);
     seq.put(1, 1);
     seq.put(level, 5);
@@ -45,14 +46,14 @@ void write_headers(const av1g_frame_params *fp, const av1g::TileInfo &tiles, int
     seq.put(fp->enable_cdef, 1);
     seq.put(0, 1);
     seq.put(0, 1);
-    seq.put(mono, 1);
+    if (!high) seq.put(mono, 1);   // mono_chrome is not coded in the High profile
     seq.put(1, 1);
     seq.put(1, 8);
     seq.put(13, 8);
     seq.put(6, 8);
     seq.put(1, 1);
     if (!mono) {
-        seq.put(0, 2);
+        if (!high) seq.put(0, 2);  // chroma_sample_position: 4:2:0 only
         seq.put(separate_uv, 1);
     }
     seq.put(0, 1);

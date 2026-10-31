@@ -163,13 +163,14 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
         I.sbCols = (I.MiCols + 15) >> 4; I.sbRows = (I.MiRows + 15) >> 4;
         if (f.aw < I.sbCols * 64 || f.ah < I.sbRows * 64) { err = "input planes not padded to 64"; return -1; }
         I.mono = f.mono;
+        I.ssx = I.ssy = (f.yuv444 && !f.mono) ? 0 : 1;
         I.baseQ = cfg_.qindex;
         I.qctx = av1g_coeff_cdf_q_ctx(cfg_.qindex);
         I.dqRes = cfg_.deltaqRes;
         I.edgeFilter = cfg_.edgeFilter;
         I.dqUDc = cfg_.dqUDc; I.dqUAc = cfg_.dqUAc; I.dqVDc = cfg_.dqVDc; I.dqVAc = cfg_.dqVAc;
         if (cfg_.tuneIq) {
-            av1f_tuneiq_frame_init(cfg_.qindex, 1, 1, f.mono, &tiq[i]);
+            av1f_tuneiq_frame_init(cfg_.qindex, I.ssx, I.ssy, f.mono, &tiq[i]);   // 4:4:4: libaom's 4:4:4 chroma delta-q / QM
             I.dqUDc = tiq[i].dq_u_dc; I.dqUAc = tiq[i].dq_u_ac; I.dqVDc = tiq[i].dq_v_dc; I.dqVAc = tiq[i].dq_v_ac;
         }
         if (cfg_.qm != -1) {
@@ -229,11 +230,14 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
     Alloc A;
     A.st = st;
     size_t planeBytes = 0, miTotal = 0, ctxTotal = 0, sbqTotal = 0;
+    bool any444 = false, any420 = false;
     for (int i = 0; i < n; i++) {
-        planeBytes += (size_t)in[i].aw * in[i].ah * 3 / 2;
-        miTotal += (size_t)imgs[i].MiCols * imgs[i].MiRows;
-        ctxTotal += (size_t)imgs[i].MiCols * imgs[i].MiRows * 3 / 2;
-        sbqTotal += (size_t)imgs[i].sbCols * imgs[i].sbRows;
+        const GpImage &I = imgs[i];
+        planeBytes += (size_t)in[i].aw * in[i].ah + 2 * (size_t)(in[i].aw >> I.ssx) * (in[i].ah >> I.ssy);
+        miTotal += (size_t)I.MiCols * I.MiRows;
+        ctxTotal += (size_t)I.MiCols * I.MiRows + 2 * (size_t)(I.MiCols >> I.ssx) * (I.MiRows >> I.ssy);
+        sbqTotal += (size_t)I.sbCols * I.sbRows;
+        if (!I.mono) (I.ssx ? any420 : any444) = true;
     }
     uint8_t *dRec, *dMaps, *dCtx, *dSbq = nullptr;
     GPCK(A.get(dRec, planeBytes));
@@ -251,16 +255,16 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
         size_t pr = 0, pm = 0, pc = 0, pq = 0;
         for (int i = 0; i < n; i++) {
             GpImage &I = imgs[i];
-            const size_t ysz = (size_t)in[i].aw * in[i].ah;
+            const size_t ysz = (size_t)in[i].aw * in[i].ah, csz = (size_t)(in[i].aw >> I.ssx) * (in[i].ah >> I.ssy);
             I.rec[0] = dRec + pr; I.rpitch[0] = in[i].aw;
-            I.rec[1] = dRec + pr + ysz; I.rpitch[1] = in[i].aw / 2;
-            I.rec[2] = dRec + pr + ysz + ysz / 4; I.rpitch[2] = in[i].aw / 2;
-            pr += ysz * 3 / 2;
+            I.rec[1] = dRec + pr + ysz; I.rpitch[1] = in[i].aw >> I.ssx;
+            I.rec[2] = dRec + pr + ysz + csz; I.rpitch[2] = in[i].aw >> I.ssx;
+            pr += ysz + 2 * csz;
             const size_t mi = (size_t)I.MiCols * I.MiRows;
             I.mYMode = dMaps + pm; I.mUVMode = dMaps + miTotal + pm; I.mSkip = dMaps + 2 * miTotal + pm;
             I.mMiSize = dMaps + 3 * miTotal + pm; I.mTx = dMaps + 4 * miTotal + pm;
             pm += mi;
-            const size_t c1 = (size_t)(I.MiCols >> 1) * (I.MiRows >> 1);
+            const size_t c1 = (size_t)(I.MiCols >> I.ssx) * (I.MiRows >> I.ssy);
             I.cLvl[0] = dCtx + pc; I.cLvl[1] = dCtx + pc + mi; I.cLvl[2] = dCtx + pc + mi + c1;
             I.cDc[0] = dCtx + ctxTotal + pc; I.cDc[1] = dCtx + ctxTotal + pc + mi; I.cDc[2] = dCtx + ctxTotal + pc + mi + c1;
             pc += mi + 2 * c1;
@@ -345,6 +349,9 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
     memset(&B, 0, sizeof B);
     B.nimg = n;
     B.nSb = nSb;
+    B.sbTxbCap = any444 ? GP_MAX_TXB_444 : GP_MAX_TXB;
+    B.sbCoefCap = any444 ? GP_SB_COEFFS_444 : GP_SB_COEFFS;
+    B.any420 = any420; B.any444 = any444;
     GPCK(A.get(B.img, n));
     GPCK(A.get(B.blk, blkTotal));
     GPCK(A.get(B.shImgStart, shStart.size()));
@@ -355,8 +362,8 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
     GPCK(A.get(B.sbOut, nSb));
     GPCK(A.get(B.oBlocks, (size_t)nSb * GP_MAX_LEAVES));
     GPCK(A.get(B.oBlockTxb, (size_t)nSb * GP_MAX_LEAVES));
-    GPCK(A.get(B.oTxb, (size_t)nSb * GP_MAX_TXB));
-    GPCK(A.get(B.oCoeffs, (size_t)nSb * GP_SB_COEFFS));
+    GPCK(A.get(B.oTxb, (size_t)nSb * B.sbTxbCap));
+    GPCK(A.get(B.oCoeffs, (size_t)nSb * B.sbCoefCap));
     GPCK(A.get(B.stats, 16));
     GPCK(A.get(B.prof, 16));
     GPCK(cudaMemsetAsync(B.prof, 0, 16 * sizeof(unsigned long long), st));
@@ -516,6 +523,7 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
         fp.version = AV1G_DECISIONS_VERSION;
         fp.width = (uint32_t)I.W; fp.height = (uint32_t)I.H;
         fp.monochrome = (uint8_t)I.mono;
+        fp.chroma_format = (uint8_t)(!I.mono && !I.ssx ? AV1G_CHROMA_444 : AV1G_CHROMA_420);
         fp.base_q_idx = (uint8_t)cfg_.qindex;
         fp.tx_mode_select = (uint8_t)(P.txSizeSearch ? 1 : 0);
         fp.reduced_tx_set = 0;
@@ -609,10 +617,10 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
                 GPCK(cudaMemcpyAsync(pf.cdefIdx, dSbc + I.sbBase, (size_t)I.sbCols * I.sbRows, cudaMemcpyDeviceToDevice, st));
                 for (int p = 0; p < 3; p++) { pf.plane[p] = I.rec[p]; pf.stride[p] = I.rpitch[p]; }
                 uint8_t *co;
-                const size_t ysz = (size_t)I.aw * I.ah;
-                GPCK(A.get(co, ysz * 3 / 2));
-                uint8_t *op[3] = {co, co + ysz, co + ysz + ysz / 4};
-                const int os[3] = {I.aw, I.aw / 2, I.aw / 2};
+                const size_t ysz = (size_t)I.aw * I.ah, csz = (size_t)(I.aw >> I.ssx) * (I.ah >> I.ssy);
+                GPCK(A.get(co, ysz + 2 * csz));
+                uint8_t *op[3] = {co, co + ysz, co + ysz + csz};
+                const int os[3] = {I.aw, I.aw >> I.ssx, I.aw >> I.ssx};
                 GPCK((cudaError_t)av1g_gpu_cdef_dir(&pf, st));
                 GPCK((cudaError_t)av1g_gpu_cdef(&pf, op, os, st));
                 for (int p = 0; p < 3; p++) { dl[i][p] = op[p]; dlp[i][p] = os[p]; }
@@ -638,10 +646,10 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
         GPCK((cudaError_t)av1g_gpu_deblock(&f, st));
         if (fp.enable_cdef) {
             uint8_t *co;
-            const size_t ysz = (size_t)I.aw * I.ah;
-            GPCK(A.get(co, ysz * 3 / 2));
-            uint8_t *op[3] = {co, co + ysz, co + ysz + ysz / 4};
-            const int os[3] = {I.aw, I.aw / 2, I.aw / 2};
+            const size_t ysz = (size_t)I.aw * I.ah, csz = (size_t)(I.aw >> I.ssx) * (I.ah >> I.ssy);
+            GPCK(A.get(co, ysz + 2 * csz));
+            uint8_t *op[3] = {co, co + ysz, co + ysz + csz};
+            const int os[3] = {I.aw, I.aw >> I.ssx, I.aw >> I.ssx};
             GPCK((cudaError_t)av1g_gpu_cdef_dir(&f, st));
             GPCK((cudaError_t)av1g_gpu_cdef(&f, op, os, st));
             for (int p = 0; p < 3; p++) { dl[i][p] = op[p]; dlp[i][p] = os[p]; }
@@ -666,7 +674,7 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
         }
         const int np = !cfg_.wantRecon ? 0 : I.mono ? 1 : 3;
         for (int p = 0; p < np; p++) {
-            const int w = p ? (I.W + 1) >> 1 : I.W, h = p ? (I.H + 1) >> 1 : I.H;
+            const int w = p ? (I.W + I.ssx) >> I.ssx : I.W, h = p ? (I.H + I.ssy) >> I.ssy : I.H;
             o.recon[p].resize((size_t)w * h);
             if (gp_pinned().stage2d(o.recon[p].data(), w, dl[i][p], dlp[i][p], w, h, st)) GPCK(cudaErrorUnknown);
         }
