@@ -395,6 +395,47 @@ session reproduced the published files and scores (600/600). Raw results: `bench
   have it, such as PNG screenshots and graphics.
 - SVT-AV1 has no 4:4:4. At 10-bit 4:2:0, preset 6 ran at 43.5 MP/s and +1.1 % against libaom speed 6.
 
+### Lossless
+
+`--lossless` (2026-10-31) codes AV1 lossless: base_q_idx 0, 4×4 Walsh-Hadamard transforms only, no deblocking
+or CDEF. The reconstruction is the source, so av1gpu computes every prediction from source pixels in parallel
+(no wavefront), estimates each 4×4's WHT-residual bits for every mode, runs the existing partition search on
+those costs, then makes the final mode and CfL choices per superblock with exact edge availability. Lossless
+frames use tiles of at most 256K pixels so the entropy coder has more work in flight.
+
+- **Colour:** PNG/WebP RGB is coded as GBR 4:4:4 at the source depth, as `avifenc -l` does. 16-bit PNGs are
+  coded at 10 bits only if they hold exactly 10 significant bits, and refused otherwise. `--ycgco-re` codes
+  RGB as YCgCo-Re (CICP matrix 16, libavif 1.4's integer transform), 8-bit RGB to 10-bit 4:4:4. JPEGs keep
+  their decoded YCbCr planes at their own subsampling; 4:2:2, 4:4:0 and 4:1:1 JPEGs are refused.
+- **Proof:** 189 of 189 files (Kodak and graphics in GBR and YCgCo-Re, 16-bit PNGs, gray, palette, odd sizes,
+  forced tiles, a 16.7 MP image, WebP, 22 JPEGs) decode to exactly the source with `avifdec -c aom` and
+  `-c dav1d` (libavif 1.4.0); the JPEG cases equal libjpeg-turbo's raw planes. Decoder gates 17/17,
+  6,787 lossless CPU fuzz cases and the GPU unit tests pass with 0 mismatches.
+- **Lossy output unchanged:** 800/800 files byte-identical (default, turbo3, `--yuv 444`, `--depth 10`),
+  every pre-existing GPU kernel compiles to identical SASS, and speed is within noise (115.7 vs 114.9 MP/s,
+  18 runs each).
+
+On 47 8-bit RGB PNGs, 42.7 MP: the 24 Kodak photos and 23 graphics (this repository's 16 SVG charts rendered at
+2× and 7 synthetic 1920 × 1080 screenshots). CPU encoders ran as 16 single-threaded processes on the
+g6.4xlarge's 16 vCPUs. av1gpu ran in batch mode; its first column is one pass including CUDA start-up, the
+second the set repeated 4×.
+
+| Encoder | Total bytes | vs PNG | Photos | Graphics | MP/s |
+|---|---:|---:|---:|---:|---:|
+| PNG (the sources) | 18,543,751 | 100 % | 15,394,305 | 3,149,446 | |
+| av1gpu `--lossless` | 20,112,025 | 108.5 % | 13,370,817 | 6,741,208 | 16.8 / 41–43 |
+| av1gpu `--lossless --ycgco-re` | 16,809,786 | 90.6 % | 11,990,929 | 4,818,857 | 16.4 / 41–43 |
+| avifenc `-l -s 6` | 21,516,335 | 116.0 % | 13,686,053 | 7,830,282 | 9.3 |
+| avifenc `-l -s d` (libaom's default, cpu-used 0) | 18,861,272 | 101.7 % | 13,324,165 | 5,537,107 | 0.38 |
+| avifenc `-l -s 6 --cicp 1/13/16` | 17,103,004 | 92.2 % | 12,396,839 | 4,706,165 | 8.8 |
+| cwebp `-lossless` | 12,323,572 | 66.5 % | 11,339,964 | 983,608 | 44.4 |
+| cwebp `-lossless -z 9` | 12,187,462 | 65.7 % | 11,252,092 | 935,370 | 1.76 |
+
+Lossless WebP is far smaller on graphics because av1gpu (like libaom at these settings) has no palette mode or
+intra block copy. On lossless JPEG input (the size-range photos) av1gpu ran at 44.8 MP/s. One image at a time
+is limited by the GPU entropy coder (about 126 ms for a Kodak image). The rate estimate behind the mode
+choices uses default-CDF costs, so it is approximate.
+
 ### CVVDP: a second metric
 
 SSIMULACRA2 does not model screen size or viewing distance, so the same size-range files were also scored
