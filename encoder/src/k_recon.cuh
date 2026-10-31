@@ -900,7 +900,7 @@ __device__ __noinline__ void rc_luma(int W, int H, RcShared &S, const GpBatch &B
 // ---------------------------------------------------------------------------
 // chroma of one block: U and V tx blocks (one each, W x H = chroma tx size)
 __device__ __noinline__ void rc_chroma(int W, int H, RcShared &S, const GpBatch &B, const GpParams &P, uint32_t sb, const GpImage &I, int bsize,
-                          int mi_row, int mi_col, int yMode, int availUC, int availLC, const TileBox &tb, const BlockQ &bq,
+                          int mi_row, int mi_col, int yMode, int yTxDepth, int availUC, int availLC, const TileBox &tb, const BlockQ &bq,
                           float lambda, const float *C, int *outUv, int *outDuv, int *outAu, int *outAv, int *outEobU, int *outEobV) {
     const TxR T(W, H);
     const int tid = threadIdx.x;
@@ -934,8 +934,15 @@ __device__ __noinline__ void rc_chroma(int W, int H, RcShared &S, const GpBatch 
     __syncthreads();
     // ---- CfL luma values (reconstructed luma, spec 7.11.5) ----
     if (cflOk) {
-        const int lumaTx = AV1G_T(Max_Tx_Size_Rect)[bsize];
-        const int maxLumaW = mi_col * 4 + AV1G_T(Tx_Width)[lumaTx], maxLumaH = mi_row * 4 + AV1G_T(Tx_Height)[lumaTx];
+        // MaxLumaW/H (spec transform_block): right / bottom edge of the last luma tx block coded, in raster
+        // order.  Tx blocks whose top-left lies outside the frame are not coded, so with a split luma tx
+        // (tx_depth 1) on the right / bottom frame edge this can stop short of the block.
+        const int lumaTx = av1g_luma_tx_size(bsize, yTxDepth);
+        const int tw = AV1G_T(Tx_Width)[lumaTx], th = AV1G_T(Tx_Height)[lumaTx];
+        int maxLumaW = 0, maxLumaH = 0;
+        for (int ly = mi_row * 4; ly < mi_row * 4 + bh_px(bsize); ly += th)
+            for (int lx = mi_col * 4; lx < mi_col * 4 + bw_px(bsize); lx += tw)
+                if (lx < I.MiCols * 4 && ly < I.MiRows * 4) { maxLumaW = lx + tw; maxLumaH = ly + th; }
         const uint8_t *luma = I.rec[0];
         const int lp = I.rpitch[0];
         int sum = 0;
@@ -1255,7 +1262,7 @@ rc_luma(AV1G_T(Tx_Width)[txSz], AV1G_T(Tx_Height)[txSz], S, B, P, sb, I, bsize, 
         int uv = 0, duv = 0, aU = 0, aV = 0, eobU = 0, eobV = 0;
         if (hasChroma) {
             const int uvTx = av1g_uv_tx_size(bsize);
-rc_chroma(AV1G_T(Tx_Width)[uvTx], AV1G_T(Tx_Height)[uvTx], S, B, P, sb, I, bsize, mi_row, mi_col, yMode, availUC, availLC, tb, bq, lambdaB * P.lambdaCMul, C, &uv, &duv, &aU, &aV, &eobU, &eobV);
+rc_chroma(AV1G_T(Tx_Width)[uvTx], AV1G_T(Tx_Height)[uvTx], S, B, P, sb, I, bsize, mi_row, mi_col, yMode, yTxDepth, availUC, availLC, tb, bq, lambdaB * P.lambdaCMul, C, &uv, &duv, &aU, &aV, &eobU, &eobV);
         }
         const int skip = (eobY == 0 && eobU == 0 && eobV == 0) ? 1 : 0;
         // maps
