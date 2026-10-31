@@ -52,6 +52,9 @@ static bool decode_png(const std::vector<uint8_t> &d, int &W, int &H, std::vecto
     img.version = PNG_IMAGE_VERSION;
     if (!png_image_begin_read_from_memory(&img, d.data(), d.size())) { err = "png header"; return false; }
     if (fmt) *fmt = img.format;
+    // 16-bit samples without a gAMA / sRGB chunk are sRGB-encoded, as every other decoder (libavif, Pillow) reads
+    // them; without this flag libpng's simplified API takes them as linear light and brightens the 8-bit output
+    img.flags |= PNG_IMAGE_FLAG_16BIT_sRGB;
     if (alpha && (img.format & PNG_FORMAT_FLAG_ALPHA)) {
         img.format = PNG_FORMAT_RGBA;
         std::vector<uint8_t> rgba(PNG_IMAGE_SIZE(img));
