@@ -1,0 +1,18 @@
+images head 444_8 rc=0 100 files 5737029 bytes
+images fix 444_8 rc=0 100 files 5737029 bytes
+REGRESSION (fix vs unmodified branch) images 444_8: 100 files compared, 0 differ
+images head 420_10 rc=0 100 files 5441830 bytes
+images fix 420_10 rc=0 100 files 5441830 bytes
+REGRESSION (fix vs unmodified branch) images 420_10: 100 files compared, 0 differ
+images head 444_10 rc=0 100 files 5648543 bytes
+images fix 444_10 rc=0 100 files 5648543 bytes
+REGRESSION (fix vs unmodified branch) images 444_10: 100 files compared, 0 differ
+images_gamut head 444_8 rc=0 100 files 23557823 bytes
+images_gamut fix 444_8 rc=0 100 files 23557823 bytes
+REGRESSION (fix vs unmodified branch) images_gamut 444_8: 100 files compared, 0 differ
+images_gamut head 420_10 rc=0 100 files 22212217 bytes
+images_gamut fix 420_10 rc=0 100 files 22212217 bytes
+REGRESSION (fix vs unmodified branch) images_gamut 420_10: 100 files compared, 0 differ
+images_gamut head 444_10 rc=0 100 files 23088086 bytes
+images_gamut fix 444_10 rc=0 100 files 23088086 bytes
+REGRESSION (fix vs unmodified branch) images_gamut 444_10: 100 files compared, 0 differ

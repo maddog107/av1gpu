@@ -25,10 +25,10 @@ jobs:
           DEBIAN_FRONTEND=noninteractive apt-get install -y python3-pip pkg-config g++ file \
             libjpeg-turbo8-dev libpng-dev libwebp-dev zlib1g-dev
           pip3 install cmake==3.31.6 ninja    # Ubuntu 22.04's CMake is older than 3.24
-      # every architecture from Turing to Blackwell (the CMakeLists default); -j 2 because k_recon.cu
-      # alone needs about 4 GB per compile
+      # every architecture from Turing to Blackwell (the CMakeLists default); -j 1 because each k_recon
+      # translation unit needs several GB per compile and two at once ran the runner out of memory
       - run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DAV1GPU_STATIC_DEPS=ON -DAV1GPU_TESTS=OFF
-      - run: cmake --build build -j 2
+      - run: cmake --build build -j 1
       - name: Package
         run: |
           V=${GITHUB_REF_NAME#v}; case "$GITHUB_REF" in refs/tags/*) ;; *) V=dev-${GITHUB_SHA::7};; esac

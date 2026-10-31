@@ -1,0 +1,47 @@
+== gpu_dsp_test
+device: NVIDIA L4 (sm_89)
+1. dequant (incl. quantizer matrices) + inverse transforms: 2048 cases, 0 host/device mismatches (257 flagged non-conformant on both)
+2/3. intra prediction (incl. edge filter/upsampling, filter intra) + CFL: 1024 cases (252 CFL, 129 of them 4:4:4), 0 host/device mismatches
+4. od_ec + CDF adaptation: 128 streams, 507606 symbols, 0 host/device mismatches
+5a. dequant (incl. quantizer matrices) + inverse transforms at 10 bits: 2048 cases, 0 host/device mismatches (576 flagged non-conformant on both)
+5b. intra prediction (incl. edge filter/upsampling, filter intra) + CFL at 10 bits: 1024 cases (275 CFL, 136 of them 4:4:4), 0 host/device mismatches
+GPU_DSP_TEST PASSED
+== varboost_test
+  device-math LUT differs: strength 200 base 232 var 64: 182 vs host 183
+LUT (3 strengths x 255 bases x 1024 variances): device-math 2 differ (informational), uploaded 0 differ
+random planes: 22836 SB results (3 orders), 4794 boosted (TILE order), 0 differ
+tune=iq frame decisions (4:2:0, 4:4:4, monochrome x 255 bases): 0 differ from libaom av1_set_quantizer, 0 device/host differ (rdmult device-math: 3 differ, informational)
+10-bit LUT (3 strengths x 255 x 1024): uploaded 0 differ from the host, host 0 differ from libaom's 10-bit path
+random 10-bit planes: 3869 SB results (TILE order), 1829 boosted, 0 differ; 8x8 variances vs libaom highbd_10: 0 differ
+10-bit tune=iq frame decisions (3 layouts x 255 bases): 0 differ from libaom's high-bitdepth rules
+PASS
+== gpu_fuzz_test mixed (defaults: 40 % 10-bit, 40 % of colour 4:4:4)
+GPU FUZZ (run_batch_device, device arrays, non-blocking stream, 3 scratch allocations) seeds 1..3000: 3000 cases (1019 4:4:4, 485 monochrome, 1217 10-bit), 3634 tiles, 179992801 symbols, 25 symbol-capacity errors reported + rerun, order check ok, 0 mismatches -> PASSED
+== gpu_fuzz_test 4:4:4 only (8-bit)
+GPU FUZZ (run_batch_device, device arrays, non-blocking stream, 4 scratch allocations) seeds 500001..501500: 1500 cases (1294 4:4:4, 206 monochrome, 0 10-bit), 1796 tiles, 81338730 symbols, 13 symbol-capacity errors reported + rerun, order check ok, 0 mismatches -> PASSED
+== gpu_fuzz_test 10-bit only
+GPU FUZZ (run_batch_device, device arrays, non-blocking stream, 4 scratch allocations) seeds 700001..701500: 1500 cases (516 4:4:4, 218 monochrome, 1500 10-bit), 1777 tiles, 66308201 symbols, 13 symbol-capacity errors reported + rerun, order check ok, 0 mismatches -> PASSED
+== gpu_fuzz_test 10-bit 4:4:4 only
+GPU FUZZ (run_batch_device, device arrays, non-blocking stream, 2 scratch allocations) seeds 800001..800800: 800 cases (688 4:4:4, 112 monochrome, 800 10-bit), 993 tiles, 38680086 symbols, 7 symbol-capacity errors reported + rerun, order check ok, 0 mismatches -> PASSED
+== gpu_fuzz_test 8-bit 4:2:0 stream (--depth10 0 --yuv444 0)
+GPU FUZZ (run_batch_device, device arrays, non-blocking stream, 1 scratch allocations) seeds 1..400: 400 cases (0 4:4:4, 77 monochrome, 0 10-bit), 483 tiles, 18041707 symbols, 3 symbol-capacity errors reported + rerun, order check ok, 0 mismatches -> PASSED
+== gpu_postfilter_test mixed
+GPU POSTFILTER seeds 1..2000: 2000 cases (1395 with deblocking/CDEF; 4:4:4: 677, 464 with deblocking/CDEF; 10-bit: 805, 551 with deblocking/CDEF), 0 mismatches -> PASSED
+== gpu_postfilter_test 4:4:4 only (8-bit)
+GPU POSTFILTER seeds 300001..301000: 1000 cases (689 with deblocking/CDEF; 4:4:4: 845, 578 with deblocking/CDEF; 10-bit: 0, 0 with deblocking/CDEF), 0 mismatches -> PASSED
+== gpu_postfilter_test 10-bit only
+GPU POSTFILTER seeds 310001..311500: 1500 cases (1040 with deblocking/CDEF; 4:4:4: 514, 362 with deblocking/CDEF; 10-bit: 1500, 1040 with deblocking/CDEF), 0 mismatches -> PASSED
+== gpu_postfilter_test 10-bit 4:4:4 only
+GPU POSTFILTER seeds 400001..400600: 600 cases (448 with deblocking/CDEF; 4:4:4: 507, 374 with deblocking/CDEF; 10-bit: 600, 448 with deblocking/CDEF), 0 mismatches -> PASSED
+== ctest
+    Start 2: gate_cfl_edge
+2/2 Test #2: gate_cfl_edge ....................   Passed    4.92 sec
+
+100% tests passed, 0 tests failed out of 2
+
+Total Test time (real) =  25.22 sec
+== av1g_fuzz 2000 cases (instance dav1d 1.4.1 / aomdec 3.8.2)
+  y_mode x angle missing 0, uv_mode x angle missing 0, cfl sign combos: 10397 10540 10268 13990 14219 10470 13905 13963
+  10-bit items missing: 0
+COVERAGE missing items: 0
+SUMMARY seeds 900001..902000 mode full: 2000 cases (649 4:4:4, 307 monochrome, 778 10-bit), 0 mismatches (0 parser round-trip failures), 0 encode errors, blocks 971784, txb 3261721, range-fixed txb 279783

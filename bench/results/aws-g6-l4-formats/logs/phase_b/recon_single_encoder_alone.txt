@@ -1,0 +1,3 @@
+main     n=4 recon_ms median 4372 (min 4255, +0.00 %)  mp_s median 65.3  analysis median 1927  bytes ['22491666']
+br       n=4 recon_ms median 4462 (min 4338, +2.05 %)  mp_s median 64.1  analysis median 1962  bytes ['22491666']
+expF     n=4 recon_ms median 4381 (min 4257, +0.21 %)  mp_s median 65.7  analysis median 1933  bytes ['22491666']

@@ -1,0 +1,10 @@
+Compiling entry function '_Z7k_reconILi1ELi8EEv7GpBatch8GpParamsPKj' for 'sm_89'
+Function properties for _Z7k_reconILi1ELi8EEv7GpBatch8GpParamsPKj
+    3008 bytes stack frame, 164 bytes spill stores, 288 bytes spill loads
+Used 128 registers, used 4 barriers, 3008 bytes cumulative stack size, 23392 bytes smem, 872 bytes cmem[0], 1976 bytes cmem[2]
+Function properties for _Z15cta_inverse_addILi8EEiiiR8RcSharedIXT_EEPsiiiiPKhPN13av1g_pixel_ofIXT_EE4typeEi
+    0 bytes stack frame, 1144 bytes spill stores, 1156 bytes spill loads
+Function properties for _Z7rc_lumaILi8EEviiR8RcSharedIXT_EERK7GpBatchRK8GpParamsjRK7GpImageiiiiiRK7TileBoxRK6BlockQfPKfPiSK_SK_SK_SK_
+    0 bytes stack frame, 4780 bytes spill stores, 12868 bytes spill loads
+Function properties for _Z9rc_chromaILi1ELi8EEviiR8RcSharedIXT0_EERK7GpBatchRK8GpParamsjRK7GpImageiiiiiiiRK7TileBoxRK6BlockQfPKfPiSK_SK_SK_SK_SK_
+    0 bytes stack frame, 1728 bytes spill stores, 3656 bytes spill loads

@@ -1,0 +1,15 @@
+100 images; 1434 MP per run, GP_ENCODERS=4, bench.gpu_speed (warm-up + 3 timed runs), 3 rounds, order alternating
+0 main 113.0 MP/s 113.0 118.9 112.7 0.11 cores 67474998 bytes
+0 fix 115.5 MP/s 115.6 115.5 114.5 0.12 cores 67474998 bytes
+0 br 112.6 MP/s 112.5 113.2 112.6 0.11 cores 67474998 bytes
+1 br 112.4 MP/s 110.6 113.3 112.4 0.11 cores 67474998 bytes
+1 fix 112.5 MP/s 112.3 112.5 113.3 0.11 cores 67474998 bytes
+1 main 115.3 MP/s 113.8 115.3 117.6 0.12 cores 67474998 bytes
+2 main 115.5 MP/s 117.7 115.5 111.4 0.12 cores 67474998 bytes
+2 fix 112.4 MP/s 111.5 116.9 112.4 0.11 cores 67474998 bytes
+2 br 116.5 MP/s 116.5 115.1 117.2 0.12 cores 67474998 bytes
+main: median of 9 runs 115.25 MP/s (min 111.4, max 118.9); round medians 113.0 115.3 115.5
+fix: median of 9 runs 113.30 MP/s (min 111.5, max 116.9); round medians 115.5 112.5 112.4
+br: median of 9 runs 113.16 MP/s (min 110.6, max 117.2); round medians 112.6 112.4 116.5
+fix vs main: -1.70 %
+br vs main: -1.82 %

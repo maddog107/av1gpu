@@ -1,0 +1,32 @@
+-- 8-bit default (images, q60,120)
+[gate] q60: 100/100 identical in dav1d and aomdec (420 99, mono 1; 10523823 bytes), 0 not encoded (unsupported input), rc=0 PASS
+[gate] q120: 100/100 identical in dav1d and aomdec (420 99, mono 1; 5494550 bytes), 0 not encoded (unsupported input), rc=0 PASS
+   (14 s)
+-- 8-bit turbo3 (images, q60,120)
+[gate] q60: 100/100 identical in dav1d and aomdec (420 99, mono 1; 10561482 bytes), 0 not encoded (unsupported input), rc=0 PASS
+[gate] q120: 100/100 identical in dav1d and aomdec (420 99, mono 1; 5520245 bytes), 0 not encoded (unsupported input), rc=0 PASS
+   (14 s)
+-- 8-bit slow (images, q60,120)
+[gate] q60: 100/100 identical in dav1d and aomdec (420 99, mono 1; 10501993 bytes), 0 not encoded (unsupported input), rc=0 PASS
+[gate] q120: 100/100 identical in dav1d and aomdec (420 99, mono 1; 5484898 bytes), 0 not encoded (unsupported input), rc=0 PASS
+   (18 s)
+-- 8-bit slow small-preset none (images, q60,120)
+[gate] q60: 100/100 identical in dav1d and aomdec (420 99, mono 1; 10453161 bytes), 0 not encoded (unsupported input), rc=0 PASS
+[gate] q120: 100/100 identical in dav1d and aomdec (420 99, mono 1; 5454049 bytes), 0 not encoded (unsupported input), rc=0 PASS
+   (19 s)
+-- 8-bit default (images_gamut, q60,120)
+[gate] q60: 100/100 identical in dav1d and aomdec (420 100; 49341073 bytes), 0 not encoded (unsupported input), rc=0 PASS
+[gate] q120: 100/100 identical in dav1d and aomdec (420 100; 22491666 bytes), 0 not encoded (unsupported input), rc=0 PASS
+   (29 s)
+-- 8-bit turbo3 (images_gamut, q60,120)
+[gate] q60: 100/100 identical in dav1d and aomdec (420 100; 50235094 bytes), 0 not encoded (unsupported input), rc=0 PASS
+[gate] q120: 100/100 identical in dav1d and aomdec (420 100; 23083380 bytes), 0 not encoded (unsupported input), rc=0 PASS
+   (25 s)
+-- 8-bit slow (images_gamut, q60,120)
+[gate] q60: 100/100 identical in dav1d and aomdec (420 100; 49132185 bytes), 0 not encoded (unsupported input), rc=0 PASS
+[gate] q120: 100/100 identical in dav1d and aomdec (420 100; 22198363 bytes), 0 not encoded (unsupported input), rc=0 PASS
+   (83 s)
+-- 8-bit slow small-preset none (images_gamut, q60,120)
+[gate] q60: 100/100 identical in dav1d and aomdec (420 100; 49115378 bytes), 0 not encoded (unsupported input), rc=0 PASS
+[gate] q120: 100/100 identical in dav1d and aomdec (420 100; 22187424 bytes), 0 not encoded (unsupported input), rc=0 PASS
+   (105 s)

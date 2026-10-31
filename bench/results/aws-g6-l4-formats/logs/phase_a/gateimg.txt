@@ -1,0 +1,32 @@
+-- 8-bit 4:2:0 (images_png16, q60,120)
+[gate] q60: 36/36 identical in dav1d and aomdec (420 36; 1031947 bytes), 0 not encoded (unsupported input), rc=0 PASS
+[gate] q120: 36/36 identical in dav1d and aomdec (420 36; 527321 bytes), 0 not encoded (unsupported input), rc=0 PASS
+   (6 s)
+-- 8-bit 4:4:4 (images_png16, q60,120)
+[gate] q60: 36/36 identical in dav1d and aomdec (444 36; 1073729 bytes), 0 not encoded (unsupported input), rc=0 PASS
+[gate] q120: 36/36 identical in dav1d and aomdec (444 36; 557491 bytes), 0 not encoded (unsupported input), rc=0 PASS
+   (9 s)
+-- 10-bit 4:2:0 (images_png16, q60,120)
+[gate] q60: 36/36 identical in dav1d and aomdec (420 10-bit 36; 1141470 bytes), 0 not encoded (unsupported input), rc=0 PASS
+[gate] q120: 36/36 identical in dav1d and aomdec (420 10-bit 36; 558793 bytes), 0 not encoded (unsupported input), rc=0 PASS
+   (8 s)
+-- 10-bit 4:4:4 (images_png16, q60,120)
+[gate] q60: 36/36 identical in dav1d and aomdec (444 10-bit 36; 1165047 bytes), 0 not encoded (unsupported input), rc=0 PASS
+[gate] q120: 36/36 identical in dav1d and aomdec (444 10-bit 36; 586927 bytes), 0 not encoded (unsupported input), rc=0 PASS
+   (9 s)
+-- 8-bit 4:2:0 (images_png, q60,120)
+[gate] q60: 43/43 identical in dav1d and aomdec (420 43; 4293900 bytes), 0 not encoded (unsupported input), rc=0 PASS
+[gate] q120: 43/43 identical in dav1d and aomdec (420 43; 2157052 bytes), 0 not encoded (unsupported input), rc=0 PASS
+   (14 s)
+-- 8-bit 4:4:4 (images_png, q60,120)
+[gate] q60: 43/43 identical in dav1d and aomdec (444 43; 4378234 bytes), 0 not encoded (unsupported input), rc=0 PASS
+[gate] q120: 43/43 identical in dav1d and aomdec (444 43; 2278142 bytes), 0 not encoded (unsupported input), rc=0 PASS
+   (15 s)
+-- 10-bit 4:2:0 (images_png, q60,120)
+[gate] q60: 43/43 identical in dav1d and aomdec (420 10-bit 43; 4605847 bytes), 0 not encoded (unsupported input), rc=0 PASS
+[gate] q120: 43/43 identical in dav1d and aomdec (420 10-bit 43; 2133883 bytes), 0 not encoded (unsupported input), rc=0 PASS
+   (14 s)
+-- 10-bit 4:4:4 (images_png, q60,120)
+[gate] q60: 43/43 identical in dav1d and aomdec (444 10-bit 43; 4583793 bytes), 0 not encoded (unsupported input), rc=0 PASS
+[gate] q120: 43/43 identical in dav1d and aomdec (444 10-bit 43; 2241794 bytes), 0 not encoded (unsupported input), rc=0 PASS
+   (17 s)

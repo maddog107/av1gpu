@@ -18,6 +18,9 @@ To time other av1gpu settings, pass a wrapper script as --av1gpu that adds the o
 --avifenc-threads N runs avifenc -j N instead, with cpu_count // N encodes at once (speed and quality phases).
 avifenc 1.4 tiles automatically unless told otherwise (libavif: up to 8 tiles of at least 512 x 512 pixels,
 whatever -j is); --no-tiling passes --tilerowslog2 0 --tilecolslog2 0 for one tile per image.
+--yuv 444 and --depth 10 encode every AV1 codec in that format (avifenc -y 444 / -d 10, av1gpu --yuv 444 /
+--depth 10); 10-bit outputs are decoded to 16-bit PNGs.  --avifdec-codec picks avifdec's decoder (-c, e.g. dav1d).
+bench/formats.py compares the four formats.
 
 Requires: avifenc, avifdec, cwebp, dwebp, ssimulacra2 on PATH (or the --avifenc, ... options), numpy, Pillow.
   Ubuntu:      apt install libavif-bin webp python3-numpy python3-pil
@@ -206,6 +209,24 @@ def avifenc_threads(a):
     return getattr(a, "avifenc_threads", 1)
 
 
+def avifenc_format(a):
+    """avifenc chroma format and bit depth options (default: -y 420, 8 bits)"""
+    d = getattr(a, "depth", 8)
+    return ["-y", str(getattr(a, "yuv", "420"))] + (["-d", str(d)] if d != 8 else [])
+
+
+def gpu_format(a):
+    """av1gpu chroma format and bit depth options (none for 8-bit 4:2:0)"""
+    y, d = str(getattr(a, "yuv", "420")), getattr(a, "depth", 8)
+    return (["--yuv", y] if y != "420" else []) + (["--depth", str(d)] if d != 8 else [])
+
+
+def format_label(a):
+    """'' for 8-bit 4:2:0, else e.g. ', 10-bit 4:4:4'"""
+    y, d = str(getattr(a, "yuv", "420")), getattr(a, "depth", 8)
+    return "" if (y, d) == ("420", 8) else f", {d}-bit {y[0]}:{y[1]}:{y[2]}"
+
+
 def avifenc_parallel(a, cpus):
     """how many avifenc -j N run at once on `cpus` CPUs"""
     return max(1, cpus // avifenc_threads(a))
@@ -213,7 +234,7 @@ def avifenc_parallel(a, cpus):
 
 def avifenc_cmd(a, src, dst, q, speed, tune_iq, codec="aom"):
     """codec "aom": libaom at speed; "svt": SVT-AV1 at preset `speed` (avifenc -c svt, -a preset= so 11-13 work)."""
-    cmd = [a.avifenc, "-q", str(q), "-y", "420", "-j", str(avifenc_threads(a)), "--ignore-exif", "--ignore-xmp"]
+    cmd = [a.avifenc, "-q", str(q)] + avifenc_format(a) + ["-j", str(avifenc_threads(a)), "--ignore-exif", "--ignore-xmp"]
     if getattr(a, "no_tiling", False):
         cmd += ["--tilerowslog2", "0", "--tilecolslog2", "0"]
     if codec == "svt":
@@ -240,7 +261,8 @@ def decode_png(a, path, png):
             im.save(png, icc_profile=icc)
         return True
     codec = getattr(a, "avifdec_codec", "")
-    return run([a.avifdec] + (["-c", codec] if codec else []) + [path, png]).returncode == 0
+    depth = ["-d", "16"] if getattr(a, "depth", 8) > 8 else []
+    return run([a.avifdec] + (["-c", codec] if codec else []) + depth + [path, png]).returncode == 0
 
 
 def score(a, src, path, work, cvvdp=None):
@@ -409,7 +431,7 @@ def encode_gpu_set(a, files, qualities, outdir):
     open(lst, "w").write("\n".join(files) + "\n")
     qi = {q: qindex_for_quality(q) for q in qualities}
     p = run([a.av1gpu, "--batch", lst, "--outdir", outdir, "--qindex", ",".join(str(v) for v in qi.values()),
-             "--name-q"])
+             "--name-q"] + gpu_format(a))
     if p.returncode:
         sys.exit(f"av1gpu failed:\n{p.stderr[-3000:]}")
     out = []
@@ -448,14 +470,14 @@ def gpu_speed(a, image_dir, work):
     for i in range(a.repeats + 1):
         out = os.path.join(work, "speed_gpu")
         shutil.rmtree(out, ignore_errors=True)
-        p = run([a.av1gpu, "--batch", image_dir, "--outdir", out, "--stats"])
+        p = run([a.av1gpu, "--batch", image_dir, "--outdir", out, "--stats"] + gpu_format(a))
         if p.returncode:
             sys.exit(f"av1gpu failed:\n{p.stderr[-3000:]}")
         st = json.loads(p.stdout.strip().splitlines()[-1])
         if i:  # run 0 is the warm-up (driver JIT caches, file cache)
             runs.append(st)
     med = lambda k: statistics.median(r[k] for r in runs)
-    return dict(codec=f"av1gpu ({a.gpu_label})", images=runs[0]["images"], mp=runs[0]["mp"], mp_s=med("mp_s"),
+    return dict(codec=f"av1gpu ({a.gpu_label}{format_label(a)})", images=runs[0]["images"], mp=runs[0]["mp"], mp_s=med("mp_s"),
                 img_s=med("img_s"), cpu_cores=med("cpu_cores"), wall_s=med("wall_ms") / 1e3, bytes=runs[0]["bytes"],
                 runs=runs)
 
@@ -474,7 +496,7 @@ def cpu_speed(a, files, speed, tune_iq, mp, work, codec="aom"):
     nbytes = sum(os.path.getsize(p) for p in glob.glob(os.path.join(out, "*.avif")))
     name = f"SVT-AV1 preset {speed}" if codec == "svt" else f"libaom speed {speed}"
     tiles = ", no tiling" if getattr(a, "no_tiling", False) else ""
-    return dict(codec=f"{name}, {par} parallel avifenc -j {threads}{tiles}", images=rcs.count(0), mp=mp,
+    return dict(codec=f"{name}, {par} parallel avifenc -j {threads}{tiles}{format_label(a)}", images=rcs.count(0), mp=mp,
                 mp_s=mp / wall, img_s=rcs.count(0) / wall, cpu_cores=float(min(os.cpu_count(), par * threads)),
                 wall_s=wall, bytes=nbytes)
 
@@ -500,6 +522,8 @@ def main():
                     help="avifenc -j N for libaom/SVT-AV1, with cpu_count // N encodes at once (default 1)")
     ap.add_argument("--no-tiling", action="store_true",
                     help="one tile per image (avifenc --tilerowslog2 0 --tilecolslog2 0) instead of avifenc's automatic tiling")
+    ap.add_argument("--yuv", choices=("420", "444"), default="420", help="chroma format of every AV1 encode (default 420)")
+    ap.add_argument("--depth", type=int, choices=(8, 10), default=8, help="bit depth of every AV1 encode (default 8)")
     ap.add_argument("--min-mp", type=float, default=1000, help="speed runs repeat the set up to this many megapixels")
     ap.add_argument("--repeats", type=int, default=3, help="timed av1gpu runs (after one warm-up)")
     ap.add_argument("--jobs", type=int, default=os.cpu_count())
@@ -540,8 +564,8 @@ def main():
     if a.avifenc_threads != 1 or a.no_tiling:
         res.update(avifenc_threads=a.avifenc_threads, avifenc_parallel=avifenc_parallel(a, os.cpu_count()),
                    no_tiling=a.no_tiling)
-    if a.avifdec_codec:
-        res["avifdec_codec"] = a.avifdec_codec
+    if (a.yuv, a.depth) != ("420", 8) or a.avifdec_codec:
+        res.update(yuv=a.yuv, depth=a.depth, avifdec_codec=a.avifdec_codec)
     print(f"{len(files)} images, {mp:.1f} MP; avifenc tune=iq: {'yes' if tune_iq else 'no (libaom too old)'}", flush=True)
 
     if not a.skip_speed:
@@ -600,6 +624,9 @@ def write_summary(res, path):
          f"- GPU: {e['gpu']}", f"- CPU: {e['cpu']} ({e['cpus']} logical CPUs)",
          f"- {e['avifenc']}; tune=iq: {'yes' if res['avifenc_tune_iq'] else 'no'}", f"- cwebp {e['cwebp']}",
          f"- {res['images']} images, {res['megapixels']:.1f} MP"]
+    if res.get("yuv"):
+        L.append(f"- AV1 encodes {res['depth']}-bit {res['yuv']}" +
+                 (f"; decoded with avifdec -c {res['avifdec_codec']}" if res["avifdec_codec"] else ""))
     if res.get("speed_workload"):
         w = res["speed_workload"]
         L.append(f"- speed runs: the set repeated {w['repeats']}x ({w['images']} images, {w['megapixels']:.0f} MP)")

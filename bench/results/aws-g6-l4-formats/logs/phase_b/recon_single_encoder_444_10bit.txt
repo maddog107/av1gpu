@@ -1,0 +1,3 @@
+--yuv 444              recon_ms br 5533 fix 5434 (-1.79 %), mp_s br 54.3 fix 55.1, bytes ['23557823']
+--depth 10             recon_ms br 4404 fix 4332 (-1.65 %), mp_s br 63.7 fix 64.2, bytes ['22212217']
+--depth 10 --yuv 444   recon_ms br 5456 fix 5374 (-1.50 %), mp_s br 53.8 fix 54.4, bytes ['23088086']
