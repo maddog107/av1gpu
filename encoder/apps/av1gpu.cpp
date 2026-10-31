@@ -67,7 +67,8 @@ static void usage() {
             "                          1.2+; 100 = lossless.  PNG / WebP inputs with transparency (any alpha below the maximum)\n"
             "                          get an AVIF alpha item (straight alpha, as libavif writes it): a monochrome AV1 image at\n"
             "                          the colour's bit depth, coded like avifenc --qalpha Q codes alpha (libavif's alpha\n"
-            "                          tuning: quantizer (100 - Q) * 63 / 100, no tune=iq tools; 100: the lossless path).\n"
+            "                          tuning: quantizer (100 - Q) * 63 / 100, no tune=iq tools, the --preset preset also for\n"
+            "                          small images; 100: the lossless path).  Default --quality 60: alpha qindex 100.\n"
             "                          The colour under transparent pixels is kept as stored.  A fully opaque alpha channel\n"
             "                          gets no alpha item (as avifenc).  With --qindex instead of --quality the alpha frames\n"
             "                          use the colour's qindex.  16-bit PNG alpha is rounded to the output depth (8, or 10\n"
@@ -460,14 +461,14 @@ static int run_single(const GpConfig &cfg, const Opts &o) {
     auto t1 = std::chrono::steady_clock::now();
     GpEncoder encS;
     GpEncoder *E = &enc;
-    GpConfig ccfg = cfg;   // the colour frame's configuration (small images: --small-preset)
     if (cfg.smallMp > 0 && (double)fin.W * fin.H < cfg.smallMp * 1e6) {
-        ccfg.P = cfg.Psmall;
-        if (encS.init(ccfg, err)) { fprintf(stderr, "init: %s\n", err.c_str()); return 1; }
+        GpConfig cs = cfg;
+        cs.P = cfg.Psmall;
+        if (encS.init(cs, err)) { fprintf(stderr, "init: %s\n", err.c_str()); return 1; }
         E = &encS;
     }
-    GpEncoder encA;   // alpha frame: gp_alpha_config (lossless or lossy at the alpha quality)
-    if (hasAlpha && encA.init(gp_alpha_config(ccfg), err)) { fprintf(stderr, "init: %s\n", err.c_str()); return 1; }
+    GpEncoder encA;   // alpha frame: gp_alpha_config (lossless or lossy at the alpha quality; the main preset, as batch mode)
+    if (hasAlpha && encA.init(gp_alpha_config(cfg), err)) { fprintf(stderr, "init: %s\n", err.c_str()); return 1; }
     std::vector<GpFrameOut> outs, aouts;
     GpTimes tm, tma;
     GpDevRecords devRec, devRecA;

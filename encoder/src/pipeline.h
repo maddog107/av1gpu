@@ -63,8 +63,9 @@ struct GpConfig {
 // Encoder configuration for the alpha frames of images encoded with `colour` (monochrome frames at the colour's bit
 // depth): lossless when colour.lossless or alphaQindex == 0 (the lossless path, as libavif's alpha quality 100);
 // otherwise lossy at alphaQindex (or colour.qindex) with libavif's alpha tuning, tune=psnr: no tune=iq frame decisions,
-// QM, variance boost / delta-q or SSIM lambda (libavif: libaom's SSIM / IQ tunings ring on alpha); the speed preset and
-// the deblocking / CDEF choice stay the colour's.
+// QM, variance boost / delta-q or SSIM lambda (libavif: libaom's SSIM / IQ tunings ring on alpha); the speed preset (P)
+// and the deblocking / CDEF choice stay the colour's.  The front ends use it with the main preset for every image (also
+// below --small-mp: --small-preset applies to the colour frames only).
 GpConfig gp_alpha_config(const GpConfig &colour);
 
 // One input frame: device planes, padded (edge replicated) to aw x ah (multiples of 64); chroma

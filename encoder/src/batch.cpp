@@ -402,26 +402,27 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
         fbDone = true;
     });
     // alpha frames of a job: one more GPU batch (monochrome frames, gp_alpha_config: lossless or lossy at the alpha
-    // quality), on the job's stream after its colour frames; each encoder thread creates its alpha encoders on first use
-    GpConfig acfg[2] = {gp_alpha_config(bcfg), bcfg};
-    acfg[1].P = bcfg.Psmall;
-    acfg[1] = gp_alpha_config(acfg[1]);
-    struct AlphaEncs {
-        GpEncoder *e[2] = {nullptr, nullptr};   // [0]: main preset, [1]: --small-preset
-        ~AlphaEncs() { delete e[0]; delete e[1]; }
+    // quality), on the job's stream after its colour frames; each encoder thread creates its alpha encoder on first use.
+    // Alpha frames always use the main preset, also for small images (--small-preset is for their colour): on the
+    // RGBA test set the base preset gave 3-4 % smaller lossy alpha payloads (0.4 % of the files) at 0.1 dB higher alpha
+    // PSNR, but 35 % lower throughput on a set of mostly small images
+    const GpConfig acfg = gp_alpha_config(bcfg);
+    struct AlphaEnc {
+        GpEncoder *e = nullptr;
+        ~AlphaEnc() { delete e; }
     };
-    auto encodeAlpha = [&](Job *j, int small, AlphaEncs &ea, cudaStream_t s, std::string &eerr) -> bool {
+    auto encodeAlpha = [&](Job *j, AlphaEnc &ea, cudaStream_t s, std::string &eerr) -> bool {
         std::vector<GpFrameIn> al;
         j->alphaOf.assign(j->afin.size(), -1);
         for (size_t i = 0; i < j->afin.size(); i++)
             if (j->afin[i].W) { j->alphaOf[i] = (int)al.size(); al.push_back(j->afin[i]); }
         if (al.empty()) return true;
-        if (!ea.e[small]) {
-            ea.e[small] = new GpEncoder;
-            if (ea.e[small]->init(acfg[small], eerr)) return false;
+        if (!ea.e) {
+            ea.e = new GpEncoder;
+            if (ea.e->init(acfg, eerr)) return false;
         }
         GpTimes ta;
-        if (ea.e[small]->encode(al, j->aouts, ta, eerr, s, gpuEntropy ? &j->adev : nullptr)) return false;
+        if (ea.e->encode(al, j->aouts, ta, eerr, s, gpuEntropy ? &j->adev : nullptr)) return false;
         std::lock_guard<std::mutex> lk2(aggMu);
         A.analysis += ta.analysis; A.recon += ta.recon; A.gpuTotal += ta.total; A.blocks += ta.blocks;
         A.peakDev = std::max(A.peakDev, ta.deviceBytes);
@@ -431,7 +432,7 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
     };
     auto encLoop = [&](GpEncoder *E, GpEncoder *Es, cudaStream_t s) {
         std::string eerr;
-        AlphaEncs ea;
+        AlphaEnc ea;
         for (;;) {
             std::vector<ingest_batch> held;
             std::vector<GpFrameIn> fin;
@@ -528,7 +529,7 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
                     }
                 }
                 GpTimes t10;
-                if (E->encode(f10, jd->outs, t10, eerr, s, gpuEntropy ? &jd->dev : nullptr) || !encodeAlpha(jd, 0, ea, s, eerr)) {
+                if (E->encode(f10, jd->outs, t10, eerr, s, gpuEntropy ? &jd->dev : nullptr) || !encodeAlpha(jd, ea, s, eerr)) {
                     fprintf(stderr, "encode: %s\n", eerr.c_str()); encFail++; delete jd; delete job; return;
                 }
                 {
@@ -559,7 +560,7 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
                         js->afin.push_back(job->afin[i]);
                     }
                     GpTimes ts2;
-                    if (Es->encode(fs, js->outs, ts2, eerr, s, gpuEntropy ? &js->dev : nullptr) || !encodeAlpha(js, 1, ea, s, eerr)) {
+                    if (Es->encode(fs, js->outs, ts2, eerr, s, gpuEntropy ? &js->dev : nullptr) || !encodeAlpha(js, ea, s, eerr)) {
                         fprintf(stderr, "encode: %s\n", eerr.c_str()); encFail++; delete js; delete job; return;
                     }
                     {
@@ -593,7 +594,7 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
                 delete job;
                 continue;
             }
-            if (E->encode(fin, job->outs, tm, eerr, s, gpuEntropy ? &job->dev : nullptr) || !encodeAlpha(job, 0, ea, s, eerr)) {
+            if (E->encode(fin, job->outs, tm, eerr, s, gpuEntropy ? &job->dev : nullptr) || !encodeAlpha(job, ea, s, eerr)) {
                 fprintf(stderr, "encode: %s\n", eerr.c_str()); encFail++; delete job; return;
             }
             const double te = now_ms() - ts;
@@ -665,7 +666,7 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
             A.entropyGpu, A.writeWall, A.peakDev / 1048576.0);
     if (A.alphaImages)
         fprintf(stderr, "[av1gpu] alpha: %llu images with an alpha item (%.1f MP of alpha frames, %s)\n", (unsigned long long)A.alphaImages,
-                A.alphaPixels / 1e6, acfg[0].lossless ? "lossless" : ("qindex " + std::to_string(acfg[0].qindex)).c_str());
+                A.alphaPixels / 1e6, acfg.lossless ? "lossless" : ("qindex " + std::to_string(acfg.qindex)).c_str());
     if (cfg.P.profile) {
         // k_recon CTA-cycles per phase vs the capacity of the recon wall time (SM clock: GP_CLOCK_GHZ)
         unsigned long long tot = 0;
