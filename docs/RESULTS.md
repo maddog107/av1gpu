@@ -250,7 +250,8 @@ below. Raw results and every run: `bench/results/aws-c6a-cpu-tuning/`.
   SVT-AV1 4.2 as its parallelism level, which it caps at 6.
 - **Tiling.** avifenc 1.4 tiles automatically when no tile option is given: up to 8 tiles of at least
   512 × 512, here 8 tiles for 56 of the 99 photos. So the CPU baselines in this section and above are tiled.
-  av1gpu uses one tile unless AV1's limits need more.
+  av1gpu's default preset (`turbo`) uses 2 × 2 tiles for images of 2 MP and more (`turbo3`: 4 × 2); `base`, `slow`
+  and the small-image preset use only the tiles AV1's limits need.
 
 Speed with each build, 16 × `-j 1` (MP/s):
 
