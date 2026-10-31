@@ -332,10 +332,12 @@ cmake --build build
 Leave it out to build a portable binary for compute capability 7.5 through 12.0. The binary links the
 CUDA runtime statically, so at run time it needs only the NVIDIA driver and `libnvjpeg`.
 
-Most of the build time goes to the four wavefront kernels (`encoder/src/k_recon*.cu`): each takes about
-10 GB of memory and 10 minutes on one core. CMake compiles as many of them at once as the free memory
-allows (one per 12 GB, at most 4), so the build takes about 12 minutes with 48 GB or more and about
-40 minutes with less than 24 GB. `-DAV1GPU_RECON_JOBS=N` sets the number.
+Most of the build time goes to the four wavefront kernels (`encoder/src/k_recon*.cu`). How much memory
+and time each one takes depends on the CUDA version and the targets: up to 18 GB with CUDA 12.8, about
+10 GB and 10 minutes for Blackwell targets with CUDA 13.2 to 13.4, under 2 GB and 2 minutes for one older
+GPU. CMake compiles as many of them at once as the free memory allows (one per 20 GB, at most 4); with 80
+GB or more free, a native Blackwell build took 13 minutes instead of 40. `-DAV1GPU_RECON_JOBS=N` sets the
+number.
 
 `-DAV1GPU_CUDA=OFF` builds just the CPU pieces: the bitstream writer, the AVIF muxer and the fuzz
 test. That build needs no CUDA toolkit.

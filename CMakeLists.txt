@@ -97,18 +97,20 @@ add_library(gpujpegingest STATIC ingest/src/jpeg_reader.cpp ingest/src/kernels.c
 target_include_directories(gpujpegingest PUBLIC ingest/src)
 target_link_libraries(gpujpegingest PUBLIC CUDA::cudart_static ${AV1GPU_NVJPEG} JPEG::JPEG Threads::Threads ${CMAKE_DL_LIBS} rt)
 
-# wavefront reconstruction, one instantiation (layout x bit depth) per file.  Each takes ~10 GB of memory and ~10
-# minutes on one core to compile (cicc ~60 %, ptxas ~40 %), so with Ninja at most AV1GPU_RECON_JOBS of them compile
-# at once (the rest of the build stays parallel).  Default: one per 12 GB of memory available at configure time, 1-4.
+# wavefront reconstruction, one instantiation (layout x bit depth) per file.  Their compile memory depends on the
+# toolkit and the targets: peak RSS per file up to 18.4 GB with CUDA 12.8 (75;120, cicc, 10-bit), 10.4 GB with
+# CUDA 13.2 for the default targets (ptxas for sm_100 / sm_120), under 2 GB with CUDA 12.9 / 13.0 or for one older target
+# (L4 instance, 2026-10-31).  So with Ninja at most AV1GPU_RECON_JOBS of them compile at once (the rest of the build
+# stays parallel).  Default: one per 20 GB of memory available at configure time, 1-4.
 if(NOT DEFINED AV1GPU_RECON_JOBS)
   cmake_host_system_information(RESULT _av1gpu_mem_mib QUERY AVAILABLE_PHYSICAL_MEMORY)
-  math(EXPR _av1gpu_recon_jobs "${_av1gpu_mem_mib} / 12288")
+  math(EXPR _av1gpu_recon_jobs "${_av1gpu_mem_mib} / 20480")
   if(_av1gpu_recon_jobs LESS 1)
     set(_av1gpu_recon_jobs 1)
   elseif(_av1gpu_recon_jobs GREATER 4)
     set(_av1gpu_recon_jobs 4)
   endif()
-  set(AV1GPU_RECON_JOBS ${_av1gpu_recon_jobs} CACHE STRING "k_recon files compiled at once (~10 GB of memory each)")
+  set(AV1GPU_RECON_JOBS ${_av1gpu_recon_jobs} CACHE STRING "k_recon files compiled at once (up to ~18 GB of memory each)")
   message(STATUS "av1gpu: ${_av1gpu_mem_mib} MiB available, compiling ${AV1GPU_RECON_JOBS} k_recon file(s) at once")
 endif()
 set_property(GLOBAL APPEND PROPERTY JOB_POOLS av1gpu_recon=${AV1GPU_RECON_JOBS})
