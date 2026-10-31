@@ -8,13 +8,20 @@
 // little-endian samples from both decoders).
 //
 //   av1g_fuzz --seed S --count N [--mode m2|full] [--out DIR] [--keep] [--maxdim D]
-//             [--big P] [--yuv444 P] [--depth10 P] [--no-aom] [--quiet]
+//             [--big P] [--yuv444 P] [--depth10 P] [--lossless P] [--no-aom] [--quiet]
 // --yuv444 P: P % of the non-monochrome cases are 4:4:4 (default 40).  That choice comes from
 // its own random stream, so every other case of a seed is the same record as with
 // --yuv444 0, which reproduces the pre-4:4:4 (4:2:0 / monochrome only) case stream exactly.
 // --depth10 P: P % of the cases are 10-bit (default 40), again from a separate stream: a 10-bit
 // case is the record its seed has in 8 bits with fp.bit_depth = 10, and --depth10 0 reproduces
 // the 8-bit-only case stream (every 8-bit case of a seed is the same with any P).
+// --lossless P: P % of the seeds are lossless cases (default 25), chosen by a separate stream: every other seed's case
+// is the same record as with --lossless 0, which reproduces the pre-lossless case stream exactly.  A lossless case
+// (base_q_idx 0; 8 / 10 bit, 4:2:0 / 4:4:4 / monochrome, every block size, mode, CfL, filter intra, edge filter, tiles,
+// colour descriptions incl. identity 1/13/0) has a random SOURCE picture: random decisions are coded closed-loop
+// through av1core's TxbHook (levels = av1g_fwht4x4(source - exact prediction)), blocks without residual then get
+// skip = 1 (most of them) and the record is re-encoded.  Checked: av1core's reconstruction == the source, dav1d and
+// aomdec == av1core, the parser round trip.
 // Exit status 0 iff every case matched.  Failing cases are kept in DIR as
 // case_<seed>.{obu,yuv,txt}.
 // post-filter path coverage (counted when the fuzzer re-runs the shared filters itself), per bit depth
@@ -291,6 +298,8 @@ struct Gen {
     int pfSmooth = 0;  // post-filter cases: more skip blocks (flat areas reach the wide filters)
     int fi = 0;  // enable_filter_intra  // delta-q cases: produce whole-SB skip blocks (no delta coded for them)
     av1g_tiles tiles;
+    Coverage *C = &cov;     // generation-time coverage (lossless cases count into their own instance)
+    bool lossless = false;  // lossless case: no skip (set after the closed loop), CfL only for 4x4 chroma blocks
 
     Gen(Rng &r, bool m2_) : rng(r), m2(m2_) {}
 
@@ -308,14 +317,16 @@ struct Gen {
             return;
         }
         b.skip = rng.chance(bs == AV1G_BLOCK_64X64 && dqBias ? 60 : pfSmooth ? 45 : 15);
-        cov.skip += b.skip;
+        C->skip += b.skip;
         b.y_mode = (uint8_t)rng.range(0, 12);
         if (bs >= AV1G_BLOCK_8X8 && av1g_is_directional(b.y_mode) && rng.chance(70)) b.angle_delta_y = (int8_t)rng.range(-3, 3);
         if (txSelect && bs > AV1G_BLOCK_4X4) b.tx_depth = (uint8_t)rng.range(0, av1g_max_tx_depth(bs));
+        if (lossless) b.skip = 0;
         if (av1g_has_chroma(bs, r, c, mono, ssx, ssy)) {
-            int maxuv = av1g_cfl_allowed(bs) ? 13 : 12;
+            const bool cflOk = lossless ? av1g_cfl_allowed_ex(bs, 1, ssx, ssy) != 0 : av1g_cfl_allowed(bs) != 0;
+            int maxuv = cflOk ? 13 : 12;
             b.uv_mode = (uint8_t)rng.range(0, maxuv);
-            if (av1g_cfl_allowed(bs) && rng.chance(20)) b.uv_mode = AV1G_UV_CFL_PRED;
+            if (cflOk && rng.chance(lossless ? 35 : 20)) b.uv_mode = AV1G_UV_CFL_PRED;
             if (b.uv_mode == AV1G_UV_CFL_PRED) {
                 do {
                     b.cfl_alpha_u = (int8_t)(rng.chance(25) ? 0 : rng.range(-16, 16));
@@ -323,33 +334,33 @@ struct Gen {
                 } while (b.cfl_alpha_u == 0 && b.cfl_alpha_v == 0);
             }
             if (bs >= AV1G_BLOCK_8X8 && av1g_is_directional(b.uv_mode) && rng.chance(70)) b.angle_delta_uv = (int8_t)rng.range(-3, 3);
-            cov.uvmode[b.uv_mode][b.angle_delta_uv + 3]++;
+            C->uvmode[b.uv_mode][b.angle_delta_uv + 3]++;
             if (g_cov10) {
-                cov.uvmode10[b.uv_mode][b.angle_delta_uv + 3]++;
-                if (b.uv_mode == AV1G_UV_CFL_PRED) cov.cfl10[bs]++;
+                C->uvmode10[b.uv_mode][b.angle_delta_uv + 3]++;
+                if (b.uv_mode == AV1G_UV_CFL_PRED) C->cfl10[bs]++;
             }
             if (!ssx) {
-                cov.uvmode444[b.uv_mode][b.angle_delta_uv + 3]++;
-                if (b.uv_mode == AV1G_UV_CFL_PRED) cov.cfl444[bs]++;
-                if ((av1g_bw4(bs) == 1 && !(c & 1)) || (av1g_bh4(bs) == 1 && !(r & 1))) cov.subChroma444++;
-                if (av1g_bw4(bs) == 16 || av1g_bh4(bs) == 16) cov.multiTxChroma444++;
+                C->uvmode444[b.uv_mode][b.angle_delta_uv + 3]++;
+                if (b.uv_mode == AV1G_UV_CFL_PRED) C->cfl444[bs]++;
+                if ((av1g_bw4(bs) == 1 && !(c & 1)) || (av1g_bh4(bs) == 1 && !(r & 1))) C->subChroma444++;
+                if (av1g_bw4(bs) == 16 || av1g_bh4(bs) == 16) C->multiTxChroma444++;
             }
             if (b.uv_mode == AV1G_UV_CFL_PRED) {
                 int su = b.cfl_alpha_u == 0 ? 0 : b.cfl_alpha_u < 0 ? 1 : 2, sv = b.cfl_alpha_v == 0 ? 0 : b.cfl_alpha_v < 0 ? 1 : 2;
-                cov.cflSigns[su * 3 + sv - 1]++;
-                if (g_cov10) cov.cflSigns10[su * 3 + sv - 1]++;
+                C->cflSigns[su * 3 + sv - 1]++;
+                if (g_cov10) C->cflSigns10[su * 3 + sv - 1]++;
             }
         }
         if (fi && b.y_mode == AV1G_DC_PRED && av1g_bw4(bs) <= 8 && av1g_bh4(bs) <= 8 && rng.chance(50)) {
             b.filter_intra = (uint8_t)rng.range(1, 5);
-            cov.fiMode[b.filter_intra - 1]++;
-            if (g_cov10) cov.fiMode10[b.filter_intra - 1]++;
+            C->fiMode[b.filter_intra - 1]++;
+            if (g_cov10) C->fiMode10[b.filter_intra - 1]++;
         }
-        cov.ymode[b.y_mode][b.angle_delta_y + 3]++;
-        cov.bsize[bs]++;
-        if (g_cov10) { cov.ymode10[b.y_mode][b.angle_delta_y + 3]++; cov.bsize10[bs]++; }
-        if (!ssx && !mono) cov.bsize444[bs]++;
-        cov.depth[bs][b.tx_depth]++;
+        C->ymode[b.y_mode][b.angle_delta_y + 3]++;
+        C->bsize[bs]++;
+        if (g_cov10) { C->ymode10[b.y_mode][b.angle_delta_y + 3]++; C->bsize10[bs]++; }
+        if (!ssx && !mono) C->bsize444[bs]++;
+        C->depth[bs][b.tx_depth]++;
         blocks.push_back(b);
     }
 
@@ -378,7 +389,7 @@ struct Gen {
         const int num4x4 = av1g_bw4(bSize), half = num4x4 >> 1, quarter = half >> 1;
         const int hasRows = (r + half) < MiRows, hasCols = (c + half) < MiCols;
         int p = bSize < AV1G_BLOCK_8X8 ? AV1G_PARTITION_NONE : pick_partition(bSize, hasRows, hasCols, depth);
-        if (bSize >= AV1G_BLOCK_8X8) { cov.part[bSize][p]++; if (!(hasRows && hasCols)) cov.edgeForced++; }
+        if (bSize >= AV1G_BLOCK_8X8) { C->part[bSize][p]++; if (!(hasRows && hasCols)) C->edgeForced++; }
         const int sub = AV1G_T(Partition_Subsize)[p][bSize];
         const int sp = AV1G_T(Partition_Subsize)[AV1G_PARTITION_SPLIT][bSize];
         switch (p) {
@@ -621,10 +632,275 @@ static bool make_case(uint64_t cs, bool m2, int maxdim, int bigPct, FuzzCase &fc
     return true;
 }
 
+// ---------------------------------------------------------------------------
+// lossless cases
+// ---------------------------------------------------------------------------
+static bool is_lossless_case(uint64_t cs, bool m2, int pctLL) {
+    Rng lr(cs ^ 0x7105E1E55C0DEull);
+    return !m2 && pctLL > 0 && lr.chance(pctLL);
+}
+
+// the source picture of a lossless case, every plane padded to the coded area (MiCols * 4 x MiRows * 4 >> ss)
+struct LLSource {
+    int bd = 8, np = 1, w[3] = {0, 0, 0}, h[3] = {0, 0, 0};
+    std::vector<uint16_t> p[3];
+    int at(int pl, int x, int y) const { return p[pl][(size_t)y * w[pl] + x]; }
+};
+
+// random content: per 16x16 cell one of noise / smooth gradient / flat region / extremes (or one style for all)
+static void gen_source(Rng &r, LLSource &S) {
+    const int mx = (1 << S.bd) - 1;
+    const int caseStyle = r.range(0, 5);   // 0..3: one style everywhere, 4..5: mixed cells
+    for (int pl = 0; pl < S.np; pl++) {
+        const int w = S.w[pl], h = S.h[pl];
+        S.p[pl].assign((size_t)w * h, 0);
+        const double gx = (r.range(-200, 200) / 100.0) * (mx / 255.0), gy = (r.range(-200, 200) / 100.0) * (mx / 255.0);
+        const int off = r.range(0, mx), noiseAmp = r.range(0, 3) << (S.bd - 8);
+        const int cw = (w + 15) / 16, ch = (h + 15) / 16, fw = (w + 31) / 32, fh = (h + 31) / 32;
+        std::vector<int> cellStyle((size_t)cw * ch), flatVal((size_t)fw * fh);
+        for (auto &c : cellStyle) c = caseStyle < 4 ? caseStyle : (caseStyle == 4 ? r.range(0, 3) : (r.chance(60) ? 2 : r.range(0, 3)));
+        for (auto &v : flatVal) v = r.chance(20) ? (r.chance(50) ? 0 : mx) : r.range(0, mx);
+        for (int y = 0; y < h; y++)
+            for (int x = 0; x < w; x++) {
+                int v;
+                switch (cellStyle[(size_t)(y / 16) * cw + x / 16]) {
+                case 0: v = r.range(0, mx); break;                                                              // noise
+                case 1: v = off + (int)(gx * x + gy * y) + (noiseAmp ? r.range(-noiseAmp, noiseAmp) : 0); break;  // smooth
+                case 2: v = flatVal[(size_t)(y / 32) * fw + x / 32]; break;                                      // flat
+                default: v = r.chance(50) ? 0 : mx; break;                                                     // extremes
+                }
+                S.p[pl][(size_t)y * w + x] = (uint16_t)(v < 0 ? 0 : v > mx ? mx : v);
+            }
+    }
+}
+
+// closed loop: the levels of every tx block are the WHT of (source - av1core's exact prediction)
+struct LLHook : av1g::TxbHook {
+    const LLSource &S;
+    int bad = 0;
+    explicit LLHook(const LLSource &s) : S(s) {}
+    void on_txb(const av1g_block &, uint32_t, av1g_txb &t, int16_t *q, const uint8_t *recon, int stride, int dcQ, int acQ, int,
+                int) override {
+        if (t.tx_size != AV1G_TX_4X4 || dcQ != 4 || acQ != 4) { bad++; return; }
+        int32_t res[16];
+        for (int i = 0; i < 4; i++)
+            for (int j = 0; j < 4; j++) {
+                const int pred = S.bd == 8 ? recon[i * stride + j] : ((const uint16_t *)recon)[i * stride + j];
+                res[i * 4 + j] = S.at(t.plane, t.x4 * 4 + j, t.y4 * 4 + i) - pred;
+            }
+        av1g_fwht4x4(res, q);
+        if (t.plane == 0) t.tx_type = AV1G_DCT_DCT;
+    }
+};
+
+// lossless coverage (generation-time counts in gen, coding-time ones here)
+struct LLCov {
+    Coverage gen;
+    uint64_t cases = 0, fmt[2][3] = {}, tiles = 0, big = 0, sct = 0, reduced = 0, fiFrames = 0, efFrames = 0, efDir = 0;
+    uint64_t colour[4] = {};      // default 1/13/6, identity 1/13/0, YCgCo-Re x/x/16, other
+    uint64_t skip = 0, zeroNonSkip = 0, txbCoded = 0, txbZero = 0, golomb = 0, maxMag = 0, cflBlocks[2][22] = {};
+    uint64_t srcMismatch = 0;
+    void report() const {
+        int missing = 0;
+        printf("COVERAGE lossless: %llu cases (8-bit 4:2:0 %llu, 4:4:4 %llu, mono %llu; 10-bit 4:2:0 %llu, 4:4:4 %llu, mono %llu),"
+               " tiles %llu, forced tiles %llu, screen content %llu, reduced set %llu, filter intra %llu, edge filter %llu"
+               " (%llu directional blocks)\n",
+               (unsigned long long)cases, (unsigned long long)fmt[0][0], (unsigned long long)fmt[0][1], (unsigned long long)fmt[0][2],
+               (unsigned long long)fmt[1][0], (unsigned long long)fmt[1][1], (unsigned long long)fmt[1][2], (unsigned long long)tiles,
+               (unsigned long long)big, (unsigned long long)sct, (unsigned long long)reduced, (unsigned long long)fiFrames,
+               (unsigned long long)efFrames, (unsigned long long)efDir);
+        for (int b = 0; b < 2; b++) for (int f = 0; f < 3; f++) missing += !fmt[b][f];
+        missing += !tiles + !sct + !reduced + !fiFrames + !efDir;
+        static const int sq[4] = {AV1G_BLOCK_8X8, AV1G_BLOCK_16X16, AV1G_BLOCK_32X32, AV1G_BLOCK_64X64};
+        printf("  partitions (node 8/16/32/64 x NONE..VERT_4):");
+        for (int k : sq) {
+            printf(" [");
+            for (int p = 0; p < (k == AV1G_BLOCK_8X8 ? 4 : 10); p++) {
+                printf("%s%llu", p ? " " : "", (unsigned long long)gen.part[k][p]);
+                missing += !gen.part[k][p];
+            }
+            printf("]");
+        }
+        printf("\n  block sizes:");
+        for (int b = 0; b < 22; b++) if (b < 13 || b > 15) { printf(" %llu", (unsigned long long)gen.bsize[b]); missing += !gen.bsize[b]; }
+        int ym = 0, uvm = 0;
+        for (int m = 0; m < 13; m++) for (int d = 0; d < 7; d++) if (av1g_is_directional(m) || d == 3) ym += !gen.ymode[m][d];
+        for (int m = 0; m < 14; m++) for (int d = 0; d < 7; d++) if ((m < 13 && av1g_is_directional(m)) || d == 3) uvm += !gen.uvmode[m][d];
+        missing += ym + uvm;
+        printf("\n  y_mode x angle missing %d, uv_mode x angle missing %d, cfl sign combos:", ym, uvm);
+        for (int i = 0; i < 8; i++) { printf(" %llu", (unsigned long long)gen.cflSigns[i]); missing += !gen.cflSigns[i]; }
+        printf("\n  CfL blocks 4:2:0 (4x4 4x8 8x4 8x8):");
+        const int c420[4] = {AV1G_BLOCK_4X4, AV1G_BLOCK_4X8, AV1G_BLOCK_8X4, AV1G_BLOCK_8X8};
+        for (int b : c420) { printf(" %llu", (unsigned long long)cflBlocks[0][b]); missing += !cflBlocks[0][b]; }
+        printf(", 4:4:4 (4x4): %llu, filter intra modes:", (unsigned long long)cflBlocks[1][AV1G_BLOCK_4X4]);
+        missing += !cflBlocks[1][AV1G_BLOCK_4X4];
+        for (int i = 0; i < 5; i++) { printf(" %llu", (unsigned long long)gen.fiMode[i]); missing += !gen.fiMode[i]; }
+        printf("\n  colour descriptions (default, identity 1/13/0, YCgCo-Re x/x/16, other): %llu %llu %llu %llu\n",
+               (unsigned long long)colour[0], (unsigned long long)colour[1], (unsigned long long)colour[2], (unsigned long long)colour[3]);
+        for (int i = 0; i < 4; i++) missing += !colour[i];
+        printf("  skip blocks %llu, non-skip blocks without residual %llu, tx blocks coded %llu / all-zero %llu, golomb coeffs %llu,"
+               " max |coeff| %llu\n", (unsigned long long)skip, (unsigned long long)zeroNonSkip, (unsigned long long)txbCoded,
+               (unsigned long long)txbZero, (unsigned long long)golomb, (unsigned long long)maxMag);
+        missing += !skip + !zeroNonSkip + !txbZero + !golomb;
+        printf("  reconstruction != source: %llu cases\n", (unsigned long long)srcMismatch);
+        printf("COVERAGE lossless missing items: %d\n", missing);
+    }
+};
+static LLCov covLL;
+
+// Build a lossless case of seed cs: random legal decisions (coefficients come from the closed loop) and its source.
+static bool make_lossless_case(uint64_t cs, int maxdim, int bigPct, FuzzCase &fc, LLSource &S, int pct444, int pct10) {
+    Rng rng(cs ^ 0x1055C1E5500AB1Eull);
+    Gen g(rng, false);
+    g.C = &covLL.gen;
+    g.lossless = true;
+    g_cov10 = false;
+    int W, H;
+    const int sz = rng.range(0, 99);
+    static const int special[][2] = {{1, 1}, {7, 13}, {65, 65}, {64, 64}, {8, 8}, {2, 3}, {13, 7}, {16, 16}, {72, 40}, {129, 1}};
+    if (sz < 10) { int k = rng.range(0, 9); W = special[k][0]; H = special[k][1]; }
+    else if (sz < 35) { W = rng.range(1, 40); H = rng.range(1, 40); }
+    else if (sz < 100 - bigPct) { W = rng.range(1, maxdim); H = rng.range(1, maxdim); }
+    else { W = rng.range(4097, 6000); H = rng.range(1, 24); }   // forced tiles (kept short: closed loop on the CPU)
+    av1g_decision_record &rec = fc.rec;
+    memset(&rec, 0, sizeof rec);
+    rec.fp.version = AV1G_DECISIONS_VERSION;
+    rec.fp.width = W;
+    rec.fp.height = H;
+    rec.fp.bit_depth = (pct10 > 0 && rng.chance(pct10)) ? 10 : 8;
+    rec.fp.monochrome = rng.chance(15);
+    if (!rec.fp.monochrome && pct444 > 0 && rng.chance(pct444)) {
+        rec.fp.chroma_format = AV1G_CHROMA_444;
+        g.ssx = g.ssy = 0;
+    }
+    rec.fp.base_q_idx = 0;
+    rec.fp.reduced_tx_set = rng.chance(30);
+    rec.fp.tile_cols_log2 = -1;
+    rec.fp.tile_rows_log2 = -1;
+    rec.fp.allow_screen_content_tools = rng.chance(20);
+    if (rng.chance(40)) rec.fp.enable_filter_intra = 1;
+    if (rng.chance(40)) rec.fp.enable_intra_edge_filter = 1;
+    // colour description (headers / AVIF only; the identity form 1/13/0 omits color_range in the sequence header)
+    {
+        const int k = rng.range(0, 99);
+        const bool rgb444 = !rec.fp.monochrome && rec.fp.chroma_format == AV1G_CHROMA_444;
+        if (k < 30) {
+        } else if (k < 65 && rgb444) {
+            rec.fp.color_description = 1; rec.fp.color_primaries = 1; rec.fp.transfer_characteristics = 13; rec.fp.matrix_coefficients = 0;
+        } else if (k < 85) {
+            rec.fp.color_description = 1; rec.fp.color_primaries = 1; rec.fp.transfer_characteristics = 13; rec.fp.matrix_coefficients = 16;
+        } else {
+            static const uint8_t cps[] = {1, 2, 9, 12}, tcs[] = {1, 2, 13, 16, 18}, mcs[] = {1, 2, 5, 6, 9, 16};
+            rec.fp.color_description = 1;
+            rec.fp.color_primaries = cps[rng.range(0, 3)];
+            rec.fp.transfer_characteristics = tcs[rng.range(0, 4)];
+            rec.fp.matrix_coefficients = rgb444 && rng.chance(30) ? 0 : mcs[rng.range(0, 5)];
+        }
+    }
+    av1g_tiles mt;
+    av1g_tile_layout(W, H, -1, -1, &mt);
+    if (rng.chance(20)) {
+        av1g_tiles t2;
+        int cl = mt.cols_log2 + rng.range(0, 2), rl = rng.range(0, 2);
+        if (av1g_tile_layout(W, H, cl, rl, &t2) == AV1G_OK) { rec.fp.tile_cols_log2 = (int8_t)cl; rec.fp.tile_rows_log2 = (int8_t)rl; }
+    }
+    av1g_tile_layout(W, H, rec.fp.tile_cols_log2, rec.fp.tile_rows_log2, &g.tiles);
+    g.W = W; g.H = H;
+    g.MiCols = av1g_mi_cols(W); g.MiRows = av1g_mi_rows(H);
+    g.mono = rec.fp.monochrome;
+    g.txSelect = 0;
+    g.reduced = rec.fp.reduced_tx_set;
+    g.maxDepthBias = rng.range(1, 3);
+    g.fi = rec.fp.enable_filter_intra;
+    g.gen_blocks();
+    fc.blocks.swap(g.blocks);
+    rec.n_blocks = (uint32_t)fc.blocks.size();
+    rec.blocks = fc.blocks.data();
+    fc.btx.assign(rec.n_blocks + 1, 0);
+    rec.block_txb = fc.btx.data();
+    av1g_layout(&rec, 0, 0);
+    fc.txb.assign(rec.n_txb, av1g_txb());
+    fc.coeffs.assign(rec.n_coeffs + 1, 0);
+    rec.txb = fc.txb.data();
+    rec.coeffs = fc.coeffs.data();
+    if (av1g_layout(&rec, rec.n_txb, rec.n_coeffs) != AV1G_OK) {
+        fprintf(stderr, "seed %llu: lossless layout failed\n", (unsigned long long)cs);
+        return false;
+    }
+    S.bd = av1g_bit_depth(&rec.fp);
+    S.np = rec.fp.monochrome ? 1 : 3;
+    for (int p = 0; p < S.np; p++) {
+        const int sx = p ? g.ssx : 0, sy = p ? g.ssy : 0;
+        S.w[p] = (g.MiCols * 4) >> sx;
+        S.h[p] = (g.MiRows * 4) >> sy;
+    }
+    Rng srng(cs ^ 0x5005CEC0DE5EEDull);
+    gen_source(srng, S);
+    return true;
+}
+
+// Closed-loop lossless encode of a case: levels from the source, then skip = 1 for most blocks without residual and
+// a re-encode (the reconstruction does not change: their prediction is the source already).  Returns the
+// av1g_encode status of the final encode (o holds its output); recon == source is checked by the caller.
+static int encode_lossless_case(FuzzCase &fc, const LLSource &S, uint64_t cs, const av1g_encode_opts &eo, av1g_output &o,
+                                std::string &why) {
+    av1g_decision_record &rec = fc.rec;
+    LLHook hook(S);
+    int rc = av1g::encode_with_hook(&rec, &eo, &o, &hook);
+    if (rc != AV1G_OK) { why = o.error; return rc; }
+    av1g_output_free(&o);
+    if (hook.bad) { why = "hook: not a 4x4 / qindex 0 tx block"; return AV1G_ERR_INTERNAL; }
+    Rng k(cs ^ 0x5C1BB10C5ull);
+    for (uint32_t b = 0; b < rec.n_blocks; b++) {
+        bool zero = true;
+        for (uint32_t t = rec.block_txb[b]; t < rec.block_txb[b + 1] && zero; t++) zero = rec.txb[t].eob == 0;
+        if (zero && k.chance(85)) rec.blocks[b].skip = 1;
+    }
+    rc = av1g_encode(&rec, &eo, &o);
+    if (rc != AV1G_OK) why = o.error;
+    return rc;
+}
+
+// av1core's reconstruction (cropped planes) == the visible source?
+static bool recon_is_source(const av1g_output &o, const LLSource &S, std::string &why) {
+    for (int p = 0; p < S.np; p++) {
+        const int w = (int)o.recon_w[p], h = (int)o.recon_h[p];
+        for (int y = 0; y < h; y++)
+            for (int x = 0; x < w; x++) {
+                const int v = S.bd == 8 ? o.recon[p][(size_t)y * w + x] : ((const uint16_t *)o.recon[p])[(size_t)y * w + x];
+                if (v != S.at(p, x, y)) {
+                    char b[160];
+                    snprintf(b, sizeof b, "recon != source: plane %d (%d,%d) recon %d source %d", p, x, y, v, S.at(p, x, y));
+                    why = b;
+                    return false;
+                }
+            }
+    }
+    return true;
+}
+
+// lossless 4x4 WHT self-test: forward -> dequantize at qindex 0 -> spec inverse == input, at both bit depths
+static bool wht_selftest() {
+    Rng r(12345);
+    for (int it = 0; it < 200000; it++) {
+        const int bd = (it & 1) ? 10 : 8, mx = (1 << bd) - 1;
+        int32_t res[16], dq[16], back[16];
+        int16_t q[16];
+        const int style = r.range(0, 2);
+        for (int i = 0; i < 16; i++) res[i] = style == 0 ? r.range(-mx, mx) : style == 1 ? (r.chance(50) ? mx : -mx) : r.range(-3, 3);
+        av1g_fwht4x4(res, q);
+        for (int i = 0; i < 16; i++) dq[i] = q[i] ? (bd == 8 ? av1g_dequant_coef<8>(q[i], 4, 1) : av1g_dequant_coef<10>(q[i], 4, 1)) : 0;
+        uint32_t err = 0;
+        if (bd == 8) av1g_inv_wht4x4<8>(dq, back, &err); else av1g_inv_wht4x4<10>(dq, back, &err);
+        if (err || memcmp(back, res, sizeof res)) { printf("WHT self-test FAILED (iteration %d, %d bits)\n", it, bd); return false; }
+    }
+    return true;
+}
+
 #ifndef AV1G_FUZZ_NO_MAIN
 int main(int argc, char **argv) {
     uint64_t seed = 1;
-    int count = 100, maxdim = 300, bigPct = 2, pct444 = 40, pct10 = 40;
+    int count = 100, maxdim = 300, bigPct = 2, pct444 = 40, pct10 = 40, pctLL = 25;
     bool m2 = false, keep = false, useAom = true, quiet = false;
     std::string out = default_out_dir("av1g_fuzz");
     for (int i = 1; i < argc; i++) {
@@ -639,17 +915,22 @@ int main(int argc, char **argv) {
         else if (a == "--big") bigPct = atoi(nx().c_str());
         else if (a == "--yuv444") pct444 = atoi(nx().c_str());
         else if (a == "--depth10") pct10 = atoi(nx().c_str());
+        else if (a == "--lossless") pctLL = atoi(nx().c_str());
         else if (a == "--no-aom") useAom = false;
         else if (a == "--quiet") quiet = true;
         else { fprintf(stderr, "unknown arg %s\n", a.c_str()); return 2; }
     }
     mkdir(out.c_str(), 0755);
-    int fails = 0, encFails = 0, parseFails = 0;
+    if (pctLL > 0 && !wht_selftest()) return 1;
+    int fails = 0, encFails = 0, parseFails = 0, llCases = 0;
     uint64_t totalFixed = 0, totalBlocks = 0, totalTxb = 0;
     for (int ci = 0; ci < count; ci++) {
         const uint64_t cs = seed + ci;
         FuzzCase fc;
-        if (!make_case(cs, m2, maxdim, bigPct, fc, pct444, pct10)) return 1;
+        LLSource llSrc;
+        const bool ll = is_lossless_case(cs, m2, pctLL);
+        if (ll ? !make_lossless_case(cs, maxdim, bigPct, fc, llSrc, pct444, pct10) : !make_case(cs, m2, maxdim, bigPct, fc, pct444, pct10))
+            return 1;
         av1g_decision_record &rec = fc.rec;
         const bool is10 = av1g_bit_depth(&rec.fp) == 10;
         const int bps = is10 ? 2 : 1;   // recon bytes per sample
@@ -658,20 +939,69 @@ int main(int argc, char **argv) {
         totalTxb += rec.n_txb;
         av1g_encode_opts eo = {AV1G_ENC_FIX_RANGE | AV1G_ENC_TD | AV1G_ENC_CHECK_EDGES, -1};
         av1g_output o;
-        int rc = av1g_encode(&rec, &eo, &o);
+        int rc;
+        bool okSrc = true;
+        std::string llWhy;
+        if (ll) {   // closed loop on the source, no range fixing: true residuals are conformant
+            eo.flags = AV1G_ENC_TD | AV1G_ENC_CHECK_EDGES;
+            rc = encode_lossless_case(fc, llSrc, cs, eo, o, llWhy);
+            if (rc == AV1G_OK) okSrc = recon_is_source(o, llSrc, llWhy);
+        } else {
+            rc = av1g_encode(&rec, &eo, &o);
+        }
         char base[512];
         snprintf(base, sizeof base, "%s/case_%llu", out.c_str(), (unsigned long long)cs);
         if (rc != AV1G_OK) {
-            fprintf(stderr, "seed %llu: encode error %d: %s\n", (unsigned long long)cs, rc, o.error);
+            fprintf(stderr, "seed %llu: %sencode error %d: %s\n", (unsigned long long)cs, ll ? "lossless " : "", rc,
+                    ll ? llWhy.c_str() : o.error);
             encFails++;
             continue;
         }
+        if (ll) {
+            llCases++;
+            covLL.cases++;
+            covLL.fmt[is10 ? 1 : 0][rec.fp.monochrome ? 2 : rec.fp.chroma_format == AV1G_CHROMA_444 ? 1 : 0]++;
+            covLL.tiles += o.tile_cols * o.tile_rows > 1;
+            covLL.big += rec.fp.width > 4096;
+            covLL.sct += rec.fp.allow_screen_content_tools;
+            covLL.reduced += rec.fp.reduced_tx_set;
+            covLL.fiFrames += rec.fp.enable_filter_intra;
+            covLL.efFrames += rec.fp.enable_intra_edge_filter;
+            {
+                const int mc = rec.fp.matrix_coefficients;
+                covLL.colour[!rec.fp.color_description ? 0 : (mc == 0 && rec.fp.color_primaries == 1 && rec.fp.transfer_characteristics == 13) ? 1
+                             : mc == 16 ? 2 : 3]++;
+            }
+            const int lssx = av1g_ssx(&rec.fp), lssy = av1g_ssy(&rec.fp);
+            for (uint32_t b = 0; b < rec.n_blocks; b++) {
+                const av1g_block &k = rec.blocks[b];
+                if (rec.fp.enable_intra_edge_filter) covLL.efDir += av1g_is_directional(k.y_mode);
+                if (k.uv_mode == AV1G_UV_CFL_PRED && av1g_has_chroma(k.bsize, k.mi_row, k.mi_col, rec.fp.monochrome, lssx, lssy))
+                    covLL.cflBlocks[lssx ? 0 : 1][k.bsize]++;
+                if (k.skip) { covLL.skip++; continue; }
+                bool any = false;
+                for (uint32_t t = rec.block_txb[b]; t < rec.block_txb[b + 1]; t++) {
+                    const av1g_txb &x = rec.txb[t];
+                    if (!x.eob) { covLL.txbZero++; continue; }
+                    any = true;
+                    covLL.txbCoded++;
+                    const int16_t *q = rec.coeffs + x.coeff_off;
+                    for (int i = 0; i < 16; i++) {
+                        const uint64_t a = q[i] < 0 ? -q[i] : q[i];
+                        covLL.golomb += a > 14;
+                        if (a > covLL.maxMag) covLL.maxMag = a;
+                    }
+                }
+                covLL.zeroNonSkip += !any;
+            }
+            if (!okSrc) { covLL.srcMismatch++; printf("seed %llu: LOSSLESS %s\n", (unsigned long long)cs, llWhy.c_str()); }
+        }
         totalFixed += o.n_fixed_txb;
-        cov.mono += rec.fp.monochrome;
+        if (!ll) cov.mono += rec.fp.monochrome;
         const bool is444 = rec.fp.chroma_format == AV1G_CHROMA_444;
         const int ssx = av1g_ssx(&rec.fp), ssy = av1g_ssy(&rec.fp);
         const bool lfOn10 = rec.fp.loop_filter_level[0] || rec.fp.loop_filter_level[1];
-        if (is10) {
+        if (is10 && !ll) {
             cov.c10++;
             cov.c10Fmt[rec.fp.monochrome ? 2 : is444 ? 1 : 0]++;
             cov.c10Tiles += o.tile_cols * o.tile_rows > 1;
@@ -702,7 +1032,7 @@ int main(int argc, char **argv) {
             if (rec.fp.using_qmatrix) { cov.qmLevel10[rec.fp.qm_y]++; cov.qmLevel10[rec.fp.qm_u]++; cov.qmLevel10[rec.fp.qm_v]++; }
             if (rec.fp.delta_q_present) cov.dqRes10[rec.fp.delta_q_res]++;
         }
-        if (is444) {
+        if (is444 && !ll) {
             cov.c444++;
             cov.c444Tiles += o.tile_cols * o.tile_rows > 1;
             cov.c444Lf += rec.fp.loop_filter_level[0] || rec.fp.loop_filter_level[1];
@@ -717,6 +1047,7 @@ int main(int argc, char **argv) {
             cov.c444DeltaQ += rec.fp.delta_q_u_dc || rec.fp.delta_q_u_ac || rec.fp.delta_q_v_dc || rec.fp.delta_q_v_ac;
             cov.c444Big += rec.fp.width > 4096 || (uint64_t)rec.fp.width * rec.fp.height > 4096ull * 2304;
         }
+        if (!ll) {   // lossy coverage (lossless cases have their own, covLL)
         cov.sct += rec.fp.allow_screen_content_tools;
         cov.fiFrames += rec.fp.enable_filter_intra;
         const bool lfOn = rec.fp.loop_filter_level[0] || rec.fp.loop_filter_level[1];
@@ -795,6 +1126,7 @@ int main(int argc, char **argv) {
                 }
             }
         }
+        }   // !ll coverage
         // ---- parser round trip: OBUs -> record -> OBUs must be identical ----
         bool okParse = true;
         {
@@ -808,6 +1140,14 @@ int main(int argc, char **argv) {
                 if (q.fp.chroma_format != rec.fp.chroma_format || q.fp.monochrome != rec.fp.monochrome)
                     why = "frame params (chroma format)";
                 if (av1g_bit_depth(&q.fp) != av1g_bit_depth(&rec.fp)) why = "frame params (bit depth)";
+                {   // effective colour description (the parser maps 1/13/6 to color_description 0)
+                    auto cicp = [](const av1g_frame_params &f) {
+                        return f.color_description ? (f.color_primaries << 16 | f.transfer_characteristics << 8 | f.matrix_coefficients)
+                                                   : (1 << 16 | 13 << 8 | 6);
+                    };
+                    if (q.fp.base_q_idx != rec.fp.base_q_idx || cicp(q.fp) != cicp(rec.fp))
+                        why = "frame params (base_q_idx / colour description)";
+                }
                 if (q.fp.using_qmatrix != rec.fp.using_qmatrix || q.fp.delta_q_present != rec.fp.delta_q_present ||
                     q.fp.enable_filter_intra != rec.fp.enable_filter_intra ||
                     q.fp.enable_intra_edge_filter != rec.fp.enable_intra_edge_filter ||
@@ -940,16 +1280,16 @@ int main(int argc, char **argv) {
             av1g_output_free(&o3);
         }
         ok1 = ok1 && okPf;
-        if (!quiet || !(ok1 && ok2))
-            printf("seed %llu %dx%d%s%s q%d lf%d/%d/%d/%d cdef%d txsel%d red%d tiles %ux%u blocks %u txb %u fixed %u bytes %zu: dav1d %s aomdec %s\n",
+        if (!quiet || !(ok1 && ok2 && okSrc))
+            printf("seed %llu %dx%d%s%s%s q%d lf%d/%d/%d/%d cdef%d txsel%d red%d tiles %ux%u blocks %u txb %u fixed %u bytes %zu: dav1d %s aomdec %s\n",
                    (unsigned long long)cs, (int)rec.fp.width, (int)rec.fp.height, rec.fp.monochrome ? " mono" : is444 ? " 444" : "",
-                   is10 ? " 10bit" : "",
+                   is10 ? " 10bit" : "", ll ? (okSrc ? " lossless" : " lossless(RECON!=SOURCE)") : "",
                    rec.fp.base_q_idx,
                    rec.fp.loop_filter_level[0], rec.fp.loop_filter_level[1], rec.fp.loop_filter_level[2], rec.fp.loop_filter_level[3],
                    rec.fp.enable_cdef ? 1 + rec.fp.cdef_bits : 0, rec.fp.tx_mode_select, rec.fp.reduced_tx_set, o.tile_cols, o.tile_rows, rec.n_blocks, rec.n_txb,
                    o.n_fixed_txb, o.obu_size, ok1 ? "OK" : (r1 ? "ERR" : "MISMATCH"),
                    useAom ? (ok2 ? "OK" : "MISMATCH/ERR") : "skip");
-        if (!(ok1 && ok2 && okParse)) {
+        if (!(ok1 && ok2 && okParse && okSrc)) {
             fails++;
             write_file(yuvPath, ref.data(), ref.size());
             if (!ok1 && v1.size() == ref.size()) {
@@ -972,11 +1312,14 @@ int main(int argc, char **argv) {
         av1g_output_free(&o);
         fflush(stdout);
     }
-    cov.report();
-    printf("SUMMARY seeds %llu..%llu mode %s: %d cases (%llu 4:4:4, %llu monochrome, %llu 10-bit), %d mismatches (%d parser round-trip "
-           "failures), %d encode errors, blocks %llu, txb %llu, range-fixed txb %llu\n",
-           (unsigned long long)seed, (unsigned long long)(seed + count - 1), m2 ? "m2" : "full", count, (unsigned long long)cov.c444,
-           (unsigned long long)cov.mono, (unsigned long long)cov.c10, fails, parseFails, encFails, (unsigned long long)totalBlocks,
+    if (count > llCases) cov.report();
+    if (llCases) covLL.report();
+    printf("SUMMARY seeds %llu..%llu mode %s: %d cases (%d lossy: %llu 4:4:4, %llu monochrome, %llu 10-bit; %d lossless, %llu with "
+           "reconstruction != source), %d mismatches (%d parser round-trip failures), %d encode errors, blocks %llu, txb %llu, "
+           "range-fixed txb %llu\n",
+           (unsigned long long)seed, (unsigned long long)(seed + count - 1), m2 ? "m2" : "full", count, count - llCases,
+           (unsigned long long)cov.c444, (unsigned long long)cov.mono, (unsigned long long)cov.c10, llCases,
+           (unsigned long long)covLL.srcMismatch, fails, parseFails, encFails, (unsigned long long)totalBlocks,
            (unsigned long long)totalTxb, (unsigned long long)totalFixed);
     return (fails || encFails) ? 1 : 0;
 }

@@ -40,6 +40,8 @@ if(AV1GPU_TESTS)
   add_executable(av1g_fuzz tests/fuzz.cpp)
   target_link_libraries(av1g_fuzz av1core)
   add_test(NAME fuzz_dav1d_aomdec COMMAND av1g_fuzz --seed 1 --count 200 --quiet)
+  # lossless only: closed-loop records whose reconstruction must equal their random source picture
+  add_test(NAME fuzz_lossless COMMAND av1g_fuzz --seed 1000000 --count 120 --lossless 100 --quiet)
 endif()
 
 if(NOT AV1GPU_CUDA)
