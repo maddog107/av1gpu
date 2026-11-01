@@ -87,8 +87,7 @@ __global__ void k_cdef(av1g_pf_frame f, OutPlanes o) {
 
 extern "C" size_t av1g_gpu_pf_scratch_size(const av1g_frame_params *fp) { return layout(fp).total; }
 
-extern "C" int av1g_gpu_pf_prepare(const av1g_frame_params *fp, const av1g_block *d_blocks, uint32_t n_blocks, void *d_scratch,
-                                   av1g_pf_frame *f, cudaStream_t stream) {
+extern "C" void av1g_gpu_pf_attach(const av1g_frame_params *fp, void *d_scratch, av1g_pf_frame *f) {
     const ScratchLayout L = layout(fp);
     *f = av1g_pf_frame();
     av1g_pf_frame_init(fp, f);
@@ -99,6 +98,11 @@ extern "C" int av1g_gpu_pf_prepare(const av1g_frame_params *fp, const av1g_block
     f->lfTx[2] = base + L.txV;
     f->cdefIdx = (int8_t *)(base + L.cdef);
     f->cdefDirVar = (int32_t *)(base + L.dirvar);
+}
+
+extern "C" int av1g_gpu_pf_prepare(const av1g_frame_params *fp, const av1g_block *d_blocks, uint32_t n_blocks, void *d_scratch,
+                                   av1g_pf_frame *f, cudaStream_t stream) {
+    av1g_gpu_pf_attach(fp, d_scratch, f);
     cudaError_t e = cudaMemsetAsync(f->cdefIdx, 0xFF, (size_t)f->sbCols * f->sbRows, stream);
     if (e != cudaSuccess) return (int)e;
     if (n_blocks) k_mark<<<(n_blocks + 127) / 128, 128, 0, stream>>>(*f, d_blocks, n_blocks);

@@ -1578,10 +1578,11 @@ extern "C" int av1f_lf_search_host(const av1g_frame_params *fp, const av1g_block
 // Fully asynchronous variant: same decisions as av1f_lf_search (identical results), no host
 // synchronisation and no timers; writes the result struct to DEVICE memory d_res.  The caller
 // copies it (and d_sb_cdef_idx) after its own sync point.  d_recon is deblocked as above.
-extern "C" int av1f_lf_search_async(const av1g_frame_params *fp, const av1g_block *d_blocks, uint32_t n_blocks,
-                                    uint8_t *const d_recon[3], const int recon_stride[3], const uint8_t *const d_src[3],
-                                    const int src_stride[3], const av1f_lf_opts *o, av1f_lf_result *d_res, int8_t *d_sb_cdef_idx,
-                                    void *d_scratch, cudaStream_t s) {
+// d_pf (av1f_lf_search_async_pf): the av1core maps go there instead of the scratch, and get the CDEF directions of
+// the deblocked frame whenever the result enables CDEF.
+static int lf_search_async(const av1g_frame_params *fp, const av1g_block *d_blocks, uint32_t n_blocks, uint8_t *const d_recon[3],
+                           const int recon_stride[3], const uint8_t *const d_src[3], const int src_stride[3], const av1f_lf_opts *o,
+                           av1f_lf_result *d_res, int8_t *d_sb_cdef_idx, void *d_scratch, void *d_pf, cudaStream_t s) {
     const Geo g = geo(fp);
     const Layout L = layout(fp, o);
     uint8_t *base = (uint8_t *)d_scratch;
@@ -1598,7 +1599,7 @@ extern "C" int av1f_lf_search_async(const av1g_frame_params *fp, const av1g_bloc
     fpc.cdef_bits = 0;
     fpc.cdef_damping_minus_3 = (uint8_t)(damping - 3);
     av1g_pf_frame f;
-    CK(av1g_gpu_pf_prepare(&fpc, d_blocks, n_blocks, base + L.pf, &f, s));
+    CK(av1g_gpu_pf_prepare(&fpc, d_blocks, n_blocks, d_pf ? d_pf : base + L.pf, &f, s));
     k_cdef_idx_norm<<<(g.nsb + 255) / 256, 256, 0, s>>>(f.cdefIdx, g.nsb);
     f.sharpness = sharp;
     float *wmap = nullptr;
@@ -1646,6 +1647,7 @@ extern "C" int av1f_lf_search_async(const av1g_frame_params *fp, const av1g_bloc
     if (o->cdef_mode == AV1F_CDEF_OFF || (o->cdef_mode == AV1F_CDEF_AOM && tf.cdef_mode == 0)) {
         fa.cdefOff = 1;
         if (d_sb_cdef_idx) CK(cudaMemcpyAsync(d_sb_cdef_idx, f.cdefIdx, g.nsb, cudaMemcpyDeviceToDevice, s));
+        if (d_pf && fa.cdefEnable) CK(av1g_gpu_cdef_dir(&f, s));   // CDEF on with zero strengths: the caller applies it
         k_finalize<<<1, 32, 0, s>>>(fa, lvDev, bitsDev, nullptr, nullptr, d_res);
         return (int)cudaGetLastError();
     }
@@ -1729,6 +1731,20 @@ extern "C" int av1f_lf_search_async(const av1g_frame_params *fp, const av1g_bloc
     fa.pruned = K > 0;
     k_finalize<<<1, 32, 0, s>>>(fa, lvDev, bitsDev, lev, dsel, d_res);
     return (int)cudaGetLastError();
+}
+extern "C" int av1f_lf_search_async(const av1g_frame_params *fp, const av1g_block *d_blocks, uint32_t n_blocks,
+                                    uint8_t *const d_recon[3], const int recon_stride[3], const uint8_t *const d_src[3],
+                                    const int src_stride[3], const av1f_lf_opts *o, av1f_lf_result *d_res, int8_t *d_sb_cdef_idx,
+                                    void *d_scratch, cudaStream_t s) {
+    return lf_search_async(fp, d_blocks, n_blocks, d_recon, recon_stride, d_src, src_stride, o, d_res, d_sb_cdef_idx, d_scratch,
+                           nullptr, s);
+}
+extern "C" int av1f_lf_search_async_pf(const av1g_frame_params *fp, const av1g_block *d_blocks, uint32_t n_blocks,
+                                       uint8_t *const d_recon[3], const int recon_stride[3], const uint8_t *const d_src[3],
+                                       const int src_stride[3], const av1f_lf_opts *o, av1f_lf_result *d_res,
+                                       int8_t *d_sb_cdef_idx, void *d_scratch, void *d_pf_scratch, cudaStream_t s) {
+    return lf_search_async(fp, d_blocks, n_blocks, d_recon, recon_stride, d_src, src_stride, o, d_res, d_sb_cdef_idx, d_scratch,
+                           d_pf_scratch, s);
 }
 
 extern "C" int av1f_cdef_select_tables(const uint32_t *d_my, const uint32_t *d_muv, int nc, int nsb, const int8_t *d_active, int nact,

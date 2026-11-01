@@ -89,6 +89,14 @@ int av1f_lf_search(const av1g_frame_params *fp, const av1g_block *d_blocks, uint
 int av1f_lf_search_async(const av1g_frame_params *fp, const av1g_block *d_blocks, uint32_t n_blocks, uint8_t *const d_recon[3],
                          const int recon_stride[3], const uint8_t *const d_src[3], const int src_stride[3], const av1f_lf_opts *o,
                          av1f_lf_result *d_res, int8_t *d_sb_cdef_idx, void *d_scratch, cudaStream_t stream);
+/* The same with av1core's post-filter maps in d_pf_scratch (av1g_gpu_pf_scratch_size(fp) bytes, the frame's own):
+ * on return they hold the frame's Skips / LoopfilterTxSizes and, when the result enables CDEF, the CDEF directions of
+ * the deblocked frame, so CDEF can be applied with av1g_gpu_pf_attach (fp with the chosen strengths), cdefIdx =
+ * d_sb_cdef_idx and av1g_gpu_cdef, without preparing the maps and directions again. */
+int av1f_lf_search_async_pf(const av1g_frame_params *fp, const av1g_block *d_blocks, uint32_t n_blocks, uint8_t *const d_recon[3],
+                            const int recon_stride[3], const uint8_t *const d_src[3], const int src_stride[3],
+                            const av1f_lf_opts *o, av1f_lf_result *d_res, int8_t *d_sb_cdef_idx, void *d_scratch,
+                            void *d_pf_scratch, cudaStream_t stream);
 
 /* Preset selection on caller-supplied per-SB cost tables (e.g. a perceptual loss instead of SSE):
  * d_my / d_muv: [nsb][nc] uint32 costs of nc luma / chroma strengths (any per-SB constant offset is
