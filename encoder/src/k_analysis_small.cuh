@@ -137,18 +137,18 @@ __global__ void __launch_bounds__(128) k_analysis_small(GpBatch B, GpParams P, u
         return b;
     };
     auto satd_of = [&](int c) -> float {
-        float t = 0.f;
+        int t = 0;
         for (int sy = 0; sy < H; sy += 4)
             for (int sx = 0; sx < W; sx += 4) {
                 int d[16];
+                pred_sub4(c, sy, sx, T::lw, T::lh, A, L, dcv, d);
 #pragma unroll
                 for (int i = 0; i < 4; i++)
 #pragma unroll
-                    for (int j = 0; j < 4; j++)
-                        d[i * 4 + j] = (int)s[(sy + i) * W + sx + j] - pred_px(c, sy + i, sx + j, T::lw, T::lh, A, L, dcv);
-                t += hadamard4_abs(d);
+                    for (int j = 0; j < 4; j++) d[i * 4 + j] = (int)s[(sy + i) * W + sx + j] - d[i * 4 + j];
+                t += hadamard4_sum(d);
             }
-        return t;
+        return (float)t * 0.25f;
     };
     const GpExtCand *ext = (const GpExtCand *)B.extCand[BS];
     int K = min(P.K, GP_MAXK);
@@ -216,39 +216,35 @@ __global__ void __launch_bounds__(128) k_analysis_small(GpBatch B, GpParams P, u
             av1g_edge_prepare<BD>(pangle_of(m, cand_delta(c)), T::lw, T::lh, 0, haveLeft, haveAbove, x, y, maxX, maxY,
                                   pa + AV1G_EDGE_OFF, pl + AV1G_EDGE_OFF, &upA, &upL);
         }
+        for (int sy = 0; sy < H; sy += 4)
+            for (int sx = 0; sx < W; sx += 4) {
+                int pr[16];
+                pred_sub4(c, sy, sx, T::lw, T::lh, ef ? pa + AV1G_EDGE_OFF : A, ef ? pl + AV1G_EDGE_OFF : L, dcv, pr, upA, upL);
 #pragma unroll
-        for (int i = 0; i < H; i++)
+                for (int i = 0; i < 4; i++)
 #pragma unroll
-            for (int j = 0; j < W; j++) {
-                const int pr = ef ? av1g_pred_pixel_up(m, pangle_of(m, cand_delta(c)), i, j, T::lw, T::lh, pa + AV1G_EDGE_OFF,
-                                                       pl + AV1G_EDGE_OFF, upA, upL)
-                                  : pred_px(c, i, j, T::lw, T::lh, A, L, dcv);
-                res[i * W + j] = (int16_t)((int)s[i * W + j] - pr);
+                    for (int j = 0; j < 4; j++) res[(sy + i) * W + sx + j] = (int16_t)((int)s[(sy + i) * W + sx + j] - pr[i * 4 + j]);
             }
     };
+    // one evaluation site (code size): steps 0 .. nK-1 rate the candidates with DCT_DCT, the next ones the other tx
+    // types of the set for the winner
     float bestJ = GP_INF;
-    int bestK = 0, bestTx = AV1G_DCT_DCT;
-    for (int k = 0; k < nc && k < K; k++) {
+    int bestK = 0, bestTx = AV1G_DCT_DCT, resK = -1;
+    const int nK = min(nc, K);
+    const int nSteps = nK + ((nc > 0 && P.txSearch && set != AV1G_TX_SET_DCTONLY) ? 15 : 0);
+    for (int st = 0; st < nSteps; st++) {
+        const int k = st < nK ? st : bestK, t = st < nK ? AV1G_DCT_DCT : st - nK + 1;
+        if (t != AV1G_DCT_DCT && !av1g_tx_type_in_set_intra(set, t)) continue;
         const int c = cands[k];
-        residual(c);
-        e.txType = AV1G_DCT_DCT;
+        if (k != resK) { residual(c); resK = k; }
+        e.txType = t;
         e.intraDir = cand_mode(c);
-        e.qm = av1g_qm(I.usingQm, I.qm[0], 0, txSz, AV1G_DCT_DCT);
+        e.qm = av1g_qm(I.usingQm, I.qm[0], 0, txSz, t);
         const EvalOut o = eval_scalar<W, H, BD>(res, e);
         const float J = o.D + lambda * (o.R + mbits(c) + overhead);
-        if (J < bestJ) { bestJ = J; bestK = k; }
-    }
-    if (nc > 0 && P.txSearch && set != AV1G_TX_SET_DCTONLY) {
-        const int c = cands[bestK];
-        residual(c);
-        e.intraDir = cand_mode(c);
-        for (int t = 1; t < 16; t++) {
-            if (!av1g_tx_type_in_set_intra(set, t)) continue;
-            e.txType = t;
-            e.qm = av1g_qm(I.usingQm, I.qm[0], 0, txSz, t);
-            const EvalOut o = eval_scalar<W, H, BD>(res, e);
-            const float J = o.D + lambda * (o.R + mbits(c) + overhead);
-            if (J < bestJ) { bestJ = J; bestTx = t; }
+        if (J < bestJ) {
+            bestJ = J;
+            if (st < nK) bestK = k; else bestTx = t;
         }
     }
     out.J = nc ? bestJ : GP_INF;
