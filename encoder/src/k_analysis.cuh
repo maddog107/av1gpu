@@ -44,8 +44,8 @@ __device__ __forceinline__ int pangle_of(int mode, int delta) {
     return av1g_is_directional(mode) ? AV1G_T(Mode_To_Angle)[mode] + delta * AV1G_ANGLE_STEP : 0;
 }
 
-// prediction of the 4x4 sub-block at (sy, sx) for candidate c into p[i * 4 + j]: the values of pred_px, or with
-// edge-filtered edges and their upsampling flags upA / upL those of av1g_pred_pixel_up (spec 7.11.2), with the
+// prediction of the 4x4 sub-block at (sy, sx) for candidate c (edges A/L, dc value dcv) into p[i * 4 + j]: the
+// values of av1g_pred_pixel_up (spec 7.11.2; upA / upL: upsampling flags of edge-filtered edges), with the
 // per-row / per-column terms and the mode switch hoisted
 template <typename P>
 __device__ __forceinline__ void pred_sub4(int c, int sy, int sx, int lw, int lh, const P *A, const P *L, int dcv, int *p,
@@ -161,14 +161,6 @@ __device__ __forceinline__ void load4(const uint8_t *s, int *v) {
 __device__ __forceinline__ void load4(const uint16_t *s, int *v) {
     const uint2 w = *(const uint2 *)s;
     v[0] = w.x & 0xFFFF; v[1] = w.x >> 16; v[2] = w.y & 0xFFFF; v[3] = w.y >> 16;
-}
-
-// prediction of pixel (i, j) for candidate c, edges A/L, dc value dcv
-template <typename P>
-__device__ __forceinline__ int pred_px(int c, int i, int j, int lw, int lh, const P *A, const P *L, int dcv) {
-    const int m = cand_mode(c);
-    if (m == AV1G_DC_PRED) return dcv;
-    return av1g_pred_pixel(m, pangle_of(m, cand_delta(c)), i, j, lw, lh, A, L);
 }
 
 // SATD of candidates cands[c0..c1) (all 4x4 sub-blocks), accumulated into satd[]
