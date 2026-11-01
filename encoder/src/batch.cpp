@@ -640,6 +640,9 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
                 if (cb) { fbHeld.push_back(cb); fbConv = 1; }
             }
             if (fin.empty()) {
+                // --lossless: ingest batches whose JPEGs were all skipped; holding them filled ingest's in-flight limit
+                // and stalled the list (100 JPEGs: hung after about 75 skips)
+                for (auto &b : held) ingest_release_batch(ictx, b.batch_id, s);
                 delete job;
                 bool idle;
                 {
