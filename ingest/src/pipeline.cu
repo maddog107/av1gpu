@@ -1,6 +1,7 @@
 // Ingest pipeline: CPU entropy-decode workers -> pinned arena -> batcher (H2D + GPU IDCT/finalize)
 // -> consumer (ingest_next_batch / ingest_release_batch).  See ingest_api.h for the contract.
 #include <sys/resource.h>
+#include <sys/stat.h>
 #include <sys/syscall.h>
 #include <unistd.h>
 
@@ -234,6 +235,9 @@ static void set_error(ingest_ctx *c, const std::string &e) {
 static bool read_file(const std::string &p, std::vector<uint8_t> &buf) {
   FILE *f = fopen(p.c_str(), "rb");
   if (!f) return false;
+  // regular files only: fopen also opens a directory, whose end offset (LONG_MAX on ext4) made the resize throw
+  struct stat st;
+  if (fstat(fileno(f), &st) != 0 || !S_ISREG(st.st_mode)) { fclose(f); return false; }
   if (fseek(f, 0, SEEK_END) != 0) { fclose(f); return false; }
   long n = ftell(f);
   if (n <= 0) { fclose(f); return false; }

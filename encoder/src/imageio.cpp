@@ -2,6 +2,7 @@
 #include "imageio.h"
 
 #include <png.h>
+#include <sys/stat.h>
 #include <webp/decode.h>
 
 #include <algorithm>
@@ -12,6 +13,9 @@
 bool gp_read_file(const std::string &path, std::vector<uint8_t> &data) {
     FILE *f = fopen(path.c_str(), "rb");
     if (!f) return false;
+    // regular files only: fopen also opens a directory, whose end offset (LONG_MAX on ext4) made the resize throw
+    struct stat st;
+    if (fstat(fileno(f), &st) != 0 || !S_ISREG(st.st_mode)) { fclose(f); return false; }
     fseek(f, 0, SEEK_END);
     long n = ftell(f);
     fseek(f, 0, SEEK_SET);

@@ -15,6 +15,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <cerrno>
 #include <condition_variable>
 #include <deque>
 #include <mutex>
@@ -22,6 +23,7 @@
 #include <cstdio>
 #include <cstring>
 #include <fstream>
+#include <functional>
 #include <string>
 #include <thread>
 #include <vector>
@@ -45,6 +47,14 @@ bool has_image_ext(const std::string &n) {
     std::string e = n.substr(d + 1);
     for (auto &c : e) c = (char)tolower((unsigned char)c);
     return e == "jpg" || e == "jpeg" || e == "jfif" || e == "png" || e == "webp";
+}
+// mkdir -p: DIR and any missing parents; true if DIR is a directory afterwards
+bool make_dirs(const std::string &dir) {
+    for (size_t i = 1; i <= dir.size(); i++)
+        if (i == dir.size() || dir[i] == '/')
+            if (mkdir(dir.substr(0, i).c_str(), 0755) != 0 && errno != EEXIST) return false;
+    struct stat st;
+    return stat(dir.c_str(), &st) == 0 && S_ISDIR(st.st_mode);
 }
 // LIST is a text file with one path per line, or a directory (its JPEG/PNG/WebP files, sorted)
 bool list_inputs(const std::string &list, std::vector<std::string> &paths) {
@@ -124,7 +134,7 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
     if (!list_inputs(list, paths)) { fprintf(stderr, "cannot read %s\n", list.c_str()); return 2; }
     if (paths.empty()) { fprintf(stderr, "no input files in %s\n", list.c_str()); return 2; }
     const bool write = !outdir.empty();
-    if (write) mkdir(outdir.c_str(), 0755);
+    if (write && !make_dirs(outdir)) { fprintf(stderr, "cannot create %s: %s\n", outdir.c_str(), strerror(errno)); return 2; }
     std::string err;
     GpEncoder enc;
     GpConfig bcfg = cfg;
@@ -618,9 +628,28 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
     std::vector<GpEncoder *> encs;
     std::vector<cudaStream_t> streams;
     std::vector<std::thread> encThreads;
+    // every return from here on (error returns too) joins the threads first: a joinable std::thread's destructor calls
+    // std::terminate.  Encoders first (they may still push to the entropy queue), then the fallback decoder, then the
+    // entropy threads once the queue is closed (they finish the jobs already queued).  No-op after the normal joins.
+    struct JoinAll {
+        std::function<void()> f;
+        ~JoinAll() { f(); }
+    } joinAll{[&]() {
+        for (auto &t : encThreads)
+            if (t.joinable()) t.join();
+        ingestDrained = true;
+        if (fbThread.joinable()) fbThread.join();
+        {
+            std::lock_guard<std::mutex> lk(mu);
+            done = true;
+        }
+        cv.notify_all();
+        for (auto &t : entThreads)
+            if (t.joinable()) t.join();
+    }};
     for (int k = 0; k < nEnc; k++) {
         GpEncoder *E = k == 0 ? &enc : new GpEncoder;
-        if (k > 0 && E->init(bcfg, err)) { fprintf(stderr, "init: %s\n", err.c_str()); ingestDrained = true; fbThread.join(); return 1; }
+        if (k > 0 && E->init(bcfg, err)) { fprintf(stderr, "init: %s\n", err.c_str()); return 1; }
         cudaStream_t s = es;
         if (k > 0) cudaStreamCreateWithFlags(&s, cudaStreamNonBlocking);
         encs.push_back(E);
@@ -632,7 +661,7 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
         cs.P = bcfg.Psmall;
         for (int k = 0; k < nEnc; k++) {
             encsSmall[k] = new GpEncoder;
-            if (encsSmall[k]->init(cs, err)) { fprintf(stderr, "init: %s\n", err.c_str()); ingestDrained = true; fbThread.join(); return 1; }
+            if (encsSmall[k]->init(cs, err)) { fprintf(stderr, "init: %s\n", err.c_str()); return 1; }
         }
     }
     for (int k = 0; k < nEnc; k++) encThreads.emplace_back(encLoop, encs[k], encsSmall[k], streams[k]);
