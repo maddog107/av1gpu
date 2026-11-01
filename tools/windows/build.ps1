@@ -27,6 +27,9 @@ $vcpkgTag = "2026.10.16"
 $triplet = "x64-windows-static"
 New-Item -ItemType Directory -Force -Path $deps | Out-Null
 function Run($exe) {
+    # native tools write warnings to stderr; Windows PowerShell 5.1 would turn those into errors under "Stop"
+    # whenever the output is redirected
+    $ErrorActionPreference = "Continue"
     & $exe @args
     if ($LASTEXITCODE -ne 0) { throw "$exe failed with exit code $LASTEXITCODE" }
 }
@@ -37,7 +40,7 @@ if (-not (Get-Command cl.exe -ErrorAction SilentlyContinue)) {
     $vs = & $vswhere -version "[17.0,18.0)" -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 `
         -latest -property installationPath
     if (-not $vs) { throw "needs Visual Studio 2022 or its Build Tools with the C++ workload" }
-    cmd /c "`"$vs\VC\Auxiliary\Build\vcvars64.bat`" >nul && set" | ForEach-Object {
+    cmd /c "`"$vs\VC\Auxiliary\Build\vcvars64.bat`" >nul 2>&1 && set" | ForEach-Object {
         if ($_ -match '^([^=]+)=(.*)$') { Set-Item -Path "env:$($matches[1])" -Value $matches[2] }
     }
 }
@@ -70,6 +73,7 @@ if (-not $VcpkgRoot) {
         Run "$VcpkgRoot\bootstrap-vcpkg.bat" -disableMetrics
     }
 }
+$env:VCPKG_ROOT = $VcpkgRoot   # (vcvars64 points it at Visual Studio's own vcpkg)
 if ($env:VCPKG_DEFAULT_BINARY_CACHE) { New-Item -ItemType Directory -Force -Path $env:VCPKG_DEFAULT_BINARY_CACHE | Out-Null }
 Run "$VcpkgRoot\vcpkg.exe" install libjpeg-turbo libpng libwebp zlib --triplet $triplet
 
