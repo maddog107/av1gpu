@@ -406,18 +406,18 @@ for CUDA start-up.
 `av1gpu --help` lists the expert tuning options. The defaults are `--quality 60 --tune iq
 --edge-filter --preset turbo --small-preset base --gpu-entropy`.
 
-Tiles: the default preset, `turbo`, splits images of 2 MP and more into 2 × 2 tiles (`--tiles 2,1,1`;
-`turbo2` too), `turbo3` into 4 × 2 (`2,2,1`). `base`, `slow` and the other presets use only the tiles AV1
+Tiles: the default preset, `turbo`, splits images of 2 MP and more into 4 × 4 tiles (`--tiles 2,2,2`;
+`turbo2` and `turbo3` too). `base`, `slow` and the other presets use only the tiles AV1
 requires (for frames wider than 4,096 pixels or larger than 9.4 MP), which is also what MIN_MP `0` means.
 `--tiles` replaces the preset's choice wherever it appears on the command line. It also applies to the
 images `--small-preset` encodes and to lossy alpha frames; lossless frames are tiled by `--ll-tile-area`
 (see `--help`) unless that is `0`. An image too small for the requested grid gets the minimum tiling.
 More tiles shorten the wavefront's serial chain and cost a little compression; deblocking and CDEF work
 across tile edges, so they leave no visible seams. On the L4 (58 SMs; size-range set, default settings,
-median of 3), `--tiles 2,2,2` (4 × 4) ran at 125.6 MP/s against 112.3 for the default 2 × 2 (+12 %), and
-8 × 8 (`2,3,3`) at 128.4 (+14 %); 4 × 4 cost +0.58 % BD-rate on the photos of 2 MP and more (SSIMULACRA2;
-CVVDP +0.56 %). In a contributed measurement on an RTX 5090 (170 SMs), 4 × 4 was 39 % faster than the
-default for 0.2 % more bytes.
+median of 3), 4 × 4 ran at 125.6 MP/s against 112.3 for 2 × 2 (`2,1,1`, the default up to v0.3.0; +12 %),
+and 8 × 8 (`2,3,3`) at 128.4 (+14 %); 4 × 4 cost +0.58 % BD-rate against 2 × 2 on the photos of 2 MP and
+more (SSIMULACRA2; CVVDP +0.56 %). In a contributed measurement on an RTX 5090 (170 SMs), 4 × 4 was 39 %
+faster than 2 × 2 for 0.2 % more bytes.
 
 Batch-mode environment variables: `GP_ENCODERS` (concurrent encoders, default 3), `GP_ENCODE_MP`
 (megapixels per GPU batch, default 48) and `GP_INGEST_WORKERS` (JPEG parsing threads, default 4).
