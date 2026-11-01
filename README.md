@@ -52,7 +52,7 @@ to store and send (at equal quality, av1gpu's files are 31 % smaller than WebP's
 | **116 MP/s** | on one NVIDIA L4, a 72 W data-centre card (with `GP_ENCODERS=4`) |
 | **+0.1 %** | file size against libaom speed 6 at equal quality (median BD-rate, SSIMULACRA2; +0.7 % against libaom with its tiling off) |
 | **−31 %** | file size against WebP at equal quality |
-| **0.1 cores** | of CPU while encoding, so the CPU stays free for other work |
+| **0.1 cores** | of CPU while encoding JPEGs, so the CPU stays free for other work |
 | **bit-exact** | every test encode decodes to the encoder's own reconstruction in dav1d and libaom |
 
 ## 🎬 See it run
@@ -320,7 +320,7 @@ project. Before you rely on it, note:
   transparency becomes an AVIF alpha channel. There is no 4:2:2 output or animation.
 - Some inputs are not handled on the GPU path. The batch mode skips them and lists them on stderr, so
   you can send them to another encoder: CMYK/YCCK JPEGs, 12-bit JPEGs, images over 35.6 MP and
-  unreadable files. PNG and WebP inputs are decoded on the CPU.
+  unreadable files. PNG and WebP inputs are decoded on the CPU, on every core av1gpu may use.
 - Tools not implemented: palette, intra block copy, loop restoration, superres, film grain.
 
 ## 🛠️ Building
@@ -427,7 +427,11 @@ against libaom speed 6; images below 2 MP are byte-identical. In a contributed m
 (170 SMs), 4 × 4 was 39 % faster than 2 × 2 for 0.2 % more bytes.
 
 Batch-mode environment variables: `GP_ENCODERS` (concurrent encoders, default 3), `GP_ENCODE_MP`
-(megapixels per GPU batch, default 48) and `GP_INGEST_WORKERS` (JPEG parsing threads, default 4).
+(megapixels per GPU batch, default 48), `GP_INGEST_WORKERS` (JPEG parsing threads) and `GP_FALLBACK_WORKERS`
+(PNG and WebP decoding threads). The two thread counts default to one per CPU that av1gpu may use: the
+affinity mask (`taskset`, cpusets) or a cgroup CPU limit (`docker --cpus`, Kubernetes) if lower. Decoded
+PNG and WebP images wait on the GPU for an encoder, at most `GP_FALLBACK_QUEUE_MP` megapixels of them
+(default twice `GP_ENCODE_MP`).
 The encoder needs about 1 GB of GPU memory with these settings, and the JPEG decoder about 0.6 GB more.
 `GP_INGEST_DECODER=1` forces the CPU-entropy-decode + GPU-IDCT JPEG path on GPUs without a hardware
 JPEG engine. av1gpu also falls back to that path automatically.
