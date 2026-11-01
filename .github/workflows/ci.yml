@@ -34,3 +34,24 @@ jobs:
       # ran the 16 GB runner out of memory
       - run: cmake --build build -j 1
       - run: build/av1gpu --help
+
+  # the CUDA encoder must also compile with Clang as the CUDA compiler: Clang 23 with CUDA 13.0 (13.2's CCCL
+  # headers do not compile with Clang 23) and CMake 4.2 (3.28 cannot identify Clang with a CUDA 13 toolkit)
+  clang-cuda-build:
+    runs-on: ubuntu-24.04
+    container: nvidia/cuda:13.0.0-devel-ubuntu24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y ca-certificates wget ninja-build pkg-config g++ python3-pip \
+            libjpeg-turbo8-dev libpng-dev libwebp-dev
+          wget -qO /etc/apt/trusted.gpg.d/apt.llvm.org.asc https://apt.llvm.org/llvm-snapshot.gpg.key
+          echo "deb http://apt.llvm.org/noble/ llvm-toolchain-noble-23 main" > /etc/apt/sources.list.d/llvm-23.list
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y clang-23
+          pip3 install --break-system-packages cmake==4.2.3
+      - run: cmake -S . -B build -G Ninja -DCMAKE_CUDA_COMPILER=clang++-23 -DCMAKE_CUDA_ARCHITECTURES="75;120"
+      # Clang needs under 1 GB per k_recon translation unit (nvcc several GB); -j 1 as in cuda-build all the same
+      - run: cmake --build build -j 1
+      - run: build/av1gpu --help

@@ -1,6 +1,7 @@
 // device-side tables and helpers (included once, by kernels.cu).
 #pragma once
 #include <cuda_runtime.h>
+#include <stdio.h>
 #include <stdint.h>
 #include "av1g/hd.h"
 #include "av1g/enums_gen.h"
@@ -60,6 +61,7 @@ static __device__ float g_avgSkip0;         // skip = 0, averaged over contexts
         if (e == cudaSuccess) e = cudaMemcpyToSymbol(g_avgYMode, h->avgYMode, sizeof h->avgYMode); \
         if (e == cudaSuccess) e = cudaMemcpyToSymbol(g_avgPart, h->avgPart, sizeof h->avgPart);   \
         if (e == cudaSuccess) e = cudaMemcpyToSymbol(g_avgSkip0, &h->avgSkip0, sizeof h->avgSkip0); \
+        if (e != cudaSuccess) fprintf(stderr, "%s: %s\n", #name, cudaGetErrorString(e));           \
         return e == cudaSuccess ? 0 : -1;                                                         \
     }
 

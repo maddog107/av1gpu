@@ -342,6 +342,26 @@ number.
 `-DAV1GPU_CUDA=OFF` builds just the CPU pieces: the bitstream writer, the AVIF muxer and the fuzz
 test. That build needs no CUDA toolkit.
 
+**Building with Clang.** Clang can compile the CUDA code instead of nvcc. Tested with Clang 23.1.5 (from
+[apt.llvm.org](https://apt.llvm.org)), CUDA 13.0 and CMake 4.2.3 on an L4:
+
+```bash
+cmake -S . -B build-clang -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CUDA_COMPILER=clang++-23 \
+  -DCUDAToolkit_ROOT=/usr/local/cuda-13.0 -DCMAKE_CUDA_ARCHITECTURES=native
+cmake --build build-clang
+```
+
+`-DCUDAToolkit_ROOT` picks the toolkit: its headers, its `ptxas` and the libraries that get linked. Clang 23
+does not compile CUDA 13.2's CCCL headers yet (they declare host-only deduction guides, which Clang rejects).
+With a CUDA 13 toolkit, CMake 3.28 (Ubuntu 24.04) cannot identify Clang as a CUDA compiler, because its
+check compiles for sm_52, which CUDA 13 dropped; use a newer CMake (`pip install cmake`).
+
+On the L4, the Clang build took 1:47 instead of nvcc's 4:54 (16 cores, sm_89), with under 0.8 GB per
+`k_recon` file instead of 1.5–1.7 GB. It passed the unit tests and the decoder gates, and 1,157 of 1,158 test encodes were
+byte-identical to nvcc's (the other one differs by 4 bytes, at equal SSIMULACRA2). It encodes 8–17 % slower
+(0.18–24 MP set: default 70 vs 83 MP/s, turbo3 103 vs 125, slow 14.4 vs 15.7), so the release binaries stay
+with nvcc.
+
 ## 🚀 Usage
 
 ```bash
