@@ -86,9 +86,9 @@ Presets change only the search effort; every preset produces valid, decoder-exac
 | `base` | all 19 block shapes, K = 4 candidates (2 re-checked in the closed loop), tx-type search |
 | `fast` | no 4:1 shapes, K = 2, no tx search in the analysis |
 | `faster` | as fast, plus pruning of flat areas and a single closed-loop candidate |
-| `turbo` | as faster, without 32×64/64×32, 2× subsampled SATD for blocks ≥ 16×16, K = 1, 2×2 tiles for images ≥ 2 MP |
+| `turbo` | as faster, without 32×64/64×32, 2× subsampled SATD for blocks ≥ 16×16, K = 1, 4×4 tiles for images ≥ 2 MP |
 | `turbo2` | as turbo, without 4×4/4×8/8×4, no closed-loop tx search, one chroma candidate |
-| `turbo3` | as turbo2, without angle deltas, 4×2 tiles |
+| `turbo3` | as turbo2, without angle deltas |
 
 The default is `turbo` for images of 1 MP and above and `base` for smaller ones (`--small-preset`).
 In the original test set, images under 1 MP were 30 % of the files but only 3.5 % of the pixels.
