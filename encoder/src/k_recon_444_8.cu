@@ -8,3 +8,7 @@ GP_DEFINE_TABLE_UPLOAD(gp_upload_tables_recon_444_8)
 void gp_launch_recon_444_8(const GpBatch &B, const GpParams &P, const uint32_t *dSbList, uint32_t n, cudaStream_t st) {
     k_recon<0, 8><<<n, RC_NT, 0, st>>>(B, P, dSbList);
 }
+size_t gp_recon_444_8_local_bytes() {
+    cudaFuncAttributes a;
+    return cudaFuncGetAttributes(&a, k_recon<0, 8>) == cudaSuccess ? a.localSizeBytes : 0;
+}

@@ -3,9 +3,11 @@
 // encoded as one GPU batch (analysis -> DP -> wavefront closed loop -> pack), then entropy coded
 // (GPU: av1core GPU entropy, or CPU writer threads) and written.  Reports img/s, MP/s, per-stage times, CPU use.
 #include "pipeline.h"
+#include "pinned.h"
 #include "imageio.h"
 #include "ingest_api.h"
 #include "av1g/av1g.h"
+size_t gp_recon_local_bytes();   // k_recon.cu
 
 #include <cuda_runtime.h>
 #ifdef _WIN32
@@ -266,6 +268,15 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
     GpConfig bcfg = cfg;
     bcfg.wantRecon = getenv("GP_WANT_RECON") != nullptr;
     if (enc.init(bcfg, err)) { fprintf(stderr, "init: %s\n", err.c_str()); return 1; }
+    if (!cfg.lossless) {
+        // local memory (stack) for the closed loop up front.  The driver grows it at the first launch that needs more
+        // (k_analysis, k_dp, k_recon: 1.2-3.3 KB per thread) and waits for the GPU to drain meanwhile, with every
+        // thread's CUDA calls blocked: 0.17 s at the first k_dp launch on an L4 (nsys)
+        size_t cur = 0;
+        const size_t need = gp_recon_local_bytes();
+        if (cudaDeviceGetLimit(&cur, cudaLimitStackSize) == cudaSuccess && need > cur && cudaDeviceSetLimit(cudaLimitStackSize, need) != cudaSuccess)
+            cudaGetLastError();   // (only slower)
+    }
     const char *bmp = getenv("GP_BATCH_MP");
     // CPU threads scale with the CPUs this process may use (affinity mask, cgroup limit): JPEG parse / CPU entropy
     // decode, PNG / WebP decode and --cpu-entropy writers each get one thread per CPU.  The GPU-side counts (encoders,
@@ -493,7 +504,7 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
         std::vector<ingest_fallback> list;   // fallbacks reported so far; list[next..] not yet taken by a worker
         size_t next = 0;
         bool listDone = false;
-        auto one = [&](const ingest_fallback &fe, cudaStream_t fs) {
+        auto one = [&](const ingest_fallback &fe, cudaStream_t &fs) {
             if (ingestDrained && encLive == 0) return;   // the encoders stopped (error)
             const std::string &p = paths[fe.index];
             const GpFileKind kind = gp_sniff(p);
@@ -527,6 +538,7 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
                 fbQueuedPx -= px;
             };
             const size_t ys = hp.bytes(0), cs = hp.bytes(1), as = hp.abytes();   // bytes (10-bit: uint16_t samples)
+            if (!fs) cudaStreamCreateWithFlags(&fs, cudaStreamNonBlocking);
             uint8_t *d = nullptr;
             if (cudaMallocAsync((void **)&d, ys + 2 * cs + as, fs) != cudaSuccess) {
                 cudaGetLastError();
@@ -563,12 +575,13 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
             std::lock_guard<std::mutex> lk(fbMu);
             fbReady.push_back(F);
         };
-        // persistent workers (each with its own stream): one image at a time, the next as soon as one is done
+        // persistent workers (each with its own stream): one image at a time, the next as soon as one is done.  The
+        // stream is created with the worker's first image: JPEG-only lists then create and destroy none (16 workers'
+        // cudaStreamDestroy calls at the end of ingest held other threads' launches for 57 ms, nsys on an L4)
         std::vector<std::thread> th;
         for (int w = 0; w < nfw; w++)
             th.emplace_back([&]() {
-                cudaStream_t fs;
-                cudaStreamCreateWithFlags(&fs, cudaStreamNonBlocking);
+                cudaStream_t fs = nullptr;
                 for (;;) {
                     ingest_fallback fe;
                     {
@@ -579,7 +592,7 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
                     }
                     one(fe, fs);
                 }
-                cudaStreamDestroy(fs);
+                if (fs) cudaStreamDestroy(fs);
             });
         std::vector<ingest_fallback> fb(4096);
         for (;;) {
@@ -890,6 +903,7 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
     ingest_stats is;
     ingest_get_stats(ictx, &is);
     ingest_destroy(ictx);
+    gp_pinned_free_exited();
     const double mp = A.pixels / 1e6;
     fprintf(stderr,
             "[av1gpu] %llu images (%.1f MP) in %.1f ms: %.2f img/s, %.2f MP/s; %llu batches; out %.2f MB (%.3f bpp); "
