@@ -309,10 +309,89 @@ __device__ __forceinline__ void warp_eval_rt(const int16_t *res, float *tmp, int
     warp_quant_rate_rt<BD>(tmp, q, e, o, W, H);
 }
 
-// compile-time-size wrapper (analysis kernels): constants propagate through the inlined runtime code
+// warp_fwd_rt for compile-time sizes (analysis kernels): each column / row is split over GC / GR lanes that compute
+// a share of its outputs, so blocks narrower than 32 keep the warp busy (same fmaf order per output)
+template <int W, int H>
+__device__ __forceinline__ void warp_fwd_ct(const int16_t *res, float *tmp, int txSz, int txType) {
+    constexpr int TH = H > 32 ? 32 : H, TW = W > 32 ? 32 : W, TS = W + 1;
+    constexpr int GC = (W >= 32 || TH <= 4) ? 1 : (32 / W < TH / 4 ? 32 / W : TH / 4), OC = TH / GC;
+    constexpr int GR = (TH >= 32 || TW <= 4) ? 1 : (32 / TH < TW / 4 ? 32 / TH : TW / 4), OR = TW / GR;
+    const int lane = threadIdx.x & 31;
+    const int rk = av1g_row_kind(txType), ck = av1g_col_kind(txType);
+    const int fud = av1g_flip_ud(txType), flr = av1g_flip_lr(txType);
+    const float *Fc = g_fwd + g_fwdOff[ck][log2i(H)];
+    const float *Fr = g_fwd + g_fwdOff[rk][log2i(W)];
+    const float *FcT = g_fwdT + g_fwdOff[ck][log2i(H)];
+    const float *FrT = g_fwdT + g_fwdOff[rk][log2i(W)];
+    for (int it = lane; it < W * GC; it += 32) {
+        const int j = it % W, i0 = (it / W) * OC;
+        const int jj = flr ? W - 1 - j : j;
+        float acc[OC];
+        if (ck == AV1G_K_IDT) {   // diagonal (identity transforms are never 64 long, so TH == H)
+#pragma unroll
+            for (int i = 0; i < OC; i++)
+                acc[i] = __ldg(&Fc[(i0 + i) * H + i0 + i]) * (float)res[(fud ? H - 1 - (i0 + i) : i0 + i) * W + jj];
+        } else {
+#pragma unroll
+            for (int i = 0; i < OC; i++) acc[i] = 0.f;
+            for (int k = 0; k < H; k++) {
+                const float x = (float)res[(fud ? H - 1 - k : k) * W + jj];
+                const float4 *f4 = (const float4 *)(FcT + k * H + i0);
+#pragma unroll
+                for (int i4 = 0; i4 < OC / 4; i4++) {
+                    const float4 f = __ldg(&f4[i4]);
+                    acc[4 * i4 + 0] = fmaf(f.x, x, acc[4 * i4 + 0]);
+                    acc[4 * i4 + 1] = fmaf(f.y, x, acc[4 * i4 + 1]);
+                    acc[4 * i4 + 2] = fmaf(f.z, x, acc[4 * i4 + 2]);
+                    acc[4 * i4 + 3] = fmaf(f.w, x, acc[4 * i4 + 3]);
+                }
+            }
+        }
+#pragma unroll
+        for (int i = 0; i < OC; i++) tmp[(i0 + i) * TS + j] = acc[i];
+    }
+    __syncwarp();
+    const float scale = g_txScale[txSz];
+    // rows, in place: every lane of a row reads it before any of them writes
+    for (int it0 = 0; it0 < TH * GR; it0 += 32) {
+        const int it = it0 + lane, i = it % TH, j0 = (it / TH) * OR;
+        const bool act = it < TH * GR;
+        float acc[OR];
+        if (act) {
+            if (rk == AV1G_K_IDT) {
+#pragma unroll
+                for (int jj = 0; jj < OR; jj++) acc[jj] = __ldg(&Fr[(j0 + jj) * W + j0 + jj]) * tmp[i * TS + j0 + jj];
+            } else {
+#pragma unroll
+                for (int jj = 0; jj < OR; jj++) acc[jj] = 0.f;
+                for (int k = 0; k < W; k++) {
+                    const float x = tmp[i * TS + k];
+                    const float4 *f4 = (const float4 *)(FrT + k * W + j0);
+#pragma unroll
+                    for (int j4 = 0; j4 < OR / 4; j4++) {
+                        const float4 f = __ldg(&f4[j4]);
+                        acc[4 * j4 + 0] = fmaf(f.x, x, acc[4 * j4 + 0]);
+                        acc[4 * j4 + 1] = fmaf(f.y, x, acc[4 * j4 + 1]);
+                        acc[4 * j4 + 2] = fmaf(f.z, x, acc[4 * j4 + 2]);
+                        acc[4 * j4 + 3] = fmaf(f.w, x, acc[4 * j4 + 3]);
+                    }
+                }
+            }
+        }
+        __syncwarp();
+        if (act) {
+#pragma unroll
+            for (int jj = 0; jj < OR; jj++) tmp[i * TS + j0 + jj] = acc[jj] * scale;
+        }
+    }
+    __syncwarp();
+}
+
+// compile-time-size evaluation (analysis kernels)
 template <int W, int H, int BD = 8>
 __device__ __forceinline__ void warp_eval(const int16_t *res, float *tmp, int16_t *q, const EvalIn &e, EvalOut &o) {
-    warp_eval_rt<BD>(res, tmp, q, e, o, W, H);
+    warp_fwd_ct<W, H>(res, tmp, e.txSz, e.txType);
+    warp_quant_rate_rt<BD>(tmp, q, e, o, W, H);
 }
 
 // Runtime dispatch over the 19 transform sizes (closed loop).

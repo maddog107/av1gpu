@@ -12,42 +12,74 @@ struct SmallTx {
     static constexpr int n = W * H;
 };
 
-// scalar forward transform: out[i][j] (H x W, row-major, no 32-clipping needed for these sizes)
+// scalar forward transform: out[i][j] (H x W, row-major, no 32-clipping needed for these sizes).  The passes take
+// the transposed matrices four outputs per load; each output keeps the fmaf order of the matrix product.
 template <int W, int H>
 __device__ __forceinline__ void fwd_scalar(const int16_t *res, float *out, int txSz, int txType) {
     const int rk = av1g_row_kind(txType), ck = av1g_col_kind(txType);
     const int fud = av1g_flip_ud(txType), flr = av1g_flip_lr(txType);
     const float *Fc = g_fwd + g_fwdOff[ck][SmallTx<W, H>::lh];
     const float *Fr = g_fwd + g_fwdOff[rk][SmallTx<W, H>::lw];
+    const float *FcT = g_fwdT + g_fwdOff[ck][SmallTx<W, H>::lh];
+    const float *FrT = g_fwdT + g_fwdOff[rk][SmallTx<W, H>::lw];
     float tmp[H * W];
     // columns
 #pragma unroll
     for (int j = 0; j < W; j++) {
         const int jj = flr ? W - 1 - j : j;
+        float x[H];
 #pragma unroll
-        for (int i = 0; i < H; i++) {
-            float s = 0.f;
-            if (ck == AV1G_K_IDT) s = __ldg(&Fc[i * H + i]) * (float)res[(fud ? H - 1 - i : i) * W + jj];
-            else {
+        for (int k = 0; k < H; k++) x[k] = (float)res[(fud ? H - 1 - k : k) * W + jj];
+        if (ck == AV1G_K_IDT) {
 #pragma unroll
-                for (int k = 0; k < H; k++) s = fmaf(__ldg(&Fc[i * H + k]), (float)res[(fud ? H - 1 - k : k) * W + jj], s);
+            for (int i = 0; i < H; i++) tmp[i * W + j] = __ldg(&Fc[i * H + i]) * x[i];
+        } else {
+            float acc[H];
+#pragma unroll
+            for (int i = 0; i < H; i++) acc[i] = 0.f;
+#pragma unroll
+            for (int k = 0; k < H; k++) {
+                const float4 *f4 = (const float4 *)(FcT + k * H);   // FcT[k][i] = Fc[i][k]
+#pragma unroll
+                for (int i4 = 0; i4 < H / 4; i4++) {
+                    const float4 f = __ldg(&f4[i4]);
+                    acc[4 * i4 + 0] = fmaf(f.x, x[k], acc[4 * i4 + 0]);
+                    acc[4 * i4 + 1] = fmaf(f.y, x[k], acc[4 * i4 + 1]);
+                    acc[4 * i4 + 2] = fmaf(f.z, x[k], acc[4 * i4 + 2]);
+                    acc[4 * i4 + 3] = fmaf(f.w, x[k], acc[4 * i4 + 3]);
+                }
             }
-            tmp[i * W + j] = s;
+#pragma unroll
+            for (int i = 0; i < H; i++) tmp[i * W + j] = acc[i];
         }
     }
+    // rows
     const float scale = g_txScale[txSz];
 #pragma unroll
-    for (int i = 0; i < H; i++)
+    for (int i = 0; i < H; i++) {
+        if (rk == AV1G_K_IDT) {
 #pragma unroll
-        for (int j = 0; j < W; j++) {
-            float s = 0.f;
-            if (rk == AV1G_K_IDT) s = __ldg(&Fr[j * W + j]) * tmp[i * W + j];
-            else {
+            for (int j = 0; j < W; j++) out[i * W + j] = __ldg(&Fr[j * W + j]) * tmp[i * W + j] * scale;
+        } else {
+            float acc[W];
 #pragma unroll
-                for (int k = 0; k < W; k++) s = fmaf(__ldg(&Fr[j * W + k]), tmp[i * W + k], s);
+            for (int j = 0; j < W; j++) acc[j] = 0.f;
+#pragma unroll
+            for (int k = 0; k < W; k++) {
+                const float4 *f4 = (const float4 *)(FrT + k * W);   // FrT[k][j] = Fr[j][k]
+#pragma unroll
+                for (int j4 = 0; j4 < W / 4; j4++) {
+                    const float4 f = __ldg(&f4[j4]);
+                    acc[4 * j4 + 0] = fmaf(f.x, tmp[i * W + k], acc[4 * j4 + 0]);
+                    acc[4 * j4 + 1] = fmaf(f.y, tmp[i * W + k], acc[4 * j4 + 1]);
+                    acc[4 * j4 + 2] = fmaf(f.z, tmp[i * W + k], acc[4 * j4 + 2]);
+                    acc[4 * j4 + 3] = fmaf(f.w, tmp[i * W + k], acc[4 * j4 + 3]);
+                }
             }
-            out[i * W + j] = s * scale;
+#pragma unroll
+            for (int j = 0; j < W; j++) out[i * W + j] = acc[j] * scale;
         }
+    }
 }
 
 template <int W, int H, int BD = 8>
@@ -137,18 +169,18 @@ __global__ void __launch_bounds__(128) k_analysis_small(GpBatch B, GpParams P, u
         return b;
     };
     auto satd_of = [&](int c) -> float {
-        float t = 0.f;
+        int t = 0;
         for (int sy = 0; sy < H; sy += 4)
             for (int sx = 0; sx < W; sx += 4) {
                 int d[16];
+                pred_sub4(c, sy, sx, T::lw, T::lh, A, L, dcv, d);
 #pragma unroll
                 for (int i = 0; i < 4; i++)
 #pragma unroll
-                    for (int j = 0; j < 4; j++)
-                        d[i * 4 + j] = (int)s[(sy + i) * W + sx + j] - pred_px(c, sy + i, sx + j, T::lw, T::lh, A, L, dcv);
-                t += hadamard4_abs(d);
+                    for (int j = 0; j < 4; j++) d[i * 4 + j] = (int)s[(sy + i) * W + sx + j] - d[i * 4 + j];
+                t += hadamard4_sum(d);
             }
-        return t;
+        return (float)t * 0.25f;
     };
     const GpExtCand *ext = (const GpExtCand *)B.extCand[BS];
     int K = min(P.K, GP_MAXK);
@@ -216,39 +248,35 @@ __global__ void __launch_bounds__(128) k_analysis_small(GpBatch B, GpParams P, u
             av1g_edge_prepare<BD>(pangle_of(m, cand_delta(c)), T::lw, T::lh, 0, haveLeft, haveAbove, x, y, maxX, maxY,
                                   pa + AV1G_EDGE_OFF, pl + AV1G_EDGE_OFF, &upA, &upL);
         }
+        for (int sy = 0; sy < H; sy += 4)
+            for (int sx = 0; sx < W; sx += 4) {
+                int pr[16];
+                pred_sub4(c, sy, sx, T::lw, T::lh, ef ? pa + AV1G_EDGE_OFF : A, ef ? pl + AV1G_EDGE_OFF : L, dcv, pr, upA, upL);
 #pragma unroll
-        for (int i = 0; i < H; i++)
+                for (int i = 0; i < 4; i++)
 #pragma unroll
-            for (int j = 0; j < W; j++) {
-                const int pr = ef ? av1g_pred_pixel_up(m, pangle_of(m, cand_delta(c)), i, j, T::lw, T::lh, pa + AV1G_EDGE_OFF,
-                                                       pl + AV1G_EDGE_OFF, upA, upL)
-                                  : pred_px(c, i, j, T::lw, T::lh, A, L, dcv);
-                res[i * W + j] = (int16_t)((int)s[i * W + j] - pr);
+                    for (int j = 0; j < 4; j++) res[(sy + i) * W + sx + j] = (int16_t)((int)s[(sy + i) * W + sx + j] - pr[i * 4 + j]);
             }
     };
+    // one evaluation site (code size): steps 0 .. nK-1 rate the candidates with DCT_DCT, the next ones the other tx
+    // types of the set for the winner
     float bestJ = GP_INF;
-    int bestK = 0, bestTx = AV1G_DCT_DCT;
-    for (int k = 0; k < nc && k < K; k++) {
+    int bestK = 0, bestTx = AV1G_DCT_DCT, resK = -1;
+    const int nK = min(nc, K);
+    const int nSteps = nK + ((nc > 0 && P.txSearch && set != AV1G_TX_SET_DCTONLY) ? 15 : 0);
+    for (int st = 0; st < nSteps; st++) {
+        const int k = st < nK ? st : bestK, t = st < nK ? AV1G_DCT_DCT : st - nK + 1;
+        if (t != AV1G_DCT_DCT && !av1g_tx_type_in_set_intra(set, t)) continue;
         const int c = cands[k];
-        residual(c);
-        e.txType = AV1G_DCT_DCT;
+        if (k != resK) { residual(c); resK = k; }
+        e.txType = t;
         e.intraDir = cand_mode(c);
-        e.qm = av1g_qm(I.usingQm, I.qm[0], 0, txSz, AV1G_DCT_DCT);
+        e.qm = av1g_qm(I.usingQm, I.qm[0], 0, txSz, t);
         const EvalOut o = eval_scalar<W, H, BD>(res, e);
         const float J = o.D + lambda * (o.R + mbits(c) + overhead);
-        if (J < bestJ) { bestJ = J; bestK = k; }
-    }
-    if (nc > 0 && P.txSearch && set != AV1G_TX_SET_DCTONLY) {
-        const int c = cands[bestK];
-        residual(c);
-        e.intraDir = cand_mode(c);
-        for (int t = 1; t < 16; t++) {
-            if (!av1g_tx_type_in_set_intra(set, t)) continue;
-            e.txType = t;
-            e.qm = av1g_qm(I.usingQm, I.qm[0], 0, txSz, t);
-            const EvalOut o = eval_scalar<W, H, BD>(res, e);
-            const float J = o.D + lambda * (o.R + mbits(c) + overhead);
-            if (J < bestJ) { bestJ = J; bestTx = t; }
+        if (J < bestJ) {
+            bestJ = J;
+            if (st < nK) bestK = k; else bestTx = t;
         }
     }
     out.J = nc ? bestJ : GP_INF;

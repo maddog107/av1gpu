@@ -18,10 +18,11 @@ struct ASmem {
     int up[2];
     float satd[32];
     int cand[32];
-    int dcv;
 };
 
-__device__ __forceinline__ float hadamard4_abs(int *d) {
+// sum |coefficients| of the 4x4 Hadamard transform of d (the SATD is 0.25 x this; at most 64 x the largest |d|, so
+// the sums over a 64x64 block stay exact in float)
+__device__ __forceinline__ int hadamard4_sum(int *d) {
     // rows
 #pragma unroll
     for (int i = 0; i < 4; i++) {
@@ -35,19 +36,131 @@ __device__ __forceinline__ float hadamard4_abs(int *d) {
         int s0 = d[j] + d[4 + j], s1 = d[j] - d[4 + j], s2 = d[8 + j] + d[12 + j], s3 = d[8 + j] - d[12 + j];
         sum += abs(s0 + s2) + abs(s1 + s3) + abs(s0 - s2) + abs(s1 - s3);
     }
-    return (float)sum * 0.25f;
+    return sum;
 }
+__device__ __forceinline__ float hadamard4_abs(int *d) { return (float)hadamard4_sum(d) * 0.25f; }
 
 __device__ __forceinline__ int pangle_of(int mode, int delta) {
     return av1g_is_directional(mode) ? AV1G_T(Mode_To_Angle)[mode] + delta * AV1G_ANGLE_STEP : 0;
 }
 
-// prediction of pixel (i, j) for candidate c, edges A/L, dc value dcv
+// prediction of the 4x4 sub-block at (sy, sx) for candidate c (edges A/L, dc value dcv) into p[i * 4 + j]: the
+// values of av1g_pred_pixel_up (spec 7.11.2; upA / upL: upsampling flags of edge-filtered edges), with the
+// per-row / per-column terms and the mode switch hoisted
 template <typename P>
-__device__ __forceinline__ int pred_px(int c, int i, int j, int lw, int lh, const P *A, const P *L, int dcv) {
+__device__ __forceinline__ void pred_sub4(int c, int sy, int sx, int lw, int lh, const P *A, const P *L, int dcv, int *p,
+                                          int upA = 0, int upL = 0) {
     const int m = cand_mode(c);
-    if (m == AV1G_DC_PRED) return dcv;
-    return av1g_pred_pixel(m, pangle_of(m, cand_delta(c)), i, j, lw, lh, A, L);
+    const int w = 1 << lw, h = 1 << lh;
+    if (av1g_is_directional(m)) {
+        const int pAngle = pangle_of(m, cand_delta(c));
+        if (pAngle == 90 || pAngle == 180) {
+#pragma unroll
+            for (int i = 0; i < 4; i++)
+#pragma unroll
+                for (int j = 0; j < 4; j++) p[i * 4 + j] = pAngle == 90 ? A[sx + j] : L[sy + i];
+        } else if (pAngle < 90) {
+            const int dx = AV1G_T(Dr_Intra_Derivative)[pAngle], maxBaseX = (w + h - 1) << upA;
+#pragma unroll
+            for (int i = 0; i < 4; i++) {
+                const int idx = (sy + i + 1) * dx, b = (idx >> (6 - upA)) + (sx << upA), s = ((idx << upA) >> 1) & 0x1F;
+#pragma unroll
+                for (int j = 0; j < 4; j++) {
+                    const int k = b + (j << upA);
+                    p[i * 4 + j] = k < maxBaseX ? (A[k] * (32 - s) + A[k + 1] * s + 16) >> 5 : A[maxBaseX];
+                }
+            }
+        } else if (pAngle > 180) {
+            const int dy = AV1G_T(Dr_Intra_Derivative)[270 - pAngle];
+#pragma unroll
+            for (int j = 0; j < 4; j++) {
+                const int idx = (sx + j + 1) * dy, b = (idx >> (6 - upL)) + (sy << upL), s = ((idx << upL) >> 1) & 0x1F;
+#pragma unroll
+                for (int i = 0; i < 4; i++) {
+                    const int k = b + (i << upL);
+                    p[i * 4 + j] = (L[k] * (32 - s) + L[k + 1] * s + 16) >> 5;
+                }
+            }
+        } else {
+            const int dx = AV1G_T(Dr_Intra_Derivative)[180 - pAngle], dy = AV1G_T(Dr_Intra_Derivative)[pAngle - 90];
+#pragma unroll
+            for (int i = 0; i < 4; i++)
+#pragma unroll
+                for (int j = 0; j < 4; j++) {
+                    int idx = ((sx + j) << 6) - (sy + i + 1) * dx, up = upA;
+                    const P *E = A;
+                    if ((idx >> (6 - upA)) < -(1 << upA)) { idx = ((sy + i) << 6) - (sx + j + 1) * dy; up = upL; E = L; }
+                    const int b = idx >> (6 - up), s = ((idx * (1 << up)) >> 1) & 0x1F;
+                    p[i * 4 + j] = (E[b] * (32 - s) + E[b + 1] * s + 16) >> 5;
+                }
+        }
+        return;
+    }
+    if (m == AV1G_DC_PRED) {
+#pragma unroll
+        for (int k = 0; k < 16; k++) p[k] = dcv;
+        return;
+    }
+    if (m == AV1G_PAETH_PRED) {
+        const int tl = A[-1];
+#pragma unroll
+        for (int i = 0; i < 4; i++)
+#pragma unroll
+            for (int j = 0; j < 4; j++) {
+                const int a = A[sx + j], l = L[sy + i], base = a + l - tl;
+                const int pL = abs(base - l), pT = abs(base - a), pTL = abs(base - tl);
+                p[i * 4 + j] = (pL <= pT && pL <= pTL) ? l : pT <= pTL ? a : tl;
+            }
+        return;
+    }
+    // SMOOTH, SMOOTH_V, SMOOTH_H: s = v + h with the vertical / horizontal terms of the modes that use them
+    const uint8_t *wx = av1g_sm_weights(lw) + sx, *wy = av1g_sm_weights(lh) + sy;
+    const int bl = L[h - 1], tr = A[w - 1];
+    const int sh = m == AV1G_SMOOTH_PRED ? 9 : 8, useV = m != AV1G_SMOOTH_H_PRED, useH = m != AV1G_SMOOTH_V_PRED;
+#pragma unroll
+    for (int i = 0; i < 4; i++)
+#pragma unroll
+        for (int j = 0; j < 4; j++) {
+            const int v = useV ? wy[i] * A[sx + j] + (256 - wy[i]) * bl : 0;
+            const int hz = useH ? wx[j] * L[sy + i] + (256 - wx[j]) * tr : 0;
+            p[i * 4 + j] = (v + hz + (1 << (sh - 1))) >> sh;
+        }
+}
+
+// index of the smallest (v, i) over the warp (-1 if every v is GP_INF): the pick of a serial scan in index order
+// that keeps the first of equal values
+__device__ __forceinline__ int warp_argmin(float v, int i) {
+    for (int o = 16; o > 0; o >>= 1) {
+        const float ov = __shfl_xor_sync(0xffffffffu, v, o);
+        const int oi = __shfl_xor_sync(0xffffffffu, i, o);
+        if (ov < v || (ov == v && oi < i)) { v = ov; i = oi; }
+    }
+    return v < GP_INF ? i : -1;
+}
+
+// av1g_dc_value with the edge sums taken over the warp (all lanes get it)
+template <int BD, typename P>
+__device__ __forceinline__ int warp_dc_value(const P *A, const P *L, int haveLeft, int haveAbove, int lw, int lh) {
+    const int lane = threadIdx.x & 31, w = 1 << lw, h = 1 << lh;
+    int sa = 0, sl = 0;
+    for (int k = lane; k < w; k += 32) sa += A[k];
+    for (int k = lane; k < h; k += 32) sl += L[k];
+    sa = warp_sumi(sa);
+    sl = warp_sumi(sl);
+    if (haveLeft && haveAbove) return (sa + sl + ((w + h) >> 1)) / (w + h);
+    if (haveLeft) return av1g_clip1<BD>((sl + (h >> 1)) >> lh);
+    if (haveAbove) return av1g_clip1<BD>((sa + (w >> 1)) >> lw);
+    return 1 << (BD - 1);
+}
+
+// 4 consecutive source samples (row offsets of the 4x4 sub-blocks are 4-sample aligned, luma rows 8-byte aligned)
+__device__ __forceinline__ void load4(const uint8_t *s, int *v) {
+    const uint32_t w = *(const uint32_t *)s;
+    v[0] = w & 255; v[1] = (w >> 8) & 255; v[2] = (w >> 16) & 255; v[3] = w >> 24;
+}
+__device__ __forceinline__ void load4(const uint16_t *s, int *v) {
+    const uint2 w = *(const uint2 *)s;
+    v[0] = w.x & 0xFFFF; v[1] = w.x >> 16; v[2] = w.y & 0xFFFF; v[3] = w.y >> 16;
 }
 
 // SATD of candidates cands[c0..c1) (all 4x4 sub-blocks), accumulated into satd[]
@@ -60,25 +173,34 @@ __device__ __forceinline__ void warp_screen(const P *src, int sp, const int *can
     // sub == 2: checkerboard of 4x4 sub-blocks (nsx is even for every shape >= 256 pixels)
     const int nsub = sub == 2 ? nsub0 / 2 : nsub0;
     const int items = (c1 - c0) * nsub;
-    for (int it = lane; it < items; it += 32) {
+    // nsub is a power of two: a pass of 32 items covers one candidate, or 32 / nsub candidates in aligned groups of
+    // nsub lanes; the group's integer sum goes to satd (exact, so the order of the additions does not matter)
+    for (int it0 = 0; it0 < items; it0 += 32) {
+        const int it = it0 + lane;
         const int ci = c0 + it / nsub;
-        int sb = it % nsub;
-        if (sub == 2) { const int r = (2 * sb) / nsx; sb = 2 * sb + (r & 1); }
-        const int sx = (sb % nsx) * 4, sy = (sb / nsx) * 4;
-        const int c = cands[ci];
-        int d[16];
+        int t = 0;
+        if (it < items) {
+            int sb = it % nsub;
+            if (sub == 2) { const int r = (2 * sb) / nsx; sb = 2 * sb + (r & 1); }
+            const int sx = (sb % nsx) * 4, sy = (sb / nsx) * 4;
+            int d[16], p[16];
+            pred_sub4(cands[ci], sy, sx, T::lw, T::lh, A, L, dcv, p);
 #pragma unroll
-        for (int i = 0; i < 4; i++)
+            for (int i = 0; i < 4; i++) load4(src + (sy + i) * sp + sx, d + 4 * i);
 #pragma unroll
-            for (int j = 0; j < 4; j++)
-                d[i * 4 + j] = (int)src[(sy + i) * sp + sx + j] - pred_px(c, sy + i, sx + j, T::lw, T::lh, A, L, dcv);
-        atomicAdd(&satd[ci], hadamard4_abs(d));
+            for (int k = 0; k < 16; k++) d[k] -= p[k];
+            t = hadamard4_sum(d);
+        }
+        for (int o = 16; o > 0; o >>= 1)
+            if (o < nsub) t += __shfl_xor_sync(0xffffffffu, t, o);
+        if (it < items && (lane & (nsub - 1)) == 0) satd[ci] += (float)t * 0.25f;
     }
     __syncwarp();
 }
 
-// residual of candidate c into res (W x H), returns sum r^2 (all lanes).  With the intra edge filter,
-// directional candidates use edges prepared by lane 0 into pa/pl (filter type 0: neighbour modes unknown).
+// residual of candidate c into res (W x H), returns sum r^2 in raster lane order (all lanes; 0 without a 64-sample
+// side, where EvalIn::resEnergy is unused).  With the intra edge filter, directional candidates use edges prepared
+// by lane 0 into pa/pl (filter type 0: neighbour modes unknown).
 template <int W, int H, int BD = 8, typename P>
 __device__ __forceinline__ float warp_residual(const P *src, int sp, int c, int16_t *res, const P *A,
                                                const P *L, int dcv, P *pa = nullptr, P *pl = nullptr,
@@ -88,25 +210,34 @@ __device__ __forceinline__ float warp_residual(const P *src, int sp, int c, int1
     const int lane = threadIdx.x & 31;
     const int m = cand_mode(c);
     const bool ef = edgeFilter && av1g_is_directional(m);
+    int upA = 0, upL = 0;
     if (ef) {
-        if (lane == 0) {
-            for (int k = 0; k < AV1G_EDGE_LEN; k++) { pa[k] = A[k - AV1G_EDGE_OFF]; pl[k] = L[k - AV1G_EDGE_OFF]; }
+        for (int k = lane; k < AV1G_EDGE_LEN; k += 32) { pa[k] = A[k - AV1G_EDGE_OFF]; pl[k] = L[k - AV1G_EDGE_OFF]; }
+        __syncwarp();
+        if (lane == 0)
             av1g_edge_prepare<BD>(pangle_of(m, cand_delta(c)), T::lw, T::lh, 0, haveL, haveA, x, y, maxX, maxY, pa + AV1G_EDGE_OFF,
                                   pl + AV1G_EDGE_OFF, &up[0], &up[1]);
-        }
         __syncwarp();
+        upA = up[0]; upL = up[1];
     }
-    float e = 0.f;
-    for (int p = lane; p < W * H; p += 32) {
-        const int i = p / W, j = p % W;
-        const int pr = ef ? av1g_pred_pixel_up(m, pangle_of(m, cand_delta(c)), i, j, T::lw, T::lh, pa + AV1G_EDGE_OFF,
-                                               pl + AV1G_EDGE_OFF, up[0], up[1])
-                          : pred_px(c, i, j, T::lw, T::lh, A, L, dcv);
-        const int r = (int)src[i * sp + j] - pr;
-        res[p] = (int16_t)r;
-        e += (float)(r * r);
+    const P *EA = ef ? pa + AV1G_EDGE_OFF : A, *EL = ef ? pl + AV1G_EDGE_OFF : L;
+    constexpr int nsx = W / 4;
+    for (int sb = lane; sb < (W / 4) * (H / 4); sb += 32) {
+        const int sx = (sb % nsx) * 4, sy = (sb / nsx) * 4;
+        int pr[16];
+        pred_sub4(c, sy, sx, T::lw, T::lh, EA, EL, dcv, pr, upA, upL);
+#pragma unroll
+        for (int i = 0; i < 4; i++)
+#pragma unroll
+            for (int j = 0; j < 4; j++) res[(sy + i) * W + sx + j] = (int16_t)((int)src[(sy + i) * sp + sx + j] - pr[i * 4 + j]);
     }
     __syncwarp();
+    if (W < 64 && H < 64) return 0.f;
+    float e = 0.f;
+    for (int p = lane; p < W * H; p += 32) {
+        const int r = res[p];
+        e += (float)(r * r);
+    }
     return warp_sum(e);
 }
 
@@ -179,9 +310,7 @@ __global__ void __launch_bounds__(NW * 32, (W * H <= 64 ? 768 : 512) / (NW * 32)
         }
         build_edges_par<BD>(gp_src<BD>(I, 0), sp, x, y, T::lw, T::lh, haveLeft, haveAbove, haveAR, haveBL, maxX, maxY, A, L, lane, 32);
         __syncwarp();
-        if (lane == 0) S.dcv = av1g_dc_value<BD>(A, L, haveLeft, haveAbove, T::lw, T::lh);
-        __syncwarp();
-        const int dcv = S.dcv;
+        const int dcv = warp_dc_value<BD>(A, L, haveLeft, haveAbove, T::lw, T::lh);
         const GpExtCand *ext = (const GpExtCand *)B.extCand[BS];
         int K = min((W * H >= 1024 && P.kLarge > 0) ? P.kLarge : P.K, GP_MAXK);
         int top[GP_MAXK];
@@ -212,17 +341,15 @@ __global__ void __launch_bounds__(NW * 32, (W * H <= 64 ? 768 : 512) / (NW * 32)
         // ---- screening: 13 modes at delta 0 ----
         const int ssub = (P.screenSub == 2 && W * H >= 256) ? 2 : 1;
         warp_screen<W, H>(src, sp, S.cand, 0, 13, S.satd, A, L, dcv, ssub);
-        int ncand = 13;
+        // screening cost of candidate `lane`
+        auto jsOf = [&](int i) -> float { return S.satd[i] + lamS * mbits(S.cand[i]); };
+        float js = lane < 13 ? jsOf(lane) : GP_INF;
         const bool allowDelta = P.deltas && BS >= AV1G_BLOCK_8X8 && (P.deltasMaxArea <= 0 || W * H <= P.deltasMaxArea);
         if (allowDelta) {
             // best two directional modes by screening cost
-            int b0 = -1, b1 = -1;
-            float j0 = GP_INF, j1 = GP_INF;
-            for (int m = AV1G_V_PRED; m <= AV1G_D67_PRED; m++) {
-                const float j = S.satd[m] + lamS * mbits(cand_pack(m, 0));
-                if (j < j0) { j1 = j0; b1 = b0; j0 = j; b0 = m; }
-                else if (j < j1) { j1 = j; b1 = m; }
-            }
+            const float jd = lane >= AV1G_V_PRED && lane <= AV1G_D67_PRED ? js : GP_INF;
+            const int b0 = warp_argmin(jd, lane);
+            const int b1 = warp_argmin(lane == b0 ? GP_INF : jd, lane);
             if (lane < 12) {
                 const int m = lane < 6 ? b0 : b1;
                 const int k = lane % 6;
@@ -231,18 +358,12 @@ __global__ void __launch_bounds__(NW * 32, (W * H <= 64 ? 768 : 512) / (NW * 32)
             }
             __syncwarp();
             warp_screen<W, H>(src, sp, S.cand, 13, 25, S.satd, A, L, dcv, ssub);
-            ncand = 25;
+            if (lane >= 13 && lane < 25) js = jsOf(lane);
         }
-        // ---- top-K by screening cost (every lane computes the same selection) ----
-        float topJ[GP_MAXK];
-        for (int k = 0; k < K; k++) { top[k] = -1; topJ[k] = GP_INF; }
-        for (int i = 0; i < ncand; i++) {
-            const float j = S.satd[i] + lamS * mbits(S.cand[i]);
-            if (j < topJ[K - 1]) {
-                int k = K - 1;
-                while (k > 0 && topJ[k - 1] > j) { topJ[k] = topJ[k - 1]; top[k] = top[k - 1]; k--; }
-                topJ[k] = j; top[k] = i;
-            }
+        // ---- top-K by screening cost ----
+        for (int k = 0; k < K; k++) {
+            top[k] = warp_argmin(js, lane);
+            if (lane == top[k]) js = GP_INF;
         }
         }
         // ---- RD of the top-K with DCT_DCT ----
@@ -254,33 +375,31 @@ __global__ void __launch_bounds__(NW * 32, (W * H <= 64 ? 768 : 512) / (NW * 32)
         e.rnd = P.rnd; e.zbin = P.zbin;
         e.skipCtx = 0; e.dcCtx = 0; e.reduced = 0; e.C = C;
         e.qmDist = P.qmDist; e.qmRnd = P.qmRnd;
+        // one evaluation site (code size): steps 0 .. nK-1 rate the top-K with DCT_DCT, the next ones the other tx
+        // types of the set for the winner
         float bestJ = GP_INF;
-        int bestK = 0, bestTx = AV1G_DCT_DCT;
-        for (int k = 0; k < K; k++) {
-            if (top[k] < 0) break;
+        int bestK = 0, bestTx = AV1G_DCT_DCT, resK = -1;
+        int nK = 0;
+        while (nK < K && top[nK] >= 0) nK++;
+        const int nSteps = nK + ((P.txSearch && set != AV1G_TX_SET_DCTONLY) ? 15 : 0);
+        for (int st = 0; st < nSteps; st++) {
+            const int k = st < nK ? st : bestK, t = st < nK ? AV1G_DCT_DCT : st - nK + 1;
+            if (t != AV1G_DCT_DCT && !av1g_tx_type_in_set_intra(set, t)) continue;
             const int c = S.cand[top[k]];
-            e.resEnergy = warp_residual<W, H, BD>(src, sp, c, S.res, A, L, dcv, S.pa, S.pl, S.up, I.edgeFilter, haveLeft, haveAbove, x, y, maxX, maxY);
-            e.txType = AV1G_DCT_DCT;
+            if (k != resK) {
+                e.resEnergy = warp_residual<W, H, BD>(src, sp, c, S.res, A, L, dcv, S.pa, S.pl, S.up, I.edgeFilter, haveLeft, haveAbove,
+                                                      x, y, maxX, maxY);
+                resK = k;
+            }
+            e.txType = t;
             e.intraDir = cand_mode(c);
-            e.qm = av1g_qm(I.usingQm, I.qm[0], 0, txSz, AV1G_DCT_DCT);
+            e.qm = av1g_qm(I.usingQm, I.qm[0], 0, txSz, t);
             EvalOut o;
             warp_eval<W, H, BD>(S.res, S.tmp, S.q, e, o);
             const float J = o.D + lambda * (o.R + mbits(c) + overhead);
-            if (J < bestJ) { bestJ = J; bestK = k; }
-        }
-        // ---- tx-type search for the winner ----
-        if (P.txSearch && set != AV1G_TX_SET_DCTONLY) {
-            const int c = S.cand[top[bestK]];
-            e.resEnergy = warp_residual<W, H, BD>(src, sp, c, S.res, A, L, dcv, S.pa, S.pl, S.up, I.edgeFilter, haveLeft, haveAbove, x, y, maxX, maxY);
-            e.intraDir = cand_mode(c);
-            for (int t = 1; t < 16; t++) {
-                if (!av1g_tx_type_in_set_intra(set, t)) continue;
-                e.txType = t;
-                e.qm = av1g_qm(I.usingQm, I.qm[0], 0, txSz, t);
-                EvalOut o;
-                warp_eval<W, H, BD>(S.res, S.tmp, S.q, e, o);
-                const float J = o.D + lambda * (o.R + mbits(c) + overhead);
-                if (J < bestJ) { bestJ = J; bestTx = t; }
+            if (J < bestJ) {
+                bestJ = J;
+                if (st < nK) bestK = k; else bestTx = t;
             }
         }
         if (lane == 0) {
