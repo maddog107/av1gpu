@@ -388,6 +388,7 @@ for CUDA start-up.
 | `--qindex Q[,Q2,…]` | AV1 `base_q_idx` directly. In batch mode, several values run one pass each (add `--name-q` to suffix outputs with `.q<Q>`) |
 | `--preset P` | `slow`, `base`, `fast`, `faster`, `turbo` (default), `turbo2`, `turbo3` |
 | `--small-preset P` | preset for images below 1 MP (default `base`; `none` disables) |
+| `--tiles MIN_MP,C,R` | 2^C × 2^R uniform tiles for images of at least MIN_MP megapixels, instead of the preset's tiling (below) |
 | `--yuv 420` / `444` | chroma format (default `420`; `444` is AV1 High profile and keeps full-resolution colour) |
 | `--lossless` | exact (AV1 lossless). PNG/WebP RGB as GBR 4:4:4 at the source depth (as `avifenc -l`); JPEG as its decoded YCbCr at its own subsampling (4:2:2 JPEGs are refused) |
 | `--ycgco-re` | with `--lossless`: RGB as YCgCo-Re (`--cicp 1/13/16` in avifenc), 8-bit RGB → 10-bit 4:4:4; usually smaller |
@@ -402,6 +403,19 @@ for CUDA start-up.
 
 `av1gpu --help` lists the expert tuning options. The defaults are `--quality 60 --tune iq
 --edge-filter --preset turbo --small-preset base --gpu-entropy`.
+
+Tiles: the default preset, `turbo`, splits images of 2 MP and more into 2 × 2 tiles (`--tiles 2,1,1`;
+`turbo2` too), `turbo3` into 4 × 2 (`2,2,1`). `base`, `slow` and the other presets use only the tiles AV1
+requires (for frames wider than 4,096 pixels or larger than 9.4 MP), which is also what MIN_MP `0` means.
+`--tiles` replaces the preset's choice wherever it appears on the command line. It also applies to the
+images `--small-preset` encodes and to lossy alpha frames; lossless frames are tiled by `--ll-tile-area`
+(see `--help`) unless that is `0`. An image too small for the requested grid gets the minimum tiling.
+More tiles shorten the wavefront's serial chain and cost a little compression; deblocking and CDEF work
+across tile edges, so they leave no visible seams. On the L4 (58 SMs; size-range set, default settings,
+median of 3), `--tiles 2,2,2` (4 × 4) ran at 125.6 MP/s against 112.3 for the default 2 × 2 (+12 %), and
+8 × 8 (`2,3,3`) at 128.4 (+14 %); 4 × 4 cost +0.58 % BD-rate on the photos of 2 MP and more (SSIMULACRA2;
+CVVDP +0.56 %). In a contributed measurement on an RTX 5090 (170 SMs), 4 × 4 was 39 % faster than the
+default for 0.2 % more bytes.
 
 Batch-mode environment variables: `GP_ENCODERS` (concurrent encoders, default 3), `GP_ENCODE_MP`
 (megapixels per GPU batch, default 48) and `GP_INGEST_WORKERS` (JPEG parsing threads, default 4).
