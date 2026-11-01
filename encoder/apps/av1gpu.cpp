@@ -106,7 +106,8 @@ static void usage() {
             "  --gpu-entropy           GPU symbolization + entropy coding (default)\n"
             "\n"
             "environment (batch mode): GP_ENCODERS (concurrent encoders, default 3), GP_ENCODE_MP (MP per GPU batch,\n"
-            "  default 48), GP_INGEST_WORKERS (JPEG parse/decode threads, default 4), GP_INGEST_DECODER=1 (no nvJPEG)\n");
+            "  default 48), GP_INGEST_WORKERS (JPEG parse/decode threads) and GP_FALLBACK_WORKERS (PNG/WebP decode threads;\n"
+            "  both default to one per CPU the process may use), GP_INGEST_DECODER=1 (no nvJPEG)\n");
 }
 
 struct Opts {

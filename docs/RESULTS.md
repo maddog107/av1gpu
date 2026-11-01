@@ -518,6 +518,72 @@ libpng's simplified API and came out brightened (mid-grey 30000/65535 became 179
 read as sRGB-encoded, as libavif and Pillow read them. 8-bit PNGs and the 10-bit and lossless paths are
 unaffected. PNG and WebP ICC profiles and EXIF orientation are still not read.
 
+### CPU threads (PNG and WebP input)
+
+JPEGs are decoded by the L4's hardware JPEG engine, so a JPEG batch keeps only 0.1–0.2 CPU cores busy.
+PNG and WebP files are decoded on the CPU. Since 2026-11-01 batch mode gives that decoding one thread per CPU
+it may use, instead of 4. JPEG parsing and the CPU entropy decode (`GP_INGEST_DECODER=1`, used on GPUs without
+the engine) also get one thread per CPU, as do the writer threads of `--cpu-entropy`. "May use" means the
+affinity mask (`taskset`, cpusets), or a cgroup CPU limit (`docker --cpus`, Kubernetes) if that is lower.
+
+Decoded images wait on the GPU until an encoder takes them. At most twice `GP_ENCODE_MP` of them (96 MP)
+wait at once, so a fast CPU can't fill the GPU's memory ahead of the encoders. Each encoder batch first takes
+the JPEG batches that are ready, then the decoded PNG and WebP frames (see "Mixed lists" below).
+
+**Method.** g6.8xlarge (L4, EPYC 7R13, 32 vCPUs), CUDA 13.2, `sm_89` builds, 4 × 4 tiles (`--tiles 2,2,2`, the
+default since 2026-10-31). The 8- and 16-vCPU columns ran under `taskset` on 4 and 8 cores plus their SMT
+siblings, which is the core layout of a g6.2xlarge and a g6.4xlarge. A first round on real instances of all
+three sizes (below) gave the same PNG gains. Each list repeats its images to a minimum size:
+- **JPEG:** the 100 size-range JPEGs, 1,434 MP.
+- **PNG:** the same photos saved as RGB PNGs, 956 MP.
+- **Mixed:** the same 100 photos, 40 % as PNG or WebP, 956 MP.
+
+The table gives MP/s, main → this version, as the median of 3 runs in alternating order (7 for the 8-vCPU
+mixed and PNG lists):
+
+| Input | 8 vCPUs | 16 vCPUs | 32 vCPUs |
+|---|---:|---:|---:|
+| JPEG | 126.0 → 127.4 | 124.5 → 126.6 | 122.6 → 121.8 |
+| JPEG, CPU entropy decode | 120.5 → 121.1 | 117.1 → 120.4 | 115.4 → 121.0 |
+| PNG | 95.3 → **107.4** (+13 %) | 98.5 → **112.9** (+15 %) | 98.3 → **116.8** (+19 %) |
+| PNG to 10-bit 4:4:4 | 60.6 → **84.3** (+39 %) | 61.1 → **88.6** (+45 %) | 62.7 → **89.4** (+43 %) |
+| Mixed | 114.8 → 114.8 | 117.9 → 118.5 | 118.0 → 121.2 |
+
+- **JPEG** doesn't change, because the GPU is the limit; run-to-run noise is about ±3 %. With 32 vCPUs, 5 rounds
+  per setting gave 123.4 MP/s for main, 122.7 for one parse thread per CPU, and 123.0 / 124.4 / 124.2 for
+  4 / 8 / 16 threads.
+- **PNG:** the decode threads now keep the GPU fed. A PNG batch used about 5 CPU cores (3.5 before), and 6.6–6.7
+  for 10-bit 4:4:4 (3.6), whatever the number of CPUs.
+- **GPU memory:** for 10-bit 4:4:4 PNGs it peaked at 7.1–10.3 GB instead of 4.6–4.7 GB, because the encoders now
+  get full 48 MP batches. A JPEG list in 10-bit 4:4:4 already peaks at 12.2 GB. 8-bit PNG peaked at 5.9–6.2 GB
+  instead of 4.1–4.3. `GP_ENCODE_MP` lowers it.
+- **Mixed lists** were first 2–5 % slower than main, when decoded PNG and WebP frames were taken before JPEG
+  batches (as main does). A per-batch log (`GP_BATCH_LOG`, in a diagnostic build) showed why.
+  - **Not idle time:** an encoder was running 96–99 % of the time in every version.
+  - **The order changed:** fast decoding put 51–56 % of the PNG megapixels in the first half of the run, and only
+    19–27 % of the JPEG ones. On main it was 45–48 % and 44 %.
+  - **Small JPEGs ended up last:** the JPEG batches of small images run with the slower `base` preset and take
+    1.8–2.5 s each, against about 0.9 s for the others. They came near the end, so the run finished with a
+    0.8–1.3 s tail with fewer encoders working.
+  - **The fix:** take the JPEG batches that are ready first. That moves those batches to the start and leaves
+    the large PNG batches for the end. Those are similar in size and spread evenly over the three encoders: a
+    0.6 s tail, and all three encoders busy 94 % of the time against 86–93 %.
+  - Also tried, at 32 vCPUs (5 rounds; main 113.7, fallback first 115.1, JPEG first 121.7): #23's rule of taking
+    fallback frames only as a full batch (113.9), alternating between the two orders (116.7), and at most half a
+    batch of fallback frames while JPEGs remain (114.4).
+  - Lower priority for the decode threads (nice 10 or 19) and smaller wait queues (12, 24 or 48 MP) made no
+    difference either.
+- **Thread count** (first round, real 8-, 16- and 32-vCPU instances): twice as many threads as CPUs never
+  helped, and was up to 12 % slower. Half as many was 3–14 % slower for 8-bit PNG, and the same for 10-bit
+  4:4:4 on 16 and 32 vCPUs. That round's PNG gains were +11 / +13 / +20 % and +36 / +44 / +50 % for 10-bit 4:4:4.
+- **Files:** every output was byte-identical to main's at the same settings: 899 runs, 202,500 files,
+  including `--cpu-entropy` and the CPU entropy decode.
+- **Fixed with it:** `GP_ENCODERS` of 24 or more never finished. No encoder could take an ingest batch,
+  with JPEG or PNG input alike. Runs now finish with 24 and 48, and with `GP_INGEST_INFLIGHT=1`.
+
+The other speed tables in this file are still v0.3.0's. Raw results and scripts: `bench/results/aws-g6-l4-threads/`
+(first round) and its `followup/` (the table above, batch logs).
+
 ### CVVDP: a second metric
 
 SSIMULACRA2 does not model screen size or viewing distance, so the same size-range files were also scored

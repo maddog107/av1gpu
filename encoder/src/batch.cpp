@@ -8,6 +8,7 @@
 #include "av1g/av1g.h"
 
 #include <cuda_runtime.h>
+#include <sched.h>
 #include <sys/resource.h>
 #include <sys/stat.h>
 #include <dirent.h>
@@ -20,6 +21,7 @@
 #include <deque>
 #include <mutex>
 #include <chrono>
+#include <cmath>
 #include <cstdio>
 #include <cstring>
 #include <fstream>
@@ -36,6 +38,54 @@ double cpu_ms() {
     rusage r;
     getrusage(RUSAGE_SELF, &r);
     return (r.ru_utime.tv_sec + r.ru_stime.tv_sec) * 1e3 + (r.ru_utime.tv_usec + r.ru_stime.tv_usec) / 1e3;
+}
+// cgroup CPU limit in CPUs (docker --cpus, Kubernetes limits), 0 = none.  v2: cpu.max ("max 100000" or
+// "200000 100000") of this process's cgroup and its parents; v1: the cpu controller's cfs quota / period.
+double cgroup_cpu_limit() {
+    double lim = 0;
+    auto take = [&](double quota, double period) {
+        if (quota > 0 && period > 0) lim = lim > 0 ? std::min(lim, quota / period) : quota / period;
+    };
+    std::string v2;
+    if (std::ifstream cg{"/proc/self/cgroup"}) {
+        for (std::string l; std::getline(cg, l);)
+            if (l.compare(0, 3, "0::") == 0) v2 = l.substr(3);
+    }
+    if (!v2.empty()) {
+        for (std::string d = v2;;) {
+            if (std::ifstream f{"/sys/fs/cgroup" + (d == "/" ? std::string() : d) + "/cpu.max"}) {
+                std::string q;
+                double period = 0;
+                if (f >> q >> period && q != "max") take(atof(q.c_str()), period);
+            }
+            if (d.empty() || d == "/") break;
+            const size_t s = d.find_last_of('/');
+            d = s == 0 || s == std::string::npos ? "/" : d.substr(0, s);
+        }
+    }
+    for (const char *dir : {"/sys/fs/cgroup/cpu", "/sys/fs/cgroup/cpu,cpuacct"}) {
+        std::ifstream fq{std::string(dir) + "/cpu.cfs_quota_us"}, fp{std::string(dir) + "/cpu.cfs_period_us"};
+        double quota = 0, period = 0;
+        if (fq >> quota && fp >> period) { take(quota, period); break; }
+    }
+    return lim;
+}
+// CPUs this process may run on: the affinity mask (taskset, cpusets), lowered to a cgroup CPU limit (rounded up)
+int usable_cpus() {
+    int n = 0;
+#ifdef __linux__
+    cpu_set_t set;
+    if (sched_getaffinity(0, sizeof set, &set) == 0) n = CPU_COUNT(&set);
+#endif
+    if (n <= 0) n = (int)std::thread::hardware_concurrency();
+    if (n <= 0) n = 4;
+    const double lim = cgroup_cpu_limit();
+    if (lim > 0) n = std::min(n, std::max(1, (int)std::ceil(lim - 1e-9)));
+    return n;
+}
+int env_int(const char *name, int dflt) {
+    const char *v = getenv(name);
+    return v ? atoi(v) : dflt;
 }
 std::string base_name(const std::string &p) {
     const size_t s = p.find_last_of('/');
@@ -153,11 +203,14 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
     bcfg.wantRecon = getenv("GP_WANT_RECON") != nullptr;
     if (enc.init(bcfg, err)) { fprintf(stderr, "init: %s\n", err.c_str()); return 1; }
     const char *bmp = getenv("GP_BATCH_MP");
-    const char *nw = getenv("GP_INGEST_WORKERS");
-    const int nEntThreads = getenv("GP_ENTROPY_THREADS") ? atoi(getenv("GP_ENTROPY_THREADS")) : 3;  // GPU: concurrent entropy batches; CPU: writer threads
+    // CPU threads scale with the CPUs this process may use (affinity mask, cgroup limit): JPEG parse / CPU entropy
+    // decode, PNG / WebP decode and --cpu-entropy writers each get one thread per CPU.  The GPU-side counts (encoders,
+    // concurrent GPU entropy batches) stay fixed.
+    const int nCpu = usable_cpus();
+    const int nEntThreads = std::max(1, env_int("GP_ENTROPY_THREADS", gpuEntropy ? 3 : nCpu));  // GPU: concurrent entropy batches; CPU: writer threads
     ingest_config ic;
     ingest_default_config(&ic);
-    ic.n_workers = nw ? atoi(nw) : 4;
+    ic.n_workers = std::max(1, env_int("GP_INGEST_WORKERS", nCpu));
     ic.activity = 0;
     ic.max_inflight = getenv("GP_INGEST_INFLIGHT") ? atoi(getenv("GP_INGEST_INFLIGHT")) : 24;
     ic.batch_pixels = (int64_t)((bmp ? atof(bmp) : 16.0) * 1e6);
@@ -345,28 +398,39 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
     };
     // N encoder threads (separate streams/encoders) so one batch's latency-bound wavefront overlaps the
     // next batch's throughput-bound analysis.  Ingest batches are gathered under a lock.
-    const int nEnc = getenv("GP_ENCODERS") ? std::max(1, atoi(getenv("GP_ENCODERS"))) : 3;
+    const int nEnc = std::max(1, env_int("GP_ENCODERS", 3));
+    // ingest batches one encoder may hold; at least 1, or with GP_ENCODERS >= GP_INGEST_INFLIGHT no encoder took any
+    // and the run never finished
+    const int heldMax = std::max(1, ic.max_inflight / (nEnc + 1));
     std::mutex inMu;
     bool more = true;
     std::atomic<int> encFail{0};
-    // WebP/PNG named .jpg (ingest fallbacks): a side thread decodes them on the CPU as soon as ingest reports
-    // them, uploads the planes and queues them; the encoder threads take them into their next batch like
+    // WebP/PNG named .jpg (ingest fallbacks): worker threads decode them on the CPU as soon as ingest reports
+    // them, upload the planes and queue them; the encoder threads take them into their next batch like
     // ingest images (GPU entropy, overlapped).  The rest (giant, CMYK, ...) -> CPU avifenc (not done here).
     // (Before: serial CPU decode + single-image encode + host-path entropy after the main loop, ~0.45 s per
     // image with the GPU mostly idle.)
     struct FbFrame { GpFrameIn f, a; uint8_t *d = nullptr; std::string name; };   // a: alpha frame (W = 0: none)
     std::mutex fbMu;
+    std::condition_variable fbCv;   // an encoder took frames out of fbReady, or an encoder thread ended
     std::deque<FbFrame> fbReady;
+    int64_t fbQueuedPx = 0;         // luma pixels of the frames in fbReady (their planes are on the GPU)
     std::atomic<bool> ingestDrained{false}, fbDone{false};
     std::atomic<int> cpuFallbackA{0}, gpuFallbackA{0};
+    std::atomic<int> encLive{0};    // encoder threads running; 0 with ingestDrained = no encoder will take frames any more
+    // GP_FALLBACK_WORKERS (default: one per CPU) threads decode + upload fallback images as soon as ingest reports them.
+    // Decoded frames wait on the GPU for an encoder: at most GP_FALLBACK_QUEUE_MP megapixels of them (default
+    // 2 x GP_ENCODE_MP, plus one image), so CPUs that decode faster than the GPU encodes don't fill its memory.
+    const int nfw = std::max(1, env_int("GP_FALLBACK_WORKERS", nCpu));
     std::thread fbThread([&]() {
-        // GP_FALLBACK_WORKERS (default 4) threads decode + upload the fallback images of each poll in parallel
-        const int nfw = getenv("GP_FALLBACK_WORKERS") ? std::max(1, atoi(getenv("GP_FALLBACK_WORKERS"))) : 4;
-        std::vector<cudaStream_t> fss(nfw);
-        for (auto &x : fss) cudaStreamCreateWithFlags(&x, cudaStreamNonBlocking);
-        std::vector<ingest_fallback> fb(4096);
-        int handled = 0;
+        const int64_t queuePx = (int64_t)((getenv("GP_FALLBACK_QUEUE_MP") ? atof(getenv("GP_FALLBACK_QUEUE_MP")) : 2 * targetMp) * 1e6);
+        std::mutex lmu;
+        std::condition_variable lcv;
+        std::vector<ingest_fallback> list;   // fallbacks reported so far; list[next..] not yet taken by a worker
+        size_t next = 0;
+        bool listDone = false;
         auto one = [&](const ingest_fallback &fe, cudaStream_t fs) {
+            if (ingestDrained && encLive == 0) return;   // the encoders stopped (error)
             const std::string &p = paths[fe.index];
             const GpFileKind kind = gp_sniff(p);
             if (kind != GP_FILE_WEBP && kind != GP_FILE_PNG) {
@@ -386,12 +450,25 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
                 cpuFallbackA++;
                 return;
             }
+            const int64_t px = (int64_t)hp.W * hp.H;
+            {
+                std::unique_lock<std::mutex> lk(fbMu);
+                while (fbQueuedPx > 0 && fbQueuedPx + px > queuePx && !(ingestDrained && encLive == 0))
+                    fbCv.wait_for(lk, std::chrono::milliseconds(20));
+                if (ingestDrained && encLive == 0) return;   // the encoders stopped (error): nobody would take the frame
+                fbQueuedPx += px;   // reserved before the upload, so the workers together stay within the limit
+            }
+            auto unreserve = [&]() {
+                std::lock_guard<std::mutex> lk(fbMu);
+                fbQueuedPx -= px;
+            };
             const size_t ys = hp.bytes(0), cs = hp.bytes(1), as = hp.abytes();   // bytes (10-bit: uint16_t samples)
             uint8_t *d = nullptr;
             if (cudaMallocAsync((void **)&d, ys + 2 * cs + as, fs) != cudaSuccess) {
                 cudaGetLastError();
                 fprintf(stderr, "[av1gpu] skipped %s: out of GPU memory for its planes\n", p.c_str());
                 oomHint("out of memory");
+                unreserve();
                 cpuFallbackA++;
                 return;
             }
@@ -402,6 +479,7 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
             if (const cudaError_t se = cudaStreamSynchronize(fs)) {
                 cudaGetLastError();
                 fprintf(stderr, "[av1gpu] skipped %s: upload failed (%s)\n", p.c_str(), cudaGetErrorString(se));
+                unreserve();
                 cpuFallbackA++;
                 return;
             }
@@ -421,6 +499,25 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
             std::lock_guard<std::mutex> lk(fbMu);
             fbReady.push_back(F);
         };
+        // persistent workers (each with its own stream): one image at a time, the next as soon as one is done
+        std::vector<std::thread> th;
+        for (int w = 0; w < nfw; w++)
+            th.emplace_back([&]() {
+                cudaStream_t fs;
+                cudaStreamCreateWithFlags(&fs, cudaStreamNonBlocking);
+                for (;;) {
+                    ingest_fallback fe;
+                    {
+                        std::unique_lock<std::mutex> lk(lmu);
+                        lcv.wait(lk, [&] { return next < list.size() || listDone; });
+                        if (next >= list.size()) break;
+                        fe = list[next++];
+                    }
+                    one(fe, fs);
+                }
+                cudaStreamDestroy(fs);
+            });
+        std::vector<ingest_fallback> fb(4096);
         for (;;) {
             const bool last = ingestDrained.load();   // all fallbacks are recorded once ingest is drained
             int nfb = ingest_get_fallbacks(ictx, fb.data(), (int)fb.size());
@@ -428,20 +525,16 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
                 fb.resize((size_t)nfb * 2);
                 nfb = std::min(ingest_get_fallbacks(ictx, fb.data(), (int)fb.size()), (int)fb.size());
             }
-            if (handled < nfb) {
-                std::atomic<int> next{handled};
-                std::vector<std::thread> th;
-                for (int w = 0; w < std::min(nfw, nfb - handled); w++)
-                    th.emplace_back([&, w]() {
-                        for (int k; (k = next.fetch_add(1)) < nfb;) one(fb[k], fss[w]);
-                    });
-                for (auto &t : th) t.join();
-                handled = nfb;
+            {
+                std::lock_guard<std::mutex> lk(lmu);
+                for (size_t k = list.size(); k < (size_t)nfb; k++) list.push_back(fb[k]);
+                if (last) listDone = true;
             }
-            if (last && handled >= nfb) break;
+            lcv.notify_all();
+            if (last) break;
             std::this_thread::sleep_for(std::chrono::milliseconds(20));
         }
-        for (auto &x : fss) cudaStreamDestroy(x);
+        for (auto &t : th) t.join();
         fbDone = true;
     });
     // alpha frames of a job: one more GPU batch (monochrome frames, gp_alpha_config: lossless or lossy at the alpha
@@ -483,30 +576,18 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
             double mpAcc = 0;
             std::vector<uint8_t *> fbHeld;
             int fbConv = 0;   // 1 when fbHeld also holds the 10-bit conversion buffer (not a fallback image)
-            {
-                std::lock_guard<std::mutex> lk(fbMu);
-                while (!fbReady.empty() && mpAcc < targetMp && (int)fin.size() < maxImgs) {
-                    const FbFrame F = fbReady.front();
-                    fbReady.pop_front();
-                    fin.push_back(F.f);
-                    job->iccs.emplace_back();
-                    job->orients.push_back(1);
-                    job->names.push_back(F.name);
-                    job->afin.push_back(F.a);
-                    fbHeld.push_back(F.d);
-                    mpAcc += F.f.W * (double)F.f.H / 1e6;
-                }
-            }
-            {
+            // ingest batches up to timeoutMs (-1: wait for one), until the batch has GP_ENCODE_MP
+            auto takeIngest = [&](int timeoutMs) {
                 std::lock_guard<std::mutex> lk(inMu);
-                while (more && mpAcc < targetMp && (int)fin.size() < maxImgs && (int)held.size() < ic.max_inflight / (nEnc + 1)) {
+                while (more && mpAcc < targetMp && (int)fin.size() < maxImgs && (int)held.size() < heldMax) {
                     const double tw = now_ms();
                     ingest_batch b;
-                    const int r = ingest_next_batch(ictx, &b, -1);
+                    const int r = ingest_next_batch(ictx, &b, timeoutMs);
                     {
                         std::lock_guard<std::mutex> lk2(aggMu);
                         A.ingestWait += now_ms() - tw;
                     }
+                    if (r == -1 && timeoutMs >= 0) break;   // none ready yet
                     if (r == 0) { more = false; ingestDrained = true; break; }
                     if (r < 0) { char e2[256]; ingest_last_error(ictx, e2, sizeof e2); fprintf(stderr, "ingest: %s\n", e2); more = false; ingestDrained = true; encFail++; break; }
                     held.push_back(b);
@@ -529,7 +610,29 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
                         mpAcc += im.width * (double)im.height / 1e6;
                     }
                 }
+            };
+            // JPEG batches that are ready first, then decoded PNG / WebP frames, then wait for JPEG batches.  With fast PNG
+            // decoding, taking the PNG frames first ran a mixed list's PNGs early and left its slow small-JPEG batches (base
+            // preset) for the end, with fewer encoders busy (L4: 2-5 % slower).  The fallback queue is bounded, so letting
+            // it wait costs no extra GPU memory.
+            takeIngest(0);
+            {
+                std::lock_guard<std::mutex> lk(fbMu);
+                while (!fbReady.empty() && mpAcc < targetMp && (int)fin.size() < maxImgs) {
+                    const FbFrame F = fbReady.front();
+                    fbReady.pop_front();
+                    fbQueuedPx -= (int64_t)F.f.W * F.f.H;
+                    fin.push_back(F.f);
+                    job->iccs.emplace_back();
+                    job->orients.push_back(1);
+                    job->names.push_back(F.name);
+                    job->afin.push_back(F.a);
+                    fbHeld.push_back(F.d);
+                    mpAcc += F.f.W * (double)F.f.H / 1e6;
+                }
             }
+            if (!fbHeld.empty()) fbCv.notify_all();   // room in the fallback queue
+            takeIngest(-1);
             if (!fin.empty() && cfg.depth == 10 && !cfg.lossless) {
                 // --depth 10: ingest frames (8-bit JPEG samples) -> 10-bit planes; freed with the fallback planes
                 uint8_t *cb = nullptr;
@@ -696,7 +799,13 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
             if (encsSmall[k]->init(cs, err)) { fprintf(stderr, "init: %s\n", err.c_str()); return 1; }
         }
     }
-    for (int k = 0; k < nEnc; k++) encThreads.emplace_back(encLoop, encs[k], encsSmall[k], streams[k]);
+    encLive = nEnc;
+    for (int k = 0; k < nEnc; k++)
+        encThreads.emplace_back([&, k]() {
+            encLoop(encs[k], encsSmall[k], streams[k]);
+            encLive--;
+            fbCv.notify_all();
+        });
     for (auto &t : encThreads) t.join();
     ingestDrained = true;
     fbThread.join();
@@ -748,9 +857,9 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
         printf("{\"images\":%llu,\"mp\":%.3f,\"wall_ms\":%.1f,\"img_s\":%.3f,\"mp_s\":%.3f,\"cpu_cores\":%.3f,\"bytes\":%llu,"
                "\"ingest_wait_ms\":%.1f,\"analysis_ms\":%.1f,\"dp_ms\":%.1f,\"recon_ms\":%.1f,\"pack_ms\":%.1f,\"postfilter_ms\":%.1f,\"download_ms\":%.1f,"
                "\"gpu_total_ms\":%.1f,\"encode_wall_ms\":%.1f,\"entropy_wall_ms\":%.1f,\"entropy_gpu_ms\":%.1f,\"write_ms\":%.1f,"
-               "\"peak_dev_mb\":%.1f,\"fallback_cpu\":%d}\n",
+               "\"peak_dev_mb\":%.1f,\"fallback_cpu\":%d,\"cpus\":%d,\"ingest_workers\":%d,\"fallback_workers\":%d}\n",
                (unsigned long long)A.images, mp, wall, A.images * 1e3 / wall, mp * 1e3 / wall, cpu / wall,
                (unsigned long long)A.bytes, A.ingestWait, A.analysis, A.dp, A.recon, A.pack, A.postfilter, A.download, A.gpuTotal,
-               A.encodeWall, A.entropyWall, A.entropyGpu, A.writeWall, A.peakDev / 1048576.0, cpuFallback);
+               A.encodeWall, A.entropyWall, A.entropyGpu, A.writeWall, A.peakDev / 1048576.0, cpuFallback, nCpu, ic.n_workers, nfw);
     return failures ? 1 : 0;
 }
