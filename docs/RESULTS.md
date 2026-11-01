@@ -105,8 +105,10 @@ image sets in `bench/`. Raw results: `bench/results/aws-g6-l4*/` (`summary.md`, 
 sanitizer, power and version logs: `bench/results/aws-g6-l4/logs/`.
 
 When the default changed to 4 × 4 tiles (2026-10-31), av1gpu's side of every compression result below was
-re-encoded and re-scored on an L4 against the stored CPU baselines: `bench/results/aws-g6-l4-tiles4x4/`. The
-speed figures are still from v0.3.0, with its 2 × 2 tiles.
+re-encoded and re-scored on an L4 against the stored CPU baselines: `bench/results/aws-g6-l4-tiles4x4/`. Every
+av1gpu speed below is v0.4's (4 × 4 tiles and one decode thread per CPU), re-run on 2026-11-01 on a new
+g6.4xlarge (on demand, driver 595.112.07) with v0.3.0 alternating in the same session:
+`bench/results/aws-g6-l4-speed-v04/`. The CPU encoders' speeds are from the earlier runs.
 
 ### Setup
 
@@ -122,44 +124,45 @@ speed figures are still from v0.3.0, with its 2 × 2 tiles.
   and 100 Open Images JPEGs of 0.18–24 MP in `bench/openimages_v4_gamut.csv` ("size range": 20 each of
   < 0.3, 0.3–1, 1–4, 4–9.4 and 9.4–35.6 MP; original Flickr uploads for the larger classes, 478 MP in all,
   mean 4.8 MP). Both are CC BY 2.0.
-- **Speed runs** repeat each set up to at least 1,000 MP (`bench.py --min-mp`; one warm-up, median of 3).
-  A single pass over the standard set is 79 MP, less than two GPU batches; that measured 28.1 MP/s instead
-  of 39.2 MP/s, because start-up and pipeline fill dominate such a short run.
+- **Speed runs** repeat each set up to at least 1,000 MP (`bench.py --min-mp`; one warm-up, then 3 timed runs;
+  av1gpu: two such rounds, alternating with v0.3.0, and the median of the 6 timed runs). In the first run, a
+  single pass over the standard set (79 MP, less than two GPU batches) measured 28.1 MP/s instead of
+  39.2 MP/s, because start-up and pipeline fill dominate such a short run.
 
 ### Speed
 
-MP/s at quality 60. The CPU rows use the whole machine; av1gpu uses about 0.1–0.2 CPU cores. av1gpu was timed
-with v0.3.0's tiling (2 × 2 tiles for images of 2 MP and more; `turbo3` 4 × 2).
+MP/s at quality 60. The CPU rows use the whole machine; av1gpu uses about 0.1–0.3 CPU cores.
 
 | Encoder | standard (~1 MP) | size range | CPU cores |
 |---|---:|---:|---:|
-| av1gpu default, `GP_ENCODERS=2` | 39.2 | 103.8 | 0.1 |
-| av1gpu default, `GP_ENCODERS=4` | 39.2 | **116.0** | 0.1 |
-| av1gpu `--small-preset none` (`turbo` for every image) | **100.9** | **126.8** | 0.1–0.2 |
+| av1gpu default (`GP_ENCODERS=3`) | 39.4 | 128.0 | 0.2 |
+| av1gpu default, `GP_ENCODERS=2` | 38.6 | 122.3 | 0.1–0.2 |
+| av1gpu default, `GP_ENCODERS=4` | 39.3 | **126.6** | 0.2 |
+| av1gpu `--small-preset none` (`turbo` for every image), `GP_ENCODERS=4` | **98.1** | **147.3** | 0.2–0.3 |
+| av1gpu `--preset turbo3`, `GP_ENCODERS=4` | | 166.1 | 0.2 |
+| av1gpu `--preset turbo3 --small-preset none`, `GP_ENCODERS=4` | | **218.3** | 0.3 |
 | libaom speed 6, 16 × avifenc `-j 1` | 21.1 | 28.8 | 16 |
 | libaom speed 9, 16 × avifenc `-j 1` | 166.1 | 187.6 | 16 |
 
-libaom speed 10 gave the same files and speed as speed 9. While encoding, the L4 averaged 97–100 % SM
-utilisation at 54–59 W (`nvidia-smi dmon`, 1 s samples), about 0.5 J/MP at 116 MP/s. On the standard set
-the number of concurrent encoders made no difference; on the size range 4 beat 2 by 12 %. The default
-(3) was not run at 1,000 MP, so 2 → 4 is all this run shows.
+libaom speed 10 gave the same files and speed as speed 9. While encoding the size range, the L4 averaged
+99–100 % SM utilisation at 66–69 W (`nvidia-smi dmon`, 1 s samples), about 0.53 J/MP at 127 MP/s. Three
+and four concurrent encoders ran at the same speed; two were 4 % slower on the size range and 2 % on the
+standard set.
+
+v0.3.0 in the same session (2 × 2 tiles, `turbo3` 4 × 2) ran the size range at 112.3 / 102.6 / 115.4 MP/s
+with 3 / 2 / 4 encoders, 129.0 with `--small-preset none`, 164.2 with `turbo3` and 204.0 with `turbo3
+--small-preset none`, and the standard set at 39.4 and 98.7: within 4 % of the earlier runs. So on the size
+range v0.4 is 10–19 % faster with the default preset, 14 % with `--small-preset none`, 7 % with `turbo3
+--small-preset none` (4 × 2 tiles before) and 1 % with `turbo3`, whose small images use the `base` preset. The
+standard set, all below 2 MP, runs at the same speed. The gain comes from the 4 × 4 tiles; for JPEG input the
+new decode threads change little (see [CPU threads](#cpu-threads-png-and-webp-input)).
 
 The default sends images below 1 MP to the slower `base` preset (`--small-preset`), for better compression
 on small images. On a set of nothing but ~1 MP images that dominates the speed: `--small-preset none` is
-2.6× faster there, for files 3 % larger (below).
+2.5× faster there, for files 3 % larger (below).
 
-`--preset turbo3 --small-preset none` was timed later in a separate session on a new g6.4xlarge, the same
-way (`bench.gpu_speed`, `GP_ENCODERS=4`, 1,433 MP per run, median of 3 after a warm-up), on 99 of the 100
-size-range photos (one has since changed on Flickr). Two interleaved rounds:
-
-| Setting | round 1 | round 2 | CPU cores |
-|---|---:|---:|---:|
-| av1gpu default | 120.4 | 118.0 | 0.12 |
-| `--preset turbo3 --small-preset none` | **213.9** | **209.8** | 0.19 |
-| `--preset turbo3` | 167.0 | 167.1 | 0.16 |
-
-So `turbo3 --small-preset none` runs at about 212 MP/s, 1.8× the default and a little faster than libaom
-speed 9 (188).
+`turbo3 --small-preset none` runs at about 218 MP/s, 1.7× the default and a little faster than libaom speed 9
+(188).
 
 ### Compression
 
@@ -238,10 +241,10 @@ SVT-AV1 is a better trade than libaom at every speed: at libaom speed 6's file s
 same speed (interpolating between presets 4 and 6 gives about 29 MP/s), and at speed 9's speed its files
 are 5 points smaller. Against av1gpu on one L4:
 
-- at about libaom speed 6's file size, av1gpu's default (116 MP/s, +0.1 %) is 3.8× faster than SVT-AV1
+- at about libaom speed 6's file size, av1gpu's default (127 MP/s, +0.1 %) is 4.2× faster than SVT-AV1
   interpolated to the same size (30 MP/s);
-- at +2.2 %, av1gpu with `--small-preset none` (127 MP/s) is 2.6× faster than preset 6 (49 MP/s, +2.1 %);
-- at the fast end, `turbo3` (212 MP/s, +5.7 %) beats preset 9 (183 MP/s, +9.8 %) on both counts;
+- at +2.2 %, av1gpu with `--small-preset none` (147 MP/s) is 3.0× faster than preset 6 (49 MP/s, +2.1 %);
+- at the fast end, `turbo3` (218 MP/s, +5.7 %) beats preset 9 (183 MP/s, +9.8 %) on both counts;
 - SVT-AV1's slow presets make smaller files than any av1gpu setting measured on the L4 (preset 2: −5.1 %,
   at 4.6 MP/s). av1gpu's `--preset slow` measured −4.8 % on the development set but has not been run here.
 
@@ -310,11 +313,10 @@ untiled libaom speed 6 anchor every comparison moves by about half a point:
 | WebP | +45.1 % | +46.0 % |
 
 **What it means for av1gpu.** At its own file size (+0.7 % against untiled libaom speed 6), av1gpu's
-116 MP/s is 4.0× stock libaom speed 6, 3.9× the tuned build and 3.7× the tuned build at 8 × `-j 2`
+127 MP/s is 4.4× stock libaom speed 6, 4.3× the tuned build and 4.1× the tuned build at 8 × `-j 2`
 (31.1 MP/s, tiled). Interpolating between SVT-AV1 presets 4 and 6 at the same size gives 33.3 MP/s for the
-stock build (3.5×) and 37.0 MP/s with PGO (3.1×), both untiled at 16 × `-j 1`; with tiling, PGO and
-8 × `-j 2`, 34.5 MP/s (3.4×). The fastest CPU configuration we found is about 3.1× slower than one L4
-(av1gpu's 116 MP/s is from v0.3.0's 2 × 2 tiles; its file sizes here are the 4 × 4 default's).
+stock build (3.8×) and 37.0 MP/s with PGO (3.4×), both untiled at 16 × `-j 1`; with tiling, PGO and
+8 × `-j 2`, 34.5 MP/s (3.7×). The fastest CPU configuration we found is about 3.4× slower than one L4.
 
 ### NVENC AV1 on the same L4
 
@@ -341,8 +343,9 @@ ffmpeg n8.1.3 (BtbN static build; the 9.0 and master builds need NVENC API 13.1,
 | 8 | **15.6** | **15.7** | 3.9 |
 | 16 | 14.1 | 14.1 | 4.2 |
 
-It levels off at about 16 MP/s once both engines are busy. av1gpu's default, timed in the same session
-with `bench.gpu_speed`, ran at 115.6 and 117.1 MP/s on 0.12 cores, **7.4× faster**. The CPU cores are
+It levels off at about 16 MP/s once both engines are busy. av1gpu's default (v0.3.0 then), timed in the same
+session with `bench.gpu_speed`, ran at 115.6 and 117.1 MP/s on 0.12 cores, 7.4× faster; v0.4 runs at
+127 MP/s on 0.2 cores, **8.1× NVENC's best**. The CPU cores are
 ffmpeg decoding JPEGs and converting to 4:2:0 for the encoder; av1gpu decodes on the GPU.
 
 **Compression:** six points, CQ 18, 25, 32, 38, 44 and 50, decoded with avifdec 1.4.0 and scored with the
@@ -394,17 +397,18 @@ engine itself is the limit), against av1gpu's 104 MP/s there, and scored about +
 (`-y 444`, `-d 10`; `tune=iq`, avifenc defaults, 16 × `-j 1`). The libaom 8-bit 4:2:0 encodes in the same
 session reproduced the published files and scores (600/600). Raw results: `bench/results/aws-g6-l4-formats/`.
 The BD-rates below are the 4 × 4 default's (`bench/results/aws-g6-l4-tiles4x4/`; with v0.3.0's 2 × 2 tiles:
-−0.1, +0.3, +0.1 and +0.0 %); the speeds are v0.3.0's.
+−0.1, +0.3, +0.1 and +0.0 %). av1gpu's speeds are v0.4's, `GP_ENCODERS=4` (`bench/results/aws-g6-l4-speed-v04/`;
+v0.3.0 in the same session: 115.4, 96.3, 111.1 and 92.8 MP/s); libaom's are from the formats run.
 
 | Format | av1gpu MP/s | libaom speed 6 MP/s | av1gpu vs libaom, same format (median BD-rate) |
 |---|---:|---:|---:|
-| 8-bit 4:2:0 | 113.4 | 28.6 | +0.1 % |
-| 8-bit 4:4:4 | 94.5 | 24.3 | +0.4 % |
-| 10-bit 4:2:0 | 109.8 | 22.0 | +0.3 % |
-| 10-bit 4:4:4 | 92.8 | 18.9 | +0.4 % |
+| 8-bit 4:2:0 | 126.6 | 28.6 | +0.1 % |
+| 8-bit 4:4:4 | 101.7 | 24.3 | +0.4 % |
+| 10-bit 4:2:0 | 121.7 | 22.0 | +0.3 % |
+| 10-bit 4:4:4 | 97.8 | 18.9 | +0.4 % |
 
-- **Speed:** 4:4:4 codes twice the chroma samples of 4:2:0, so av1gpu runs about 17 % slower; 10-bit costs it
-  about 3 %. libaom loses more at 10 bits (−23 %), so av1gpu's lead grows from 4.0× to 5.0×.
+- **Speed:** 4:4:4 codes twice the chroma samples of 4:2:0, so av1gpu runs about 20 % slower; 10-bit costs it
+  about 4 %. libaom loses more at 10 bits (−23 %), so av1gpu's lead grows from 4.4× to 5.5×.
 - **10-bit vs 8-bit:** −2.2 % for av1gpu and −2.0 % for libaom in 4:2:0, −2.0 % and −1.8 % in 4:4:4, at equal
   SSIMULACRA2. The sources are 8-bit JPEGs, so this comes from the extra precision inside the codec.
 - **4:4:4 vs 4:2:0:** +0.4 % for av1gpu and −0.8 % for libaom (8-bit). These photos were 4:2:0 JPEGs (or
@@ -445,13 +449,14 @@ frames use tiles of at most 256K pixels so the entropy coder has more work in fl
 On 47 8-bit RGB PNGs, 42.7 MP: the 24 Kodak photos and 23 graphics (this repository's 16 SVG charts rendered at
 2× and 7 synthetic 1920 × 1080 screenshots). CPU encoders ran as 16 single-threaded processes on the
 g6.4xlarge's 16 vCPUs. av1gpu ran in batch mode; its first column is one pass including CUDA start-up, the
-second the set repeated 4×.
+second the set repeated 4× (v0.4; v0.3.0 in the same session: 15.9 / 43.0 and 16.2 / 42.9, so the one-pass
+time is about 12 % shorter and the repeated set 3–4 % slower).
 
 | Encoder | Total bytes | vs PNG | Photos | Graphics | MP/s |
 |---|---:|---:|---:|---:|---:|
 | PNG (the sources) | 18,543,751 | 100 % | 15,394,305 | 3,149,446 | |
-| av1gpu `--lossless` | 20,112,025 | 108.5 % | 13,370,817 | 6,741,208 | 16.8 / 41–43 |
-| av1gpu `--lossless --ycgco-re` | 16,809,786 | 90.6 % | 11,990,929 | 4,818,857 | 16.4 / 41–43 |
+| av1gpu `--lossless` | 20,112,025 | 108.5 % | 13,370,817 | 6,741,208 | 18.0 / 41.2 |
+| av1gpu `--lossless --ycgco-re` | 16,809,786 | 90.6 % | 11,990,929 | 4,818,857 | 18.2 / 41.5 |
 | avifenc `-l -s 6` | 21,516,335 | 116.0 % | 13,686,053 | 7,830,282 | 9.3 |
 | avifenc `-l -s d` (libaom's default, cpu-used 0) | 18,861,272 | 101.7 % | 13,324,165 | 5,537,107 | 0.38 |
 | avifenc `-l -s 6 --cicp 1/13/16` | 17,103,004 | 92.2 % | 12,396,839 | 4,706,165 | 8.8 |
@@ -497,8 +502,8 @@ extras: logos with soft edges, icons with shadows, photo stickers, UI controls, 
 | Encoder (39 PNGs, 10.1 MP) | Total bytes | Colour | Alpha | Alpha PSNR | MP/s |
 |---|---:|---:|---:|---|---:|
 | av1gpu default (q60, alpha q60) | 698,892 | 592,901 | 90,523 | 50.2 dB | 27.1 |
-| av1gpu `--alpha-quality 100` | 1,088,428 | 592,901 | 480,059 | exact | 24.9 |
-| av1gpu `--lossless` | 7,723,961 | 7,222,941 | 485,582 | exact | 26.4 |
+| av1gpu `--alpha-quality 100` | 1,088,428 | 592,901 | 480,059 | exact | 25.8 |
+| av1gpu `--lossless` | 7,723,961 | 7,222,941 | 485,582 | exact | 25.5 |
 | avifenc default (4:4:4, qalpha 60) | 846,207 | 730,647 | 99,452 | 50.9 dB | 14.4 |
 | avifenc `--qalpha 100` | 1,274,328 | 730,647 | 527,573 | exact | 12.1 |
 | avifenc `-y 420 --qalpha 100` | 1,208,036 | 664,317 | 527,573 | exact | |
@@ -509,9 +514,10 @@ extras: logos with soft edges, icons with shadows, photo stickers, UI controls, 
 The av1gpu sizes were re-measured with the 4 × 4 default; only `ui_hud_1080p.png` (1920 × 1080) is big enough
 to get more tiles, and its colour and lossy alpha grew by 235 and 211 bytes. The lossy colour columns are not
 matched for quality. The exact alpha planes are directly comparable:
-av1gpu's are about 9 % smaller than libaom's. Speeds are for the set repeated 20× (202 MP); av1gpu
-without alpha (`--no-alpha`) runs at 29.9 MP/s on it. Mostly small images keep the GPU less busy than
-the photo sets.
+av1gpu's are about 9 % smaller than libaom's. Speeds are for the set repeated 20× (202 MP), wall time
+including start-up, `GP_ENCODERS=4`; av1gpu's are v0.4's, which ran without alpha (`--no-alpha`) at
+30.2 MP/s (v0.3.0 in the same session: 27.1, 25.1, 26.0 and 30.0). Mostly small images keep the GPU less busy
+than the photo sets, so the extra decode threads make little difference here.
 
 **Fixed along the way.** In 8-bit mode, 16-bit PNGs without a gAMA or sRGB chunk were read as linear light by
 libpng's simplified API and came out brightened (mid-grey 30000/65535 became 179 instead of 117). They are now
@@ -520,7 +526,7 @@ unaffected. PNG and WebP ICC profiles and EXIF orientation are still not read.
 
 ### CPU threads (PNG and WebP input)
 
-JPEGs are decoded by the L4's hardware JPEG engine, so a JPEG batch keeps only 0.1–0.2 CPU cores busy.
+JPEGs are decoded by the L4's hardware JPEG engine, so a JPEG batch keeps only 0.1–0.3 CPU cores busy.
 PNG and WebP files are decoded on the CPU. Since 2026-11-01 batch mode gives that decoding one thread per CPU
 it may use, instead of 4. JPEG parsing and the CPU entropy decode (`GP_INGEST_DECODER=1`, used on GPUs without
 the engine) also get one thread per CPU, as do the writer threads of `--cpu-entropy`. "May use" means the
@@ -581,8 +587,9 @@ mixed and PNG lists):
 - **Fixed with it:** `GP_ENCODERS` of 24 or more never finished. No encoder could take an ingest batch,
   with JPEG or PNG input alike. Runs now finish with 24 and 48, and with `GP_INGEST_INFLIGHT=1`.
 
-The other speed tables in this file are still v0.3.0's. Raw results and scripts: `bench/results/aws-g6-l4-threads/`
-(first round) and its `followup/` (the table above, batch logs).
+On a real g6.4xlarge, in the speed tables above, the size-range JPEGs ran at 128.0 MP/s with the default 3
+encoders. Raw results and scripts: `bench/results/aws-g6-l4-threads/` (first round) and its `followup/` (the
+table above, batch logs).
 
 ### CVVDP: a second metric
 
@@ -613,8 +620,8 @@ WebP/NVENC points. Bits per pixel are medians, interpolated per photo.)
   without colour, CVVDP puts it at +6.2 %, so the difference is in luma. av1gpu's search was tuned with
   SSIMULACRA2; CVVDP suggests its luma decisions on large photos leave some quality behind.
 - **Speed at CVVDP's file sizes:** at av1gpu's +4.2 %, interpolating between presets and speeds, SVT-AV1 runs
-  at about 73 MP/s (between presets 6 and 9) and libaom at about 49 MP/s, so av1gpu is about 1.6× and 2.4×
-  faster (v0.3.0's speed). On SSIMULACRA2 the same comparison gives about 4×.
+  at about 73 MP/s (between presets 6 and 9) and libaom at about 49 MP/s, so av1gpu is about 1.7× and 2.6×
+  faster. On SSIMULACRA2 the same comparison gives about 4.2×.
 - **With v0.3.0's 2 × 2 tiles** av1gpu was +3.9 % on CVVDP (0.459 bits per pixel at 9.5 JOD; +5.9 % at 10 MP and
   over), so the 4 × 4 default costs about a quarter of a point on both metrics.
 - 9.5 JOD is a "high fidelity" threshold suggested on Reddit for a 27-inch 1080p screen at about 20 inches,
@@ -663,13 +670,14 @@ The image sets differ, so this is a rough comparison. The development set was pr
 (IJG quality 90, mean 4.2 MP); the size-range set here has a similar mean size (4.8 MP) but mostly camera
 originals. With that caveat:
 
-- **Speed is about the same:** 104–116 MP/s with the default settings on the L4 against 110.8 MP/s on the
-  RTX PRO 2000. Both cards are power-limited (70–72 W).
+- **Speed was about the same with the same code:** 104–116 MP/s with the default settings of v0.3.0 and
+  earlier on the L4 against 110.8 MP/s on the RTX PRO 2000. Both cards are power-limited (70–72 W). v0.4 runs
+  at 122–128 MP/s on the L4.
 - **Compression matches:** +0.1 % against libaom speed 6 here (−0.1 % with v0.3.0's 2 × 2 tiles, the tiling
   the held-out set was measured with), −0.6 % on the held-out set. libaom speed 9 is +15.0 % here, +14.0 % there.
 - **The CPU here is much faster per thread** (libaom speed 6: 1.8 MP/s per vCPU, against 1.27 on the
-  Xeon Silver 4110; speed 9: 11.7 against 8.45). Against the whole 16-vCPU machine, av1gpu is 4.0× libaom
-  speed 6 at the same file size, while libaom speed 9 is 1.6× faster than av1gpu with files 15 % larger.
+  Xeon Silver 4110; speed 9: 11.7 against 8.45). Against the whole 16-vCPU machine, av1gpu is 4.4× libaom
+  speed 6 at the same file size, while libaom speed 9 is 1.5× faster than av1gpu with files 15 % larger.
 - **Cost of the run:** 1 h 39 min on a g6.4xlarge spot instance at about $0.80/hour, plus about 2 minutes
   on demand, roughly $1.40.
 
@@ -697,7 +705,7 @@ results apply unchanged. The raw results are not in `bench/results/`.
 
 MP/s at quality 60, 8-bit 4:2:0. av1gpu used 0.12–0.36 CPU cores in every run.
 
-| Setting | standard (~1 MP) | size range | L4 standard | L4 size range |
+| Setting | standard (~1 MP) | size range | L4 standard, same version | L4 size range, same version |
 |---|---:|---:|---:|---:|
 | default (`GP_ENCODERS=3`) | 121.1 | 225.8 | | |
 | default, `GP_ENCODERS=2` | 110.4 | 195.7 | 39.2 | 103.8 |
@@ -713,7 +721,8 @@ Run-to-run spread was within ±1 % on the standard set and ±6 % on the size ran
   256.5 against 116.0 with 4) and 2.8–3.3× on the standard set; 2.2× with `turbo3 --small-preset none`. Here 4
   encoders beat the default 3 by 8–14 %.
 - **Not power-limited:** 175–280 W of the 575 W limit at a 2.75 GHz SM clock, 0.83 J/MP on the size range with
-  the default settings and 0.44 J/MP with `turbo3 --small-preset none` (the L4: about 0.5 J/MP at 116 MP/s).
+  the default settings and 0.44 J/MP with `turbo3 --small-preset none` (the L4 with the same version: about
+  0.5 J/MP at 116 MP/s).
 - **More tiles help on this GPU:** `--tiles 2,2,2` (4 × 4 tiles instead of v0.2.0's 2 × 2 for images of 2 MP
   and more) was 39 % faster on the size range for 0.21 % more bytes (67,558,719 against 67,417,788). With
   `--prof`, the reconstruction used 5–12 % of the GPU's CTA-cycle capacity, so the wavefront's serial chain is
@@ -724,7 +733,7 @@ Run-to-run spread was within ±1 % on the standard set and ±6 % on the size ran
 
 Size range, default settings:
 
-| Format | MP/s | vs 8-bit 4:2:0 | L4 MP/s |
+| Format | MP/s | vs 8-bit 4:2:0 | L4 MP/s, same version |
 |---|---:|---:|---:|
 | 8-bit 4:2:0 | 225.8 | | 113.4 |
 | 8-bit 4:4:4 | 192.1 | −15 % | 94.5 |

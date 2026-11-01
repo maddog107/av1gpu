@@ -113,10 +113,11 @@ def files(bd):
     return f"files {bd * 100:+.1f} % vs speed 6".replace("-", "−")
 
 
-# av1gpu --preset turbo3 --small-preset none, timed separately on a g6.4xlarge L4 (GP_ENCODERS=4, 99 of the
-# 100 photos, two rounds of bench.gpu_speed: 213.9 and 209.8 MP/s, 0.19 cores; the default gave 120.4 and 118.0
-# in the same session). Its files: bench/results/aws-g6-l4-tiles4x4.
-TURBO3_SPEED = 212
+def v04(setting):
+    """av1gpu's speed with v0.4 (4x4 tiles, one decode thread per CPU) on the L4, as (MP/s, CPU cores): the median of
+    6 runs (bench/results/aws-g6-l4-speed-v04). setting: e.g. "jpeg/size_range/default_enc4", "formats/444_10"."""
+    r = load("aws-g6-l4-speed-v04")["speed"][setting + "/new"]
+    return r["mp_s"], r["cpu_cores"]
 
 
 def matchup_chart(t, name, title, subtitle, rows, sizes=True, speed=(250, 50), size=(16, 5)):
@@ -163,7 +164,8 @@ def matchup_charts(t):
     enc2 = load("aws-g6-l4-gamut-enc2")["speed"]
     s6 = next(x for x in enc2 if "speed 6" in x["codec"])["mp_s"]
     s9 = next(x for x in enc2 if "speed 9" in x["codec"])["mp_s"]
-    default = load("aws-g6-l4-gamut-enc4")["speed"][0]["mp_s"]
+    default, cores = v04("jpeg/size_range/default_enc4")
+    turbo3 = v04("jpeg/size_range/turbo3ns_enc4")[0]
     nv, nv_best = nvenc()
     nv_bd = nv["bd_rate"]["nvenc_vs_aom_s6"]["median"]
     sv = svt()
@@ -171,7 +173,8 @@ def matchup_charts(t):
     svt_note = lambda p: f"16 CPU threads; files {sv[p][1] * 100:+.1f} %".replace("-", "−")
     matchup_chart(t, "match-small", "Smallest files: av1gpu default vs libaom speed 6 and SVT-AV1",
                   ["100 photos of 0.18–24 MP on an AWS g6.4xlarge: the CPU encoders on all 16 vCPUs, av1gpu",
-                   "on one NVIDIA L4 and about 0.1 CPU core. Same file sizes as libaom speed 6, 4× the speed;",
+                   f"on one NVIDIA L4 and about {cores:.1f} CPU cores. Same file sizes as libaom speed 6, "
+                   f"{default / s6:.1f}× the speed;",
                    "SVT-AV1 reaches those sizes between its presets 4 and 6."],
                   [("av1gpu default", "1 GPU, 4 encoders", "av1gpu", default,
                     t4["av1gpu_vs_aom_s6"]["median"]),
@@ -187,12 +190,12 @@ def matchup_charts(t):
                   [("av1gpu default", "1 GPU, 4 encoders", "av1gpu", default,
                     t4["av1gpu_vs_aom_s6"]["median"]),
                    ("NVENC AV1, p7", f"{nv_best['workers']} at once, {nv_best['cpu_cores']:.0f} CPU cores", "nvenc", nv_best["mp_s"], nv_bd)],
-                  speed=(125, 25), size=(30, 10))
+                  speed=(150, 25), size=(30, 10))
     matchup_chart(t, "match-fast", "Fastest: av1gpu turbo3 vs SVT-AV1 preset 9 and libaom speed 9",
                   ["The same photos at each encoder's fastest useful setting. av1gpu is a little faster,",
                    f"and its files grow {t3 * 100:.0f} % where SVT-AV1's grow {sv[9][1] * 100:.0f} % and libaom's "
                    f"{gamut['aom_s9_vs_aom_s6']['median'] * 100:.0f} %."],
-                  [("av1gpu turbo3", "--small-preset none", "av1gpu", TURBO3_SPEED, t3),
+                  [("av1gpu turbo3", "--small-preset none", "av1gpu", turbo3, t3),
                    ("SVT-AV1 preset 9", cpu, "svt", sv[9][0], sv[9][1]),
                    ("libaom speed 9", cpu, "aom_s9", s9, gamut["aom_s9_vs_aom_s6"]["median"])])
 
@@ -201,15 +204,16 @@ def tradeoff_chart(t):
     """Every measured setting: file size against libaom speed 6 (x) and speed (y)."""
     gamut = load("aws-g6-l4-gamut")["bd_rate"]
     enc2 = load("aws-g6-l4-gamut-enc2")["speed"]
-    ns = load("aws-g6-l4-gamut-turbo-nosmall")
     t4 = tiles4x4()["bd_rate"]
+    default = v04("jpeg/size_range/default_enc4")[0]
+    s6 = next(x for x in enc2 if "speed 6" in x["codec"])["mp_s"]
     nv, nv_best = nvenc()
     sv = svt()
     series = [  # key, legend, marker, dashed, points (BD, MP/s, label, label anchor)
         ("av1gpu", "av1gpu (one L4)", "circle", False,
-         [(t4["av1gpu_vs_aom_s6"]["median"], load("aws-g6-l4-gamut-enc4")["speed"][0]["mp_s"], "default", "w"),
-          (t4["av1gpu_nosmall_vs_aom_s6"]["median"], ns["speed"][0]["mp_s"], "no small preset", "nw"),
-          (t4["av1gpu_turbo3_nosmall_vs_aom_s6"]["median"], TURBO3_SPEED, "turbo3", "n")]),
+         [(t4["av1gpu_vs_aom_s6"]["median"], default, "default", "w"),
+          (t4["av1gpu_nosmall_vs_aom_s6"]["median"], v04("jpeg/size_range/nosmall_enc4")[0], "no small preset", "nw"),
+          (t4["av1gpu_turbo3_nosmall_vs_aom_s6"]["median"], v04("jpeg/size_range/turbo3ns_enc4")[0], "turbo3", "n")]),
         ("svt", "SVT-AV1 (16 threads)", "triangle", True,
          [(sv[p][1], sv[p][0], f"preset {p}", {2: "n", 4: "n", 8: "w", 9: "n"}.get(p, "e")) for p in sorted(sv)]),
         ("aom_s6", "libaom (16 threads)", "square", False,
@@ -231,7 +235,7 @@ def tradeoff_chart(t):
         s.text(lx + 30, 110, label, 13, "ink2")
         lx += 30 + 7.0 * len(label) + 22
     L, R, T, B = 70, 730, 136, 530
-    xmin, xmax, ymin, ymax = -6, 30, 0, 225
+    xmin, xmax, ymin, ymax = -6, 30, 0, 250
     X = lambda v: L + (R - L) * (v * 100 - xmin) / (xmax - xmin)
     Y = lambda v: B - (B - T) * (v - ymin) / (ymax - ymin)
     for v in range(ymin, ymax + 1, 25):
@@ -244,11 +248,11 @@ def tradeoff_chart(t):
     s.add(f'<text x="18" y="{(T + B) / 2:.1f}" font-size="12" fill="{t["muted"]}" text-anchor="middle" '
           f'transform="rotate(-90 18 {(T + B) / 2:.1f})">MP/s (faster is higher)</text>')
     # the headline gap: av1gpu default against libaom speed 6, at the same file size
-    ax, lo, hi = X(0) - 14, Y(29) - 10, Y(116) + 10
+    ax, lo, hi = X(0) - 14, Y(s6) - 10, Y(default) + 10
     s.add(f'<line x1="{ax:.1f}" y1="{lo:.1f}" x2="{ax:.1f}" y2="{hi + 6:.1f}" stroke="{t["ink2"]}" stroke-width="1.5"/>')
     s.add(f'<path d="M{ax - 5:.1f},{hi + 7:.1f} L{ax:.1f},{hi:.1f} L{ax + 5:.1f},{hi + 7:.1f}" fill="none" '
           f'stroke="{t["ink2"]}" stroke-width="1.5" stroke-linejoin="round"/>')
-    s.text(ax - 8, (lo + hi) / 2 + 2, "4×", 20, "ink", "end", 700)
+    s.text(ax - 8, (lo + hi) / 2 + 2, f"{default / s6:.1f}×", 20, "ink", "end", 700)
     s.text(ax - 8, (lo + hi) / 2 + 18, "faster at the", 12, "ink2", "end")
     s.text(ax - 8, (lo + hi) / 2 + 33, "same file size", 12, "ink2", "end")
     off = dict(n=(0, -12, "middle"), s=(0, 20, "middle"), e=(10, 4, "start"), w=(-10, 4, "end"), se=(8, 18, "start"), nw=(-6, -10, "end"))
@@ -270,7 +274,10 @@ def formats_chart(t):
     r = load("aws-g6-l4-formats")
     t4 = tiles4x4()["bd_rate"]
     names = {"420_8": "8-bit 4:2:0", "444_8": "8-bit 4:4:4", "420_10": "10-bit 4:2:0", "444_10": "10-bit 4:4:4"}
-    sp = {(x["encoder"], x["format"]): x["mp_s"] for x in r["speed"]}
+    sp = {(x["encoder"], x["format"]): x["mp_s"] for x in r["speed"] if x["encoder"] != "av1gpu"}   # libaom
+    sp[("av1gpu", "420_8")] = v04("jpeg/size_range/default_enc4")[0]
+    for f in ("444_8", "420_10", "444_10"):
+        sp[("av1gpu", f)] = v04(f"formats/{f}")[0]
     rows = []
     within = max(abs(t4[f"av1gpu_{f}_vs_aom_s6_{f}"]["median"]) for f in names) * 100
     within = round(within + 0.049, 1)   # rounded up
@@ -282,7 +289,7 @@ def formats_chart(t):
     matchup_chart(t, "formats", "Every output format: av1gpu vs libaom speed 6",
                   ["Speed at quality 60 on the 100 size-range photos. In each format av1gpu's files are within",
                    f"{within:.1f} % of libaom speed 6's in the same format (median BD-rate, SSIMULACRA2)."],
-                  rows, sizes=False, speed=(125, 25))
+                  rows, sizes=False, speed=(150, 25))
 
 
 def metrics_chart(t):
@@ -512,7 +519,10 @@ def banner(t):
     s.add(f'<text x="350" y="112" font-size="64" font-weight="700" fill="{t["ink"]}" '
           f'letter-spacing="-1">av1gpu</text>')
     s.text(352, 148, "AVIF encoding on the GPU", 22, "ink2")
-    s.text(352, 178, "libaom-speed-6 file sizes, 4× faster than libaom on all 16 CPU threads at once", 14, "muted")
+    ratio = v04("jpeg/size_range/default_enc4")[0] / next(
+        x for x in load("aws-g6-l4-gamut-enc2")["speed"] if "speed 6" in x["codec"])["mp_s"]
+    s.text(352, 178, f"libaom-speed-6 file sizes, {ratio:.1f}× faster than libaom on all 16 CPU threads at once", 14,
+           "muted")
     s.save(os.path.join(HERE, f"banner-{t['name']}.svg"))
 
 
