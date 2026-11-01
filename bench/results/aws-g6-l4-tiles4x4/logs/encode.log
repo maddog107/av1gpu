@@ -1,0 +1,54 @@
+new gamut_default 0 800 files
+old gamut_default 0 800 files
+new gamut_nosmall 0 600 files
+old gamut_nosmall 0 600 files
+new gamut_turbo3ns 0 600 files
+old gamut_turbo3ns 0 600 files
+new gamut_turbo3 0 600 files
+old gamut_turbo3 0 600 files
+new fmt_444_8 0 600 files
+old fmt_444_8 0 600 files
+new fmt_420_10 0 600 files
+old fmt_420_10 0 600 files
+new fmt_444_10 0 600 files
+old fmt_444_10 0 600 files
+new std_default 0 600 files
+old std_default 0 600 files
+new std_nosmall 0 600 files
+old std_nosmall 0 600 files
+new std_turbo3ns 0 600 files
+old std_turbo3ns 0 600 files
+new ll_jpeg_gamut 0 63 files
+old ll_jpeg_gamut 0 63 files
+new ll_cmp 0 51 files
+old ll_cmp 0 51 files
+new ll_cmp_ycgco 0 51 files
+old ll_cmp_ycgco 0 51 files
+new ll_misc 0 13 files
+old ll_misc 0 13 files
+new ll_jpeg_misc 0 19 files
+old ll_jpeg_misc 0 19 files
+new alpha_default 0 43 files
+old alpha_default 0 43 files
+new alpha_q100 0 43 files
+old alpha_q100 0 43 files
+new alpha_lossless 0 42 files
+old alpha_lossless 0 42 files
+gamut_default {'new': 800, 'old': 800, 'lt2': {'files': 384, 'identical': 384, 'bytes_new': 28082930, 'bytes_old': 28082930}, 'ge2': {'files': 416, 'identical': 0, 'bytes_new': 240190824, 'bytes_old': 239753617}, 'unknown_size': {'files': 0, 'identical': 0}}
+gamut_nosmall {'new': 600, 'old': 600, 'lt2': {'files': 288, 'identical': 288, 'bytes_new': 15106756, 'bytes_old': 15106756}, 'ge2': {'files': 312, 'identical': 0, 'bytes_new': 118552920, 'bytes_old': 118251193}, 'unknown_size': {'files': 0, 'identical': 0}}
+gamut_turbo3ns {'new': 600, 'old': 600, 'lt2': {'files': 288, 'identical': 288, 'bytes_new': 15613138, 'bytes_old': 15613138}, 'ge2': {'files': 312, 'identical': 0, 'bytes_new': 121477643, 'bytes_old': 121264235}, 'unknown_size': {'files': 0, 'identical': 0}}
+gamut_turbo3 {'new': 600, 'old': 600, 'lt2': {'files': 288, 'identical': 288, 'bytes_new': 15197614, 'bytes_old': 15197614}, 'ge2': {'files': 312, 'identical': 0, 'bytes_new': 121477643, 'bytes_old': 121264235}, 'unknown_size': {'files': 0, 'identical': 0}}
+fmt_444_8 {'new': 600, 'old': 600, 'lt2': {'files': 288, 'identical': 288, 'bytes_new': 15382424, 'bytes_old': 15382424}, 'ge2': {'files': 312, 'identical': 0, 'bytes_new': 121063391, 'bytes_old': 120757868}, 'unknown_size': {'files': 0, 'identical': 0}}
+fmt_420_10 {'new': 600, 'old': 600, 'lt2': {'files': 288, 'identical': 288, 'bytes_new': 15319177, 'bytes_old': 15319177}, 'ge2': {'files': 312, 'identical': 0, 'bytes_new': 121817137, 'bytes_old': 121492947}, 'unknown_size': {'files': 0, 'identical': 0}}
+fmt_444_10 {'new': 600, 'old': 600, 'lt2': {'files': 288, 'identical': 288, 'bytes_new': 15437850, 'bytes_old': 15437850}, 'ge2': {'files': 312, 'identical': 0, 'bytes_new': 122292293, 'bytes_old': 121970376}, 'unknown_size': {'files': 0, 'identical': 0}}
+std_default {'new': 600, 'old': 600, 'lt2': {'files': 600, 'identical': 600, 'bytes_new': 31360529, 'bytes_old': 31360529}, 'ge2': {'files': 0, 'identical': 0, 'bytes_new': 0, 'bytes_old': 0}, 'unknown_size': {'files': 0, 'identical': 0}}
+std_nosmall {'new': 600, 'old': 600, 'lt2': {'files': 600, 'identical': 600, 'bytes_new': 31467024, 'bytes_old': 31467024}, 'ge2': {'files': 0, 'identical': 0, 'bytes_new': 0, 'bytes_old': 0}, 'unknown_size': {'files': 0, 'identical': 0}}
+std_turbo3ns {'new': 600, 'old': 600, 'lt2': {'files': 600, 'identical': 600, 'bytes_new': 32507527, 'bytes_old': 32507527}, 'ge2': {'files': 0, 'identical': 0, 'bytes_new': 0, 'bytes_old': 0}, 'unknown_size': {'files': 0, 'identical': 0}}
+ll_jpeg_gamut {'new': 63, 'old': 63, 'lt2': {'files': 32, 'identical': 32, 'bytes_new': 15623945, 'bytes_old': 15623945}, 'ge2': {'files': 31, 'identical': 31, 'bytes_new': 150376535, 'bytes_old': 150376535}, 'unknown_size': {'files': 0, 'identical': 0}}
+ll_cmp {'new': 51, 'old': 51, 'lt2': {'files': 44, 'identical': 44, 'bytes_new': 17217352, 'bytes_old': 17217352}, 'ge2': {'files': 7, 'identical': 7, 'bytes_new': 3788446, 'bytes_old': 3788446}, 'unknown_size': {'files': 0, 'identical': 0}}
+ll_cmp_ycgco {'new': 51, 'old': 51, 'lt2': {'files': 44, 'identical': 44, 'bytes_new': 14710500, 'bytes_old': 14710500}, 'ge2': {'files': 7, 'identical': 7, 'bytes_new': 2706473, 'bytes_old': 2706473}, 'unknown_size': {'files': 0, 'identical': 0}}
+ll_misc {'new': 13, 'old': 13, 'lt2': {'files': 12, 'identical': 12, 'bytes_new': 3692299, 'bytes_old': 3692299}, 'ge2': {'files': 1, 'identical': 1, 'bytes_new': 30136673, 'bytes_old': 30136673}, 'unknown_size': {'files': 0, 'identical': 0}}
+ll_jpeg_misc {'new': 19, 'old': 19, 'lt2': {'files': 16, 'identical': 16, 'bytes_new': 5355981, 'bytes_old': 5355981}, 'ge2': {'files': 3, 'identical': 3, 'bytes_new': 20334931, 'bytes_old': 20334931}, 'unknown_size': {'files': 0, 'identical': 0}}
+alpha_default {'new': 43, 'old': 43, 'lt2': {'files': 42, 'identical': 42, 'bytes_new': 796182, 'bytes_old': 796182}, 'ge2': {'files': 1, 'identical': 0, 'bytes_new': 7642, 'bytes_old': 7196}, 'unknown_size': {'files': 0, 'identical': 0}}
+alpha_q100 {'new': 43, 'old': 43, 'lt2': {'files': 42, 'identical': 42, 'bytes_new': 1199498, 'bytes_old': 1199498}, 'ge2': {'files': 1, 'identical': 0, 'bytes_new': 14105, 'bytes_old': 13870}, 'unknown_size': {'files': 0, 'identical': 0}}
+alpha_lossless {'new': 42, 'old': 42, 'lt2': {'files': 41, 'identical': 41, 'bytes_new': 8591958, 'bytes_old': 8591958}, 'ge2': {'files': 1, 'identical': 1, 'bytes_new': 30706, 'bytes_old': 30706}, 'unknown_size': {'files': 0, 'identical': 0}}

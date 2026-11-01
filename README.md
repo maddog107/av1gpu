@@ -16,18 +16,18 @@
 </p>
 
 <p align="center">
-  <img alt="A 12-megapixel photo of a maroon 1962 Opel Kapitän split down the middle: the left half is the 6,031 KB original JPEG, the right half av1gpu's 419 KB AVIF. The seam is invisible." src="docs/img/hero-car.jpg" width="900"><br>
-  <sub>Left: the original 12 MP JPEG, 6,031 KB. Right: av1gpu's AVIF at the default quality, 419 KB.
+  <img alt="A 12-megapixel photo of a maroon 1962 Opel Kapitän split down the middle: the left half is the 6,031 KB original JPEG, the right half av1gpu's 421 KB AVIF. The seam is invisible." src="docs/img/hero-car.jpg" width="900"><br>
+  <sub>Left: the original 12 MP JPEG, 6,031 KB. Right: av1gpu's AVIF at the default quality, 421 KB.
   Photo: <a href="https://www.flickr.com/photos/yakobusan/20438833739">Untitled</a> by Jakob Montrasio, CC BY 2.0.</sub>
 </p>
 
 > [!TIP]
 > **TL;DR:** av1gpu turns JPEGs into AVIFs on an NVIDIA GPU **4× faster than libaom running on all 16 CPU
 > threads at once** (3.7× against a tuned build), with the **same file sizes** on SSIMULACRA2 (libaom speed 6:
-> −0.1 % as avifenc runs it, +0.5 % with its tiling turned off; a second metric, CVVDP, says +3.9 %), while
+> +0.1 % as avifenc runs it, +0.7 % with its tiling turned off; a second metric, CVVDP, says +4.2 %), while
 > using only **0.1 of a CPU core**. The 100 test photos went from **160 MB of JPEG to 22.5 MB of AVIF
 > (−86 %)**, and its files are **31 % smaller than WebP** at the same quality. SVT-AV1 needs presets 4–6 on
-> all 16 threads (16–49 MP/s) for the same sizes; built with PGO, it is still 3.3× slower. On the same GPU
+> all 16 threads (16–49 MP/s) for the same sizes; built with PGO, it is still 3.1× slower. On the same GPU
 > av1gpu is **7× faster than NVIDIA's own NVENC AV1 encoder**, whose files are about 28 % bigger than
 > libaom's. It also writes **4:4:4, 10-bit, lossless and transparent** AVIFs (4:4:4 and 10-bit 4–5× faster
 > than libaom in the same format). One prebuilt binary, no CPU farm.
@@ -50,7 +50,7 @@ to store and send (at equal quality, av1gpu's files are 31 % smaller than WebP's
 |---|---|
 | **15 M+ photos** | Bellazon's archive (32 M files, 50 trillion pixels) in about 7 GPU-days on one card |
 | **116 MP/s** | on one NVIDIA L4, a 72 W data-centre card (with `GP_ENCODERS=4`) |
-| **−0.1 %** | file size against libaom speed 6 at equal quality (median BD-rate, SSIMULACRA2; +0.5 % against libaom with its tiling off) |
+| **+0.1 %** | file size against libaom speed 6 at equal quality (median BD-rate, SSIMULACRA2; +0.7 % against libaom with its tiling off) |
 | **−31 %** | file size against WebP at equal quality |
 | **0.1 cores** | of CPU while encoding, so the CPU stays free for other work |
 | **bit-exact** | every test encode decodes to the encoder's own reconstruction in dav1d and libaom |
@@ -75,15 +75,16 @@ avifenc per vCPU with avifenc's defaults (which tile images automatically). Full
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/charts/tradeoff-dark.svg">
-  <img alt="Scatter chart of speed against file size vs libaom speed 6, with an arrow marking av1gpu 4× faster than libaom speed 6 at the same file size. av1gpu: default 116 MP/s at −0.1 percent, no small preset 127 at +2.1, turbo3 212 at +5.4. SVT-AV1 on 16 threads: preset 2 4.6 MP/s at −5.1 percent, preset 4 15.5 at −2.6, preset 6 49 at +2.1, preset 8 136 at +7.7, preset 9 183 at +9.8. libaom on 16 threads: speed 6 29 MP/s at 0, speed 9 188 at +15.0. NVENC AV1 16 MP/s at +29.5 percent." src="docs/charts/tradeoff-light.svg" width="760">
+  <img alt="Scatter chart of speed against file size vs libaom speed 6, with an arrow marking av1gpu 4× faster than libaom speed 6 at the same file size. av1gpu: default 116 MP/s at +0.1 percent, no small preset 127 at +2.2, turbo3 212 at +5.7. SVT-AV1 on 16 threads: preset 2 4.6 MP/s at −5.1 percent, preset 4 15.5 at −2.6, preset 6 49 at +2.1, preset 8 136 at +7.7, preset 9 183 at +9.8. libaom on 16 threads: speed 6 29 MP/s at 0, speed 9 188 at +15.0. NVENC AV1 16 MP/s at +29.5 percent." src="docs/charts/tradeoff-light.svg" width="760">
 </picture>
 
-**Speed against file size:** up is faster, left is smaller files. From libaom-speed-6 sizes up to +5 %, av1gpu
-on one GPU is 2.4–4× faster than the best CPU encoder on all 16 threads (interpolating between SVT-AV1
-presets). For the smallest files, SVT-AV1's slow presets go further (preset 2: −5.1 %, at 4.6 MP/s);
+**Speed against file size:** up is faster, left is smaller files. From libaom-speed-6 sizes up to +6 %, av1gpu
+on one GPU is 2.2–3.8× faster than the best CPU encoder on all 16 threads (interpolating between SVT-AV1
+presets; av1gpu's speeds are still from v0.3.0, before the 4 × 4-tile default made it about 12 % faster).
+For the smallest files, SVT-AV1's slow presets go further (preset 2: −5.1 %, at 4.6 MP/s);
 av1gpu's own `--preset slow` has not been timed on the L4 yet. Tuning the CPU side (`-march=native`, LTO,
 PGO for SVT-AV1, the best thread split, no tiling) makes it 1–15 % faster with the same files; at
-libaom-speed-6 sizes av1gpu is then 3.3–3.7× faster
+libaom-speed-6 sizes av1gpu is then 3.1–3.7× faster
 ([details](docs/RESULTS.md#cpu-builds-tuning-threads-and-tiling)).
 
 Each encoder has a "small files" setting and a "fast" setting, so there are two fair match-ups. A third
@@ -104,11 +105,11 @@ files 2.1 % bigger) and preset 4 (16 MP/s, 2.6 % smaller).
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/charts/match-fast-dark.svg">
-  <img alt="Two bar panels. Speed: av1gpu turbo3 with the small-image preset off 212 MP/s, SVT-AV1 preset 9 183 MP/s, libaom speed 9 188 MP/s. Files vs libaom speed 6: av1gpu turbo3 +5.4 percent, SVT-AV1 preset 9 +9.8 percent, libaom speed 9 +15.0 percent." src="docs/charts/match-fast-light.svg" width="760">
+  <img alt="Two bar panels. Speed: av1gpu turbo3 with the small-image preset off 212 MP/s, SVT-AV1 preset 9 183 MP/s, libaom speed 9 188 MP/s. Files vs libaom speed 6: av1gpu turbo3 +5.7 percent, SVT-AV1 preset 9 +9.8 percent, libaom speed 9 +15.0 percent." src="docs/charts/match-fast-light.svg" width="760">
 </picture>
 
-**A little faster than both, and av1gpu's files grow about half as much as SVT-AV1's and a third as much
-as libaom's:** +5.4 % against libaom speed 6, where SVT-AV1 preset 9 pays +9.8 % and libaom speed 9 +15 %.
+**A little faster than both, and av1gpu's files grow less:** +5.7 % against libaom speed 6, where SVT-AV1
+preset 9 pays +9.8 % and libaom speed 9 +15 %.
 av1gpu uses 0.2 of a CPU core; the CPU encoders need all 16 threads. libaom speed 10 is no faster than 9
 for still images, and SVT-AV1 runs presets 10–13 as 9 when every frame is intra.
 
@@ -119,7 +120,7 @@ gave 119 MP/s there, against 116 in the main run).
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/charts/match-nvenc-dark.svg">
-  <img alt="Two bar panels. Speed: av1gpu default 116 MP/s, NVENC AV1 preset p7 16 MP/s. Files vs libaom speed 6: av1gpu −0.1 percent, NVENC +29.5 percent." src="docs/charts/match-nvenc-light.svg" width="760">
+  <img alt="Two bar panels. Speed: av1gpu default 116 MP/s, NVENC AV1 preset p7 16 MP/s. Files vs libaom speed 6: av1gpu +0.1 percent, NVENC +29.5 percent." src="docs/charts/match-nvenc-light.svg" width="760">
 </picture>
 
 **7× faster than the GPU's own AV1 encoder, with files 21 % smaller.** NVENC is a fixed-function block
@@ -139,14 +140,14 @@ decodes odd heights with wrong chroma, which makes it +29.5 % over all 99). Test
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/charts/by-size-dark.svg">
-  <img alt="Column chart of median BD-rate against libaom speed 6 by image size. av1gpu: +0.1, +1.1, −0.6 and −2.4 percent for under 1 MP, 1–5, 5–10 and 10 MP and over. libaom speed 9: +20.1, +18.5, +12.8 and +13.4 percent. NVENC AV1: +35.7, +29.2, +28.5 and +22.2 percent." src="docs/charts/by-size-light.svg" width="760">
+  <img alt="Column chart of median BD-rate against libaom speed 6 by image size. av1gpu: +0.1, +1.9, +0.2 and −2.1 percent for under 1 MP, 1–5, 5–10 and 10 MP and over. libaom speed 9: +20.1, +18.5, +12.8 and +13.4 percent. NVENC AV1: +35.7, +29.2, +28.5 and +22.2 percent." src="docs/charts/by-size-light.svg" width="760">
 </picture>
 
 | Encoder | MP/s | Files vs libaom s6 | Files vs WebP | CPU cores |
 |---|---:|---:|---:|---:|
-| **av1gpu** default, `GP_ENCODERS=4` | **116** | **−0.1 %** | **−30.7 %** | 0.1 |
-| av1gpu `--small-preset none` | 127 | +2.1 % | | 0.1 |
-| av1gpu `--preset turbo3 --small-preset none` | 212¹ | +5.4 % | | 0.2 |
+| **av1gpu** default, `GP_ENCODERS=4` | **116** | **+0.1 %** | **−30.6 %** | 0.1 |
+| av1gpu `--small-preset none` | 127 | +2.2 % | | 0.1 |
+| av1gpu `--preset turbo3 --small-preset none` | 212¹ | +5.7 % | | 0.2 |
 | libaom speed 6, 16 × avifenc | 29 | 0 | −29.6 % | 16 |
 | libaom speed 9, 16 × avifenc | 188 | +15.0 % | −18.7 % | 16 |
 | SVT-AV1 preset 2, 16 × avifenc | 4.6³ | −5.1 % | −33.8 % | 16 |
@@ -156,6 +157,9 @@ decodes odd heights with wrong chroma, which makes it +29.5 % over all 99). Test
 | SVT-AV1 preset 9, 16 × avifenc | 183³ | +9.8 % | −22.4 % | 16 |
 | WebP (cwebp `-m 4`) | | +42.1 %⁴ | 0 | |
 | NVENC AV1 (ffmpeg `av1_nvenc -preset p7 -tune uhq`), 8 at once | 16² | +29.5 %⁵ | −11.3 % | 4 |
+
+av1gpu's file sizes are from the 4 × 4-tile default (since 2026-10-31); its speeds are from v0.3.0, which used
+2 × 2 tiles.
 
 ¹ Measured in a separate L4 session on 99 of the 100 photos, where the default ran at 119 MP/s.
 ² Same L4, separate session, 99 photos; the av1gpu default ran at 116 MP/s alongside it.
@@ -168,7 +172,7 @@ photos NVENC is +27.9 % ([details](docs/RESULTS.md#nvenc-av1-on-the-same-l4)).
 
 The CPU encoders ran with avifenc's defaults, which split most of these photos into up to 8 tiles. With one
 tile they run at the same speed and make files about 0.5 % smaller, so against untiled libaom speed 6
-av1gpu's default is +0.5 %, and SVT-AV1 presets 4, 6 and 9 are −2.9, +2.6 and +9.8 %. Builds with
+av1gpu's default is +0.7 %, and SVT-AV1 presets 4, 6 and 9 are −2.9, +2.6 and +9.8 %. Builds with
 `-march=native` and LTO write the same files 1–4 % faster, and SVT-AV1 with PGO 9–13 % faster
 ([details](docs/RESULTS.md#cpu-builds-tuning-threads-and-tiling)).
 
@@ -182,7 +186,7 @@ av1gpu's default is +0.5 %, and SVT-AV1 presets 4, 6 and 9 are −2.9, +2.6 and 
 `--yuv 444` (full-resolution colour, AV1 High profile) and `--depth 10`, alone or together, keep the same
 picture: in every format av1gpu's files are within 0.4 % of libaom speed 6's in that format, at 3.9–5× the
 speed. On these photos 10-bit makes files about 2 % smaller at equal quality for both encoders (av1gpu
-−2.3 %, libaom −2.0 %), at a 3 % speed cost for av1gpu. 4:4:4 makes little difference here, because the
+−2.2 %, libaom −2.0 %), at a 3 % speed cost for av1gpu. 4:4:4 makes little difference here, because the
 sources are 4:2:0 JPEGs; it is for sources with full-resolution colour, such as PNG screenshots and graphics.
 Details: [docs/RESULTS.md](docs/RESULTS.md#444-and-10-bit).
 
@@ -215,8 +219,8 @@ masked photos, charts):
 
 | Encoder | Total | Alpha part | Alpha | MP/s |
 |---|---:|---:|---|---:|
-| av1gpu default (q60, alpha q60) | 697 KB | 90 KB | 50.2 dB | 27 |
-| av1gpu `--alpha-quality 100` | 1,087 KB | 480 KB | exact | 25 |
+| av1gpu default (q60, alpha q60) | 699 KB | 91 KB | 50.2 dB | 27 |
+| av1gpu `--alpha-quality 100` | 1,088 KB | 480 KB | exact | 25 |
 | avifenc `--qalpha 100` (its default 4:4:4) | 1,274 KB | 528 KB | exact | 12 |
 | avifenc `-y 420 --qalpha 100` | 1,208 KB | 528 KB | exact | |
 | av1gpu `--lossless` | 7.72 MB | 486 KB | exact | 26 |
@@ -230,14 +234,14 @@ Exact alpha comes out about 9 % smaller than libaom's. The lossy colour rows are
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/charts/metrics-dark.svg">
-  <img alt="Dot chart of BD-rate against libaom speed 6 on SSIMULACRA2 and on CVVDP for each encoder: av1gpu −0.1 and +3.9 percent, SVT-AV1 preset 4 −2.6 and −2.0, preset 6 +2.1 and +2.0, preset 9 +9.8 and +9.3, libaom speed 9 +15.0 and +14.5, NVENC AV1 +29.5 and +28.4." src="docs/charts/metrics-light.svg" width="760">
+  <img alt="Dot chart of BD-rate against libaom speed 6 on SSIMULACRA2 and on CVVDP for each encoder: av1gpu +0.1 and +4.2 percent, SVT-AV1 preset 4 −2.6 and −2.0, preset 6 +2.1 and +2.0, preset 9 +9.8 and +9.3, libaom speed 9 +15.0 and +14.5, NVENC AV1 +29.5 and +28.4." src="docs/charts/metrics-light.svg" width="760">
 </picture>
 
 SSIMULACRA2 does not model screen size or viewing distance, so we also scored the same files with CVVDP
 (ColorVideoVDP, `standard_fhd`: a 24-inch 1080p screen at 60 cm, photos shown at 100 %). It agrees with
-SSIMULACRA2 within about a point for every encoder except av1gpu, which it puts at **+3.9 %** against libaom
-speed 6 instead of −0.1 %. The difference is in luma and grows with image size. At that file size av1gpu is
-still about 1.7× faster than SVT-AV1 and 2.4× faster than libaom (interpolating between presets). Every AVIF
+SSIMULACRA2 within about a point for every encoder except av1gpu, which it puts at **+4.2 %** against libaom
+speed 6 instead of +0.1 %. The difference is in luma and grows with image size. At that file size av1gpu is
+still about 1.6× faster than SVT-AV1 and 2.4× faster than libaom (interpolating between presets). Every AVIF
 encoder here reaches 9.5 JOD, a high-fidelity level, on all 99 photos: av1gpu at 0.46 bits per pixel, libaom
 speed 6 at 0.45, SVT-AV1 at 0.43–0.49 and WebP at 0.67. Details:
 [docs/RESULTS.md](docs/RESULTS.md#cvvdp-a-second-metric).
@@ -253,12 +257,12 @@ gave 33.4 MB at 78. Five of the photos, one from each size class:
     <td align="center" width="20%"><img src="docs/img/thumb-tiny.jpg" alt="A display board" width="100%"><br><b>90 KB → 27 KB</b><br>−70 % · 640 × 427</td>
     <td align="center" width="20%"><img src="docs/img/thumb-small.jpg" alt="Red peppers" width="100%"><br><b>177 KB → 60 KB</b><br>−66 % · 1024 × 768</td>
     <td align="center" width="20%"><img src="docs/img/thumb-typical.jpg" alt="A rooster" width="100%"><br><b>2.06 MB → 177 KB</b><br>−91 % · 1920 × 1280</td>
-    <td align="center" width="20%"><img src="docs/img/thumb-large.jpg" alt="A shop window with a crib" width="100%"><br><b>1.88 MB → 212 KB</b><br>−89 % · 2304 × 3072</td>
+    <td align="center" width="20%"><img src="docs/img/thumb-large.jpg" alt="A shop window with a crib" width="100%"><br><b>1.88 MB → 213 KB</b><br>−89 % · 2304 × 3072</td>
     <td align="center" width="20%"><img src="docs/img/thumb-huge.jpg" alt="A dog" width="100%"><br><b>6.08 MB → 578 KB</b><br>−90 % · 2848 × 4288</td>
   </tr>
 </table>
 
-SSIMULACRA2 against the source: 67.9, 77.3, 73.7, 71.1 and 69.0. Thumbnails are cropped from av1gpu's
+SSIMULACRA2 against the source: 67.9, 77.3, 73.6, 71.1 and 69.0. Thumbnails are cropped from av1gpu's
 output. Photos (CC BY 2.0): [DSC08815](https://www.flickr.com/photos/stupiddingo/4016599113) by Brent,
 [Fresh Red Peppers at La Boqueria](https://www.flickr.com/photos/oh-barcelona/4811363097) by Oh-Barcelona.com,
 [Cock](https://www.flickr.com/photos/kallegustafsson/5866854319) by Kalle Gustafsson,
@@ -268,7 +272,8 @@ output. Photos (CC BY 2.0): [DSC08815](https://www.flickr.com/photos/stupiddingo
 Camera originals shrink the most, because they are stored at high JPEG quality. SSIMULACRA2 here compares
 the AVIF with the decoded JPEG, not with the scene.
 
-The RTX PRO 2000 and the L4 produced byte-identical files for all five.
+With v0.3.0's 2 × 2 tiles the RTX PRO 2000 and the L4 produced byte-identical files for all five; these are the
+L4's files with the 4 × 4 default.
 
 ### 🔍 Same file size, side by side
 
@@ -277,19 +282,19 @@ same spot was cropped and enlarged 2×. av1gpu and libaom speed 6 keep the chrom
 crisp; speed 9 and WebP soften them, and JPEG turns them into blocks.
 
 <p align="center">
-  <img alt="Six 2x crops of the car's chrome grille and badge: the original JPEG (6,031 KB), and av1gpu (419.4 KB, SSIMULACRA2 72), libaom speed 6 (412.1 KB, 71), libaom speed 9 (395.9 KB, 66), WebP (417.6 KB, 62) and JPEG (409.5 KB, 34) at the same file size." src="docs/img/compare-car.png" width="900">
+  <img alt="Six 2x crops of the car's chrome grille and badge: the original JPEG (6,031 KB), and av1gpu (421.0 KB, SSIMULACRA2 72), libaom speed 6 (412.1 KB, 71), libaom speed 9 (395.9 KB, 66), WebP (417.6 KB, 62) and JPEG (420.8 KB, 36) at the same file size." src="docs/img/compare-car.png" width="900">
 </p>
 
 <details>
 <summary>A second example: a dog's eye and fur, 12 MP (578 KB each)</summary>
 <p align="center">
-  <img alt="Six 2x crops of a dog's eye: the original JPEG (6,083 KB), and av1gpu (578.2 KB, SSIMULACRA2 69), libaom speed 6 (577.8 KB, 68), libaom speed 9 (565.0 KB, 66), WebP (576.7 KB, 60) and JPEG (558.7 KB, 49) at the same file size." src="docs/img/compare-dog.png" width="900">
+  <img alt="Six 2x crops of a dog's eye: the original JPEG (6,083 KB), and av1gpu (578.3 KB, SSIMULACRA2 69), libaom speed 6 (577.8 KB, 68), libaom speed 9 (565.0 KB, 66), WebP (576.7 KB, 60) and JPEG (558.7 KB, 49) at the same file size." src="docs/img/compare-dog.png" width="900">
 </p>
 </details>
 
 Crops of [Untitled](https://www.flickr.com/photos/yakobusan/20438833739) by Jakob Montrasio and
 [DSC_2946](https://www.flickr.com/photos/hockeyholic/7881222604) by Andy Blackledge (CC BY 2.0), re-encoded
-with av1gpu on the RTX PRO 2000, avifenc 1.4 / libaom 3.13 (`tune=iq`), cwebp `-m 4` and libjpeg 4:2:0.
+with av1gpu (4 × 4 default, on the L4), avifenc 1.4 / libaom 3.13 (`tune=iq`), cwebp `-m 4` and libjpeg 4:2:0.
 
 **Every output is a standard AV1 bitstream, and the tests check that by decoding.** The encoder's
 own reconstruction must match what dav1d and libaom's decoder produce, byte for byte. That held for
@@ -416,8 +421,9 @@ More tiles shorten the wavefront's serial chain and cost a little compression; d
 across tile edges, so they leave no visible seams. On the L4 (58 SMs; size-range set, default settings,
 median of 3), 4 × 4 ran at 125.6 MP/s against 112.3 for 2 × 2 (`2,1,1`, the default up to v0.3.0; +12 %),
 and 8 × 8 (`2,3,3`) at 128.4 (+14 %); 4 × 4 cost +0.58 % BD-rate against 2 × 2 on the photos of 2 MP and
-more (SSIMULACRA2; CVVDP +0.56 %). In a contributed measurement on an RTX 5090 (170 SMs), 4 × 4 was 39 %
-faster than 2 × 2 for 0.2 % more bytes.
+more (SSIMULACRA2; CVVDP +0.56 %). Over all 100 size-range photos it moved the default from −0.1 % to +0.1 %
+against libaom speed 6; images below 2 MP are byte-identical. In a contributed measurement on an RTX 5090
+(170 SMs), 4 × 4 was 39 % faster than 2 × 2 for 0.2 % more bytes.
 
 Batch-mode environment variables: `GP_ENCODERS` (concurrent encoders, default 3), `GP_ENCODE_MP`
 (megapixels per GPU batch, default 48) and `GP_INGEST_WORKERS` (JPEG parsing threads, default 4).
