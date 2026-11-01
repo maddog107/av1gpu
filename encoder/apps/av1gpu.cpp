@@ -42,11 +42,11 @@ static void usage() {
             "  --preset P              slow|base|fast|faster|turbo|turbo2|turbo3 (default turbo)\n"
             "  --small-preset P|none   preset for images below --small-mp megapixels (default base, 1 MP)\n"
             "  --tiles MIN_MP,C,R      images of at least MIN_MP megapixels get 2^C x 2^R uniform tiles (C, R: 0..6) instead\n"
-            "                          of the preset's tiling (turbo, the default, and turbo2: 2,1,1 = 2x2 tiles from 2 MP;\n"
-            "                          turbo3: 2,2,1 = 4x2; base, slow and the others: none).  MIN_MP 0: no extra tiles, only\n"
+            "                          of the preset's tiling (turbo, the default, turbo2 and turbo3: 2,2,2 = 4x4 tiles from\n"
+            "                          2 MP; base, slow and the others: none).  MIN_MP 0: no extra tiles, only\n"
             "                          those AV1 requires (frames wider than 4096 or larger than 9.4 MP); an image too small\n"
-            "                          for the grid gets those too.  More tiles shorten the wavefront (L4: 4x4 = 2,2,2 is\n"
-            "                          12 %% faster than 2x2 on photos, +0.6 %% BD-rate) and each costs a little compression.\n"
+            "                          for the grid gets those too.  More tiles shorten the wavefront (L4: 4x4 is 12 %%\n"
+            "                          faster than 2x2 = 2,1,1 on photos, +0.6 %% BD-rate) and each costs a little compression.\n"
             "                          Applies wherever it is given (before or after --preset), also to lossy alpha frames;\n"
             "                          lossless frames use --ll-tile-area\n"
             "  --tune iq|none          libaom tune=iq tool set: chroma delta-q, QM, variance boost, deblock, CDEF\n"
@@ -156,16 +156,16 @@ static bool apply_preset(GpConfig &cfg, const char *v) {
         return true;
     }
     if (!strcmp(v, "turbo") || !strcmp(v, "turbo2") || !strcmp(v, "turbo3")) {
-        // faster + no 32x64/64x32 shapes, 2x-subsampled SATD screening for >= 16x16, 2x2 tiles for
+        // faster + no 32x64/64x32 shapes, 2x-subsampled SATD screening for >= 16x16, 4x4 tiles for
         // images >= 2 MP (shorter wavefront / entropy critical paths), K 1
         cfg.P.shapeMask = 0x13FF; cfg.P.K = 1; cfg.P.Krecheck = 1; cfg.P.txSearch = 0; cfg.P.pruneFlat = 1.0f;
         cfg.P.screenSub = 2;
-        cfg.tileMinMp = 2.f; cfg.tileColsLog2 = 1; cfg.tileRowsLog2 = 1;
+        cfg.tileMinMp = 2.f; cfg.tileColsLog2 = 2; cfg.tileRowsLog2 = 2;
         if (strcmp(v, "turbo")) {     // turbo2: + no 4x4/4x8/8x4, no closed-loop tx search, 1 chroma RD candidate
             cfg.P.shapeMask = 0x13F8; cfg.P.txSearchCL = 0; cfg.P.uvK = 1;
         }
-        if (!strcmp(v, "turbo3")) {   // + no luma / UV angle deltas, 4x2 tiles for >= 2 MP
-            cfg.P.deltas = 0; cfg.P.uvDeltas = 0; cfg.tileColsLog2 = 2;
+        if (!strcmp(v, "turbo3")) {   // + no luma / UV angle deltas
+            cfg.P.deltas = 0; cfg.P.uvDeltas = 0;
         }
         return true;
     }

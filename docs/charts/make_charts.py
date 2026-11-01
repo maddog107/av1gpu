@@ -40,6 +40,12 @@ def nvenc():
     return r, best
 
 
+def tiles4x4():
+    """av1gpu with the 4x4-tile default (bench/results/aws-g6-l4-tiles4x4): its files re-encoded on an L4 and scored
+    against the stored CPU baselines. Below 2 MP they are the same files as before."""
+    return load("aws-g6-l4-tiles4x4")
+
+
 def svt():
     """SVT-AV1 presets on the same 16-vCPU EPYC 7R13 (bench/results/aws-c6a-gamut-svt): {preset: (MP/s, BD vs s6)}.
 
@@ -107,11 +113,9 @@ def files(bd):
     return f"files {bd * 100:+.1f} % vs speed 6".replace("-", "−")
 
 
-# av1gpu --preset turbo3 --small-preset none, measured separately on a g6.4xlarge L4 (GP_ENCODERS=4, 99 of the
+# av1gpu --preset turbo3 --small-preset none, timed separately on a g6.4xlarge L4 (GP_ENCODERS=4, 99 of the
 # 100 photos, two rounds of bench.gpu_speed: 213.9 and 209.8 MP/s, 0.19 cores; the default gave 120.4 and 118.0
-# in the same session). Files: median BD-rate vs speed 6 on the same photos, shifted onto the L4 scores by the
-# default preset's offset (docs/RESULTS.md).
-TURBO3_BD = 0.054
+# in the same session). Its files: bench/results/aws-g6-l4-tiles4x4.
 TURBO3_SPEED = 212
 
 
@@ -154,6 +158,8 @@ def matchup_chart(t, name, title, subtitle, rows, sizes=True, speed=(250, 50), s
 
 def matchup_charts(t):
     gamut = load("aws-g6-l4-gamut")["bd_rate"]
+    t4 = tiles4x4()["bd_rate"]
+    t3 = t4["av1gpu_turbo3_nosmall_vs_aom_s6"]["median"]
     enc2 = load("aws-g6-l4-gamut-enc2")["speed"]
     s6 = next(x for x in enc2 if "speed 6" in x["codec"])["mp_s"]
     s9 = next(x for x in enc2 if "speed 9" in x["codec"])["mp_s"]
@@ -168,7 +174,7 @@ def matchup_charts(t):
                    "on one NVIDIA L4 and about 0.1 CPU core. Same file sizes as libaom speed 6, 4× the speed;",
                    "SVT-AV1 reaches those sizes between its presets 4 and 6."],
                   [("av1gpu default", "1 GPU, 4 encoders", "av1gpu", default,
-                    gamut["av1gpu_vs_aom_s6"]["median"]),
+                    t4["av1gpu_vs_aom_s6"]["median"]),
                    ("libaom speed 6", cpu, "aom_s6", s6, 0.0),
                    ("SVT-AV1 preset 6", svt_note(6), "svt", sv[6][0], sv[6][1]),
                    ("SVT-AV1 preset 4", svt_note(4), "svt", sv[4][0], sv[4][1]),
@@ -179,13 +185,14 @@ def matchup_charts(t):
                    f"one fixed-function block; av1gpu runs on the CUDA cores, {default / nv_best['mp_s']:.0f}× faster "
                    "with much smaller files."],
                   [("av1gpu default", "1 GPU, 4 encoders", "av1gpu", default,
-                    gamut["av1gpu_vs_aom_s6"]["median"]),
+                    t4["av1gpu_vs_aom_s6"]["median"]),
                    ("NVENC AV1, p7", f"{nv_best['workers']} at once, {nv_best['cpu_cores']:.0f} CPU cores", "nvenc", nv_best["mp_s"], nv_bd)],
                   speed=(125, 25), size=(30, 10))
     matchup_chart(t, "match-fast", "Fastest: av1gpu turbo3 vs SVT-AV1 preset 9 and libaom speed 9",
                   ["The same photos at each encoder's fastest useful setting. av1gpu is a little faster,",
-                   "and its files grow 5 % where SVT-AV1's grow 10 % and libaom's 15 %."],
-                  [("av1gpu turbo3", "--small-preset none", "av1gpu", TURBO3_SPEED, TURBO3_BD),
+                   f"and its files grow {t3 * 100:.0f} % where SVT-AV1's grow {sv[9][1] * 100:.0f} % and libaom's "
+                   f"{gamut['aom_s9_vs_aom_s6']['median'] * 100:.0f} %."],
+                  [("av1gpu turbo3", "--small-preset none", "av1gpu", TURBO3_SPEED, t3),
                    ("SVT-AV1 preset 9", cpu, "svt", sv[9][0], sv[9][1]),
                    ("libaom speed 9", cpu, "aom_s9", s9, gamut["aom_s9_vs_aom_s6"]["median"])])
 
@@ -195,13 +202,14 @@ def tradeoff_chart(t):
     gamut = load("aws-g6-l4-gamut")["bd_rate"]
     enc2 = load("aws-g6-l4-gamut-enc2")["speed"]
     ns = load("aws-g6-l4-gamut-turbo-nosmall")
+    t4 = tiles4x4()["bd_rate"]
     nv, nv_best = nvenc()
     sv = svt()
     series = [  # key, legend, marker, dashed, points (BD, MP/s, label, label anchor)
         ("av1gpu", "av1gpu (one L4)", "circle", False,
-         [(gamut["av1gpu_vs_aom_s6"]["median"], load("aws-g6-l4-gamut-enc4")["speed"][0]["mp_s"], "default", "w"),
-          (ns["bd_rate"]["av1gpu_vs_aom_s6"]["median"], ns["speed"][0]["mp_s"], "no small preset", "nw"),
-          (TURBO3_BD, TURBO3_SPEED, "turbo3", "n")]),
+         [(t4["av1gpu_vs_aom_s6"]["median"], load("aws-g6-l4-gamut-enc4")["speed"][0]["mp_s"], "default", "w"),
+          (t4["av1gpu_nosmall_vs_aom_s6"]["median"], ns["speed"][0]["mp_s"], "no small preset", "nw"),
+          (t4["av1gpu_turbo3_nosmall_vs_aom_s6"]["median"], TURBO3_SPEED, "turbo3", "n")]),
         ("svt", "SVT-AV1 (16 threads)", "triangle", True,
          [(sv[p][1], sv[p][0], f"preset {p}", {2: "n", 4: "n", 8: "w", 9: "n"}.get(p, "e")) for p in sorted(sv)]),
         ("aom_s6", "libaom (16 threads)", "square", False,
@@ -260,24 +268,28 @@ def tradeoff_chart(t):
 def formats_chart(t):
     """av1gpu against libaom speed 6 in each output format (bench/results/aws-g6-l4-formats)"""
     r = load("aws-g6-l4-formats")
+    t4 = tiles4x4()["bd_rate"]
     names = {"420_8": "8-bit 4:2:0", "444_8": "8-bit 4:4:4", "420_10": "10-bit 4:2:0", "444_10": "10-bit 4:4:4"}
     sp = {(x["encoder"], x["format"]): x["mp_s"] for x in r["speed"]}
     rows = []
+    within = max(abs(t4[f"av1gpu_{f}_vs_aom_s6_{f}"]["median"]) for f in names) * 100
+    within = round(within + 0.049, 1)   # rounded up
     for f, name in names.items():
-        b = r["bd_rate"][f"av1gpu_{f}_vs_aom_s6_{f}"]["median"]
+        b = t4[f"av1gpu_{f}_vs_aom_s6_{f}"]["median"]
         rows.append((f"av1gpu, {name}", f"one L4; files {b * 100:+.1f} % vs libaom".replace("-", "−"), "av1gpu",
                      sp[("av1gpu", f)], 0))
         rows.append((f"libaom speed 6, {name}", "16 CPU threads", "aom_s6", sp[("aom_s6", f)], 0))
     matchup_chart(t, "formats", "Every output format: av1gpu vs libaom speed 6",
                   ["Speed at quality 60 on the 100 size-range photos. In each format av1gpu's files are within",
-                   "0.4 % of libaom speed 6's in the same format (median BD-rate, SSIMULACRA2)."],
+                   f"{within:.1f} % of libaom speed 6's in the same format (median BD-rate, SSIMULACRA2)."],
                   rows, sizes=False, speed=(125, 25))
 
 
 def metrics_chart(t):
     """median BD-rate vs libaom speed 6 on SSIMULACRA2 and on CVVDP (bench/results/aws-g6-l4-cvvdp)"""
-    r = load("aws-g6-l4-cvvdp")
-    s2, jod = r["bd_rate_ssimulacra2_as_published"], r["bd_rate_cvvdp"]
+    r, t4 = load("aws-g6-l4-cvvdp"), tiles4x4()
+    s2 = dict(r["bd_rate_ssimulacra2_as_published"], av1gpu_vs_aom_s6=t4["bd_rate"]["av1gpu_vs_aom_s6"])
+    jod = dict(r["bd_rate_cvvdp"], av1gpu_vs_aom_s6=t4["bd_rate_cvvdp"]["av1gpu_vs_aom_s6"])
     enc = [("av1gpu", "av1gpu default", "av1gpu"), ("svt_p4", "SVT-AV1 preset 4", "svt"),
            ("svt_p6", "SVT-AV1 preset 6", "svt"), ("svt_p9", "SVT-AV1 preset 9", "svt"),
            ("aom_s9", "libaom speed 9", "aom_s9"), ("nvenc", "NVENC AV1", "nvenc")]
@@ -337,6 +349,7 @@ def webp_icc_fixed(rows):
 
 def quality_chart(t):
     r = load("aws-g6-l4-gamut")
+    r["quality"]["av1gpu"] = tiles4x4()["quality"]["av1gpu"]
     r["quality"]["webp"] = webp_icc_fixed(r["quality"]["webp"])
     man = {m["file"]: int(m["width"]) * int(m["height"])
            for m in csv.DictReader(open(os.path.join(ROOT, "bench", "openimages_v4_gamut.csv")))}
@@ -386,6 +399,7 @@ def quality_chart(t):
 
 def by_size_chart(t):
     r = load("aws-g6-l4-gamut")
+    r["quality"]["av1gpu"] = tiles4x4()["quality"]["av1gpu"]
     mp = {m["file"]: int(m["width"]) * int(m["height"]) / 1e6
           for m in csv.DictReader(open(os.path.join(ROOT, "bench", "openimages_v4_gamut.csv")))}
     per = {}
