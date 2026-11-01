@@ -8,11 +8,22 @@
 #include "av1g/av1g.h"
 
 #include <cuda_runtime.h>
+#ifdef _WIN32
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
+#include <filesystem>
+#else
 #include <sched.h>
 #include <sys/resource.h>
 #include <sys/stat.h>
 #include <dirent.h>
 #include <unistd.h>
+#endif
 
 #include <algorithm>
 #include <atomic>
@@ -35,14 +46,22 @@ double now_ms() {
     return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now().time_since_epoch()).count();
 }
 double cpu_ms() {
+#ifdef _WIN32
+    FILETIME c, e, k, u;   // 100 ns units
+    if (!GetProcessTimes(GetCurrentProcess(), &c, &e, &k, &u)) return 0;
+    auto ms = [](const FILETIME &t) { return (double)(((unsigned long long)t.dwHighDateTime << 32) | t.dwLowDateTime) / 1e4; };
+    return ms(k) + ms(u);
+#else
     rusage r;
     getrusage(RUSAGE_SELF, &r);
     return (r.ru_utime.tv_sec + r.ru_stime.tv_sec) * 1e3 + (r.ru_utime.tv_usec + r.ru_stime.tv_usec) / 1e3;
+#endif
 }
 // cgroup CPU limit in CPUs (docker --cpus, Kubernetes limits), 0 = none.  v2: cpu.max ("max 100000" or
 // "200000 100000") of this process's cgroup and its parents; v1: the cpu controller's cfs quota / period.
 double cgroup_cpu_limit() {
     double lim = 0;
+#ifndef _WIN32
     auto take = [&](double quota, double period) {
         if (quota > 0 && period > 0) lim = lim > 0 ? std::min(lim, quota / period) : quota / period;
     };
@@ -68,6 +87,7 @@ double cgroup_cpu_limit() {
         double quota = 0, period = 0;
         if (fq >> quota && fp >> period) { take(quota, period); break; }
     }
+#endif
     return lim;
 }
 // CPUs this process may run on: the affinity mask (taskset, cpusets), lowered to a cgroup CPU limit (rounded up)
@@ -76,6 +96,14 @@ int usable_cpus() {
 #ifdef __linux__
     cpu_set_t set;
     if (sched_getaffinity(0, sizeof set, &set) == 0) n = CPU_COUNT(&set);
+#elif defined(_WIN32)
+    // a restricted process affinity mask (start /affinity) within the process's processor group; else the CPUs
+    // of all groups (both masks are 0 once the process has threads in several groups)
+    DWORD_PTR proc = 0, sys = 0;
+    if (GetProcessAffinityMask(GetCurrentProcess(), &proc, &sys) && proc && proc != sys)
+        for (; proc; proc &= proc - 1) n++;
+    else
+        n = (int)GetActiveProcessorCount(ALL_PROCESSOR_GROUPS);
 #endif
     if (n <= 0) n = (int)std::thread::hardware_concurrency();
     if (n <= 0) n = 4;
@@ -88,7 +116,11 @@ int env_int(const char *name, int dflt) {
     return v ? atoi(v) : dflt;
 }
 std::string base_name(const std::string &p) {
+#ifdef _WIN32
+    const size_t s = p.find_last_of("/\\:");
+#else
     const size_t s = p.find_last_of('/');
+#endif
     return s == std::string::npos ? p : p.substr(s + 1);
 }
 bool has_image_ext(const std::string &n) {
@@ -100,14 +132,45 @@ bool has_image_ext(const std::string &n) {
 }
 // mkdir -p: DIR and any missing parents; true if DIR is a directory afterwards
 bool make_dirs(const std::string &dir) {
+#ifdef _WIN32
+    std::error_code ec;
+    const std::filesystem::path d = std::filesystem::u8path(dir);
+    std::filesystem::create_directories(d, ec);
+    if (ec) errno = ec.default_error_condition().value();   // Win32 error -> errno value (strerror)
+    return std::filesystem::is_directory(d, ec);
+#else
     for (size_t i = 1; i <= dir.size(); i++)
         if (i == dir.size() || dir[i] == '/')
             if (mkdir(dir.substr(0, i).c_str(), 0755) != 0 && errno != EEXIST) return false;
     struct stat st;
     return stat(dir.c_str(), &st) == 0 && S_ISDIR(st.st_mode);
+#endif
 }
 // LIST is a text file with one path per line, or a directory (its JPEG/PNG/WebP files, sorted)
 bool list_inputs(const std::string &list, std::vector<std::string> &paths) {
+#ifdef _WIN32
+    namespace fs = std::filesystem;
+    std::error_code ec;
+    const fs::path lp = fs::u8path(list);
+    if (!fs::exists(lp, ec)) return false;
+    if (fs::is_directory(lp, ec)) {
+        for (fs::directory_iterator it(lp, ec), end; !ec && it != end; it.increment(ec)) {
+            const std::string n = it->path().filename().u8string();
+            if (!n.empty() && n[0] != '.' && has_image_ext(n)) paths.push_back(list + "/" + n);
+        }
+        if (ec) return false;
+        std::sort(paths.begin(), paths.end());
+        return true;
+    }
+    std::ifstream f(lp);
+    std::string l;
+    for (bool first = true; std::getline(f, l); first = false) {
+        if (first && l.compare(0, 3, "\xEF\xBB\xBF") == 0) l.erase(0, 3);   // UTF-8 byte order mark (Notepad)
+        if (!l.empty() && l.back() == '\r') l.pop_back();
+        if (!l.empty()) paths.push_back(l);
+    }
+    return true;
+#else
     struct stat st;
     if (stat(list.c_str(), &st) != 0) return false;
     if (S_ISDIR(st.st_mode)) {
@@ -124,6 +187,7 @@ bool list_inputs(const std::string &list, std::vector<std::string> &paths) {
     while (std::getline(f, l))
         if (!l.empty()) paths.push_back(l);
     return true;
+#endif
 }
 struct Agg {
     double ingestWait = 0, gpuSetup = 0, analysis = 0, dp = 0, recon = 0, pack = 0, postfilter = 0, download = 0, gpuTotal = 0;

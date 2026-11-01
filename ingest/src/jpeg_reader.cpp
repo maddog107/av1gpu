@@ -8,7 +8,18 @@
 #include <cstring>
 
 #include "ingest_api.h"
+#if !defined(_WIN32) || __has_include(<jpegint.h>)
 #include <jpegint.h>
+#else
+// libjpeg-turbo itself does not install jpegint.h (Debian's and Ubuntu's packages add it, vcpkg's do not): the one
+// internal structure used here.  Its first two members are the same in libjpeg-turbo 2.x and 3.x.
+typedef void (*inverse_DCT_method_ptr)(j_decompress_ptr cinfo, jpeg_component_info *compptr, JCOEFPTR coef_block,
+                                       JSAMPARRAY output_buf, JDIMENSION output_col);
+struct jpeg_inverse_dct {
+  void (*start_pass)(j_decompress_ptr cinfo);
+  inverse_DCT_method_ptr inverse_DCT[MAX_COMPONENTS];
+};
+#endif
 
 namespace ingest {
 

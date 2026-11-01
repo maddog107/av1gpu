@@ -1,9 +1,23 @@
 // Ingest pipeline: CPU entropy-decode workers -> pinned arena -> batcher (H2D + GPU IDCT/finalize)
 // -> consumer (ingest_next_batch / ingest_release_batch).  See ingest_api.h for the contract.
+#ifdef _WIN32
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
+#include <sys/stat.h>
+#ifndef S_ISREG
+#define S_ISREG(m) (((m) & _S_IFMT) == _S_IFREG)
+#endif
+#else
 #include <sys/resource.h>
 #include <sys/stat.h>
 #include <sys/syscall.h>
 #include <unistd.h>
+#endif
 
 #include <algorithm>
 #include <atomic>
@@ -32,9 +46,16 @@ void ingest_fill_meta(const ingest::JpegInfo &in, ingest_image *o);
 namespace ingest {
 
 static inline double thread_cpu_ms() {
+#ifdef _WIN32
+  FILETIME c, e, k, u;  // 100 ns units
+  if (!GetThreadTimes(GetCurrentThread(), &c, &e, &k, &u)) return 0;
+  auto ms = [](const FILETIME &t) { return (double)(((unsigned long long)t.dwHighDateTime << 32) | t.dwLowDateTime) / 1e4; };
+  return ms(k) + ms(u);
+#else
   timespec ts;
   clock_gettime(CLOCK_THREAD_CPUTIME_ID, &ts);
   return ts.tv_sec * 1e3 + ts.tv_nsec * 1e-6;
+#endif
 }
 static inline size_t align_up(size_t x, size_t a) { return (x + a - 1) / a * a; }
 
@@ -300,7 +321,13 @@ static void add_fallback(ingest_ctx *c, int index, int reason, int w, int h) {
 
 // ------------------------------------------------------------------ worker
 static void worker_main(ingest_ctx *c) {
+#ifdef _WIN32
+  // nice 1..9 -> below normal, 10..19 -> lowest (negative values would need privileges on Linux too: ignored)
+  if (c->cfg.nice_workers > 0)
+    SetThreadPriority(GetCurrentThread(), c->cfg.nice_workers >= 10 ? THREAD_PRIORITY_LOWEST : THREAD_PRIORITY_BELOW_NORMAL);
+#else
   if (c->cfg.nice_workers) setpriority(PRIO_PROCESS, (id_t)syscall(SYS_gettid), c->cfg.nice_workers);
+#endif
   CoefReader reader;
   std::vector<uint8_t> buf;
   for (;;) {

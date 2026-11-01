@@ -1,0 +1,30 @@
+jpg	-	--batch jpg.txt --outdir out/jpg
+png40	-	--batch png40.txt --outdir out/png40
+mix	-	--batch mix.txt --outdir out/mix
+mix444_10	-	--batch mix.txt --outdir out/mix444_10 --yuv 444 --depth 10
+mix444	-	--batch mix.txt --outdir out/mix444 --yuv 444
+mix10	-	--batch mix.txt --outdir out/mix10 --depth 10
+mixq	-	--batch mix.txt --outdir out/mixq --qindex 40,200
+mixcpu	-	--batch mix.txt --outdir out/mixcpu --cpu-entropy
+turbo3	-	--batch mix.txt --outdir out/turbo3 --preset turbo3 --small-preset none
+slow	-	--batch sub12.txt --outdir out/slow --preset slow --small-preset none
+alpha	-	--batch alpha.txt --outdir out/alpha
+alpha100	-	--batch alpha.txt --outdir out/alpha100 --alpha-quality 100
+noalpha	-	--batch alpha.txt --outdir out/noalpha --no-alpha
+ll	GP_ENCODE_MP=12	--batch ll.txt --outdir out/ll --lossless
+llycgco	GP_ENCODE_MP=12	--batch ll.txt --outdir out/llycgco --lossless --ycgco-re
+bad	-	--batch bad.txt --outdir out/bad
+badonly	-	--batch bad_only.txt --outdir out/badonly
+badll	GP_ENCODE_MP=12	--batch bad_ll.txt --outdir out/badll --lossless
+dir	-	--batch dirinput --outdir out/dir/a/b/c
+uni	-	--batch uni.txt --outdir out/uni
+enc24	GP_ENCODERS=24	--batch few.txt --outdir out/enc24
+s_jpg	-	JPG0 out/s_jpg/huge.avif
+s_png	-	png40/PNG0 out/s_png/a.avif
+s_webp	-	mix/WEBP0 out/s_webp/a.avif
+s_rgba	-	alpha/RGBA0 out/s_rgba/a.avif
+s_444_10	-	mix/WEBP0 out/s_444_10/a.avif --yuv 444 --depth 10
+s_ll	-	few/PNGF0 out/s_ll/a.avif --lossless
+s_lljpg	-	JPG0 out/s_lljpg/a.avif --lossless
+s_missing	-	does/not/exist.jpg out/s_missing/a.avif
+s_corrupt	-	bad/trunc.png out/s_corrupt/a.avif

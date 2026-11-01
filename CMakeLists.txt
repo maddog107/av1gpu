@@ -5,6 +5,9 @@
 #
 # AV1GPU_CUDA=OFF builds only the CPU parts (bitstream writer, AVIF muxer and the decoder fuzz test),
 # which need no CUDA toolkit.
+#
+# Windows: MSVC (the CUDA host compiler there) with the image libraries from vcpkg; see "Building on Windows" in
+# README.md (tools/windows/build.ps1 does all of it).
 cmake_minimum_required(VERSION 3.24)
 
 # Default GPU targets (set after enable_language(CUDA), when the CUDA version is known): Turing through
@@ -16,8 +19,14 @@ endif()
 project(av1gpu VERSION 0.4.0 LANGUAGES C CXX)
 
 option(AV1GPU_CUDA "Build the CUDA encoder" ON)
-option(AV1GPU_TESTS "Build the tests" ON)
+if(WIN32)
+  # the tests use POSIX file APIs and run dav1d / aomdec; on Windows only the encoder is built
+  option(AV1GPU_TESTS "Build the tests" OFF)
+else()
+  option(AV1GPU_TESTS "Build the tests" ON)
+endif()
 # release binaries: libjpeg, libpng, zlib, libwebp and nvJPEG linked in, so only the NVIDIA driver is needed
+# (Windows: the image libraries come static from vcpkg's x64-windows-static triplet, nvJPEG is a DLL)
 option(AV1GPU_STATIC_DEPS "Link the image libraries and nvJPEG statically" OFF)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -25,14 +34,29 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
-set(CMAKE_CXX_FLAGS_RELEASE "-O2 -g")
+if(MSVC)
+  # static C++ runtime (as vcpkg's x64-windows-static and cudart_static), so the executable needs no Visual C++
+  # redistributable; UTF-8 sources; M_PI; no min / max macros from windows.h; POSIX names without warnings
+  set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+  add_compile_definitions(_USE_MATH_DEFINES NOMINMAX WIN32_LEAN_AND_MEAN _CRT_SECURE_NO_WARNINGS _CRT_NONSTDC_NO_WARNINGS)
+  add_compile_options("$<$<COMPILE_LANGUAGE:C,CXX>:/utf-8>" "$<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=/utf-8>")
+  set(CMAKE_CXX_FLAGS_RELEASE "/O2")
+  # 8 MB thread stacks as on Linux (std::thread takes the executable's default, 1 MB unless set)
+  add_link_options(/STACK:8388608)
+  set(AV1GPU_CXX_WARNINGS "")
+else()
+  set(CMAKE_CXX_FLAGS_RELEASE "-O2 -g")
+  set(AV1GPU_CXX_WARNINGS -Wall -Wno-missing-braces -Wno-unused-function)
+endif()
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # ---------------------------------------------------------------------------------------------------
 # av1core: decision record -> AV1 bitstream (CPU writer), AVIF muxer, shared DSP headers
 add_library(av1core STATIC av1core/src/encoder.cpp av1core/src/avif.cpp)
 target_include_directories(av1core PUBLIC av1core/include av1core/src)
-target_compile_options(av1core PRIVATE -Wall -Wno-missing-braces -Wno-unused-variable -Wno-unused-function)
+if(NOT MSVC)
+  target_compile_options(av1core PRIVATE -Wall -Wno-missing-braces -Wno-unused-variable -Wno-unused-function)
+endif()
 
 if(AV1GPU_TESTS)
   enable_testing()
@@ -82,16 +106,23 @@ if(CMAKE_CUDA_COMPILER_ID STREQUAL "Clang")
 endif()
 # nvcc only: constexpr host functions (std::min, ...) callable from device code; Clang allows that by default
 set(AV1GPU_CUDA_OPTIONS $<$<AND:$<COMPILE_LANGUAGE:CUDA>,$<CUDA_COMPILER_ID:NVIDIA>>:--expt-relaxed-constexpr>)
-if(AV1GPU_STATIC_DEPS)
+if(AV1GPU_STATIC_DEPS AND NOT WIN32)
   set(CMAKE_FIND_LIBRARY_SUFFIXES .a)
   set(AV1GPU_NVJPEG CUDA::nvjpeg_static)
 else()
+  # (the Windows toolkit has no static nvJPEG: nvjpeg64_*.dll goes next to av1gpu.exe)
   set(AV1GPU_NVJPEG CUDA::nvjpeg)
 endif()
 find_package(JPEG REQUIRED)
 find_package(PNG REQUIRED)
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(WEBP REQUIRED IMPORTED_TARGET libwebp)
+if(WIN32)
+  find_package(WebP CONFIG REQUIRED)   # vcpkg's libwebp
+  set(AV1GPU_WEBP WebP::webp)
+else()
+  find_package(PkgConfig REQUIRED)
+  pkg_check_modules(WEBP REQUIRED IMPORTED_TARGET libwebp)
+  set(AV1GPU_WEBP PkgConfig::WEBP)
+endif()
 find_package(Threads REQUIRED)
 
 # av1core GPU backend: symbolization + entropy coding, deblocking + CDEF
@@ -113,7 +144,8 @@ target_compile_options(av1f PRIVATE ${AV1GPU_CUDA_OPTIONS})
 # ingest: JPEG -> GPU-resident 4:2:0 planes (nvJPEG hardware/hybrid decode or CPU entropy decode + GPU IDCT)
 add_library(gpujpegingest STATIC ingest/src/jpeg_reader.cpp ingest/src/kernels.cu ingest/src/pipeline.cu)
 target_include_directories(gpujpegingest PUBLIC ingest/src)
-target_link_libraries(gpujpegingest PUBLIC CUDA::cudart_static ${AV1GPU_NVJPEG} JPEG::JPEG Threads::Threads ${CMAKE_DL_LIBS} rt)
+target_link_libraries(gpujpegingest PUBLIC CUDA::cudart_static ${AV1GPU_NVJPEG} JPEG::JPEG Threads::Threads ${CMAKE_DL_LIBS}
+  $<$<NOT:$<PLATFORM_ID:Windows>>:rt>)
 
 # wavefront reconstruction, one instantiation (layout x bit depth) per file.  Their compile memory depends on the
 # toolkit and the targets: peak RSS per file up to 18.4 GB with CUDA 12.8 (75;120, cicc, 10-bit), 10.4 GB with
@@ -137,7 +169,7 @@ add_library(av1gpu_recon OBJECT
 set_property(TARGET av1gpu_recon PROPERTY JOB_POOL_COMPILE av1gpu_recon)
 target_include_directories(av1gpu_recon PRIVATE encoder/src)
 target_compile_options(av1gpu_recon PRIVATE ${AV1GPU_CUDA_OPTIONS})
-target_link_libraries(av1gpu_recon PRIVATE av1f av1core_gpu gpujpegingest PNG::PNG PkgConfig::WEBP Threads::Threads)
+target_link_libraries(av1gpu_recon PRIVATE av1f av1core_gpu gpujpegingest PNG::PNG ${AV1GPU_WEBP} Threads::Threads)
 
 # encoder: analysis, partition DP, wavefront reconstruction, batching
 add_library(av1gpu_encoder STATIC
@@ -147,10 +179,19 @@ add_library(av1gpu_encoder STATIC
 target_include_directories(av1gpu_encoder PUBLIC encoder/src)
 target_compile_options(av1gpu_encoder PRIVATE
   ${AV1GPU_CUDA_OPTIONS}
-  $<$<COMPILE_LANGUAGE:CXX>:-Wall -Wno-unused-function -Wno-missing-braces>)
-target_link_libraries(av1gpu_encoder PUBLIC av1f av1core_gpu gpujpegingest PNG::PNG PkgConfig::WEBP Threads::Threads)
+  "$<$<COMPILE_LANGUAGE:CXX>:${AV1GPU_CXX_WARNINGS}>")
+target_link_libraries(av1gpu_encoder PUBLIC av1f av1core_gpu gpujpegingest PNG::PNG ${AV1GPU_WEBP} Threads::Threads)
 
-add_executable(av1gpu encoder/apps/av1gpu.cpp)
+if(WIN32)
+  # the manifest makes the narrow (char) Windows APIs use UTF-8, so non-ASCII file names work (Windows 10 1903+)
+  add_executable(av1gpu encoder/apps/av1gpu.cpp encoder/apps/av1gpu.manifest)
+  # nvjpeg64_<major>.dll is loaded on first use, so --help works without it (and without the NVIDIA driver)
+  target_link_options(av1gpu PRIVATE /DELAYLOAD:nvjpeg64_${CUDAToolkit_VERSION_MAJOR}.dll)
+  target_compile_definitions(av1gpu PRIVATE AV1GPU_NVJPEG_DLL="nvjpeg64_${CUDAToolkit_VERSION_MAJOR}.dll")
+  target_link_libraries(av1gpu delayimp winmm)
+else()
+  add_executable(av1gpu encoder/apps/av1gpu.cpp)
+endif()
 target_link_libraries(av1gpu av1gpu_encoder)
 install(TARGETS av1gpu RUNTIME DESTINATION bin)
 

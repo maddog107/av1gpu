@@ -318,8 +318,9 @@ project. Before you rely on it, note:
 
 ## 🛠️ Building
 
-You need Linux, CUDA 12.0 or newer (12.8 or newer to target Blackwell), CMake 3.24 or newer, a C++17
-compiler, and libjpeg(-turbo), libpng and libwebp development packages.
+On Linux you need CUDA 12.0 or newer (12.8 or newer to target Blackwell), CMake 3.24 or newer, a C++17
+compiler, and libjpeg(-turbo), libpng and libwebp development packages. For Windows, see
+[Windows](#-windows) below.
 
 ```bash
 # Ubuntu / Debian (plus the CUDA toolkit from NVIDIA)
@@ -362,6 +363,49 @@ On the L4, the Clang build took 1:47 instead of nvcc's 4:54 (16 cores, sm_89), w
 byte-identical to nvcc's (the other one differs by 4 bytes, at equal SSIMULACRA2). It encodes 8–17 % slower
 (0.18–24 MP set: default 70 vs 83 MP/s, turbo3 103 vs 125, slow 14.4 vs 15.7), so the release binaries stay
 with nvcc.
+
+## 💻 Windows
+
+From v0.5.0 the [releases](https://github.com/maddog107/av1gpu/releases) also have a Windows x64 zip.
+Unzip it anywhere. `av1gpu.exe` needs only the NVIDIA driver (528 or newer) and the `nvjpeg64_12.dll`
+beside it; the C++ runtime and the image libraries are linked in. The options are the same as on Linux:
+
+```bat
+av1gpu.exe photo.jpg photo.avif
+av1gpu.exe --batch C:\photos --outdir C:\avif
+```
+
+Paths may use `\` or `/`, and file names may be non-ASCII (Windows 10 version 1903 or newer, Windows
+Server 2022). Batch list files are UTF-8, one path per line; Windows line ends are fine. `--outdir`
+directories are created as needed.
+
+Tested on an L4 under Windows Server 2022 (AWS g6.4xlarge): every output of 30 test runs (1,226 files)
+and of the decoder-gate encodes (2,125 files) was byte-identical to the Linux build's. It ran at 67–83 % of the Linux speed on the same instance type
+with hardware-accelerated GPU scheduling on (JPEG 86 against 128 MP/s), and slower without it
+([results](docs/RESULTS.md#windows)). The GPU must be in WDDM mode, as GeForce and RTX cards are: TCC mode,
+the default of data-centre GPUs under NVIDIA's data-centre driver, has no CUDA memory pools, and av1gpu
+stops with an error that says so.
+
+Differences from Linux:
+
+- The thread counts follow the process's CPU affinity (`start /affinity`) or all the machine's
+  processors. CPU rate limits of Windows job objects and containers are not read.
+- The tests (`ctest`, `tests/*.py`) run on Linux only.
+- On Windows Server 2019 and Windows 10 before version 1903, non-ASCII file names do not work (those
+  versions ignore the executable's UTF-8 code page setting).
+
+**Building on Windows.** You need Visual Studio 2022 or its Build Tools with the "Desktop development with
+C++" workload. `tools\windows\build.ps1` gets the rest: the parts of CUDA 12.9 av1gpu uses, from NVIDIA's
+redistributable archives (about 140 MB; `-CudaRoot` uses an installed toolkit instead), and libjpeg-turbo,
+libpng, zlib and libwebp, built static by a pinned vcpkg release. CMake comes with the workload's default
+"C++ CMake tools" component; Ninja is downloaded if it is not there.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools\windows\build.ps1 -Archs native
+```
+
+`build\av1gpu.exe` then needs `nvjpeg64_12.dll` from the toolkit's `bin` folder beside it. Leave out
+`-Archs` for every GPU from Turing to Blackwell; `-Package` makes the release zip.
 
 ## 🚀 Usage
 

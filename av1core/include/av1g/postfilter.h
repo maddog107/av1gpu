@@ -243,7 +243,7 @@ AV1G_HD int av1g_floor_log2(uint32_t x) {  /* FloorLog2; -1 for 0 */
 #ifdef __CUDA_ARCH__
     return 31 - __clz((int)x);
 #else
-    return x ? 31 - __builtin_clz(x) : -1;
+    return x ? 31 - AV1G_HOST_CLZ(x) : -1;
 #endif
 }
 
