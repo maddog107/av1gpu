@@ -38,7 +38,7 @@
 #define AV1G_PF_STAT(kind) ((void)0)
 #endif
 #if defined(__CUDACC__)
-#define AV1G_PF_UNROLL _Pragma("unroll")   /* keeps the CDEF tap arrays in registers */
+#define AV1G_PF_UNROLL _Pragma("unroll")   /* keeps small fixed-size arrays (CDEF taps, wide filter) in registers */
 #else
 #define AV1G_PF_UNROLL
 #endif
@@ -116,6 +116,25 @@ AV1G_HD void av1g_pf_mark_block(const av1g_pf_frame *f, const av1g_block *b) {
 /* ---------------- deblocking ---------------- */
 AV1G_HD int av1g_iabs(int x) { return x < 0 ? -x : x; }
 
+/* Wide filter (7.14.6.4) with n = N taps per side, n2 = N2, log2Size = L: compile-time sizes keep F[] in registers
+ * on the GPU. */
+template <int N, int N2, int L, typename P>
+AV1G_HD void av1g_lf_wide(P *q0p, ptrdiff_t step) {
+    int F[2 * N];
+    AV1G_PF_UNROLL
+    for (int i = -N; i < N; i++) {
+        int t = 0;
+        AV1G_PF_UNROLL
+        for (int j = -N; j <= N; j++) {
+            const int p = av1g_clip3(-(N + 1), N, i + j);
+            t += (int)q0p[p * step] * (av1g_iabs(j) <= N2 ? 2 : 1);
+        }
+        F[i + N] = av1g_round2(t, L);
+    }
+    AV1G_PF_UNROLL
+    for (int i = -N; i < N; i++) q0p[i * step] = (P)F[i + N];
+}
+
 /* Sample filtering process (7.14.6) for one line across an edge.  q0p points at q0 and
  * step is the distance between successive samples across the edge (1 or the stride). */
 template <int BD = 8, typename P>
@@ -168,19 +187,11 @@ AV1G_HD void av1g_lf_line(P *q0p, ptrdiff_t step, int plane, int filterSize, int
     }
     /* wide filter (7.14.6.4) */
     const int log2Size = (filterSize == 8 || !flatMask2) ? 3 : 4;
-    const int n = log2Size == 4 ? 6 : plane == 0 ? 3 : 2;
-    const int n2 = (log2Size == 3 && plane == 0) ? 0 : 1;
+    const int n = log2Size == 4 ? 6 : plane == 0 ? 3 : 2;   /* n2 = (log2Size == 3 && plane == 0) ? 0 : 1 */
     AV1G_PF_STAT(n == 6 ? AV1G_PF_LF_WIDE16 : n == 3 ? AV1G_PF_LF_WIDE8 : AV1G_PF_LF_WIDE6);
-    int F[12];
-    for (int i = -n; i < n; i++) {
-        int t = 0;
-        for (int j = -n; j <= n; j++) {
-            const int p = av1g_clip3(-(n + 1), n, i + j);
-            t += S_(p) * (av1g_iabs(j) <= n2 ? 2 : 1);
-        }
-        F[i + n] = av1g_round2(t, log2Size);
-    }
-    for (int i = -n; i < n; i++) q0p[i * step] = (P)F[i + n];
+    if (n == 6) av1g_lf_wide<6, 1, 4>(q0p, step);        /* n2 = 1, log2Size 4 */
+    else if (n == 3) av1g_lf_wide<3, 0, 3>(q0p, step);   /* luma, log2Size 3 */
+    else av1g_lf_wide<2, 1, 3>(q0p, step);               /* chroma, log2Size 3 */
 #undef S_
 }
 
