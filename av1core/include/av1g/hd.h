@@ -10,6 +10,8 @@
  *              global constant data").  nvcc keeps them const in .global and reads
  *              them through the read-only data cache.
  * AV1G_T(n)    selects the right copy at the use site (device pass vs host pass).
+ * AV1G_HOST_CLZ(x)  count of leading zero bits of a nonzero 32-bit x in host code (GCC / Clang builtin,
+ *              MSVC intrinsic); device code uses __clz.
  */
 #ifndef AV1G_HD_H
 #define AV1G_HD_H
@@ -35,6 +37,23 @@
 #define AV1G_T(name) name##_dev
 #else
 #define AV1G_T(name) name##_host
+#endif
+
+#if defined(_MSC_VER) && !defined(__clang__)
+#ifdef __cplusplus
+extern "C" unsigned char _BitScanReverse(unsigned long *index, unsigned long mask);
+#else
+unsigned char _BitScanReverse(unsigned long *index, unsigned long mask);
+#endif
+#pragma intrinsic(_BitScanReverse)
+static __inline int av1g_host_clz32(unsigned x) {
+    unsigned long i;
+    _BitScanReverse(&i, x);
+    return 31 - (int)i;
+}
+#define AV1G_HOST_CLZ(x) av1g_host_clz32(x)
+#else
+#define AV1G_HOST_CLZ(x) __builtin_clz(x)
 #endif
 
 #endif

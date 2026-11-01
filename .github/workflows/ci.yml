@@ -55,3 +55,21 @@ jobs:
       # Clang needs under 1 GB per k_recon translation unit (nvcc several GB); -j 1 as in cuda-build all the same
       - run: cmake --build build -j 1
       - run: build/av1gpu --help
+
+  # Windows x64: MSVC as the host compiler, CUDA from NVIDIA's redistributable archives, the image libraries
+  # from vcpkg (tools/windows/build.ps1, as in the release)
+  windows-build:
+    runs-on: windows-2022
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}\build-deps\vcpkg-archives
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: build-deps/vcpkg-archives
+          key: vcpkg-x64-windows-static-${{ hashFiles('tools/windows/build.ps1') }}
+      - run: ./tools/windows/build.ps1 -Archs "75;120" -Jobs 2
+      - run: build/av1gpu.exe --help

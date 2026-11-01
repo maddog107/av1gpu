@@ -1437,7 +1437,7 @@ extern "C" int av1f_lf_search(const av1g_frame_params *fp, const av1g_block *d_b
     const bool fast_mono = g.mono && o->cdef_mode == AV1F_CDEF_AOM;  // libaom: no refinement for fast single-plane
     const int refine = o->cdef_mode == AV1F_CDEF_AOM ? 4 : (o->cdef_refine >= 0 ? o->cdef_refine : 4);
     const int joint = g.mono ? ncs : ncs * ncs;
-    const int maxsig = joint == 1 ? 0 : 32 - __builtin_clz((unsigned)(joint - 1));
+    const int maxsig = joint == 1 ? 0 : 32 - AV1G_HOST_CLZ((unsigned)(joint - 1));
     int hl[4][16];
     unsigned long long htot[4];
     const int maxbits = o->cdef_max_bits < 3 ? o->cdef_max_bits : 3;
@@ -1694,7 +1694,7 @@ extern "C" int av1f_lf_search_async(const av1g_frame_params *fp, const av1g_bloc
     const bool fast_mono = g.mono && o->cdef_mode == AV1F_CDEF_AOM;
     const int refine = o->cdef_mode == AV1F_CDEF_AOM ? 4 : (o->cdef_refine >= 0 ? o->cdef_refine : 4);
     const int joint = pairs;
-    const int maxsig = joint == 1 ? 0 : 32 - __builtin_clz((unsigned)(joint - 1));
+    const int maxsig = joint == 1 ? 0 : 32 - AV1G_HOST_CLZ((unsigned)(joint - 1));
     const int maxbits = o->cdef_max_bits < 3 ? o->cdef_max_bits : 3;
     const int lastBits = maxbits < maxsig ? maxbits : maxsig;
     if (pairs <= 256) {
@@ -1766,7 +1766,7 @@ extern "C" int av1f_cdef_select_tables(const uint32_t *d_my, const uint32_t *d_m
         for (int i = 0; i < 64; i++) sel[0][i] = sel[1][i] = i;
     }
     const int pairs = mono ? ncs : ncs * ncs;
-    const int maxsig = pairs == 1 ? 0 : 32 - __builtin_clz((unsigned)(pairs - 1));
+    const int maxsig = pairs == 1 ? 0 : 32 - AV1G_HOST_CLZ((unsigned)(pairs - 1));
     const int lastBits = (max_bits < 3 ? max_bits : 3) < maxsig ? (max_bits < 3 ? max_bits : 3) : maxsig;
     unsigned long long htot[4];
     int hl[4][16];

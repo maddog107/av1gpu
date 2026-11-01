@@ -21,6 +21,15 @@
 #include <vector>
 #include <vector>
 
+#ifdef _WIN32
+// POSIX setenv on the CRT environment (_putenv_s also updates the process environment, which the CUDA driver reads)
+static int setenv(const char *name, const char *value, int overwrite) {
+    if (!overwrite && getenv(name)) return 0;
+    return _putenv_s(name, value);
+}
+extern "C" __declspec(dllimport) int __stdcall SetConsoleOutputCP(unsigned int codePage);
+#endif
+
 // Defaults = the configuration validated in production (avifenc -q 60 equivalent): applied before the
 // command-line options, so any option overrides them; --no-defaults starts from the bare encoder.
 static const char *const kDefaultArgs[] = {"--quality", "60", "--tune", "iq", "--edge-filter", "--preset", "turbo",
@@ -637,6 +646,9 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
                    const std::string &suffix);
 
 int main(int argc, char **argv) {
+#ifdef _WIN32
+    SetConsoleOutputCP(65001);   // UTF-8 file names in messages (the manifest makes argv and file APIs UTF-8)
+#endif
     GpConfig cfg;
     Opts o;
     if (!parse(argc, argv, cfg, o)) { usage(); return 2; }

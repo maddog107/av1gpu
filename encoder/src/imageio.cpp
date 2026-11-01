@@ -4,6 +4,9 @@
 #include <png.h>
 #include <sys/stat.h>
 #include <webp/decode.h>
+#if defined(_WIN32) && !defined(S_ISREG)
+#define S_ISREG(m) (((m) & _S_IFMT) == _S_IFREG)
+#endif
 
 #include <algorithm>
 #include <cmath>

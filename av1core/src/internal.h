@@ -17,7 +17,11 @@ namespace av1g {
 struct Error : std::runtime_error {
     int code;
     char msg[256];
+#if defined(__GNUC__) || defined(__clang__)
     Error(int c, const char *fmt, ...) __attribute__((format(printf, 3, 4)));
+#else
+    Error(int c, const char *fmt, ...);
+#endif
 };
 
 struct BitWriter {
