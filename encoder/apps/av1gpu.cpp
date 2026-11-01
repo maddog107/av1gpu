@@ -63,10 +63,10 @@ static void usage() {
             "                          (CICP matrix 0, as avifenc -l) at the source depth: 8 bits, or 10 bits for 16-bit\n"
             "                          PNGs that hold 10 significant bits (samples = v * 65535 / 1023, as avifdec writes\n"
             "                          10-bit images; 16-bit PNGs with 8 significant bits, v * 257, are coded 8-bit; others\n"
-            "                          are rejected); grayscale PNG: monochrome.  JPEG: its decoded YCbCr planes exactly, at\n"
-            "                          the JPEG's subsampling (4:2:0, 4:4:4 or gray; 4:2:2 / 4:4:0 / 4:1:1 are rejected),\n"
-            "                          BT.601 full range: lossless to the decoded JPEG, NOT smaller than the JPEG.  The alpha\n"
-            "                          channel is lossless too.  --yuv / --depth cannot be combined with it.\n"
+            "                          are rejected); grayscale PNG: monochrome.  JPEGs are refused (skipped in batch mode):\n"
+            "                          a lossless AVIF of a JPEG is about twice its size, or more.  The alpha channel is\n"
+            "                          lossless too.  --yuv / --depth cannot be combined with it.  Lossless batches need about\n"
+            "                          1 GB of GPU memory per megapixel of GP_ENCODE_MP (below)\n"
             "  --ycgco-re              with --lossless: RGB as YCgCo-Re (CICP matrix 16, libavif / H.273) instead of GBR:\n"
             "                          8-bit RGB -> 10-bit 4:4:4 (2 extra bits); usually smaller than GBR for photos\n"
             "  --ll-tile-area N        with --lossless: uniform tiles of at most N pixels (default 262144; more tiles code\n"
@@ -378,12 +378,14 @@ static bool parse(int argc, char **argv, GpConfig &cfg, Opts &o) {
 // ---------------------------------------------------------------------------
 // single image
 const char *gp_fallback_reason(int r);   // batch.cpp
-const char *gp_jpeg_sub_name(int s);     // batch.cpp
+extern const char *const gp_lossless_jpeg_refusal;                                              // batch.cpp
+std::string gp_lossless_oom_hint(const GpConfig &cfg, const std::string &err, double batchMp);   // batch.cpp
 static int run_single(const GpConfig &cfg, const Opts &o) {
     std::string err;
+    const GpFileKind kind = gp_sniff(o.in);
+    if (kind == GP_FILE_JPEG && cfg.lossless) { fprintf(stderr, "%s: %s\n", o.in.c_str(), gp_lossless_jpeg_refusal); return 3; }
     GpEncoder enc;
     if (enc.init(cfg, err)) { fprintf(stderr, "init: %s\n", err.c_str()); return 1; }
-    const GpFileKind kind = gp_sniff(o.in);
     GpFrameIn fin, afin;   // afin: the alpha frame (W = 0: none)
     std::vector<uint8_t> icc;
     int orientation = 1;
@@ -399,7 +401,7 @@ static int run_single(const GpConfig &cfg, const Opts &o) {
         ic.max_wait_ms = 0;
         ic.activity = 0;
         ic.pinned_bytes = 256ll << 20;   // D round 2: > 6000 px sides go to the CPU route (coefficients staged in this arena)
-        ic.out_444 = cfg.lossless ? 2 : cfg.yuv444;   // lossless: the JPEG's own format (4:2:0 / 4:4:4)
+        ic.out_444 = cfg.yuv444;
         if (getenv("GP_INGEST_DECODER")) ic.decoder = atoi(getenv("GP_INGEST_DECODER"));   // 1: CPU entropy decode + GPU IDCT
         char eb[256] = {0};
         ictx = ingest_create(&ic, eb, sizeof eb);
@@ -416,16 +418,6 @@ static int run_single(const GpConfig &cfg, const Opts &o) {
             return 3;
         }
         const ingest_image &im = ib.images[0];
-        if (cfg.lossless && im.src_sub != INGEST_SUB_420 && im.src_sub != INGEST_SUB_444 && im.src_sub != INGEST_SUB_GRAY) {
-            fprintf(stderr, "%s: --lossless keeps a JPEG's decoded YCbCr planes, which AV1 can only do for 4:2:0, 4:4:4 and gray "
-                            "JPEGs (this one is %s)\n", o.in.c_str(), gp_jpeg_sub_name(im.src_sub));
-            ingest_release_batch(ictx, ib.batch_id, nullptr);
-            ingest_destroy(ictx);
-            return 3;
-        }
-        if (cfg.lossless)
-            fprintf(stderr, "%s: lossless to the decoded JPEG (its %s YCbCr planes, BT.601 full range): not smaller than the JPEG\n",
-                    o.in.c_str(), gp_jpeg_sub_name(im.src_sub));
         fin.W = im.width; fin.H = im.height; fin.mono = im.mono; fin.yuv444 = im.chroma_full;
         fin.aw = im.aw; fin.ah = im.ah;
         fin.dsrc[0] = ib.pool + im.y_off; fin.spitch[0] = im.y_pitch;
@@ -507,8 +499,13 @@ static int run_single(const GpConfig &cfg, const Opts &o) {
             return 1;
         }
     }
-    if (E->encode({fin}, outs, tm, err)) { fprintf(stderr, "encode: %s\n", err.c_str()); return 1; }
-    if (hasAlpha && encA.encode({afin}, aouts, tma, err)) { fprintf(stderr, "encode (alpha): %s\n", err.c_str()); return 1; }
+    auto failed = [&](const char *what) {   // the error, and with --lossless an out-of-memory hint
+        const std::string h = gp_lossless_oom_hint(cfg, err, 0);
+        fprintf(stderr, "%s: %s\n%s%s", what, err.c_str(), h.c_str(), h.empty() ? "" : "\n");
+        return 1;
+    };
+    if (E->encode({fin}, outs, tm, err)) return failed("encode");
+    if (hasAlpha && encA.encode({afin}, aouts, tma, err)) return failed("encode (alpha)");
     if (ictx) { ingest_release_batch(ictx, ib.batch_id, nullptr); ingest_destroy(ictx); }
     if (dplanes) cudaFree(dplanes);
     if (dconv) cudaFree(dconv);
@@ -530,7 +527,7 @@ static int run_single(const GpConfig &cfg, const Opts &o) {
         std::vector<GpFrameOut *> fr = {&f}, al = {fa};
         std::vector<const std::vector<uint8_t> *> ic = {&icc};
         std::vector<std::vector<uint8_t>> ob, av, aob;
-        if (gp_entropy_gpu(fr, ic, ob, av, &entMs, err, &al, &aob)) { fprintf(stderr, "entropy: %s\n", err.c_str()); return 1; }
+        if (gp_entropy_gpu(fr, ic, ob, av, &entMs, err, &al, &aob)) return failed("entropy");
         obu = ob[0];
         aobu = aob[0];
         avif = av[0];

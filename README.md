@@ -188,8 +188,9 @@ Details: [docs/RESULTS.md](docs/RESULTS.md#444-and-10-bit).
 
 ### 💎 Lossless
 
-`--lossless` writes AVIFs that decode to exactly the input. On 47 PNGs (24 Kodak photos and 23 charts and
-screenshots, 42.7 MP), with every output checked pixel for pixel in libavif with both decoders:
+`--lossless` writes AVIFs that decode to exactly the input, for PNG and WebP; it refuses JPEGs, whose
+lossless AVIF would be about twice their size, or more. On 47 PNGs (24 Kodak photos and 23 charts
+and screenshots, 42.7 MP), with every output checked pixel for pixel in libavif with both decoders:
 
 | Lossless encoder | Size vs the PNGs | Photos | Graphics | MP/s |
 |---|---:|---:|---:|---:|
@@ -310,7 +311,7 @@ project. Before you rely on it, note:
   been run yet. Reports are welcome, especially `tests/decoder_gate.py` results.
 - Output: 8- or 10-bit (`--depth 10`), 4:2:0, 4:4:4 (`--yuv 444`) or monochrome AV1, intra only. In 4:2:0,
   4:4:4 and 4:2:2 JPEGs are downsampled; in 4:4:4, subsampled JPEGs are upsampled exactly as libjpeg-turbo
-  does. `--lossless` codes exactly (RGB as GBR or YCgCo-Re, JPEGs as their decoded YCbCr). PNG and WebP
+  does. `--lossless` codes PNG and WebP exactly (RGB as GBR or YCgCo-Re) and refuses JPEGs. PNG and WebP
   transparency becomes an AVIF alpha channel. There is no 4:2:2 output or animation.
 - Some inputs are not handled on the GPU path. The batch mode skips them and lists them on stderr, so
   you can send them to another encoder: CMYK/YCCK JPEGs, 12-bit JPEGs, images over 35.6 MP and
@@ -392,7 +393,7 @@ for CUDA start-up.
 | `--small-preset P` | preset for images below 1 MP (default `base`; `none` disables) |
 | `--tiles MIN_MP,C,R` | 2^C × 2^R uniform tiles for images of at least MIN_MP megapixels, instead of the preset's tiling (below) |
 | `--yuv 420` / `444` | chroma format (default `420`; `444` is AV1 High profile and keeps full-resolution colour) |
-| `--lossless` | exact (AV1 lossless). PNG/WebP RGB as GBR 4:4:4 at the source depth (as `avifenc -l`); JPEG as its decoded YCbCr at its own subsampling (4:2:2 JPEGs are refused) |
+| `--lossless` | exact (AV1 lossless). PNG/WebP RGB as GBR 4:4:4 at the source depth (as `avifenc -l`). JPEGs are refused (skipped in batch mode): a lossless AVIF of a JPEG is about twice its size, or more |
 | `--ycgco-re` | with `--lossless`: RGB as YCgCo-Re (`--cicp 1/13/16` in avifenc), 8-bit RGB → 10-bit 4:4:4; usually smaller |
 | `--alpha-quality Q` | quality of the alpha channel of PNG/WebP files with transparency: defaults to `--quality`, as in avifenc 1.2+; `100` is lossless (also with `--lossless`) |
 | `--no-alpha` | drop transparency as before alpha support (PNG colour composited onto black) |

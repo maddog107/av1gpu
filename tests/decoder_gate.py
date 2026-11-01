@@ -11,7 +11,8 @@ and the reconstruction must have exactly that format's plane sizes; --expect-for
 requires every colour image to be coded in that format (e.g. with `-- --yuv 444`), --expect-depth 8|10 every
 image in that bit depth (e.g. with `-- --depth 10`).
 --lossless encodes once with `av1gpu --lossless` instead of once per --q value (the reconstruction then is the
-encoder's source planes) and also requires every frame to be lossless (base_q_idx 0 in the frame header).
+encoder's source planes) and also requires every frame to be lossless (base_q_idx 0 in the frame header); JPEGs
+are not encoded with --lossless (av1gpu refuses them) and count as unsupported inputs.
 Alpha: an output with an alpha item (PNG / WebP transparency) also has <name>.avif.alpha.obu and .alpha.recon.yuv;
 the AVIF's items (primary item, and the 'auxl' item with the alpha auxC) must hold exactly the two decoded streams,
 the alpha stream must be monochrome at the colour's bit depth, and both decoders must reproduce its reconstruction
