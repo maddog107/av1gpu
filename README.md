@@ -404,7 +404,8 @@ Differences from Linux:
 **Building on Windows.** You need Visual Studio 2022 or its Build Tools with the "Desktop development with
 C++" workload. `tools\windows\build.ps1` gets the rest: the parts of CUDA 12.9 av1gpu uses, from NVIDIA's
 redistributable archives (about 140 MB; `-CudaRoot` uses an installed toolkit instead), and libjpeg-turbo,
-libpng, zlib and libwebp, built static by a pinned vcpkg release. CMake and Ninja come with Visual Studio.
+libpng, zlib and libwebp, built static by a pinned vcpkg release. CMake comes with the workload's default
+"C++ CMake tools" component; Ninja is downloaded if it is not there.
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File tools\windows\build.ps1 -Archs native
