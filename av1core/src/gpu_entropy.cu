@@ -936,11 +936,55 @@ __device__ __forceinline__ void rc_code(Rc32 &rc, uint32_t cw PROF(, unsigned lo
 }
 
 // value of cr[idx] for a runtime idx without local memory
-__device__ __forceinline__ uint32_t sel16(const uint32_t (&cr)[16], uint32_t idx) {
+template <int NC>
+__device__ __forceinline__ uint32_t sel(const uint32_t (&cr)[NC], uint32_t idx) {
     uint32_t v = 0;
 #pragma unroll
-    for (int i = 0; i < 16; i++) v = (uint32_t)i == idx ? cr[i] : v;
+    for (int i = 0; i < NC; i++) v = (uint32_t)i == idx ? cr[i] : v;
     return v;
+}
+
+// One CDF group of a window (lanes m: the symbols sharing the CDF c, in stream order), applied with the CDF in
+// registers: cr[NC], NC = 16, or 4 for alphabets of up to 4 symbols (most of the coefficient syntax; a quarter of
+// the work per symbol).  split_or_* words only use partition CDFs of 10 symbols, so NC = 4 groups have none.
+template <int NC>
+__device__ __forceinline__ void win_group(uint16_t *c, uint32_t N, uint32_t m, const uint32_t *sw, uint32_t *sc) {
+    uint32_t cr[NC];
+#pragma unroll
+    for (int i = 0; i < NC; i++) cr[i] = (uint32_t)i < N ? c[i] : 0u;
+    uint32_t cnt = c[N];
+    while (m) {
+        const int j = __ffs((int)m) - 1;
+        m &= m - 1;
+        const uint32_t x = sw[j], sj = x & 15u;
+        if constexpr (NC == 16) {
+            if ((x >> 8) != AV1G_SYM_ADAPT) {  // split_or_horz / split_or_vert: read-only use of the partition CDF
+#define P_(k) (cr[k] - ((k) > 0 ? cr[(k) > 0 ? (k) - 1 : 0] : 0u))
+                const uint32_t psum = (x >> 8) == AV1G_SYM_SPLIT_OR_HORZ
+                    ? P_(AV1G_PARTITION_VERT) + P_(AV1G_PARTITION_SPLIT) + P_(AV1G_PARTITION_HORZ_A) +
+                          P_(AV1G_PARTITION_VERT_A) + P_(AV1G_PARTITION_VERT_B) + P_(AV1G_PARTITION_VERT_4)
+                    : P_(AV1G_PARTITION_HORZ) + P_(AV1G_PARTITION_SPLIT) + P_(AV1G_PARTITION_HORZ_A) +
+                          P_(AV1G_PARTITION_HORZ_B) + P_(AV1G_PARTITION_VERT_A) + P_(AV1G_PARTITION_HORZ_4);
+#undef P_
+                sc[j] = coded_word(sj ? psum : 32768u, sj ? 0u : psum, 1u - sj);
+                continue;
+            }
+        }
+        sc[j] = coded_word(sj ? 32768u - sel(cr, sj - 1) : 32768u, 32768u - sel(cr, sj), N - 1 - sj);
+        const int rate = 3 + (cnt > 15) + (cnt > 31) + (N >= 4 ? 2 : 1);
+        // all NC entries unconditionally (straight-line code): cr[N-1] == 32768 stays 32768, entries >= N are never
+        // read nor written back
+#pragma unroll
+        for (int i = 0; i < NC; i++) {
+            const uint32_t y = cr[i];
+            cr[i] = (uint32_t)i < sj ? y - (y >> rate) : y + ((32768u - y) >> rate);
+        }
+        cnt += cnt < 32;
+    }
+#pragma unroll
+    for (int i = 0; i < NC - 1; i++)
+        if ((uint32_t)i + 1 < N) c[i] = (uint16_t)cr[i];
+    c[N] = (uint16_t)cnt;
 }
 
 // Two warps per tile: warp 0 computes the coded words of 32-symbol windows (phase A, CDF
@@ -1001,42 +1045,8 @@ __global__ void __launch_bounds__(64) k_entropy_win(const uint32_t *syms, const 
             if (kind != AV1G_SYM_BOOL && (peers & ((1u << lane) - 1u)) == 0) {
                 // alphabet of the CDF: a split_or_* word carries the bool's N; its partition CDF has 10
                 const uint32_t N = kind == AV1G_SYM_ADAPT ? ((word >> 20) & 15u) + 1 : 10u;
-                uint16_t *c = cdf + off;
-                uint32_t cr[16];
-#pragma unroll
-                for (int i = 0; i < 16; i++) cr[i] = (uint32_t)i < N ? c[i] : 0u;
-                uint32_t cnt = c[N];
-                uint32_t m = peers;
-                while (m) {
-                    const int j = __ffs((int)m) - 1;
-                    m &= m - 1;
-                    const uint32_t x = W.sw[j], sj = x & 15u;
-                    if ((x >> 8) == AV1G_SYM_ADAPT) {
-                        sc[j] = coded_word(sj ? 32768u - sel16(cr, sj - 1) : 32768u, 32768u - sel16(cr, sj), N - 1 - sj);
-                        const int rate = 3 + (cnt > 15) + (cnt > 31) + (N >= 4 ? 2 : 1);
-                        // all 16 entries unconditionally (straight-line code): cr[N-1] == 32768 stays
-                        // 32768, entries >= N are never read nor written back
-#pragma unroll
-                        for (int i = 0; i < 16; i++) {
-                            const uint32_t y = cr[i];
-                            cr[i] = (uint32_t)i < sj ? y - (y >> rate) : y + ((32768u - y) >> rate);
-                        }
-                        cnt += cnt < 32;
-                    } else {  // split_or_horz / split_or_vert: read-only use of the partition CDF
-#define P_(k) (cr[k] - ((k) > 0 ? cr[(k) > 0 ? (k) - 1 : 0] : 0u))
-                        const uint32_t psum = (x >> 8) == AV1G_SYM_SPLIT_OR_HORZ
-                            ? P_(AV1G_PARTITION_VERT) + P_(AV1G_PARTITION_SPLIT) + P_(AV1G_PARTITION_HORZ_A) +
-                                  P_(AV1G_PARTITION_VERT_A) + P_(AV1G_PARTITION_VERT_B) + P_(AV1G_PARTITION_VERT_4)
-                            : P_(AV1G_PARTITION_HORZ) + P_(AV1G_PARTITION_SPLIT) + P_(AV1G_PARTITION_HORZ_A) +
-                                  P_(AV1G_PARTITION_HORZ_B) + P_(AV1G_PARTITION_VERT_A) + P_(AV1G_PARTITION_HORZ_4);
-#undef P_
-                        sc[j] = coded_word(sj ? psum : 32768u, sj ? 0u : psum, 1u - sj);
-                    }
-                }
-#pragma unroll
-                for (int i = 0; i < 15; i++)
-                    if ((uint32_t)i + 1 < N) c[i] = (uint16_t)cr[i];
-                c[N] = (uint16_t)cnt;
+                if (N <= 4) win_group<4>(cdf + off, N, peers, W.sw, sc);
+                else win_group<16>(cdf + off, N, peers, W.sw, sc);
             }
             __syncwarp();
             PROF(pA += clock64() - pa0;)
