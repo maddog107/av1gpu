@@ -13,6 +13,7 @@
 #define S_ISREG(m) (((m) & _S_IFMT) == _S_IFREG)
 #endif
 #else
+#include <sys/mman.h>
 #include <sys/resource.h>
 #include <sys/stat.h>
 #include <sys/syscall.h>
@@ -64,11 +65,34 @@ class Arena {
  public:
   bool init(size_t cap) {
     cap_ = align_up(cap, 4096);
-    if (cudaHostAlloc((void **)&base_, cap_, cudaHostAllocPortable) != cudaSuccess) return false;
     free_[0] = cap_;
-    return true;
+#ifndef _WIN32
+    // huge pages, faulted in here and then registered: cudaHostAlloc of the 256 MiB arena took 145 ms on an L4 host
+    // (g6.4xlarge), all of it with the driver lock held (the encoders' CUDA calls wait); this way the pages are
+    // faulted in 18 ms outside the driver and registered in 5 ms
+    void *p = mmap(nullptr, cap_, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    if (p != MAP_FAILED) {
+      madvise(p, cap_, MADV_HUGEPAGE);
+      std::memset(p, 0, cap_);
+      if (cudaHostRegister(p, cap_, cudaHostRegisterPortable) == cudaSuccess) {
+        base_ = (uint8_t *)p;
+        mapped_ = true;
+        return true;
+      }
+      cudaGetLastError();
+      munmap(p, cap_);
+    }
+#endif
+    return cudaHostAlloc((void **)&base_, cap_, cudaHostAllocPortable) == cudaSuccess;
   }
   ~Arena() {
+#ifndef _WIN32
+    if (mapped_) {
+      cudaHostUnregister(base_);
+      munmap(base_, cap_);
+      return;
+    }
+#endif
     if (base_) cudaFreeHost(base_);
   }
   size_t cap() const { return cap_; }
@@ -126,6 +150,7 @@ class Arena {
 
  private:
   uint8_t *base_ = nullptr;
+  bool mapped_ = false;   // mmap + cudaHostRegister (else cudaHostAlloc)
   size_t cap_ = 0, used_ = 0, peak_ = 0;
   std::map<size_t, size_t> free_;
   std::mutex m_;
