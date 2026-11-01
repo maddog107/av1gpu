@@ -303,9 +303,11 @@ project. Before you rely on it, note:
 
 - **It has been tested on two GPU models:** the RTX PRO 2000 Blackwell it was developed on (compute
   capability 12.0) and an NVIDIA L4 (8.9, on AWS; see [docs/RESULTS.md](docs/RESULTS.md#nvidia-l4-aws-g64xlarge)).
-  The code uses only standard CUDA features, with no tensor cores, no architecture-specific intrinsics and
-  no large shared-memory carve-outs. It builds for compute capability 7.5 through 12.0. Other GPUs should
-  work but have not been run yet. Reports are welcome, especially `tests/decoder_gate.py` results.
+  A contributor's speed run on a GeForce RTX 5090 (12.0) gave byte-identical output
+  ([results](docs/RESULTS.md#geforce-rtx-5090-contributed-by-pickae)). The code uses only standard CUDA
+  features, with no tensor cores, no architecture-specific intrinsics and no large shared-memory
+  carve-outs. It builds for compute capability 7.5 through 12.0. Other GPUs should work but have not
+  been run yet. Reports are welcome, especially `tests/decoder_gate.py` results.
 - Output: 8- or 10-bit (`--depth 10`), 4:2:0, 4:4:4 (`--yuv 444`) or monochrome AV1, intra only. In 4:2:0,
   4:4:4 and 4:2:2 JPEGs are downsampled; in 4:4:4, subsampled JPEGs are upsampled exactly as libjpeg-turbo
   does. `--lossless` codes exactly (RGB as GBR or YCgCo-Re, JPEGs as their decoded YCbCr). PNG and WebP
