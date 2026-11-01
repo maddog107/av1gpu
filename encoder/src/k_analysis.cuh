@@ -18,7 +18,6 @@ struct ASmem {
     int up[2];
     float satd[32];
     int cand[32];
-    int dcv;
 };
 
 // sum |coefficients| of the 4x4 Hadamard transform of d (the SATD is 0.25 x this; at most 64 x the largest |d|, so
@@ -128,6 +127,32 @@ __device__ __forceinline__ void pred_sub4(int c, int sy, int sx, int lw, int lh,
         }
 }
 
+// index of the smallest (v, i) over the warp (-1 if every v is GP_INF): the pick of a serial scan in index order
+// that keeps the first of equal values
+__device__ __forceinline__ int warp_argmin(float v, int i) {
+    for (int o = 16; o > 0; o >>= 1) {
+        const float ov = __shfl_xor_sync(0xffffffffu, v, o);
+        const int oi = __shfl_xor_sync(0xffffffffu, i, o);
+        if (ov < v || (ov == v && oi < i)) { v = ov; i = oi; }
+    }
+    return v < GP_INF ? i : -1;
+}
+
+// av1g_dc_value with the edge sums taken over the warp (all lanes get it)
+template <int BD, typename P>
+__device__ __forceinline__ int warp_dc_value(const P *A, const P *L, int haveLeft, int haveAbove, int lw, int lh) {
+    const int lane = threadIdx.x & 31, w = 1 << lw, h = 1 << lh;
+    int sa = 0, sl = 0;
+    for (int k = lane; k < w; k += 32) sa += A[k];
+    for (int k = lane; k < h; k += 32) sl += L[k];
+    sa = warp_sumi(sa);
+    sl = warp_sumi(sl);
+    if (haveLeft && haveAbove) return (sa + sl + ((w + h) >> 1)) / (w + h);
+    if (haveLeft) return av1g_clip1<BD>((sl + (h >> 1)) >> lh);
+    if (haveAbove) return av1g_clip1<BD>((sa + (w >> 1)) >> lw);
+    return 1 << (BD - 1);
+}
+
 // 4 consecutive source samples (row offsets of the 4x4 sub-blocks are 4-sample aligned, luma rows 8-byte aligned)
 __device__ __forceinline__ void load4(const uint8_t *s, int *v) {
     const uint32_t w = *(const uint32_t *)s;
@@ -181,8 +206,9 @@ __device__ __forceinline__ void warp_screen(const P *src, int sp, const int *can
     __syncwarp();
 }
 
-// residual of candidate c into res (W x H), returns sum r^2 (all lanes).  With the intra edge filter,
-// directional candidates use edges prepared by lane 0 into pa/pl (filter type 0: neighbour modes unknown).
+// residual of candidate c into res (W x H), returns sum r^2 in raster lane order (all lanes; 0 without a 64-sample
+// side, where EvalIn::resEnergy is unused).  With the intra edge filter, directional candidates use edges prepared
+// by lane 0 into pa/pl (filter type 0: neighbour modes unknown).
 template <int W, int H, int BD = 8, typename P>
 __device__ __forceinline__ float warp_residual(const P *src, int sp, int c, int16_t *res, const P *A,
                                                const P *L, int dcv, P *pa = nullptr, P *pl = nullptr,
@@ -214,7 +240,7 @@ __device__ __forceinline__ float warp_residual(const P *src, int sp, int c, int1
             for (int j = 0; j < 4; j++) res[(sy + i) * W + sx + j] = (int16_t)((int)src[(sy + i) * sp + sx + j] - pr[i * 4 + j]);
     }
     __syncwarp();
-    // sum r^2 in raster lane order (the float sum feeds the 64-point distortion)
+    if (W < 64 && H < 64) return 0.f;
     float e = 0.f;
     for (int p = lane; p < W * H; p += 32) {
         const int r = res[p];
@@ -292,9 +318,7 @@ __global__ void __launch_bounds__(NW * 32, (W * H <= 64 ? 768 : 512) / (NW * 32)
         }
         build_edges_par<BD>(gp_src<BD>(I, 0), sp, x, y, T::lw, T::lh, haveLeft, haveAbove, haveAR, haveBL, maxX, maxY, A, L, lane, 32);
         __syncwarp();
-        if (lane == 0) S.dcv = av1g_dc_value<BD>(A, L, haveLeft, haveAbove, T::lw, T::lh);
-        __syncwarp();
-        const int dcv = S.dcv;
+        const int dcv = warp_dc_value<BD>(A, L, haveLeft, haveAbove, T::lw, T::lh);
         const GpExtCand *ext = (const GpExtCand *)B.extCand[BS];
         int K = min((W * H >= 1024 && P.kLarge > 0) ? P.kLarge : P.K, GP_MAXK);
         int top[GP_MAXK];
@@ -325,17 +349,15 @@ __global__ void __launch_bounds__(NW * 32, (W * H <= 64 ? 768 : 512) / (NW * 32)
         // ---- screening: 13 modes at delta 0 ----
         const int ssub = (P.screenSub == 2 && W * H >= 256) ? 2 : 1;
         warp_screen<W, H>(src, sp, S.cand, 0, 13, S.satd, A, L, dcv, ssub);
-        int ncand = 13;
+        // screening cost of candidate `lane`
+        auto jsOf = [&](int i) -> float { return S.satd[i] + lamS * mbits(S.cand[i]); };
+        float js = lane < 13 ? jsOf(lane) : GP_INF;
         const bool allowDelta = P.deltas && BS >= AV1G_BLOCK_8X8 && (P.deltasMaxArea <= 0 || W * H <= P.deltasMaxArea);
         if (allowDelta) {
             // best two directional modes by screening cost
-            int b0 = -1, b1 = -1;
-            float j0 = GP_INF, j1 = GP_INF;
-            for (int m = AV1G_V_PRED; m <= AV1G_D67_PRED; m++) {
-                const float j = S.satd[m] + lamS * mbits(cand_pack(m, 0));
-                if (j < j0) { j1 = j0; b1 = b0; j0 = j; b0 = m; }
-                else if (j < j1) { j1 = j; b1 = m; }
-            }
+            const float jd = lane >= AV1G_V_PRED && lane <= AV1G_D67_PRED ? js : GP_INF;
+            const int b0 = warp_argmin(jd, lane);
+            const int b1 = warp_argmin(lane == b0 ? GP_INF : jd, lane);
             if (lane < 12) {
                 const int m = lane < 6 ? b0 : b1;
                 const int k = lane % 6;
@@ -344,18 +366,12 @@ __global__ void __launch_bounds__(NW * 32, (W * H <= 64 ? 768 : 512) / (NW * 32)
             }
             __syncwarp();
             warp_screen<W, H>(src, sp, S.cand, 13, 25, S.satd, A, L, dcv, ssub);
-            ncand = 25;
+            if (lane >= 13 && lane < 25) js = jsOf(lane);
         }
-        // ---- top-K by screening cost (every lane computes the same selection) ----
-        float topJ[GP_MAXK];
-        for (int k = 0; k < K; k++) { top[k] = -1; topJ[k] = GP_INF; }
-        for (int i = 0; i < ncand; i++) {
-            const float j = S.satd[i] + lamS * mbits(S.cand[i]);
-            if (j < topJ[K - 1]) {
-                int k = K - 1;
-                while (k > 0 && topJ[k - 1] > j) { topJ[k] = topJ[k - 1]; top[k] = top[k - 1]; k--; }
-                topJ[k] = j; top[k] = i;
-            }
+        // ---- top-K by screening cost ----
+        for (int k = 0; k < K; k++) {
+            top[k] = warp_argmin(js, lane);
+            if (lane == top[k]) js = GP_INF;
         }
         }
         // ---- RD of the top-K with DCT_DCT ----

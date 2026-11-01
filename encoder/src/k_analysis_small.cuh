@@ -12,42 +12,74 @@ struct SmallTx {
     static constexpr int n = W * H;
 };
 
-// scalar forward transform: out[i][j] (H x W, row-major, no 32-clipping needed for these sizes)
+// scalar forward transform: out[i][j] (H x W, row-major, no 32-clipping needed for these sizes).  The passes take
+// the transposed matrices four outputs per load; each output keeps the fmaf order of the matrix product.
 template <int W, int H>
 __device__ __forceinline__ void fwd_scalar(const int16_t *res, float *out, int txSz, int txType) {
     const int rk = av1g_row_kind(txType), ck = av1g_col_kind(txType);
     const int fud = av1g_flip_ud(txType), flr = av1g_flip_lr(txType);
     const float *Fc = g_fwd + g_fwdOff[ck][SmallTx<W, H>::lh];
     const float *Fr = g_fwd + g_fwdOff[rk][SmallTx<W, H>::lw];
+    const float *FcT = g_fwdT + g_fwdOff[ck][SmallTx<W, H>::lh];
+    const float *FrT = g_fwdT + g_fwdOff[rk][SmallTx<W, H>::lw];
     float tmp[H * W];
     // columns
 #pragma unroll
     for (int j = 0; j < W; j++) {
         const int jj = flr ? W - 1 - j : j;
+        float x[H];
 #pragma unroll
-        for (int i = 0; i < H; i++) {
-            float s = 0.f;
-            if (ck == AV1G_K_IDT) s = __ldg(&Fc[i * H + i]) * (float)res[(fud ? H - 1 - i : i) * W + jj];
-            else {
+        for (int k = 0; k < H; k++) x[k] = (float)res[(fud ? H - 1 - k : k) * W + jj];
+        if (ck == AV1G_K_IDT) {
 #pragma unroll
-                for (int k = 0; k < H; k++) s = fmaf(__ldg(&Fc[i * H + k]), (float)res[(fud ? H - 1 - k : k) * W + jj], s);
+            for (int i = 0; i < H; i++) tmp[i * W + j] = __ldg(&Fc[i * H + i]) * x[i];
+        } else {
+            float acc[H];
+#pragma unroll
+            for (int i = 0; i < H; i++) acc[i] = 0.f;
+#pragma unroll
+            for (int k = 0; k < H; k++) {
+                const float4 *f4 = (const float4 *)(FcT + k * H);   // FcT[k][i] = Fc[i][k]
+#pragma unroll
+                for (int i4 = 0; i4 < H / 4; i4++) {
+                    const float4 f = __ldg(&f4[i4]);
+                    acc[4 * i4 + 0] = fmaf(f.x, x[k], acc[4 * i4 + 0]);
+                    acc[4 * i4 + 1] = fmaf(f.y, x[k], acc[4 * i4 + 1]);
+                    acc[4 * i4 + 2] = fmaf(f.z, x[k], acc[4 * i4 + 2]);
+                    acc[4 * i4 + 3] = fmaf(f.w, x[k], acc[4 * i4 + 3]);
+                }
             }
-            tmp[i * W + j] = s;
+#pragma unroll
+            for (int i = 0; i < H; i++) tmp[i * W + j] = acc[i];
         }
     }
+    // rows
     const float scale = g_txScale[txSz];
 #pragma unroll
-    for (int i = 0; i < H; i++)
+    for (int i = 0; i < H; i++) {
+        if (rk == AV1G_K_IDT) {
 #pragma unroll
-        for (int j = 0; j < W; j++) {
-            float s = 0.f;
-            if (rk == AV1G_K_IDT) s = __ldg(&Fr[j * W + j]) * tmp[i * W + j];
-            else {
+            for (int j = 0; j < W; j++) out[i * W + j] = __ldg(&Fr[j * W + j]) * tmp[i * W + j] * scale;
+        } else {
+            float acc[W];
 #pragma unroll
-                for (int k = 0; k < W; k++) s = fmaf(__ldg(&Fr[j * W + k]), tmp[i * W + k], s);
+            for (int j = 0; j < W; j++) acc[j] = 0.f;
+#pragma unroll
+            for (int k = 0; k < W; k++) {
+                const float4 *f4 = (const float4 *)(FrT + k * W);   // FrT[k][j] = Fr[j][k]
+#pragma unroll
+                for (int j4 = 0; j4 < W / 4; j4++) {
+                    const float4 f = __ldg(&f4[j4]);
+                    acc[4 * j4 + 0] = fmaf(f.x, tmp[i * W + k], acc[4 * j4 + 0]);
+                    acc[4 * j4 + 1] = fmaf(f.y, tmp[i * W + k], acc[4 * j4 + 1]);
+                    acc[4 * j4 + 2] = fmaf(f.z, tmp[i * W + k], acc[4 * j4 + 2]);
+                    acc[4 * j4 + 3] = fmaf(f.w, tmp[i * W + k], acc[4 * j4 + 3]);
+                }
             }
-            out[i * W + j] = s * scale;
+#pragma unroll
+            for (int j = 0; j < W; j++) out[i * W + j] = acc[j] * scale;
         }
+    }
 }
 
 template <int W, int H, int BD = 8>
