@@ -467,21 +467,25 @@ __device__ __forceinline__ void gather(Taps &t, const uint8_t *src, int stride, 
             }
         }
 }
+// AV = true: taps outside the frame are -1 and skipped; false: they are CDEF_OUT (the staged tiles), which constrain()
+// turns into 0 by itself
+template <bool AV = true>
 __device__ __forceinline__ int sec_sum(const Taps &t, int x0, int sec, int damping) {
     if (!sec) return 0;
     int s = 0;
 #pragma unroll
     for (int i = 0; i < 8; i++)
-        if (t.s[i] >= 0) s += (i < 4 ? 2 : 1) * av1g_cdef_constrain(t.s[i] - x0, sec, damping);  // Cdef_Sec_Taps[k], k = i >> 2
+        if (!AV || t.s[i] >= 0) s += (i < 4 ? 2 : 1) * av1g_cdef_constrain(t.s[i] - x0, sec, damping);  // Cdef_Sec_Taps[k], k = i >> 2
     return s;
 }
+template <bool AV = true>
 __device__ __forceinline__ int pri_sum(const Taps &t, int x0, int adj, int damping) {
     if (!adj) return 0;
     const int w0 = (adj & 1) ? 3 : 4, w1 = (adj & 1) ? 3 : 2;  // Cdef_Pri_Taps[adj & 1]
     int s = 0;
 #pragma unroll
     for (int i = 0; i < 4; i++)
-        if (t.p[i] >= 0) s += (i < 2 ? w0 : w1) * av1g_cdef_constrain(t.p[i] - x0, adj, damping);
+        if (!AV || t.p[i] >= 0) s += (i < 2 ? w0 : w1) * av1g_cdef_constrain(t.p[i] - x0, adj, damping);
     return s;
 }
 
@@ -575,9 +579,13 @@ __global__ void __launch_bounds__(256) k_cdef_sse(av1g_pf_frame f, const uint8_t
     }
 }
 
-// Shared-memory version: the SB's deblocked samples + 2-sample halo are staged once (int16, -1 =
+// Shared-memory version: the SB's deblocked samples + 2-sample halo are staged once (int16, CDEF_OUT =
 // outside the frame = CdefAvailable 0), per-8x8 direction/variance/activity/weight too; every tap is
 // then a shared-memory read.  Same arithmetic as k_cdef_sse (AV1F_CDEF_CHECK=1 compares both).
+// CDEF_OUT needs no availability tests: it is at least 30721 from any sample (10 bits), so constrain() gives 0 for every
+// strength (<= 60 after the variance adjustment, 10 bits) and damping adjustment (<= 8): |d| >> 8 >= 120; it does not
+// lower a minimum, and & 0x3FF = 0 keeps it out of the maximum (which starts at the sample).
+constexpr int CDEF_OUT = 0x7C00;
 __device__ __forceinline__ void gather_t(Taps &t, const int16_t *tile, int tw, int lx, int ly, int dir, int x0) {
     t.mn = t.mx = x0;
 #pragma unroll
@@ -587,13 +595,15 @@ __device__ __forceinline__ void gather_t(Taps &t, const int16_t *tile, int tw, i
             const int sign = sg ? 1 : -1;
             int v = tile[(ly + sign * c_dirs[dir][k][0]) * tw + lx + sign * c_dirs[dir][k][1]];
             t.p[k * 2 + sg] = v;
-            if (v >= 0) { t.mn = min(t.mn, v); t.mx = max(t.mx, v); }
+            t.mn = min(t.mn, v);
+            t.mx = max(t.mx, v & 0x3FF);
 #pragma unroll
             for (int o = 0; o < 2; o++) {
                 const int dd = (dir + (o ? 2 : -2)) & 7;
                 v = tile[(ly + sign * c_dirs[dd][k][0]) * tw + lx + sign * c_dirs[dd][k][1]];
                 t.s[(k * 2 + sg) * 2 + o] = v;
-                if (v >= 0) { t.mn = min(t.mn, v); t.mx = max(t.mx, v); }
+                t.mn = min(t.mn, v);
+                t.mx = max(t.mx, v & 0x3FF);
             }
         }
 }
@@ -608,14 +618,14 @@ __device__ __forceinline__ void cdef_pixel_acc_t(const int16_t *tile, int tw, in
     int SA[NSEC], S0[NSEC];
 #pragma unroll
     for (int si = 0; si < NSEC; si++) {
-        SA[si] = sec_sum(tA, x0, cd.sec[si], damping);
-        S0[si] = sec_sum(t0, x0, cd.sec[si], damping);
+        SA[si] = sec_sum<false>(tA, x0, cd.sec[si], damping);
+        S0[si] = sec_sum<false>(t0, x0, cd.sec[si], damping);
     }
 #pragma unroll
     for (int pi = 0; pi < NPRI; pi++) {
         const int pri = cd.pri[pi];
         const int adj = chroma ? pri : (var ? (pri * (4 + varStr) + 8) >> 4 : 0);   // luma: variance-adjusted
-        const int P = pri ? pri_sum(tA, x0, adj, damping) : 0;
+        const int P = pri ? pri_sum<false>(tA, x0, adj, damping) : 0;
         const int mn = pri ? tA.mn : t0.mn, mx = pri ? tA.mx : t0.mx;
 #pragma unroll
         for (int si = 0; si < NSEC; si++) {
@@ -656,7 +666,7 @@ __global__ void __launch_bounds__(256) k_cdef_sse_t(av1g_pf_frame f, const uint8
         for (int i = tid; i < TL * TL; i += blockDim.x) {
             const int X = x0 + i % TL, Y = y0 + i / TL;
             const bool av = X >= 0 && Y >= 0 && (X >> 2) < f.MiCols && (Y >> 2) < f.MiRows;
-            tl[i] = av ? f.plane[0][(size_t)Y * f.stride[0] + X] : -1;
+            tl[i] = av ? f.plane[0][(size_t)Y * f.stride[0] + X] : CDEF_OUT;
         }
         if (!f.mono) {
             const int cx0 = sbc * CN - 2, cy0 = sbr * CN - 2;
@@ -664,7 +674,7 @@ __global__ void __launch_bounds__(256) k_cdef_sse_t(av1g_pf_frame f, const uint8
                 const int pl = i / (TC * TC), j = i % (TC * TC);
                 const int X = cx0 + j % TC, Y = cy0 + j / TC;
                 const bool av = X >= 0 && Y >= 0 && ((X << SS) >> 2) < f.MiCols && ((Y << SS) >> 2) < f.MiRows;
-                tc[pl][j] = av ? f.plane[1 + pl][(size_t)Y * f.stride[1 + pl] + X] : -1;
+                tc[pl][j] = av ? f.plane[1 + pl][(size_t)Y * f.stride[1 + pl] + X] : CDEF_OUT;
             }
         }
         if (tid < 64) {
@@ -722,6 +732,7 @@ __global__ void __launch_bounds__(256) k_cdef_sse_t(av1g_pf_frame f, const uint8
 // damping + coeff_shift) and compute_cdef_dist_highbd: per SB, plane and strength the SSE over the filtered 8x8
 // blocks >> 2 * coeff_shift; the chroma table is U + V, each shifted (mse[1] += in libaom).  One reduction per plane.
 constexpr int CDEF_CS10 = 2;   // coeff_shift = BitDepth - 8
+// (staged taps: CDEF_OUT needs no availability test)
 __device__ __forceinline__ int pri_sum10(const Taps &t, int x0, int adj, int damping) {
     if (!adj) return 0;
     const int odd = (adj >> CDEF_CS10) & 1;
@@ -729,7 +740,7 @@ __device__ __forceinline__ int pri_sum10(const Taps &t, int x0, int adj, int dam
     int s = 0;
 #pragma unroll
     for (int i = 0; i < 4; i++)
-        if (t.p[i] >= 0) s += (i < 2 ? w0 : w1) * av1g_cdef_constrain(t.p[i] - x0, adj, damping);
+        s += (i < 2 ? w0 : w1) * av1g_cdef_constrain(t.p[i] - x0, adj, damping);
     return s;
 }
 template <int NPRI, int NSEC, typename ACC>
@@ -743,8 +754,8 @@ __device__ __forceinline__ void cdef_pixel_acc_t10(const int16_t *tile, int tw, 
 #pragma unroll
     for (int si = 0; si < NSEC; si++) {
         const int sec = cd.sec[si] << CDEF_CS10;
-        SA[si] = sec_sum(tA, x0, sec, damping);
-        S0[si] = sec_sum(t0, x0, sec, damping);
+        SA[si] = sec_sum<false>(tA, x0, sec, damping);
+        S0[si] = sec_sum<false>(t0, x0, sec, damping);
     }
 #pragma unroll
     for (int pi = 0; pi < NPRI; pi++) {
@@ -791,7 +802,7 @@ __global__ void __launch_bounds__(256) k_cdef_sse_t10(av1g_pf_frame f, const uin
         for (int i = tid; i < TL * TL; i += blockDim.x) {
             const int X = x0 + i % TL, Y = y0 + i / TL;
             const bool av = X >= 0 && Y >= 0 && (X >> 2) < f.MiCols && (Y >> 2) < f.MiRows;
-            tl[i] = av ? (int16_t)p0[(size_t)Y * f.stride[0] + X] : -1;
+            tl[i] = av ? (int16_t)p0[(size_t)Y * f.stride[0] + X] : CDEF_OUT;
         }
         if (!f.mono) {
             const int cx0 = sbc * CN - 2, cy0 = sbr * CN - 2;
@@ -799,7 +810,7 @@ __global__ void __launch_bounds__(256) k_cdef_sse_t10(av1g_pf_frame f, const uin
                 const int pl = i / (TC * TC), j = i % (TC * TC);
                 const int X = cx0 + j % TC, Y = cy0 + j / TC;
                 const bool av = X >= 0 && Y >= 0 && ((X << SS) >> 2) < f.MiCols && ((Y << SS) >> 2) < f.MiRows;
-                tc[pl][j] = av ? (int16_t)((const uint16_t *)f.plane[1 + pl])[(size_t)Y * f.stride[1 + pl] + X] : -1;
+                tc[pl][j] = av ? (int16_t)((const uint16_t *)f.plane[1 + pl])[(size_t)Y * f.stride[1 + pl] + X] : CDEF_OUT;
             }
         }
         if (tid < 64) {
