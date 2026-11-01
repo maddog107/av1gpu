@@ -2,6 +2,7 @@
  * host + device (one implementation shared by the CPU backend, the GPU kernels and engines):
  *   deblocking loop filter  (spec 7.14)   av1g_lf_edge()   one 4-sample edge segment
  *   CDEF                    (spec 7.15)   av1g_cdef_setup() + av1g_cdef_pixel(), or av1g_cdef_block()
+ *                                         (av1g_cdef_filter(): the filter on already fetched taps)
  *
  * The frame is described by av1g_pf_frame: plane pointers plus the 4x4-granular maps the
  * filters read (Skips, LoopfilterTxSizes per plane, cdef_idx per 64x64).  Build the maps
@@ -35,6 +36,11 @@
 
 #ifndef AV1G_PF_STAT
 #define AV1G_PF_STAT(kind) ((void)0)
+#endif
+#if defined(__CUDACC__)
+#define AV1G_PF_UNROLL _Pragma("unroll")   /* keeps the CDEF tap arrays in registers */
+#else
+#define AV1G_PF_UNROLL
 #endif
 enum { AV1G_PF_LF_MASKED = 0, AV1G_PF_LF_NARROW_HEV, AV1G_PF_LF_NARROW, AV1G_PF_LF_WIDE6, AV1G_PF_LF_WIDE8, AV1G_PF_LF_WIDE16,
        AV1G_PF_CDEF_SKIP8X8, AV1G_PF_CDEF_FILTERED, AV1G_PF_CDEF_CLAMPED, AV1G_PF_STAT_COUNT };
@@ -361,6 +367,31 @@ AV1G_HD av1g_cdef_blk av1g_cdef_setup(const av1g_pf_frame *f, const P *src0, int
     return av1g_cdef_params<BD>(f, idx, yDir, var);
 }
 
+/* Cdef_Directions: [dir][k] = (row, col) offset of tap k */
+AV1G_TABLE(int8_t, Cdef_Directions, [8][2][2], {{{-1, 1}, {-2, 2}}, {{0, 1}, {-1, 2}}, {{0, 1}, {0, 2}}, {{0, 1}, {1, 2}},
+                                                {{1, 1}, {2, 2}},   {{1, 0}, {2, 1}},  {{1, 0}, {2, 0}}, {{1, 0}, {2, -1}}})
+
+/* CDEF filter process (7.15.3) on fetched samples: x0v the sample, t[(k * 2 + (sign > 0)) * 3 + j] its taps (k = 0, 1;
+ * j = 0: primary at dir, 1 / 2: secondary at dir - 2 / dir + 2), -1 for a tap outside the frame (CdefAvailable 0). */
+template <int BD = 8>
+AV1G_HD int av1g_cdef_filter(int x0v, const int *t, int priStr, int secStr, int damping) {
+    const int priAdj = av1g_cdef_damping_adj(priStr, damping), secAdj = av1g_cdef_damping_adj(secStr, damping);
+    const int odd = (priStr >> (BD - 8)) & 1;   /* Cdef_Pri_Taps[odd][k] = {4, 2} / {3, 3}, Cdef_Sec_Taps[k] = {2, 1} */
+    int sum = 0, mx = x0v, mn = x0v;
+    AV1G_PF_UNROLL
+    for (int i = 0; i < 12; i++) {   /* k = i / 6, j = i % 3 */
+        const int p = t[i];
+        if (p < 0) continue;
+        if (i % 3 == 0) sum += (odd ? 3 : i >= 6 ? 2 : 4) * av1g_cdef_constrain_adj(p - x0v, priStr, priAdj);
+        else sum += (i >= 6 ? 1 : 2) * av1g_cdef_constrain_adj(p - x0v, secStr, secAdj);
+        mx = p > mx ? p : mx;
+        mn = p < mn ? p : mn;
+    }
+    const int v = x0v + ((8 + sum - (sum < 0)) >> 4);
+    if (v < mn || v > mx) AV1G_PF_STAT(AV1G_PF_CDEF_CLAMPED);
+    return av1g_clip3(mn, mx, v);
+}
+
 /* CDEF filter process (7.15.3) for the sample at plane coordinates (x, y) of the deblocked
  * plane src.  priStr / secStr as returned by av1g_cdef_params; damping: av1g_cdef_damping()
  * (CdefDamping for luma, CdefDamping - 1 for chroma at 8 bits). */
@@ -369,28 +400,17 @@ AV1G_HD int av1g_cdef_pixel(const av1g_pf_frame *f, const P *src, int sstride, i
                             int secStr, int damping, int dir) {
     AV1G_PIX_CHECK(BD, P);
     const int subX = plane ? f->ssx : 0, subY = plane ? f->ssy : 0;
-    const int8_t Dirs[8][2][2] = {{{-1, 1}, {-2, 2}}, {{0, 1}, {-1, 2}}, {{0, 1}, {0, 2}}, {{0, 1}, {1, 2}},  /* Cdef_Directions */
-                                  {{1, 1}, {2, 2}},   {{1, 0}, {2, 1}},  {{1, 0}, {2, 0}}, {{1, 0}, {2, -1}}};
-    const int8_t PriTaps[2][2] = {{4, 2}, {3, 3}}, SecTaps[2] = {2, 1};  /* Cdef_Pri_Taps / Cdef_Sec_Taps */
-    const int x0v = src[(size_t)y * sstride + x];
-    const int priAdj = av1g_cdef_damping_adj(priStr, damping), secAdj = av1g_cdef_damping_adj(secStr, damping);
-    int sum = 0, mx = x0v, mn = x0v;
+    int t[12];
     for (int k = 0; k < 2; k++)
-        for (int sign = -1; sign <= 1; sign += 2)
-            for (int t = 0; t < 3; t++) {  /* t = 0: primary tap (dir), 1/2: secondary (dir - 2, dir + 2) */
-                const int dd = t == 0 ? dir : (dir + (t == 1 ? -2 : 2)) & 7;
-                const int yy = y + sign * Dirs[dd][k][0], xx = x + sign * Dirs[dd][k][1];
+        for (int s = 0; s < 2; s++)
+            for (int j = 0; j < 3; j++) {
+                const int dd = j == 0 ? dir : (dir + (j == 1 ? -2 : 2)) & 7, sign = s ? 1 : -1;
+                const int yy = y + sign * AV1G_T(Cdef_Directions)[dd][k][0], xx = x + sign * AV1G_T(Cdef_Directions)[dd][k][1];
                 /* is_inside_filter_region: the frame (MiRows x MiCols in luma 4x4 units) */
-                if (yy < 0 || xx < 0 || ((yy << subY) >> 2) >= f->MiRows || ((xx << subX) >> 2) >= f->MiCols) continue;
-                const int p = src[(size_t)yy * sstride + xx];
-                if (t == 0) sum += PriTaps[(priStr >> (BD - 8)) & 1][k] * av1g_cdef_constrain_adj(p - x0v, priStr, priAdj);
-                else sum += SecTaps[k] * av1g_cdef_constrain_adj(p - x0v, secStr, secAdj);
-                mx = p > mx ? p : mx;
-                mn = p < mn ? p : mn;
+                const bool in = yy >= 0 && xx >= 0 && ((yy << subY) >> 2) < f->MiRows && ((xx << subX) >> 2) < f->MiCols;
+                t[(k * 2 + s) * 3 + j] = in ? (int)src[(size_t)yy * sstride + xx] : -1;
             }
-    const int v = x0v + ((8 + sum - (sum < 0)) >> 4);
-    if (v < mn || v > mx) AV1G_PF_STAT(AV1G_PF_CDEF_CLAMPED);
-    return av1g_clip3(mn, mx, v);
+    return av1g_cdef_filter<BD>(src[(size_t)y * sstride + x], t, priStr, secStr, damping);
 }
 
 /* CDEF block process (7.15.1) for the 8x8 luma block at 4x4 position (r, c), all planes:
