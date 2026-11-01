@@ -97,9 +97,21 @@ __global__ void k_maps(const av1g_block *blocks, const uint32_t *blockFrame, con
         }
 }
 
+// inverse scans: iscan[(txSz * 3 + class) * 1024 + pos] = the scan index of coefficient pos, for the scans
+// av1g_get_scan returns (class 0: 2-D and IDTX, 1 / 2: the 1-D classes, transforms of up to 16x16)
+constexpr int kIscanTables = AV1G_TX_SIZES_ALL * 3;
+__device__ __forceinline__ int scan_class(int txType) { return txType == AV1G_IDTX ? AV1G_TX_CLASS_2D : av1g_tx_class(txType); }
+__global__ void k_iscan(uint16_t *iscan) {
+    const int txSz = blockIdx.x / 3, cls = blockIdx.x % 3;
+    if (cls != AV1G_TX_CLASS_2D && (AV1G_T(Tx_Width)[txSz] > 16 || AV1G_T(Tx_Height)[txSz] > 16)) return;
+    const uint16_t *scan = av1g_get_scan(txSz, cls == AV1G_TX_CLASS_2D ? AV1G_DCT_DCT : cls == AV1G_TX_CLASS_HORIZ ? AV1G_H_DCT : AV1G_V_DCT);
+    const int n = av1g_tx_coeffs(txSz);
+    for (int c = threadIdx.x; c < n; c += blockDim.x) iscan[(size_t)blockIdx.x * 1024 + scan[c]] = (uint16_t)c;
+}
+
 template <bool LL>
 __global__ void k_txctx(const av1g_block *blocks, const uint32_t *blockFrame, const FrameG *frames, const av1g_txb *txb,
-                        const uint32_t *txbBlock, const int16_t *coeffs, uint32_t nTxb,
+                        const uint32_t *txbBlock, const int16_t *coeffs, uint32_t nTxb, const uint16_t *iscan,
                         uint8_t *ctxLvl, uint8_t *ctxDc, uint16_t *txbEob, uint8_t *txbType) {
     const uint32_t t = blockIdx.x * blockDim.x + threadIdx.x;
     if (t >= nTxb) return;
@@ -112,14 +124,17 @@ __global__ void k_txctx(const av1g_block *blocks, const uint32_t *blockFrame, co
     if (LL && frame_lossless(F)) type = AV1G_DCT_DCT;   // lossless: compute_tx_type is DCT_DCT (the WHT) in every plane
     int eob = 0, cul = 0, dc = 0;
     if (!k.skip) {
+        // in coefficient order (sequential reads): eob = 1 + the largest scan index of a nonzero coefficient, culLevel
+        // = the sum over all of them (those past eob are 0)
         const int16_t *q = coeffs + F.coeffBase + x.coeff_off;
-        const uint16_t *scan = av1g_get_scan(txSz, type);
+        const uint16_t *isc = iscan + (size_t)(txSz * 3 + scan_class(type)) * 1024;
         const int n = av1g_tx_coeffs(txSz);
-        for (int c = n - 1; c >= 0; c--)
-            if (q[scan[c]]) { eob = c + 1; break; }
-        for (int c = 0; c < eob; c++) {
-            int v = q[scan[c]];
-            cul += v < 0 ? -v : v;
+        for (int i = 0; i < n; i++) {
+            const int v = q[i];
+            if (v) {
+                cul += v < 0 ? -v : v;
+                eob = max(eob, isc[i] + 1);
+            }
         }
         if (cul > 63) cul = 63;
         dc = q[0] < 0 ? 1 : q[0] > 0 ? 2 : 0;
@@ -1122,7 +1137,7 @@ struct Plan {
     size_t cubItems = 0, cubTiles = 0;
     // scratch offsets
     size_t oF, oT, oSb, oBFrame, oBTile, oBTxbG, oTxbBlock, oSbFirst, oMap[4], oCtxL, oCtxD, oEob, oType, oCount, oOff, oCub,
-        oSyms, oTb, oTe, oTq, oCapArr, oCapOff, oSizes, oStaging, oPacked, oResult, oCdfDef, total;
+        oSyms, oTb, oTe, oTq, oCapArr, oCapOff, oSizes, oStaging, oPacked, oResult, oCdfDef, oIscan, total;
 };
 
 int build_plan(const DevBatch &b, Plan &P, std::string &err) {
@@ -1238,6 +1253,7 @@ int build_plan(const DevBatch &b, Plan &P, std::string &err) {
     P.oPacked = take(P.capBytes);
     P.oResult = take(sizeof(DevStatus) + 8ull * (P.nTiles + 1));
     P.oCdfDef = take(4 * sizeof(av1g_cdfs));
+    P.oIscan = take(2ull * kIscanTables * 1024);
     P.total = o;
     return 0;
 }
@@ -1279,6 +1295,7 @@ int run_batch_device(const DevBatch &b, cudaStream_t s, void *scratch, size_t sc
     DevStatus *dSt = (DevStatus *)(S + P.oResult);
     uint64_t *dTileOff = (uint64_t *)(dSt + 1);
     av1g_cdfs *dCdfDef = (av1g_cdfs *)(S + P.oCdfDef);
+    uint16_t *dIscan = (uint16_t *)(S + P.oIscan);
     // caller's arrays, shifted so that frame 0 starts at index 0
     const av1g_block *blocks = b.blocks + b.frames[0].blockBase;
     const uint32_t *blockTxb = b.blockTxb + b.frames[0].blockBase;
@@ -1307,6 +1324,7 @@ int run_batch_device(const DevBatch &b, cudaStream_t s, void *scratch, size_t sc
         k_put<TileG, kTileChunk><<<1, 256, 0, s>>>(c, dT);
     }
     k_cdf_defaults<<<4, 1, 0, s>>>(dCdfDef);
+    k_iscan<<<kIscanTables, 256, 0, s>>>(dIscan);
     k_blocks<<<grid(nB, TB), TB, 0, s>>>(dF, P.nF, dT, blocks, blockTxb, nB, nT, dBFrame, dBTile, dBTxbG, dTxbBlock, dSbFirst, dSt);
     k_sbs<<<grid(nSb, TB), TB, 0, s>>>(dF, dT, nTiles, nSb, dSbFirst, dSb, dSt);
     k_tiles<<<nTiles, 32, 0, s>>>(dF, dT, dSb, blocks);
@@ -1314,8 +1332,8 @@ int run_batch_device(const DevBatch &b, cudaStream_t s, void *scratch, size_t sc
     k_maps<<<grid(nB, TB), TB, 0, s>>>(blocks, dBFrame, dF, nB, mMiSize, mYMode, mSkip, mTx);
     bool anyLL = false;   // lossless frames in the batch: the LL instantiations (handle lossy frames too)
     for (const FrameG &g : P.F) anyLL |= g.qidx == 0;
-    if (anyLL) k_txctx<true><<<grid(nT, TB), TB, 0, s>>>(blocks, dBFrame, dF, txb, dTxbBlock, b.coeffs, nT, cL, cD, dEob, dType);
-    else k_txctx<false><<<grid(nT, TB), TB, 0, s>>>(blocks, dBFrame, dF, txb, dTxbBlock, b.coeffs, nT, cL, cD, dEob, dType);
+    if (anyLL) k_txctx<true><<<grid(nT, TB), TB, 0, s>>>(blocks, dBFrame, dF, txb, dTxbBlock, b.coeffs, nT, dIscan, cL, cD, dEob, dType);
+    else k_txctx<false><<<grid(nT, TB), TB, 0, s>>>(blocks, dBFrame, dF, txb, dTxbBlock, b.coeffs, nT, dIscan, cL, cD, dEob, dType);
     rec(2);
     CK(cudaMemsetAsync(dCount + nItems, 0, 4, s));
     if (anyLL) k_txsym<true><<<grid(nT, TB), TB, 0, s>>>(blocks, dBFrame, dBTile, dF, dT, txb, dTxbBlock, b.coeffs, nT, cL, cD, dEob, dType,
