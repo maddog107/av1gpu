@@ -831,7 +831,7 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
             "[av1gpu] %llu images (%.1f MP) in %.1f ms: %.2f img/s, %.2f MP/s; %llu batches; out %.2f MB (%.3f bpp); "
             "CPU %.0f ms = %.2f cores; skipped (unsupported): %d; WebP/PNG via CPU decode: %d; write failures %d\n",
             (unsigned long long)A.images, mp, wall, A.images * 1e3 / wall, mp * 1e3 / wall, (unsigned long long)A.batches,
-            A.bytes / 1e6, A.bytes * 8.0 / A.pixels, cpu, cpu / wall, cpuFallback, gpuFallback, failures);
+            A.bytes / 1e6, A.pixels ? A.bytes * 8.0 / A.pixels : 0.0, cpu, cpu / wall, cpuFallback, gpuFallback, failures);
     fprintf(stderr,
             "[av1gpu] stage ms: ingest wait %.1f | gpu setup %.1f analysis %.1f dp %.1f recon %.1f pack %.1f postfilter %.1f download %.1f "
             "(gpu total %.1f, encode wall %.1f) | entropy wall %.1f (gpu %.1f) | write %.1f | peak dev %.0f MB\n",
