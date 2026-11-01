@@ -1,0 +1,11 @@
+g_jpg [gate] q60: 100/100 identical in dav1d and aomdec (420 100; 49410801 bytes), 0 not encoded (unsupported input), rc=0 PASS
+g_jpg [gate] q120: 100/100 identical in dav1d and aomdec (420 100; 22538643 bytes), 0 not encoded (unsupported input), rc=0 PASS
+g_jpg [gate] q180: 100/100 identical in dav1d and aomdec (420 100; 7228580 bytes), 0 not encoded (unsupported input), rc=0 PASS
+g_mix444_10 [gate] q120: 100/100 identical in dav1d and aomdec (444 10-bit 100; 23049843 bytes), 0 not encoded (unsupported input), rc=0 PASS
+g_turbo3 [gate] q120: 100/100 identical in dav1d and aomdec (420 100; 23021902 bytes), 0 not encoded (unsupported input), rc=0 PASS
+g_alpha [gate] q120: 43/43 identical in dav1d and aomdec (420 43; 788709 bytes); alpha items 38/38 identical (alpha qindex 120), 0 not encoded (unsupported input), rc=0 PASS
+g_alpha_ll [gate] q120: 43/43 identical in dav1d and aomdec (420 43; 1213603 bytes); alpha items 38/38 identical (alpha qindex 0), 0 not encoded (unsupported input), rc=0 PASS
+g_ll [gate] lossless: 3/3 identical in dav1d and aomdec (444 3; 1239555 bytes), 0 not encoded (unsupported input), rc=0 PASS
+g_ll_alpha [gate] lossless: 42/42 identical in dav1d and aomdec (444 39, 444 10-bit 1, mono 2; 8622664 bytes); alpha items 37/37 identical (alpha qindex 0), 1 not encoded (unsupported input), rc=0 PASS
+g_cfl [gate] q60: 1/1 identical in dav1d and aomdec (420 1; 1474 bytes), 0 not encoded (unsupported input), rc=0 PASS
+g_cfl [gate] q120: 1/1 identical in dav1d and aomdec (420 1; 936 bytes), 0 not encoded (unsupported input), rc=0 PASS

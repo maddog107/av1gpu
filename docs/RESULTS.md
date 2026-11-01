@@ -691,7 +691,13 @@ first one. Scripts, output hashes, exit codes and speed runs: `bench/results/aws
   (also `--ycgco-re`), alpha at the default quality, exact and dropped, a directory input, nested
   `--outdir`, non-ASCII file names and 24 encoders. All 1,226 output files matched the Linux build's and
   `main`'s, and so did every exit code. Only a libpng warning differs: Windows' libpng 1.6.59 printed no
-  "known incorrect sRGB profile" warning for one test PNG.
+  "known incorrect sRGB profile" warning for one test PNG. The zip the release workflow built (every
+  architecture, from the CI runner) gave the same 1,226 files.
+- **Decoder gate:** `tests/decoder_gate.py` needs dav1d and aomdec, so it ran on Linux: 11 runs (size range
+  at qindex 60/120/180, 4:4:4 10-bit, `turbo3`, alpha lossy and exact, lossless with and without alpha, the
+  CfL edge image), 633/633 encodes and 113/113 alpha items identical in both decoders. The Windows zip,
+  given the same commands, wrote the same 2,125 files (AVIFs, OBU streams and reconstructions), byte for
+  byte, so the result holds for it too.
 - **Speed is lower:** MP/s, sets repeated to about 800–1,400 MP, one warm-up and the median of 3; CPU
   cores in brackets. "Windows" is WDDM as installed.
 

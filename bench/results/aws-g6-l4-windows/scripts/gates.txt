@@ -1,0 +1,8 @@
+g_jpg	jpg	60,120,180	-	-
+g_mix444_10	mix	120	--expect-format 444 --expect-depth 10	--yuv 444 --depth 10
+g_turbo3	mix	120	-	--preset turbo3 --small-preset none
+g_alpha	alpha	120	--expect-alpha	-
+g_alpha_ll	alpha	120	--expect-alpha --alpha-lossless	--alpha-quality 100
+g_ll	few	lossless	-	-
+g_ll_alpha	alpha	lossless	--expect-alpha --alpha-lossless	-
+g_cfl	gate_img	60,120	-	--preset slow --small-preset none --partN 0xF0
