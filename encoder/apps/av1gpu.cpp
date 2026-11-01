@@ -668,6 +668,10 @@ int main(int argc, char **argv) {
     // (main + high-priority wavefront stream) and entropy threads use > 20 streams; aliased queues
     // serialise unrelated work (nsys 2026-10-02: next batch's analysis queued behind entropy)
     setenv("CUDA_DEVICE_MAX_CONNECTIONS", getenv("GP_MAX_CONNECTIONS") ? getenv("GP_MAX_CONNECTIONS") : "32", 0);
+    // batch mode: every kernel module loaded with the context, not on first use.  A lazy load mid-run waited for
+    // the GPU to drain while every thread's CUDA calls blocked (nsys, L4: 0.33-0.47 s at the first batch's post-filter
+    // launch); eager loading moves that before the batch starts (unless CUDA_MODULE_LOADING is set)
+    if (!o.batch.empty()) setenv("CUDA_MODULE_LOADING", "EAGER", 0);
     cudaSetDeviceFlags(cudaDeviceScheduleBlockingSync);
     if (cudaSetDevice(0) != cudaSuccess) { fprintf(stderr, "no CUDA device\n"); return 1; }
 #ifdef _WIN32

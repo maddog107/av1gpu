@@ -8,7 +8,26 @@
 #define GP_PINNED_H
 #include <cuda_runtime.h>
 #include <cstring>
+#include <mutex>
 #include <vector>
+
+// buffers of threads that exited, freed by gp_pinned_free_exited() once no other thread has GPU work: the first
+// encoder thread to finish a batch run freed its buffer while the others still encoded (nsys, L4: a 0.46 s
+// cudaFreeHost that drained the GPU, with every other thread's launches blocked behind it)
+struct GpPinnedExited {
+    std::mutex mu;
+    std::vector<uint8_t *> bufs;
+};
+inline GpPinnedExited &gp_pinned_exited() {
+    static GpPinnedExited *e = new GpPinnedExited;   // never destroyed: thread-exit destructors may run at process exit
+    return *e;
+}
+inline void gp_pinned_free_exited() {
+    GpPinnedExited &e = gp_pinned_exited();
+    std::lock_guard<std::mutex> lk(e.mu);
+    for (uint8_t *q : e.bufs) cudaFreeHost(q);
+    e.bufs.clear();
+}
 
 struct GpPinnedStage {
     struct Item { void *dst; size_t off, n; };
@@ -19,8 +38,10 @@ struct GpPinnedStage {
     // calls mid-run that drained the GPU while other threads waited on the driver)
     std::vector<uint8_t *> retired;
     ~GpPinnedStage() {
-        if (p) cudaFreeHost(p);
-        for (uint8_t *q : retired) cudaFreeHost(q);
+        GpPinnedExited &e = gp_pinned_exited();
+        std::lock_guard<std::mutex> lk(e.mu);
+        if (p) e.bufs.push_back(p);
+        e.bufs.insert(e.bufs.end(), retired.begin(), retired.end());
     }
     // returns non-zero on CUDA error
     int stage(void *dst, const void *src, size_t n, cudaStream_t st) {

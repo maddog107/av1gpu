@@ -7,13 +7,25 @@
 #include "dev_common.cuh"
 #include "k_recon.cuh"
 
+#include <algorithm>
+
 GP_DEFINE_TABLE_UPLOAD(gp_upload_tables_recon)
 void gp_launch_recon_444_8(const GpBatch &B, const GpParams &P, const uint32_t *dSbList, uint32_t n, cudaStream_t st);
 void gp_launch_recon_420_10(const GpBatch &B, const GpParams &P, const uint32_t *dSbList, uint32_t n, cudaStream_t st);
 void gp_launch_recon_444_10(const GpBatch &B, const GpParams &P, const uint32_t *dSbList, uint32_t n, cudaStream_t st);
 
+size_t gp_recon_444_8_local_bytes();
+size_t gp_recon_420_10_local_bytes();
+size_t gp_recon_444_10_local_bytes();
+
 // W5/W3: bytes of k_recon global scratch per CTA (B.bigScratch = max CTAs per launch x this)
 size_t gp_recon_scratch_bytes() { return RC_CTA_BIG_BYTES; }
+// per-thread local memory (stack) of the deepest k_recon instantiation, the largest of any lossy-path kernel
+size_t gp_recon_local_bytes() {
+    cudaFuncAttributes a;
+    const size_t own = cudaFuncGetAttributes(&a, k_recon<1, 8>) == cudaSuccess ? a.localSizeBytes : 0;
+    return std::max({own, gp_recon_444_8_local_bytes(), gp_recon_420_10_local_bytes(), gp_recon_444_10_local_bytes()});
+}
 
 // one wavefront step: dSbList[0, n420) with the 4:2:0 instantiation, then dSbList[n420, n420 + n444) with the 4:4:4 one
 // (the same stream: the second launch reuses the per-CTA scratch slots after the first)
