@@ -28,6 +28,8 @@ static int setenv(const char *name, const char *value, int overwrite) {
     return _putenv_s(name, value);
 }
 extern "C" __declspec(dllimport) int __stdcall SetConsoleOutputCP(unsigned int codePage);
+extern "C" __declspec(dllimport) unsigned int __stdcall timeBeginPeriod(unsigned int ms);
+extern "C" __declspec(dllimport) void *__stdcall LoadLibraryA(const char *name);
 #endif
 
 // Defaults = the configuration validated in production (avifenc -q 60 equivalent): applied before the
@@ -648,10 +650,19 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
 int main(int argc, char **argv) {
 #ifdef _WIN32
     SetConsoleOutputCP(65001);   // UTF-8 file names in messages (the manifest makes argv and file APIs UTF-8)
+    timeBeginPeriod(1);          // 1 ms timer: the pipeline's short sleeps and timed waits would otherwise last 15.6 ms
 #endif
     GpConfig cfg;
     Opts o;
     if (!parse(argc, argv, cfg, o)) { usage(); return 2; }
+#ifdef _WIN32
+    // nvJPEG is delay-loaded (--help works without it): a missing DLL would otherwise end the process on first use
+    if (!LoadLibraryA(AV1GPU_NVJPEG_DLL)) {
+        fprintf(stderr, "cannot load %s: it belongs beside av1gpu.exe (it is in the release zip, and in the CUDA "
+                        "toolkit's bin folder)\n", AV1GPU_NVJPEG_DLL);
+        return 1;
+    }
+#endif
     // blocking sync: host threads sleep while waiting for the GPU (CPU budget <= 4 cores)
     // more hardware work queues than the default 8: ingest (nvJPEG + per-worker streams), encoders
     // (main + high-priority wavefront stream) and entropy threads use > 20 streams; aliased queues
@@ -659,6 +670,21 @@ int main(int argc, char **argv) {
     setenv("CUDA_DEVICE_MAX_CONNECTIONS", getenv("GP_MAX_CONNECTIONS") ? getenv("GP_MAX_CONNECTIONS") : "32", 0);
     cudaSetDeviceFlags(cudaDeviceScheduleBlockingSync);
     if (cudaSetDevice(0) != cudaSuccess) { fprintf(stderr, "no CUDA device\n"); return 1; }
+#ifdef _WIN32
+    // CUDA's stream-ordered allocator (cudaMallocAsync), used throughout, does not exist in TCC mode on Windows (the
+    // default of data-centre GPUs); WDDM mode (GeForce and RTX cards) has it
+    int pools = 0, tcc = 0;
+    cudaDeviceGetAttribute(&pools, cudaDevAttrMemoryPoolsSupported, 0);
+    cudaDeviceGetAttribute(&tcc, cudaDevAttrTccDriver, 0);
+    if (!pools) {
+        if (tcc)
+            fprintf(stderr, "the GPU runs in TCC mode, which has no CUDA memory pools (cudaMallocAsync); av1gpu needs WDDM "
+                            "mode (nvidia-smi -dm 0, then restart, where the GPU supports it)\n");
+        else
+            fprintf(stderr, "this driver has no CUDA memory pools (cudaMallocAsync), which av1gpu needs\n");
+        return 1;
+    }
+#endif
     if (!o.batch.empty()) {
         if (o.debugOutputs) setenv("GP_WANT_RECON", "1", 1);
         // one process for every q point (CUDA context, tables and the process start are paid once)

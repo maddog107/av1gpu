@@ -386,7 +386,12 @@ Paths may use `\` or `/`, and file names may be non-ASCII (Windows 10 version 19
 Server 2022). Batch list files are UTF-8, one path per line; Windows line ends are fine. `--outdir`
 directories are created as needed.
 
-WINDOWS_RESULTS
+Tested on an L4 under Windows Server 2022 (AWS g6.4xlarge): every output of 30 test runs (1,226 files)
+was byte-identical to the Linux build's. It ran at 67–83 % of the Linux speed on the same instance type
+with hardware-accelerated GPU scheduling on (JPEG 86 against 128 MP/s), and slower without it
+([results](docs/RESULTS.md#windows)). The GPU must be in WDDM mode, as GeForce and RTX cards are: TCC mode,
+the default of data-centre GPUs under NVIDIA's data-centre driver, has no CUDA memory pools, and av1gpu
+stops with an error that says so.
 
 Differences from Linux:
 

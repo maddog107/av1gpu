@@ -673,6 +673,44 @@ originals. With that caveat:
 - **Cost of the run:** 1 h 39 min on a g6.4xlarge spot instance at about $0.80/hour, plus about 2 minutes
   on demand, roughly $1.40.
 
+### Windows
+
+The Windows build (2026-11-01) on a second g6.4xlarge, against the Linux build of the same commit on a
+first one. Scripts, output hashes, exit codes and speed runs: `bench/results/aws-g6-l4-windows/`.
+
+- **Setup:** Windows Server 2022 (21H2, build 20348). av1gpu built with `tools/windows/build.ps1`: Visual
+  Studio 2022 Build Tools 17.14 (MSVC 19.44), CUDA 12.9.1, vcpkg 2026.10.16 (libjpeg-turbo 3.2.0, libpng
+  1.6.59, zlib 1.3.2, libwebp 1.6.0). Linux: the instance of [Setup](#setup-1) with driver 595.112.07, CUDA
+  13.2, gcc 13.3.
+- **Driver:** NVIDIA's data-centre driver for Windows (581.42) runs the L4 in TCC mode, which has no CUDA
+  memory pools, so `cudaMallocAsync` fails and av1gpu stops with an error that says so. AWS's GRID driver
+  (596.86) runs it in WDDM mode, as GeForce and RTX cards always are on Windows; the results below are
+  with that driver.
+- **Output is byte-identical:** 30 runs over JPEG, PNG, WebP, mixed and RGBA sets, single images and the
+  error cases. Among them 4:4:4, 10-bit, `--qindex 40,200`, `--cpu-entropy`, `turbo3`, `slow`, lossless
+  (also `--ycgco-re`), alpha at the default quality, exact and dropped, a directory input, nested
+  `--outdir`, non-ASCII file names and 24 encoders. All 1,226 output files matched the Linux build's and
+  `main`'s, and so did every exit code. Only a libpng warning differs: Windows' libpng 1.6.59 printed no
+  "known incorrect sRGB profile" warning for one test PNG.
+- **Speed is lower:** MP/s, sets repeated to about 800–1,400 MP, one warm-up and the median of 3; CPU
+  cores in brackets. "Windows" is WDDM as installed.
+
+| Set | Linux | Windows | Windows, GPU scheduling on |
+|---|---:|---:|---:|
+| JPEG (size range × 3, 1,434 MP) | 127.5 (0.17) | 76.8 (0.11) | 85.6 (0.12) |
+| PNG (40 photos of 5–24 MP × 2, 819 MP) | 137.6 (6.3) | 92.1 (4.9) | 114.2 (6.0) |
+| Mixed JPEG / PNG / WebP (× 3) | 123.3 (2.2) | 73.0 (1.8) | 89.2 (2.1) |
+| Mixed, `--yuv 444 --depth 10` | 97.4 (2.9) | 59.8 (1.5) | 70.6 (1.7) |
+
+"GPU scheduling on" is Windows' hardware-accelerated GPU scheduling (`HwSchMode=2`, on by default on many
+Windows 11 PCs), which helped every set; that run also had the final code's 1 ms timer resolution, which on
+its own changed nothing (76.9 against 76.8 MP/s on the JPEG set). The encoders' GPU stages were no slower on Windows, but the
+encoders waited longer between them: on the JPEG set they waited 15.3 s in all for decoded JPEGs, against
+0.4 s on Linux, although the NVJPG decode itself took as long (6.6 s against 6.3 s). A 1 ms timer
+resolution, the other CUDA scheduling modes (spin, yield, auto), fewer hardware queues
+(`GP_MAX_CONNECTIONS`) and fewer encoders or entropy threads did not help. A GeForce card under the desktop driver may behave differently; this
+is the only Windows measurement so far.
+
 ## GeForce RTX 5090 (contributed by pickae)
 
 Contributed by pickae ([discussion #19](https://github.com/maddog107/av1gpu/discussions/19)) and measured on

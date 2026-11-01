@@ -57,8 +57,10 @@ does not grant any patent rights of its own; see that license for its terms.
 ## Runtime dependencies
 
 av1gpu links against the CUDA runtime and nvJPEG (NVIDIA CUDA Toolkit EULA),
-libjpeg-turbo (IJG / BSD-3-Clause / zlib licenses), libpng (libpng license) and
-libwebp (BSD-3-Clause). None of their sources are included in this repository.
+libjpeg-turbo (IJG / BSD-3-Clause / zlib licenses), libpng (libpng license),
+zlib (zlib license) and libwebp (BSD-3-Clause). None of their sources are included
+in this repository. The Windows zip also contains `nvjpeg64_12.dll` from the CUDA
+Toolkit, redistributed under the CUDA Toolkit EULA.
 
 ## Benchmark images
 
