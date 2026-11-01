@@ -37,7 +37,7 @@
 #ifndef AV1G_PF_STAT
 #define AV1G_PF_STAT(kind) ((void)0)
 #endif
-#if defined(__CUDACC__)
+#if defined(__CUDA_ARCH__)
 #define AV1G_PF_UNROLL _Pragma("unroll")   /* keeps small fixed-size arrays (CDEF taps, wide filter) in registers */
 #else
 #define AV1G_PF_UNROLL
