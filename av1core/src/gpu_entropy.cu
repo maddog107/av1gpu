@@ -69,10 +69,13 @@ struct SbG {
 __device__ av1g_cdfs g_cdf_layout;
 #define CID(expr) ((uint32_t)((const uint16_t *)&(g_cdf_layout.expr) - (const uint16_t *)&g_cdf_layout))
 
+// EMIT = false: counting only (k_txsym's count pass, where everything that only feeds the symbol values -
+// contexts, the level map - compiles away)
+template <bool EMIT = true>
 struct Out {
     uint32_t *p;
     uint32_t n;
-    __device__ void put(uint32_t w) { if (p) p[n] = w; n++; }
+    __device__ void put(uint32_t w) { if (EMIT && p) p[n] = w; n++; }
     __device__ void sym(uint32_t cid, int s, int N) { put(av1g_sym_pack(AV1G_SYM_ADAPT, cid, (uint32_t)s, (uint32_t)N)); }
     __device__ void bit(int b) { put(av1g_sym_pack(AV1G_SYM_BOOL, 0, (uint32_t)b, 2)); }
 };
@@ -138,7 +141,7 @@ __global__ void k_txctx(const av1g_block *blocks, const uint32_t *blockFrame, co
 }
 
 // coefficient syntax of one tx block (mirror of Encoder::code_coeffs, write mode)
-template <bool LL>
+template <bool LL, bool EMIT>
 __global__ void k_txsym(const av1g_block *blocks, const uint32_t *blockFrame, const uint32_t *blockTile, const FrameG *frames,
                         const TileG *tiles, const av1g_txb *txb, const uint32_t *txbBlock,
                         const int16_t *coeffs, uint32_t nTxb, const uint8_t *ctxLvl, const uint8_t *ctxDc,
@@ -146,13 +149,13 @@ __global__ void k_txsym(const av1g_block *blocks, const uint32_t *blockFrame, co
                         uint32_t *syms, const uint32_t *symTotal, uint64_t symCap) {
     const uint32_t t = blockIdx.x * blockDim.x + threadIdx.x;
     if (t >= nTxb) return;
-    if (syms && *symTotal > symCap) return;  // emit pass with too small a symbol buffer (reported later)
+    if (EMIT && *symTotal > symCap) return;  // emit pass with too small a symbol buffer (reported later)
     const uint32_t b = txbBlock[t];
     const uint32_t item = t + b + 1;
     const av1g_block k = blocks[b];
-    Out o{syms ? syms + itemOff[item] : nullptr, 0};
+    Out<EMIT> o{EMIT ? syms + itemOff[item] : nullptr, 0};
     if (k.skip) {
-        if (!syms) itemCount[item] = 0;
+        if (!EMIT) itemCount[item] = 0;
         return;
     }
     const FrameG &F = frames[blockFrame[b]];
@@ -241,8 +244,10 @@ __global__ void k_txsym(const av1g_block *blocks, const uint32_t *blockFrame, co
         const int adj = AV1G_T(Adjusted_Tx_Size)[txSz];
         const int bwl = AV1G_T(Tx_Width_Log2)[adj];
         const int width = 1 << bwl, height = AV1G_T(Tx_Height)[adj];
-        uint8_t lev[1024];
-        for (int i = 0; i < width * height; i++) lev[i] = 0;
+        // levels of the context neighbours: they are right of / below the coefficient, so later in the scan and
+        // already coded (in reverse scan order), and past eob they are 0 - their own coefficients, read from q
+        // (no per-thread level map: 1 KB of local memory per thread)
+        auto lev = [&](int i) -> int { const int v = q[i] < 0 ? -q[i] : q[i]; return v < 15 ? v : 15; };
         for (int c = eob - 1; c >= 0; c--) {
             const int pos = scan[c];
             const int v = q[pos] < 0 ? -q[pos] : q[pos];
@@ -256,7 +261,7 @@ __global__ void k_txsym(const av1g_block *blocks, const uint32_t *blockFrame, co
                 for (int idx = 0; idx < AV1G_SIG_REF_DIFF_OFFSET_NUM; idx++) {
                     const int rr = row + AV1G_T(Sig_Ref_Diff_Offset)[txClass][idx][0];
                     const int cc = col + AV1G_T(Sig_Ref_Diff_Offset)[txClass][idx][1];
-                    if (rr >= 0 && cc >= 0 && rr < height && cc < width) mag += min((int)lev[(rr << bwl) + cc], 3);
+                    if (rr >= 0 && cc >= 0 && rr < height && cc < width) mag += min(lev((rr << bwl) + cc), 3);
                 }
                 int bctx = min((mag + 1) >> 1, 4);
                 if (txClass == AV1G_TX_CLASS_2D) {
@@ -273,7 +278,7 @@ __global__ void k_txsym(const av1g_block *blocks, const uint32_t *blockFrame, co
                 for (int idx = 0; idx < 3; idx++) {
                     const int rr = row + AV1G_T(Mag_Ref_Offset_With_Tx_Class)[txClass][idx][0];
                     const int cc = col + AV1G_T(Mag_Ref_Offset_With_Tx_Class)[txClass][idx][1];
-                    if (rr >= 0 && cc >= 0 && rr < height && cc < width) mag += min((int)lev[rr * width + cc], 15);
+                    if (rr >= 0 && cc >= 0 && rr < height && cc < width) mag += lev(rr * width + cc);
                 }
                 mag = min((mag + 1) >> 1, 6);
                 int brctx;
@@ -290,7 +295,6 @@ __global__ void k_txsym(const av1g_block *blocks, const uint32_t *blockFrame, co
                     if (kk < 3) break;
                 }
             }
-            lev[pos] = (uint8_t)level;
         }
         for (int c = 0; c < eob; c++) {
             const int pos = scan[c];
@@ -317,7 +321,7 @@ __global__ void k_txsym(const av1g_block *blocks, const uint32_t *blockFrame, co
             }
         }
     }
-    if (!syms) itemCount[item] = o.n;
+    if (!EMIT) itemCount[item] = o.n;
 }
 
 // ---------------------------------------------------------------------------
@@ -374,7 +378,7 @@ __device__ void w_block(Walk &w, int r, int c, int bsize) {
     const av1g_block k = w.blocks[bi];
     const FrameG &F = *w.F;
     const uint32_t item = bi + w.blockTxbG[bi];
-    Out o{w.syms ? w.syms + w.itemOff[item] : nullptr, 0};
+    Out<> o{w.syms ? w.syms + w.itemOff[item] : nullptr, 0};
     for (int i = 0; i < w.npend; i++) o.put(w.pend[i]);
     w.npend = 0;
     const int bw4 = av1g_bw4(bsize), bh4 = av1g_bh4(bsize);
@@ -1318,10 +1322,10 @@ int run_batch_device(const DevBatch &b, cudaStream_t s, void *scratch, size_t sc
     else k_txctx<false><<<grid(nT, TB), TB, 0, s>>>(blocks, dBFrame, dF, txb, dTxbBlock, b.coeffs, nT, cL, cD, dEob, dType);
     rec(2);
     CK(cudaMemsetAsync(dCount + nItems, 0, 4, s));
-    if (anyLL) k_txsym<true><<<grid(nT, TB), TB, 0, s>>>(blocks, dBFrame, dBTile, dF, dT, txb, dTxbBlock, b.coeffs, nT, cL, cD, dEob, dType,
-                                        dCount, nullptr, nullptr, nullptr, 0);
-    else k_txsym<false><<<grid(nT, TB), TB, 0, s>>>(blocks, dBFrame, dBTile, dF, dT, txb, dTxbBlock, b.coeffs, nT, cL, cD, dEob, dType,
-                                        dCount, nullptr, nullptr, nullptr, 0);
+    if (anyLL) k_txsym<true, false><<<grid(nT, TB), TB, 0, s>>>(blocks, dBFrame, dBTile, dF, dT, txb, dTxbBlock, b.coeffs, nT, cL, cD,
+                                               dEob, dType, dCount, nullptr, nullptr, nullptr, 0);
+    else k_txsym<false, false><<<grid(nT, TB), TB, 0, s>>>(blocks, dBFrame, dBTile, dF, dT, txb, dTxbBlock, b.coeffs, nT, cL, cD,
+                                               dEob, dType, dCount, nullptr, nullptr, nullptr, 0);
     if (anyLL) k_sbsym<true><<<grid(nSb, 32), 32, 0, s>>>(dSb, nSb, dF, dT, blocks, dBTxbG, mMiSize, mYMode, mSkip, mTx, dCount, nullptr, nullptr,
                                           nullptr, 0, dSt);
     else k_sbsym<false><<<grid(nSb, 32), 32, 0, s>>>(dSb, nSb, dF, dT, blocks, dBTxbG, mMiSize, mYMode, mSkip, mTx, dCount, nullptr, nullptr,
@@ -1330,10 +1334,10 @@ int run_batch_device(const DevBatch &b, cudaStream_t s, void *scratch, size_t sc
     size_t cubBytes = P.cubItems;
     CK(cub::DeviceScan::ExclusiveSum(dCub, cubBytes, dCount, dOff, (int)(nItems + 1), s));
     rec(4);
-    if (anyLL) k_txsym<true><<<grid(nT, TB), TB, 0, s>>>(blocks, dBFrame, dBTile, dF, dT, txb, dTxbBlock, b.coeffs, nT, cL, cD, dEob, dType,
-                                        dCount, dOff, dSyms, dOff + nItems, P.symCap);
-    else k_txsym<false><<<grid(nT, TB), TB, 0, s>>>(blocks, dBFrame, dBTile, dF, dT, txb, dTxbBlock, b.coeffs, nT, cL, cD, dEob, dType,
-                                        dCount, dOff, dSyms, dOff + nItems, P.symCap);
+    if (anyLL) k_txsym<true, true><<<grid(nT, TB), TB, 0, s>>>(blocks, dBFrame, dBTile, dF, dT, txb, dTxbBlock, b.coeffs, nT, cL, cD,
+                                              dEob, dType, dCount, dOff, dSyms, dOff + nItems, P.symCap);
+    else k_txsym<false, true><<<grid(nT, TB), TB, 0, s>>>(blocks, dBFrame, dBTile, dF, dT, txb, dTxbBlock, b.coeffs, nT, cL, cD,
+                                              dEob, dType, dCount, dOff, dSyms, dOff + nItems, P.symCap);
     if (anyLL) k_sbsym<true><<<grid(nSb, 32), 32, 0, s>>>(dSb, nSb, dF, dT, blocks, dBTxbG, mMiSize, mYMode, mSkip, mTx, dCount, dOff, dSyms,
                                           dOff + nItems, P.symCap, dSt);
     else k_sbsym<false><<<grid(nSb, 32), 32, 0, s>>>(dSb, nSb, dF, dT, blocks, dBTxbG, mMiSize, mYMode, mSkip, mTx, dCount, dOff, dSyms,
