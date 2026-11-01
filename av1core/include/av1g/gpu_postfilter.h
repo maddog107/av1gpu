@@ -33,6 +33,9 @@ size_t av1g_gpu_pf_scratch_size(const av1g_frame_params *fp);
 /* f receives the frame parameters and the map pointers inside d_scratch (plane pointers zeroed) */
 int av1g_gpu_pf_prepare(const av1g_frame_params *fp, const av1g_block *d_blocks, uint32_t n_blocks, void *d_scratch,
                         av1g_pf_frame *f, cudaStream_t stream);
+/* the same without any work on the device: maps (and CDEF directions) that a previous prepare (+ cdef_dir) left in
+ * d_scratch, with fp's frame parameters (e.g. the strengths a search chose) */
+void av1g_gpu_pf_attach(const av1g_frame_params *fp, void *d_scratch, av1g_pf_frame *f);
 int av1g_gpu_deblock(const av1g_pf_frame *f, cudaStream_t stream);
 int av1g_gpu_cdef_dir(const av1g_pf_frame *f, cudaStream_t stream);
 int av1g_gpu_cdef(const av1g_pf_frame *f, uint8_t *const d_out[3], const int out_stride[3], cudaStream_t stream);

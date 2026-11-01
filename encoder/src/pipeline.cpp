@@ -690,12 +690,14 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
         GPCK(A.get(scr, scrMax));
         GPCK(A.get(dRes, n));
         GPCK(A.get(dSbc, nSb));
+        std::vector<uint8_t *> pscr(n);   // per frame: the av1core maps + CDEF directions of the search, reused by the apply
         for (int i = 0; i < n; i++) {
             const GpImage &I = imgs[i];
             uint8_t *const rec[3] = {I.rec[0], I.rec[1], I.rec[2]};
             const uint8_t *const src[3] = {in[i].dsrc[0], in[i].dsrc[1], in[i].dsrc[2]};
-            GPCK((cudaError_t)av1f_lf_search_async(&out[i].fp, dB + imgBlk0[i], imgBlk0[i + 1] - imgBlk0[i], rec, I.rpitch, src,
-                                                   in[i].spitch, &lo, dRes + i, dSbc + I.sbBase, scr, st));
+            GPCK(A.get(pscr[i], av1g_gpu_pf_scratch_size(&out[i].fp)));
+            GPCK((cudaError_t)av1f_lf_search_async_pf(&out[i].fp, dB + imgBlk0[i], imgBlk0[i + 1] - imgBlk0[i], rec, I.rpitch, src,
+                                                      in[i].spitch, &lo, dRes + i, dSbc + I.sbBase, scr, pscr[i], st));
         }
         std::vector<av1f_lf_result> hr(n);
         std::vector<int8_t> hsbc(nSb);
@@ -723,19 +725,16 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
                     fp.cdef_uv_pri[k] = (uint8_t)r.uv_pri[k]; fp.cdef_uv_sec[k] = (uint8_t)r.uv_sec[k];
                 }
                 cdefOn[i] = 1;
-                // CDEF on the deblocked frame (the search left d_recon deblocked)
-                uint8_t *pscr;
-                GPCK(A.get(pscr, av1g_gpu_pf_scratch_size(&fp)));
+                // CDEF on the deblocked frame (the search left d_recon deblocked, and its maps and directions in pscr[i])
                 av1g_pf_frame pf;
-                GPCK((cudaError_t)av1g_gpu_pf_prepare(&fp, dB + imgBlk0[i], imgBlk0[i + 1] - imgBlk0[i], pscr, &pf, st));
-                GPCK(cudaMemcpyAsync(pf.cdefIdx, dSbc + I.sbBase, (size_t)I.sbCols * I.sbRows, cudaMemcpyDeviceToDevice, st));
+                av1g_gpu_pf_attach(&fp, pscr[i], &pf);
+                pf.cdefIdx = dSbc + I.sbBase;
                 for (int p = 0; p < 3; p++) { pf.plane[p] = I.rec[p]; pf.stride[p] = I.rpitch[p]; }
                 uint8_t *co;
                 const size_t ysz = (size_t)I.aw * I.ah * bps, csz = (size_t)(I.aw >> I.ssx) * (I.ah >> I.ssy) * bps;
                 GPCK(A.get(co, ysz + 2 * csz));
                 uint8_t *op[3] = {co, co + ysz, co + ysz + csz};
                 const int os[3] = {I.aw, I.aw >> I.ssx, I.aw >> I.ssx};
-                GPCK((cudaError_t)av1g_gpu_cdef_dir(&pf, st));
                 GPCK((cudaError_t)av1g_gpu_cdef(&pf, op, os, st));
                 for (int p = 0; p < 3; p++) { dl[i][p] = op[p]; dlp[i][p] = os[p]; }
             }
