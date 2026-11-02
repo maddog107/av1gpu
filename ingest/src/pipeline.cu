@@ -339,6 +339,27 @@ static bool hw_stream_clean(const std::vector<uint8_t> &b) {
   return false;
 }
 
+// One-component frame for the hardware route: sampling factors 1x1 in the SOF.  Its scans are non-interleaved, so
+// an MCU is one block whatever the factors are (T.81 A.2.2) and libjpeg-turbo ignores them; nvJPEG does not (#44):
+// with 2x2 it read the scan as 16x16 MCUs of four blocks (each block in the wrong place), with 2x1 and 1x2 it
+// reported success but wrote nothing (the planes kept what the output slot held).  The coded data means the same
+// with 1x1.
+static void hw_sof_gray_11(std::vector<uint8_t> &b) {
+  uint8_t *q = b.data() + 2, *end = b.data() + b.size();
+  for (;;) {
+    while (q + 1 < end && q[0] == 0xFF && q[1] == 0xFF) ++q;  // fill bytes
+    if (end - q < 4 || q[0] != 0xFF) return;
+    const uint8_t m = q[1];
+    const size_t len = ((size_t)q[2] << 8) | q[3];
+    if (len < 2 || q + 2 + len > end || m == 0xDA) return;
+    if (m >= 0xC0 && m <= 0xCF && m != 0xC4 && m != 0xC8 && m != 0xCC) {  // SOFn: P Y X Nf, then C H/V Tq
+      if (len == 11 && q[9] == 1) q[11] = 0x11;
+      return;
+    }
+    q += 2 + len;
+  }
+}
+
 static void add_fallback(ingest_ctx *c, int index, int reason, int w, int h) {
   std::lock_guard<std::mutex> lk(c->m);
   c->fallbacks.push_back({index, reason, w, h});
@@ -388,6 +409,7 @@ static void worker_main(ingest_ctx *c) {
            in.sub == INGEST_SUB_440 || in.sub == INGEST_SUB_GRAY)) {
         item->hw = true;
         item->bits.swap(buf);
+        if (in.ncomp == 1) hw_sof_gray_11(item->bits);
         routed = true;
       }
       if (fb) routed = true;  // fallback decided from the header
