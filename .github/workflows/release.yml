@@ -24,13 +24,14 @@ env:
   # the Linux build, the same in the k_recon jobs and the package jobs
   LINUX_PACKAGES: python3-pip pkg-config g++ file curl libjpeg-turbo8-dev libpng-dev libwebp-dev zlib1g-dev
   LINUX_CMAKE: -G Ninja -DCMAKE_BUILD_TYPE=Release -DAV1GPU_STATIC_DEPS=ON -DAV1GPU_TESTS=OFF
-  # pull requests compile through ccache (.github/actions/ccache); tags compile everything
+  # pull requests (and manual runs that ask for it) compile through ccache (.github/actions/ccache); tags compile clean
   CCACHE: ${{ github.event_name == 'pull_request' || inputs.ccache == true }}
 
 jobs:
-  # every architecture from Turing to Blackwell (the CMakeLists default): each k_recon translation unit needs several
-  # GB and, with CUDA 13.4, ~30 min, and a 16 GB runner compiles them one at a time (2-3 h).  So they compile in jobs
-  # of their own (CUDA 12.9's, 4x faster, two per job) and the package jobs link them (-DAV1GPU_RECON_OBJECTS)
+  # every architecture from Turing to Blackwell (the CMakeLists default): with CUDA 13.4 each k_recon translation unit
+  # takes ~9 GB and 25-45 min to compile, and a 16 GB runner can only compile them one at a time (2.5 h in all).  So
+  # they compile in jobs of their own (CUDA 12.9's, 7-11 min each, two per job), which the package jobs link
+  # (-DAV1GPU_RECON_OBJECTS)
   linux-recon:
     strategy:
       fail-fast: false
@@ -62,7 +63,6 @@ jobs:
       - env:
           RECON: ${{ matrix.recon }}
         run: cmake --build build -j 1 --target $(for s in $RECON; do echo CMakeFiles/av1gpu_recon.dir/encoder/src/$s.cu.o; done)
-      - run: cat /sys/fs/cgroup/memory.peak /sys/fs/cgroup/memory.max || true   # TEST ONLY
       - if: env.CCACHE == 'true'
         run: ccache -sv && ccache --evict-older-than $(( $(date +%s) - CCACHE_T0 ))s
       - uses: actions/upload-artifact@v4
@@ -111,8 +111,8 @@ jobs:
       - run: |
           cmake -S . -B build $LINUX_CMAKE -DAV1GPU_RECON_OBJECTS=$PWD/recon \
             ${{ env.CCACHE == 'true' && '-DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_CUDA_COMPILER_LAUNCHER=ccache' || '' }}
+      # the rest, without the k_recon files: ~3 GB at -j 4
       - run: cmake --build build -j 4
-      - run: cat /sys/fs/cgroup/memory.peak /sys/fs/cgroup/memory.max || true   # TEST ONLY
       - if: env.CCACHE == 'true'
         run: ccache -sv && ccache --evict-older-than $(( $(date +%s) - CCACHE_T0 ))s
       - name: Package
