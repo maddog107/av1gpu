@@ -217,5 +217,12 @@ if(AV1GPU_TESTS)
     # unreadable inputs (a directory, a missing or empty file) are skipped, the rest is encoded
     add_test(NAME batch_skip_unreadable COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/batch_skip_test.py
              --bin $<TARGET_FILE:av1gpu> --image ${PROJECT_SOURCE_DIR}/tests/gate_images/cfl_edge_211x149.png)
+    # --crop / --max-size: ImageMagick's geometry, identities, exact lossless crops, alpha-weighted colour, errors and
+    # the --batch list options; then decoder identity on cropped + shrunk frames (odd offset, odd output size)
+    add_test(NAME crop_resize COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/crop_resize_test.py
+             --bin $<TARGET_FILE:av1gpu> --image ${PROJECT_SOURCE_DIR}/tests/gate_images/cfl_edge_211x149.png)
+    add_test(NAME gate_crop_resize COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/decoder_gate.py
+             --bin $<TARGET_FILE:av1gpu> --images ${PROJECT_SOURCE_DIR}/tests/gate_images --q 60,120
+             -- --crop 171x120+19+13 --max-size 97x97 --small-preset none)
   endif()
 endif()
