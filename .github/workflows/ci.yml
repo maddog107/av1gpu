@@ -1,8 +1,16 @@
 name: CI
 
+# pull requests and pushes to main; a branch without a pull request by hand (gh workflow run CI --ref <branch>)
 on:
   push:
+    branches: [main]
   pull_request:
+  workflow_dispatch:
+
+# a newer push to a pull request cancels its older run (main and manual runs each get their own group)
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   # CPU parts + decoder fuzz test: random legal decision records must decode bit-exactly in dav1d and aomdec
@@ -15,7 +23,9 @@ jobs:
       - run: cmake --build build
       - run: build/av1g_fuzz --seed 1 --count 1000 --quiet
 
-  # the CUDA encoder must compile with the oldest and newest supported toolkits (no GPU on the runners)
+  # the CUDA encoder must compile with the oldest and newest supported toolkits (no GPU on the runners); the CUDA
+  # jobs compile through ccache (.github/actions/ccache), so a push that leaves a file alone gets its object from
+  # the cache (pull requests from main's)
   cuda-build:
     runs-on: ubuntu-24.04
     strategy:
@@ -27,12 +37,19 @@ jobs:
       - uses: actions/checkout@v4
       - run: |
           apt-get update
-          DEBIAN_FRONTEND=noninteractive apt-get install -y cmake ninja-build pkg-config g++ \
+          DEBIAN_FRONTEND=noninteractive apt-get install -y cmake ninja-build pkg-config g++ curl \
             libjpeg-turbo8-dev libpng-dev libwebp-dev
-      - run: cmake -S . -B build -G Ninja -DCMAKE_CUDA_ARCHITECTURES="75;120"
+      - uses: ./.github/actions/ccache
+        with:
+          key: ccache-${{ matrix.image }}-75-120-nvcc
+      - run: |
+          cmake -S . -B build -G Ninja -DCMAKE_CUDA_ARCHITECTURES="75;120" -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_CUDA_COMPILER_LAUNCHER=ccache
       # -j 1: one k_recon translation unit (with CUDA 12.8, at 10 bits) and any other CUDA compile beside it
       # ran the 16 GB runner out of memory
       - run: cmake --build build -j 1
+      # hits and misses; then only what this build used is kept (and saved)
+      - run: ccache -sv && ccache --evict-older-than $(( $(date +%s) - CCACHE_T0 ))s
       - run: build/av1gpu --help
 
   # the CUDA encoder must also compile with Clang as the CUDA compiler: Clang 23 with CUDA 13.0 (13.2's CCCL
@@ -44,16 +61,22 @@ jobs:
       - uses: actions/checkout@v4
       - run: |
           apt-get update
-          DEBIAN_FRONTEND=noninteractive apt-get install -y ca-certificates wget ninja-build pkg-config g++ python3-pip \
-            libjpeg-turbo8-dev libpng-dev libwebp-dev
+          DEBIAN_FRONTEND=noninteractive apt-get install -y ca-certificates wget curl ninja-build pkg-config g++ \
+            python3-pip libjpeg-turbo8-dev libpng-dev libwebp-dev
           wget -qO /etc/apt/trusted.gpg.d/apt.llvm.org.asc https://apt.llvm.org/llvm-snapshot.gpg.key
           echo "deb http://apt.llvm.org/noble/ llvm-toolchain-noble-23 main" > /etc/apt/sources.list.d/llvm-23.list
           apt-get update
           DEBIAN_FRONTEND=noninteractive apt-get install -y clang-23
           pip3 install --break-system-packages cmake==4.2.3
-      - run: cmake -S . -B build -G Ninja -DCMAKE_CUDA_COMPILER=clang++-23 -DCMAKE_CUDA_ARCHITECTURES="75;120"
+      - uses: ./.github/actions/ccache
+        with:
+          key: ccache-nvidia/cuda:13.0.0-devel-ubuntu24.04-75-120-clang23
+      - run: |
+          cmake -S . -B build -G Ninja -DCMAKE_CUDA_COMPILER=clang++-23 -DCMAKE_CUDA_ARCHITECTURES="75;120" \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_CUDA_COMPILER_LAUNCHER=ccache
       # Clang needs under 1 GB per k_recon translation unit (nvcc several GB); -j 1 as in cuda-build all the same
       - run: cmake --build build -j 1
+      - run: ccache -sv && ccache --evict-older-than $(( $(date +%s) - CCACHE_T0 ))s
       - run: build/av1gpu --help
 
   # Windows x64: MSVC as the host compiler, CUDA from NVIDIA's redistributable archives, the image libraries
@@ -82,5 +105,10 @@ jobs:
         with:
           path: build-deps/vcpkg-archives
           key: vcpkg-x64-windows-static-${{ hashFiles('tools/windows/build.ps1') }}
-      - run: ./tools/windows/build.ps1 -Archs "${{ matrix.archs }}" -CudaVersion ${{ matrix.cuda }} -Jobs 2
+          restore-keys: vcpkg-x64-windows-static-
+      - uses: ./.github/actions/ccache
+        with:
+          key: ccache-windows-2022-cuda${{ matrix.cuda }}-${{ matrix.archs }}-msvc
+      - run: ./tools/windows/build.ps1 -Archs "${{ matrix.archs }}" -CudaVersion ${{ matrix.cuda }} -Jobs 2 -Ccache
+      - run: ccache -sv; ccache --evict-older-than "$([DateTimeOffset]::UtcNow.ToUnixTimeSeconds() - [long]$env:CCACHE_T0)s"
       - run: build/av1gpu.exe --help

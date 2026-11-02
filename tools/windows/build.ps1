@@ -17,6 +17,9 @@ param(
     [string]$VcpkgRoot = "",             # an existing vcpkg checkout; empty: build-deps\vcpkg-<tag>
     [string]$BuildDir = "build",
     [int]$Jobs = 0,                      # parallel compile jobs (0: Ninja's default)
+    [string[]]$Target = @(),             # build only these targets or files (the release: k_recon objects in jobs of their own)
+    [string]$ReconObjects = "",          # link the k_recon objects from this directory (-DAV1GPU_RECON_OBJECTS)
+    [switch]$Ccache,                     # compile through ccache (on the PATH)
     [switch]$Package,
     [string]$PackageVersion = "",        # zip name: av1gpu-<this>-windows-x86_64 (default: the CMake project version)
     [string]$PackageSuffix = ""          # appended to the zip name, e.g. -cuda12
@@ -84,9 +87,14 @@ $cfg = @("-S", $repo, "-B", $BuildDir, "-G", "Ninja", "-DCMAKE_BUILD_TYPE=Releas
     "-DCMAKE_TOOLCHAIN_FILE=$VcpkgRoot\scripts\buildsystems\vcpkg.cmake", "-DVCPKG_TARGET_TRIPLET=$triplet",
     "-DCUDAToolkit_ROOT=$CudaRoot", "-DCMAKE_CUDA_COMPILER=$CudaRoot\bin\nvcc.exe")
 if ($Archs) { $cfg += "-DCMAKE_CUDA_ARCHITECTURES=$Archs" }
+if ($ReconObjects) { $cfg += "-DAV1GPU_RECON_OBJECTS=$ReconObjects" }
+if ($Ccache) {
+    $cfg += @("-DCMAKE_C_COMPILER_LAUNCHER=ccache", "-DCMAKE_CXX_COMPILER_LAUNCHER=ccache", "-DCMAKE_CUDA_COMPILER_LAUNCHER=ccache")
+}
 Run cmake @cfg
 $b = @("--build", $BuildDir)
 if ($Jobs -gt 0) { $b += @("-j", "$Jobs") }
+if ($Target) { $b += @("--target") + $Target }
 Run cmake @b
 
 if ($Package) {
