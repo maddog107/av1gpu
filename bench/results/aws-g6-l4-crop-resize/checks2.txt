@@ -1,0 +1,33 @@
+big /home/ubuntu/images/25d19e868909e5e2_huge.jpg (6016x4000), mid /home/ubuntu/images/dd519c2ee4a76db8_typical.jpg (2048x1371), gray /home/ubuntu/ll/jpeg/k0_gray.jpg
+check jpeg420_crop_resize: rc 0 [--crop 2001x1501+333+777 --max-size 1000x1000] check: recon identical to av1core (36246 bytes obu) 
+check jpeg444_10_resize: rc 0 [--yuv 444 --depth 10 --max-height 1500] check: recon identical to av1core (160406 bytes obu) 
+check jpeg420_10_odd_crop: rc 0 [--depth 10 --crop 1001x777+3+1] check: recon identical to av1core (8520 bytes obu) 
+check jpeg_gray_resize: rc 0 [--max-size 200x200] check: recon identical to av1core (3638 bytes obu) 
+check jpeg_exif6: rc 0 [--max-size 1600x1000] check: recon identical to av1core (62512 bytes obu) 
+check png_rgba_resize: rc 0 [--max-size 300x300] check: recon identical to av1core (784 bytes obu) check: alpha recon identical to av1core (466 bytes obu) 
+check png_rgba_444_10_crop_resize: rc 0 [--yuv 444 --depth 10 --crop 1001x701+1+1 --max-size 500x500] check: recon identical to av1core (797 bytes obu) check: alpha recon identical to av1core (724 bytes obu) 
+check png_lossless_crop: rc 0 [--lossless --crop 301x201+1+1] check: recon identical to av1core (105527 bytes obu) 
+check png_lossless_ycgco_resize: rc 0 [--lossless --ycgco-re --max-size 300x300] check: recon identical to av1core (109273 bytes obu) 
+check png16_444_10_resize: rc 0 [--yuv 444 --depth 10 --max-size 333x333] check: recon identical to av1core (5852 bytes obu) 
+error [--crop 100x100+99999+0]: rc 3: /home/ubuntu/images/25d19e868909e5e2_huge.jpg: the crop 100x100+99999+0 is outside the 6016x4000 image
+error [--crop 0x100+0+0]: rc 2: bad --crop 0x100+0+0: the crop is empty (its width and height must be at least 1)
+error [--crop 100x100]: rc 2: bad --crop 100x100: expected WxH+X+Y or X,Y,W,H (whole pixels)
+error [--crop 1,2,3]: rc 2: bad --crop 1,2,3: expected WxH+X+Y or X,Y,W,H (whole pixels)
+error [--max-size 0x5]: rc 2: bad --max-size 0x5: the box sides must be at least 1
+error [--max-size abc]: rc 2: bad --max-size abc: expected WxH, Wx or xH (whole pixels)
+error [--max-height 0]: rc 2: bad --max-height 0: expected a height in whole pixels, at least 1
+error [--max-mp 0]: rc 2: bad --max-mp 0: megapixels, 0 < MP <= 1000
+error [--max-input-mp 2000]: rc 2: bad --max-input-mp 2000: megapixels, 0 < MP <= 1000
+batch list: rc 0
+  [av1gpu] skipped /home/ubuntu/work/c2/in/c.jpg (/home/ubuntu/work/c2/list.txt line 3): bad option 'bogus=1' (crop=WxH+X+Y or X,Y,W,H, max-size=WxH, Wx or xH)
+  [av1gpu] skipped /home/ubuntu/work/c2/in/d.jpg: the crop 10x10+50000+0 is outside the 2048x1371 image
+  [av1gpu] 3 images (3.7 MP) in 392.7 ms: 7.64 img/s, 9.49 MP/s; 1 batches; out 0.07 MB (0.159 bpp); CPU 364 ms = 0.93 cores; skipped (unsupported): 2; WebP/PNG via CPU decode: 0; write failures 0
+  a.jpg.avif: 1000x800
+  b.jpg.avif: 400x300
+  tab	name.jpg.avif: 2048x1371
+  want: a.jpg 1000x800, b.jpg 400 300, tab name: 2048x1371
+small preset, 25d19e868909e5e2_huge.jpg shrunk to fit 800x800: default == --preset base --small-preset none: yes; default == --small-preset none (turbo): no
+small preset, dd519c2ee4a76db8_typical.jpg shrunk to fit 800x800: default == --preset base --small-preset none: yes; default == --small-preset none (turbo): no
+small preset, 25d19e868909e5e2_huge.jpg shrunk to fit 2400x2400 (>= 1 MP): default == --small-preset none: yes
+small preset, dd519c2ee4a76db8_typical.jpg shrunk to fit 2400x2400 (>= 1 MP): default == --small-preset none: yes
+CHECKS2_DONE

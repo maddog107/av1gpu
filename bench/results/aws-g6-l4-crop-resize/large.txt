@@ -1,0 +1,59 @@
+6176487 b41_420.jpg
+7243079 b41_444.jpg
+35325449 b41_png.png
+6175390 b41b_420.jpg
+12421455 b82_420.jpg
+b41_420.jpg: 5587x7365 2x2,1x1,1x1
+b41_444.jpg: 5587x7365 1x1,1x1,1x1
+b41_png.png: 5587x7365 
+b41b_420.jpg: 5587x7365 2x2,1x1,1x1
+b82_420.jpg: 11174x7365 2x2,1x1,1x1
+GPU memory used before the runs: 0 MiB
+no options A: rc 0, outputs 0
+no options B: rc 0, outputs 0
+no options: skip lines DIFFER
+  [av1gpu] skipped /home/ubuntu/sets/large/b41b_420.jpg: larger than 35.6 megapixels
+  [av1gpu] skipped /home/ubuntu/sets/large/b82_420.jpg: larger than 35.6 megapixels
+  [av1gpu] skipped /home/ubuntu/sets/large/b41_444.jpg: larger than 35.6 megapixels
+  [av1gpu] skipped /home/ubuntu/sets/large/b41_420.jpg: larger than 35.6 megapixels
+  [av1gpu] skipped /home/ubuntu/sets/large/b41_png.png: larger than 35.6 megapixels
+  [av1gpu] 0 images (0.0 MP) in 1589.9 ms: 0.00 img/s, 0.00 MP/s; 0 batches; out 0.00 MB (0.000 bpp); CPU 1743 ms = 1.10 cores; skipped (unsupported): 5; WebP/PNG via CPU decode: 0; write failures 0
+single b41_420.jpg A: rc 3: /home/ubuntu/sets/large/b41_420.jpg: larger than 35.6 megapixels
+single b41_420.jpg B: rc 3: /home/ubuntu/sets/large/b41_420.jpg: larger than 35.6 megapixels
+single b41_png.png A: rc 0: 
+single b41_png.png B: rc 0: 
+  single b41_png.png: identical to main
+--max-mp 100: rc 0, GPU memory peak 4927 MiB (process: peak minus 0), host max RSS 1902204 kB
+  [av1gpu] 5 images (246.9 MP) in 1989.9 ms: 2.51 img/s, 124.07 MP/s; 3 batches; out 9.17 MB (0.297 bpp); CPU 2257 ms = 1.13 cores; skipped (unsupported): 0; WebP/PNG via CPU decode: 1; write failures 0
+  [av1gpu] stage ms: ingest wait 124.4 | gpu setup 5.0 analysis 271.4 dp 4.0 recon 1006.8 pack 6.4 postfilter 67.8 download 0.0 (gpu total 1363.9, encode wall 1364.4) | entropy wall 420.1 (gpu 403.3) | write 12.5 | peak dev 1740 MB
+  b41_420.jpg.avif: 5587x7365 level 31
+  b41_444.jpg.avif: 5587x7365 level 31
+  b41_png.png.avif: 5587x7365 level 31
+  b41b_420.jpg.avif: 5587x7365 level 31
+  b82_420.jpg.avif: 11174x7365 level 31
+  b41_420.jpg alone: GPU memory peak 2911 MiB; [av1gpu] 1 images (41.1 MP) in 640.7 ms: 1.56 img/s, 64.22 MP/s; 1 batches; out 1.53 MB (0
+  b82_420.jpg alone: GPU memory peak 3551 MiB; [av1gpu] 1 images (82.3 MP) in 936.6 ms: 1.07 img/s, 87.87 MP/s; 1 batches; out 3.11 MB (0
+gate --max-mp 100: rc 0
+  [gate] q120: 5/5 identical in dav1d and aomdec (420 5; 9168587 bytes), 0 not encoded (unsupported input), rc=0 PASS
+gate --max-mp 100 --yuv 444 --depth 10: rc 0
+  [gate] q120: 5/5 identical in dav1d and aomdec (444 10-bit 5; 9312171 bytes), 0 not encoded (unsupported input), rc=0 PASS
+--check b41_420.jpg --max-mp 100: rc 0 check: recon identical to av1core (1528671 bytes obu)
+--check b82_420.jpg --max-mp 100: rc 0 check: recon identical to av1core (3108987 bytes obu)
+--check b41_png.png --max-mp 100: rc 0 check: recon identical to av1core (1523132 bytes obu)
+--max-input-mp 100 --max-height 2960: rc 0, GPU memory peak 3135 MiB, host max RSS 1866632 kB
+  [av1gpu] 5 images (39.9 MP) in 1766.2 ms: 2.83 img/s, 22.58 MP/s; 2 batches; out 1.65 MB (0.331 bpp); CPU 2261 ms = 1.28 cores; skipped (unsupported): 0; WebP/PNG via CPU decode: 1; write failures 0
+  b41_420.jpg.avif: 2245x2960 level 12
+  b41_444.jpg.avif: 2245x2960 level 12
+  b41_png.png.avif: 2245x2960 level 12
+  b41b_420.jpg.avif: 2245x2960 level 12
+  b82_420.jpg.avif: 4491x2960 level 16
+gate --max-input-mp 100 --max-height 2960: rc 0
+  [gate] q120: 5/5 identical in dav1d and aomdec (420 5; 1649676 bytes), 0 not encoded (unsupported input), rc=0 PASS
+--max-input-mp 100 alone: rc 0, outputs 0
+  [av1gpu] skipped /home/ubuntu/sets/large/b41b_420.jpg: 5587x7365 is larger than 35.6 megapixels (--max-mp)
+  [av1gpu] skipped /home/ubuntu/sets/large/b41_420.jpg: 5587x7365 is larger than 35.6 megapixels (--max-mp)
+  [av1gpu] skipped /home/ubuntu/sets/large/b41_444.jpg: 5587x7365 is larger than 35.6 megapixels (--max-mp)
+  [av1gpu] skipped /home/ubuntu/sets/large/b82_420.jpg: 11174x7365 is larger than 35.6 megapixels (--max-mp)
+  [av1gpu] skipped /home/ubuntu/sets/large/b41_png.png: 5587x7365 is larger than 35.6 megapixels (--max-mp)
+  [av1gpu] 0 images (0.0 MP) in 1606.7 ms: 0.00 img/s, 0.00 MP/s; 0 batches; out 0.00 MB (0.000 bpp); CPU 2205 ms = 1.37 cores; skipped (unsupported): 5; WebP/PNG via CPU decode: 0; write failures 0
+LARGE_DONE

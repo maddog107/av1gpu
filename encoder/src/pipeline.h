@@ -10,6 +10,14 @@
 #include "gp.h"
 #include "entropy_dev.h"
 
+// Front ends (--crop / --max-size, per-line batch options): a crop rectangle and a box to fit in, applied to the
+// decoded planes on the GPU before the encode.
+struct GpXform {
+    int cx = 0, cy = 0, cw = 0, ch = 0;   // crop rectangle in source pixels (stored orientation); cw = 0: no crop
+    int maxW = 0, maxH = 0;               // fit inside maxW x maxH (0: unbounded), aspect kept, never enlarged
+    bool active() const { return cw > 0 || maxW > 0 || maxH > 0; }
+};
+
 struct GpConfig {
     int qindex = 100;
     GpParams P;
@@ -57,8 +65,28 @@ struct GpConfig {
     int alpha = 1;            // front ends: PNG / WebP transparency is coded as an AVIF alpha item (monochrome frames
                               // encoded with gp_alpha_config(); 0 = --no-alpha: not coded, as before)
     int alphaQindex = -1;     // alpha frames: 0 = lossless, 1..255 = qindex; -1 = the colour frames' qindex
+    GpXform xform;            // front ends: crop / fit-inside for every image (batch lines may override it)
+    double maxMp = 0;         // front ends: largest picture encoded, after crop / resize (--max-mp; 0: the front end's
+                              // default, gp_enc_max_mp).  Pictures above 35.65 MP (AV1 level 6.3, the most AVIF's
+                              // Advanced profile allows) are written with seq_level_idx 31 (no level limits)
+    double maxInputMp = 0;    // front ends: largest source decoded (--max-input-mp; 0 or less than the maxMp limit: that
+                              // limit); above it only helps sources that a crop / max-size brings under maxMp
     GpConfig();
 };
+
+// The front ends' limits in megapixels (0: none): the largest picture encoded (--max-mp, else dflt: 35.6 in batch mode
+// and for JPEGs, none for single PNG / WebP images, as before the options) and the largest source decoded.
+inline double gp_enc_max_mp(const GpConfig &c, double dflt) { return c.maxMp > 0 ? c.maxMp : dflt; }
+inline double gp_dec_max_mp(const GpConfig &c, double dflt) {
+    const double e = gp_enc_max_mp(c, dflt);
+    return e > 0 && c.maxInputMp < e ? e : c.maxInputMp;
+}
+// The ingest's pinned staging arena for sources up to decMp megapixels: JPEGs the CPU route decodes (sides above 6000
+// px) stage their coefficients there, up to 6 bytes per pixel (4:4:4); 256 MiB for the default 35.6 MP
+inline int64_t gp_ingest_pinned_bytes(double decMp) {
+    const int64_t b = (int64_t)(decMp * 6e6) + (16ll << 20);
+    return b > (256ll << 20) ? b : 256ll << 20;
+}
 
 // Encoder configuration for the alpha frames of images encoded with `colour` (monochrome frames at the colour's bit
 // depth): lossless when colour.lossless or alphaQindex == 0 (the lossless path, as libavif's alpha quality 100);
@@ -131,6 +159,29 @@ private:
 // device allocation on st for all of them is returned in *buf (NULL if nothing was converted); free it with
 // cudaFreeAsync(*buf, st) after the encode.  The source planes must stay valid until the work on st is done.
 int gp_frames_to_10bit(std::vector<GpFrameIn> &frames, cudaStream_t st, uint8_t **buf, std::string &err);
+
+// Output size of a W x H source: the crop (clipped to the image, as ImageMagick's -crop), then ImageMagick's
+// -resize 'WxH>' geometry (scale = min(maxW / w, maxH / h) if it is < 1, each side max(1, floor(side * scale + 0.5))).
+// false: the crop lies outside the image.
+bool gp_xform_size(const GpXform &x, int W, int H, int *ow, int *oh);
+// "WxH+X+Y" of x's crop (for messages)
+std::string gp_crop_str(const GpXform &x);
+// Option values: crop "WxH+X+Y" (ImageMagick geometry, e.g. from -format %@) or "X,Y,W,H" (W, H >= 1); max-size "WxH",
+// "xH" or "Wx" (sides >= 1).  false: *why says what is wrong.
+bool gp_parse_crop(const char *v, GpXform &x, std::string *why = nullptr);
+bool gp_parse_max_size(const char *v, GpXform &x, std::string *why = nullptr);
+// Apply xf[i] to frames[i] (frames whose transform is not active, or is an identity, are left alone): crop, then
+// shrink with ImageMagick's default -resize filter for shrinking (Lanczos, 3 lobes, support stretched by the shrink
+// factor, taps clipped to the crop and renormalised, in the planes' own (YCbCr, gamma-encoded) samples), written at
+// outDepth (10: the k_to10 mapping applied to the filtered 8-bit values, i.e. without an 8-bit rounding in between).
+// 4:2:0 chroma is resampled at its own sample positions with the luma scale.  alpha (optional): per frame its alpha
+// frame before the transform (W = 0: none); the colour of a frame with alpha is filtered with alpha-weighted taps
+// (associated alpha, as ImageMagick resizes transparent images, so hidden colour does not bleed into edges), and keeps
+// the plain filter's value where the weighted alpha is below half a step (nothing visible).  The new planes share one
+// device allocation on st returned in *buf (NULL if none); free it like gp_frames_to_10bit's.  A crop outside a frame
+// is an error.
+int gp_frames_transform(std::vector<GpFrameIn> &frames, const std::vector<GpXform> &xf, int outDepth, cudaStream_t st,
+                        uint8_t **buf, std::string &err, const std::vector<GpFrameIn> *alpha = nullptr);
 
 // Entropy coding.  CPU: av1core's writer (av1g_encode, bitstream only).  GPU: av1core GPU entropy
 // (symbolize + od_ec on the GPU) + OBU assembly.  Both produce identical bytes.

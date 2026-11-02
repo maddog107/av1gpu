@@ -633,6 +633,65 @@ On a real g6.4xlarge, the size-range JPEGs ran at 128.0 MP/s with the default 3 
 at 224.7 MP/s with v0.6 (the speed tables above). Raw results and scripts: `bench/results/aws-g6-l4-threads/`
 (first round) and its `followup/` (the table above, batch logs).
 
+### Crop and resize (contributed by pickae)
+
+`--crop`, `--max-size` / `--max-height`, `--max-mp` / `--max-input-mp` and the per-line `crop=` / `max-size=`
+options of `--batch` lists are pickae's ([discussion #16](https://github.com/maddog107/av1gpu/discussions/16)),
+written to shrink comic scans to a tablet's 2,960 rows on the GPU. They were ported to v0.6 and checked on a
+g6.4xlarge (2026-11-02, the [Setup](#setup-1) instance type; ImageMagick 7.1.2-35 Q16 HDRI). Scripts and raw
+results: `bench/results/aws-g6-l4-crop-resize/`.
+
+- **Nothing changes without the options:** 29 runs, 1,748 output files byte-identical to `main` (d7d94b3): the
+  size range (default, `turbo3 --small-preset none`, 10-bit, 4:4:4 10-bit; the CPU JPEG decode route too), the
+  standard set (default, `slow`), Kodak (lossy, `--lossless`, `--lossless --ycgco-re`), the RGBA set (default,
+  `--lossless`), 280 thumbnails, odd sizes from 1 × 1 (8- and 10-bit), gray, WebP (also `--lossless`), 16-bit
+  PNGs, a mixed list, 10 single-file runs with three option sets, and the options at values that change nothing
+  (a box larger than every image, a whole-image crop). Every existing kernel compiles to the same SASS.
+- **Matches ImageMagick:** the encoder's input planes (`--dump-source`) against `magick` with the same crop
+  and `-resize 'WxH>'`, its PNG converted by av1gpu the same way. Output sizes were equal in all 14 cases.
+  Mean absolute difference (in steps of the output depth) / PSNR of the luma; chroma differs less in 4:4:4, and up
+  to 0.4 more in 4:2:0, where av1gpu subsamples before the resize and the reference after it:
+
+  | Case | Output | Luma |
+  |---|---|---:|
+  | 16-bit RGB PNG of a 24 MP photo, `--max-height 2000`, 4:4:4 10-bit | 3008 × 2000 | 0.19 / 67.2 dB |
+  | the same, odd crop (2001 × 1501 + 333 + 777) + resize, 4:2:0 10-bit | 1000 × 750 | 0.19 / 67.0 dB |
+  | 24 MP 4:2:0 JPEG, crop only, 4:4:4 10-bit | 1500 × 1000 | 0.73 / 60.5 dB |
+  | the same JPEG, `--max-height 2000`, 4:4:4 10-bit | 3008 × 2000 | 0.52 / 62.4 dB |
+  | 3840 × 5586 4:4:4 page, `--max-height 2960`, 4:4:4 10-bit | 2035 × 2960 | 0.50 / 62.6 dB |
+  | the JPEG, odd crop + resize, 4:2:0 8-bit | 1000 × 750 | 0.10 / 58.1 dB |
+  | Kodak PNG, odd crop + resize, 4:2:0 8-bit | 333 × 222 | 0.18 / 55.5 dB |
+  | RGBA PNG (1920 × 1080 UI), halved, 4:4:4 8-bit (alpha: identical) | 960 × 540 | 0.06 / 55.4 dB |
+  | JPEG with EXIF orientation 6, displayed box 1600 × 1000 | 1000 × 666 stored | 0.20 / 54.7 dB |
+
+  From JPEGs, the difference is mostly ImageMagick's 8-bit RGB decode: a crop alone differs by 0.65–0.73.
+  RGBA was compared with `-filter Lanczos` (ImageMagick's default for images with alpha is Mitchell), colour
+  where the alpha is visible; both weight colour by alpha.
+- **Decoder gate** (dav1d and aomdec), 16 runs, all N/N: 30 photos 4:2:0 8-bit at qindex 60 and 120, 4:4:4
+  10-bit, 4:2:0 10-bit and `--preset slow`, each with a crop at an odd offset and an odd box, two of them also
+  through the CPU JPEG decode route (`GP_INGEST_DECODER=1`); RGBA (alpha items too) 8-bit and 4:4:4 10-bit;
+  WebP; Kodak `--lossless` with crop + resize and with `--ycgco-re`, and 4:4:4 with a crop only; RGBA
+  `--lossless`; odd sizes, gray and 280 thumbnails. `--check` is bit-exact on 10 single images (4:2:0, 4:4:4
+  10-bit, gray, EXIF-rotated, RGBA, lossless). ctest passes, and compute-sanitizer memcheck finds no access
+  errors in six crop + resize runs, the 82 MP source among them (only main's known leak reports of encoders not
+  freed at exit).
+- **Large pictures** (5587 × 7365 = 41 MP and 11174 × 7365 = 82 MP JPEGs, 4:2:0 and 4:4:4, a 41 MP PNG):
+  without the options they are skipped as on `main`, with the same messages. `--max-mp 100` encodes them at
+  124 MP/s, written with level 31; GPU memory (`nvidia-smi`) peaked at 4,927 MiB for the five in one batch (3,551 MiB
+  for the 82 MP image alone), host memory at 1.9 GB; the gate passes 5/5 (8-bit, and 4:4:4 10-bit) and `--check` is
+  bit-exact on 41 and 82 MP. `--max-input-mp 100 --max-height 2960` decodes them at full size and writes
+  2245 × 2960 and 4491 × 2960 (levels 5.0 and 6.0), GPU peak 3,135 MiB. PNGs are decoded on the CPU, one per
+  `GP_FALLBACK_WORKERS` thread at a time: 16 41 MP PNGs held 7.4 GB of host memory.
+- **Speed.** Without the options, size range default (1,434 MP), four rounds of a warm-up and 3 runs per
+  binary: 235.8 MP/s for `main`, 233.4 for the branch (median of 12); run by run interleaved, 230.9 against
+  231.4, and 232.2 for a copy of `main`'s binary, so the difference is noise. 40 3840 × 5586 4:4:4 pages
+  (made from size-range photos) × 4, `--yuv 444 --depth 10 --preset turbo`: 169.0 MP/s of output with
+  `--max-height 2960` on the GPU, against 195.2 for the same pages shrunk by ImageMagick beforehand (which then
+  costs a CPU pass and a JPEG generation). The resize kernels take 1.3 ms per page; the rest is decoding 3.6×
+  the pixels on a GPU that is already busy. Holding more ingest batches per encode (`GP_INGEST_INFLIGHT=48`)
+  filled the encodes like the small pages (20 batches instead of 27) but was no faster. pickae measured
+  66–73 against 72–79 MP/s on comic pages on an RTX 5090.
+
 ### CVVDP: a second metric
 
 SSIMULACRA2 does not model screen size or viewing distance, so the same size-range files were also scored

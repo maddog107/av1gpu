@@ -849,6 +849,252 @@ int gp_frames_to_10bit(std::vector<GpFrameIn> &frames, cudaStream_t st, uint8_t 
     return 0;
 }
 
+namespace {
+// the crop of a W x H source clipped to the image (the whole image without a crop); false: none of it is inside
+bool rz_crop(const GpXform &x, int W, int H, int *cx, int *cy, int *cw, int *ch) {
+    if (x.cw <= 0) {
+        *cx = *cy = 0;
+        *cw = W;
+        *ch = H;
+        return true;
+    }
+    const int64_t x0 = std::max<int64_t>(x.cx, 0), y0 = std::max<int64_t>(x.cy, 0);
+    const int64_t x1 = std::min<int64_t>((int64_t)x.cx + x.cw, W), y1 = std::min<int64_t>((int64_t)x.cy + x.ch, H);
+    if (x1 <= x0 || y1 <= y0) return false;
+    *cx = (int)x0; *cy = (int)y0; *cw = (int)(x1 - x0); *ch = (int)(y1 - y0);
+    return true;
+}
+// option values: a whole number 0 .. 2^20 at s (no sign or spaces), or the character c; s moves past it
+bool rz_num(const char *&s, int &v) {
+    if (*s < '0' || *s > '9') return false;
+    long n = 0;
+    for (; *s >= '0' && *s <= '9'; s++)
+        if ((n = n * 10 + (*s - '0')) > (1l << 20)) return false;
+    v = (int)n;
+    return true;
+}
+bool rz_ch(const char *&s, char c) {
+    if (*s != c) return false;
+    s++;
+    return true;
+}
+}  // namespace
+
+bool gp_xform_size(const GpXform &x, int W, int H, int *ow, int *oh) {
+    int cx, cy, w, h;
+    if (!rz_crop(x, W, H, &cx, &cy, &w, &h)) return false;
+    double s = 1.0;
+    if (x.maxW > 0) s = std::min(s, (double)x.maxW / w);
+    if (x.maxH > 0) s = std::min(s, (double)x.maxH / h);
+    *ow = w;
+    *oh = h;
+    if (s < 1.0) {
+        *ow = std::max(1, (int)std::floor(w * s + 0.5));
+        *oh = std::max(1, (int)std::floor(h * s + 0.5));
+    }
+    return true;
+}
+
+std::string gp_crop_str(const GpXform &x) {
+    char b[64];
+    snprintf(b, sizeof b, "%dx%d+%d+%d", x.cw, x.ch, x.cx, x.cy);
+    return b;
+}
+
+bool gp_parse_crop(const char *v, GpXform &x, std::string *why) {
+    auto four = [&](const char *sep, int *n) {   // 4 numbers between the separators sep[0..2]
+        const char *s = v;
+        for (int k = 0; k < 4; k++)
+            if ((k && !rz_ch(s, sep[k - 1])) || !rz_num(s, n[k])) return false;
+        return !*s;
+    };
+    int n[4], w, h, cx, cy;
+    if (four("x++", n)) {
+        w = n[0]; h = n[1]; cx = n[2]; cy = n[3];
+    } else if (four(",,,", n)) {
+        cx = n[0]; cy = n[1]; w = n[2]; h = n[3];
+    } else {
+        if (why) *why = "expected WxH+X+Y or X,Y,W,H (whole pixels)";
+        return false;
+    }
+    if (w < 1 || h < 1) {
+        if (why) *why = "the crop is empty (its width and height must be at least 1)";
+        return false;
+    }
+    x.cw = w; x.ch = h; x.cx = cx; x.cy = cy;
+    return true;
+}
+
+bool gp_parse_max_size(const char *v, GpXform &x, std::string *why) {
+    const char *s = v;
+    int w = 0, h = 0;
+    const bool hasW = *s != 'x';
+    bool ok = (!hasW || rz_num(s, w)) && rz_ch(s, 'x');
+    const bool hasH = ok && *s;
+    ok = ok && (!hasH || (rz_num(s, h) && !*s)) && (hasW || hasH);
+    if (!ok) {
+        if (why) *why = "expected WxH, Wx or xH (whole pixels)";
+        return false;
+    }
+    if ((hasW && w < 1) || (hasH && h < 1)) {
+        if (why) *why = "the box sides must be at least 1";
+        return false;
+    }
+    x.maxW = w;
+    x.maxH = h;
+    return true;
+}
+
+namespace {
+// ImageMagick's Lanczos (resize.c: Sinc windowed by Sinc, support 3)
+double rz_lanczos(double x) {
+    x = std::fabs(x);
+    if (x >= 3.0) return 0.0;
+    if (x < 1e-9) return 1.0;
+    const double a = M_PI * x, b = a / 3.0;
+    return std::sin(a) / a * std::sin(b) / b;
+}
+// Filter taps of one axis, as resize.c's HorizontalFilter / VerticalFilter: n output samples at scale f (output samples
+// per source sample: the luma scale, also for subsampled chroma) from the source window starting at lo (plane samples;
+// fractional for 4:2:0 chroma at an odd crop offset), clipped to whole samples [wlo, whi) and renormalised.  Taps of
+// zero weight at the ends are dropped (a crop without a resize copies).  Each row is shifted so that start + taps <= whi
+// (the kernels read `taps` samples unconditionally).
+void rz_taps(double lo, double f, int n, int wlo, int whi, std::vector<int> &start, std::vector<float> &w, int &taps) {
+    const double support = 3.0 * std::max(1.0 / f, 1.0), sc = std::min(f, 1.0);
+    std::vector<int> s0(n), cnt(n);
+    std::vector<size_t> at(n);
+    std::vector<double> wd;   // the weights of output o: wd[at[o] ..], cnt[o] of them from source sample s0[o]
+    taps = 1;
+    for (int o = 0; o < n; o++) {
+        const double c = lo + (o + 0.5) / f;
+        int a = std::max((int)std::floor(c - support + 0.5), wlo), b = std::min((int)std::floor(c + support + 0.5), whi);
+        if (b <= a) { a = std::min(std::max((int)std::floor(c), wlo), whi - 1); b = a + 1; }
+        const size_t k0 = wd.size();
+        double sum = 0;
+        for (int k = a; k < b; k++) {
+            wd.push_back(rz_lanczos(sc * (k + 0.5 - c)));
+            sum += wd.back();
+        }
+        for (size_t k = k0; k < wd.size(); k++) wd[k] = sum != 0 ? wd[k] / sum : k == k0;
+        size_t e = wd.size(), k1 = k0;
+        while (e - k1 > 1 && std::fabs(wd[e - 1]) < 1e-9) e--;
+        while (e - k1 > 1 && std::fabs(wd[k1]) < 1e-9) k1++;
+        wd.erase(wd.begin() + e, wd.end());
+        wd.erase(wd.begin() + k0, wd.begin() + k1);
+        s0[o] = a + (int)(k1 - k0);
+        cnt[o] = (int)(wd.size() - k0);
+        at[o] = k0;
+        taps = std::max(taps, cnt[o]);
+    }
+    taps = std::min(taps, whi - wlo);
+    start.resize(n);
+    w.assign((size_t)n * taps, 0.f);
+    for (int o = 0; o < n; o++) {
+        const int st = std::max(wlo, std::min(s0[o], whi - taps)), k0 = s0[o] - st;
+        start[o] = st;
+        for (int k = 0; k < cnt[o]; k++) w[(size_t)o * taps + k0 + k] = (float)wd[at[o] + k];
+    }
+}
+}  // namespace
+
+int gp_frames_transform(std::vector<GpFrameIn> &frames, const std::vector<GpXform> &xf, int outDepth, cudaStream_t st,
+                        uint8_t **buf, std::string &err, const std::vector<GpFrameIn> *alpha) {
+    *buf = nullptr;
+    struct Pl { int fi, p, s, in10, wlo, tw, ow, oh, aw, ah, yt, xt; size_t dst, ys, yw, xs, xw; const GpFrameIn *a; };
+    std::vector<Pl> pls;
+    std::vector<uint8_t> host;   // taps of every plane, uploaded at once
+    auto put = [&](const void *d, size_t n) {
+        const size_t at = (host.size() + 255) & ~(size_t)255;
+        host.resize(at + n);
+        memcpy(host.data() + at, d, n);
+        return at;
+    };
+    size_t outBytes = 0, tmpMax = 0;
+    std::vector<int> newW(frames.size()), newH(frames.size());
+    for (size_t i = 0; i < frames.size() && i < xf.size(); i++) {
+        const GpFrameIn &f = frames[i];
+        if (f.W <= 0 || !xf[i].active()) continue;
+        int cx, cy, cw, ch, ow, oh;
+        if (!rz_crop(xf[i], f.W, f.H, &cx, &cy, &cw, &ch) || !gp_xform_size(xf[i], f.W, f.H, &ow, &oh)) {
+            err = "the crop " + gp_crop_str(xf[i]) + " is outside the " + std::to_string(f.W) + "x" + std::to_string(f.H) + " image";
+            return -1;
+        }
+        if (cx == 0 && cy == 0 && cw == f.W && ch == f.H && ow == f.W && oh == f.H) continue;   // identity
+        const GpFrameIn *a = alpha && i < alpha->size() && (*alpha)[i].W == f.W && (*alpha)[i].H == f.H ? &(*alpha)[i] : nullptr;
+        newW[i] = ow;
+        newH[i] = oh;
+        const int aw = (ow + 63) & ~63, ah = (oh + 63) & ~63, out10 = outDepth == 10 || f.bitDepth == 10;
+        const double fx = (double)ow / cw, fy = (double)oh / ch;
+        for (int p = 0; p < (f.mono ? 1 : 3); p++) {
+            Pl q{};
+            q.fi = (int)i;
+            q.p = p;
+            q.s = (p && !f.yuv444) ? 1 : 0;
+            q.in10 = f.bitDepth == 10;
+            q.a = a;
+            const double d = 1 << q.s;
+            const int pw = (f.W + q.s) >> q.s, ph = (f.H + q.s) >> q.s;   // visible plane size
+            q.ow = (ow + q.s) >> q.s;
+            q.oh = (oh + q.s) >> q.s;
+            q.aw = aw >> q.s;
+            q.ah = ah >> q.s;
+            const int xlo = (int)std::floor(cx / d), xhi = std::min(pw, (int)std::ceil((cx + cw) / d));
+            const int ylo = (int)std::floor(cy / d), yhi = std::min(ph, (int)std::ceil((cy + ch) / d));
+            std::vector<int> s;
+            std::vector<float> w;
+            rz_taps(cy / d, fy, q.oh, ylo, yhi, s, w, q.yt);
+            q.ys = put(s.data(), s.size() * 4);
+            q.yw = put(w.data(), w.size() * 4);
+            rz_taps(cx / d, fx, q.ow, xlo, xhi, s, w, q.xt);
+            q.xs = put(s.data(), s.size() * 4);
+            q.xw = put(w.data(), w.size() * 4);
+            q.wlo = xlo;
+            q.tw = xhi - xlo;
+            q.dst = outBytes;
+            outBytes += ((size_t)q.aw * q.ah * (out10 ? 2 : 1) + 255) & ~(size_t)255;
+            tmpMax = std::max(tmpMax, (size_t)q.oh * q.tw * 4 * (a ? 3 : 1));
+            pls.push_back(q);
+        }
+    }
+    if (pls.empty()) return 0;
+    uint8_t *d = nullptr, *scr = nullptr;
+    const size_t tabAt = (tmpMax + 255) & ~(size_t)255;
+    cudaError_t e = cudaMallocAsync((void **)&d, outBytes, st);
+    if (e == cudaSuccess) e = cudaMallocAsync((void **)&scr, tabAt + host.size(), st);
+    if (e != cudaSuccess) {
+        cudaGetLastError();
+        if (d) cudaFreeAsync(d, st);
+        err = std::string("CUDA: ") + cudaGetErrorString(e) + " (crop / resize planes)";
+        return -1;
+    }
+    GPCK(cudaMemcpyAsync(scr + tabAt, host.data(), host.size(), cudaMemcpyHostToDevice, st));
+    float *tmp = (float *)scr;
+    const uint8_t *tab = scr + tabAt;
+    for (const Pl &q : pls) {
+        const GpFrameIn &f = frames[q.fi];
+        const int out10 = outDepth == 10 || f.bitDepth == 10;
+        gp_launch_resize(f.dsrc[q.p], f.spitch[q.p], q.in10, q.wlo, q.tw, (const int *)(tab + q.ys), (const float *)(tab + q.yw), q.yt,
+                         (const int *)(tab + q.xs), (const float *)(tab + q.xw), q.xt, tmp, d + q.dst, q.aw, q.ow, q.oh, q.aw, q.ah,
+                         out10, q.p > 0, q.a ? q.a->dsrc[0] : nullptr, q.a ? q.a->spitch[0] : 0, q.s, st);
+    }
+    GPCK(cudaGetLastError());
+    GPCK(cudaFreeAsync(scr, st));
+    for (const Pl &q : pls) {   // after every launch: the launches read the old frame fields
+        GpFrameIn &f = frames[q.fi];
+        f.dsrc[q.p] = d + q.dst;
+        f.spitch[q.p] = q.aw;
+        if (q.p == (f.mono ? 0 : 2)) {
+            f.bitDepth = outDepth == 10 || f.bitDepth == 10 ? 10 : 8;
+            f.W = newW[q.fi];
+            f.H = newH[q.fi];
+            f.aw = (f.W + 63) & ~63;
+            f.ah = (f.H + 63) & ~63;
+        }
+    }
+    *buf = d;
+    return 0;
+}
+
 GpConfig gp_alpha_config(const GpConfig &c) {
     GpConfig a = c;
     const int q = c.lossless ? 0 : c.alphaQindex >= 0 ? c.alphaQindex : c.qindex;

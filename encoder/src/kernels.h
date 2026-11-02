@@ -34,6 +34,13 @@ void gp_launch_var16(const uint8_t *y, int pitch, int MiCols, int MiRows, float 
 void gp_launch_dp(const GpBatch &B, const GpParams &P, cudaStream_t st, int bd = 8);
 // 8-bit plane -> 10-bit plane (full-range rescaling, see k_misc.cu); chroma = Cb / Cr (512-centred)
 void gp_launch_to10(const uint8_t *src, int spitch, uint16_t *dst, int dpitch, int w, int h, int chroma, cudaStream_t st);
+// one plane of gp_frames_transform: source columns [sx0, sx0 + tw) filtered vertically into tmp (oh x tw floats; with
+// alpha 3 planes of them: plain, alpha-weighted colour, alpha), then horizontally into dst (ow x oh, edge-replicated to
+// aw x ah).  in10 / out10: uint16_t samples (10-bit).  alpha (may be NULL): the frame's alpha plane (its own pitch and
+// depth, the colour's), as = 1 for 4:2:0 chroma (2x2 alpha means)
+void gp_launch_resize(const void *src, int spitch, int in10, int sx0, int tw, const int *ystart, const float *yw, int ytaps,
+                      const int *xstart, const float *xw, int xtaps, float *tmp, void *dst, int dpitch, int ow, int oh, int aw,
+                      int ah, int out10, int chroma, const void *alpha, int apitch, int as, cudaStream_t st);
 // one wavefront step: the first n420 SBs of dSbList belong to 4:2:0 / monochrome frames, the next n444 to 4:4:4 frames
 // (monochrome frames of batches with 4:4:4 frames may be in the second group)
 void gp_launch_recon(const GpBatch &B, const GpParams &P, const uint32_t *dSbList, uint32_t n420, uint32_t n444, cudaStream_t st,

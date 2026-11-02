@@ -1,0 +1,9 @@
+size range: 100 photos x 3 = 1434 MP
+ab_r1 main: 235.9 MP/s (runs 237.1, 235.9, 233.2), GPU peak 6143 MiB, [av1gpu] 300 images (1433.5 MP) in 6046.9 ms: 49.61 img/s, 237.07 MP/s; 26 batches; out 67.62 MB (0.377 bpp); CPU 1669 m
+ab_r1 cr: 232.5 MP/s (runs 232.5, 229.5, 233.3), GPU peak 6271 MiB, [av1gpu] 300 images (1433.5 MP) in 6165.3 ms: 48.66 img/s, 232.52 MP/s; 26 batches; out 67.62 MB (0.377 bpp); CPU 1700 m
+ab_r2 cr: 230.6 MP/s (runs 230.0, 230.6, 232.4), GPU peak 6111 MiB, [av1gpu] 300 images (1433.5 MP) in 6233.6 ms: 48.13 img/s, 229.97 MP/s; 25 batches; out 67.62 MB (0.377 bpp); CPU 1668 m
+ab_r2 main: 233.5 MP/s (runs 233.5, 234.6, 228.5), GPU peak 6143 MiB, [av1gpu] 300 images (1433.5 MP) in 6138.5 ms: 48.87 img/s, 233.53 MP/s; 27 batches; out 67.62 MB (0.377 bpp); CPU 1680 m
+ab main: median of 6 runs 234.1 MP/s
+ab cr: median of 6 runs 231.5 MP/s
+ab: branch / main = 0.9888
+SPD_DONE

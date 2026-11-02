@@ -1,0 +1,21 @@
+Test project /home/ubuntu/cr/build
+    Start 1: fuzz_dav1d_aomdec
+    Start 2: fuzz_lossless
+    Start 3: avif_alpha
+    Start 4: gate_cfl_edge
+1/7 Test #3: avif_alpha .......................   Passed    0.22 sec
+    Start 5: batch_skip_unreadable
+2/7 Test #4: gate_cfl_edge ....................   Passed    3.02 sec
+    Start 6: crop_resize
+3/7 Test #2: fuzz_lossless ....................   Passed    4.07 sec
+    Start 7: gate_crop_resize
+4/7 Test #5: batch_skip_unreadable ............   Passed    4.35 sec
+5/7 Test #1: fuzz_dav1d_aomdec ................   Passed    7.65 sec
+6/7 Test #7: gate_crop_resize .................   Passed    3.86 sec
+7/7 Test #6: crop_resize ......................   Passed   17.46 sec
+
+100% tests passed, 0 tests failed out of 7
+
+Total Test time (real) =  20.49 sec
+ctest rc 0 (20 s)
+CTEST_DONE
