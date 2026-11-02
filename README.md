@@ -338,6 +338,9 @@ cmake --build build
 `-DCMAKE_CUDA_ARCHITECTURES=native` builds only for the GPU in the machine, which is much quicker.
 Leave it out to build a portable binary for compute capability 7.5 through 12.0. The binary links the
 CUDA runtime statically, so at run time it needs only the NVIDIA driver and `libnvjpeg`.
+For Blackwell, build with CUDA 13.3 or newer: from driver 615, NVIDIA recompiles Blackwell kernels built by
+nvcc older than 13.2.2 when they load (a fix for a reconvergence bug), which added 8–15 s to every start
+without a warm compute cache ([#49](https://github.com/maddog107/av1gpu/issues/49)).
 
 Most of the build time goes to the four wavefront kernels (`encoder/src/k_recon*.cu`). How much memory
 and time each one takes depends on the CUDA version and the targets: up to 18 GB with CUDA 12.8, about
@@ -398,6 +401,9 @@ Differences from Linux:
 - The tests (`ctest`, `tests/*.py`) run on Linux only.
 - On Windows Server 2019 and Windows 10 before version 1903, non-ASCII file names do not work (those
   versions ignore the executable's UTF-8 code page setting).
+- The zip is still built with CUDA 12.9 (Linux: 13.4). On Blackwell with driver 616 or newer, the driver
+  recompiles its kernels when they load, so a run without a warm compute cache starts slower
+  ([#49](https://github.com/maddog107/av1gpu/issues/49)).
 
 **Building on Windows.** You need Visual Studio 2022 or its Build Tools with the "Desktop development with
 C++" workload. `tools\windows\build.ps1` gets the rest: the parts of CUDA 12.9 av1gpu uses, from NVIDIA's
