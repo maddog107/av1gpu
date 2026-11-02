@@ -1,0 +1,5 @@
+[av1gpu] 16 images (106.3 MP) in 3394.2 ms: 4.71 img/s, 31.32 MP/s; 11 batches; out 4.38 MB (0.330 bpp); CPU 34467 ms = 10.15 cores; skipped (unsupported): 0; WebP/PNG via CPU decode: 16; write failur
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:04.32
+	Maximum resident set size (kbytes): 7183068
+GPU peak 3455 MiB
+16

@@ -1,0 +1,16 @@
+size range: 100 photos x 3 = 1434 MP
+ab_r1 main: 237.4 MP/s (runs 237.4, 236.7, 240.8), GPU peak 6175 MiB, [av1gpu] 300 images (1433.5 MP) in 6038.8 ms: 49.68 img/s, 237.39 MP/s; 26 batches; out 67.62 MB (0.377 bpp); CPU 1718 m
+ab_r1 cr: 233.9 MP/s (runs 233.9, 233.4, 233.9), GPU peak 6143 MiB, [av1gpu] 300 images (1433.5 MP) in 6127.6 ms: 48.96 img/s, 233.95 MP/s; 27 batches; out 67.62 MB (0.377 bpp); CPU 1674 m
+ab_r2 cr: 236.6 MP/s (runs 236.6, 234.1, 236.7), GPU peak 6079 MiB, [av1gpu] 300 images (1433.5 MP) in 6059.9 ms: 49.51 img/s, 236.56 MP/s; 26 batches; out 67.62 MB (0.377 bpp); CPU 1630 m
+ab_r2 main: 235.7 MP/s (runs 235.7, 231.8, 236.0), GPU peak 6015 MiB, [av1gpu] 300 images (1433.5 MP) in 6082.1 ms: 49.32 img/s, 235.70 MP/s; 26 batches; out 67.62 MB (0.377 bpp); CPU 1712 m
+ab main: median of 6 runs 236.3 MP/s
+ab cr: median of 6 runs 234.0 MP/s
+ab: branch / main = 0.9902
+pages: (3840, 5586) -> (2035, 2960), 40 x 4
+pages_gpu_shrink_r1 cr: 171.2 MP/s (runs 172.5, 171.2, 170.3), GPU peak 8641 MiB, [av1gpu] 160 images (963.8 MP) in 5587.3 ms: 28.64 img/s, 172.50 MP/s; 27 batches; out 44.58 MB (0.370 bpp); CPU 2753 ms
+pages_pre_shrunk_r1 cr: 195.7 MP/s (runs 195.7, 195.8, 195.6), GPU peak 9089 MiB, [av1gpu] 160 images (963.8 MP) in 4924.3 ms: 32.49 img/s, 195.72 MP/s; 20 batches; out 45.23 MB (0.375 bpp); CPU 1121 ms
+pages_pre_shrunk_r2 cr: 194.6 MP/s (runs 194.6, 194.8, 194.1), GPU peak 9057 MiB, [av1gpu] 160 images (963.8 MP) in 4953.2 ms: 32.30 img/s, 194.58 MP/s; 20 batches; out 45.23 MB (0.375 bpp); CPU 1130 ms
+pages_gpu_shrink_r2 cr: 167.8 MP/s (runs 167.7, 167.8, 167.8), GPU peak 8385 MiB, [av1gpu] 160 images (963.8 MP) in 5745.9 ms: 27.85 img/s, 167.73 MP/s; 27 batches; out 44.58 MB (0.370 bpp); CPU 2753 ms
+pages gpu_shrink: median of 6 runs 169.0 MP/s (output)
+pages pre_shrunk: median of 6 runs 195.2 MP/s (output)
+SPD_DONE

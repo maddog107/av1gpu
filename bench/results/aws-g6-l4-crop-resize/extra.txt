@@ -1,0 +1,13 @@
+gate GP_INGEST_DECODER=1 photos30 crop + resize: rc 0
+[gate] q120: 30/30 identical in dav1d and aomdec (420 30; 1883767 bytes), 0 not encoded (unsupported input), rc=0 PASS
+gate GP_INGEST_DECODER=1 photos30 4:4:4 10-bit --max-height 1000: rc 0
+[gate] q120: 30/30 identical in dav1d and aomdec (444 10-bit 30; 2251440 bytes), 0 not encoded (unsupported input), rc=0 PASS
+gate webp crop + resize: rc 0
+[gate] q120: 7/7 identical in dav1d and aomdec (420 7; 37137 bytes); alpha items 3/3 identical (alpha qindex 120), 0 not encoded (unsupported input), rc=0 PASS
+gate kodak 4:4:4 crop only: rc 0
+[gate] q120: 24/24 identical in dav1d and aomdec (444 24; 792372 bytes), 0 not encoded (unsupported input), rc=0 PASS
+sr_default_cpu_route: inputs 100, files 100 / 100, differ 0, skipped 0, rc 0/0, digest dea4d62e01dc791f, opts [] 
+sr_444_10_cpu_route: inputs 100, files 100 / 100, differ 0, skipped 0, rc 0/0, digest 7f3945669366b3d9, opts [--yuv 444 --depth 10] 
+std_slow: inputs 100, files 100 / 100, differ 0, skipped 0, rc 0/0, digest 0fffaa574a7fff96, opts [--preset slow] 
+webp_lossless: inputs 7, files 7 / 7, differ 0, skipped 0, rc 0/0, digest fca5473f754de376, opts [--lossless] 
+EXTRA_DONE

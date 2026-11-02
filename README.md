@@ -446,10 +446,10 @@ for CUDA start-up.
 | `--no-alpha` | drop transparency as before alpha support (PNG colour composited onto black) |
 | `--depth 8` / `10` | bit depth (default 8; 16-bit PNGs keep 10 bits, 8-bit sources are scaled to the 10-bit range) |
 | `--tune iq` / `none` | libaom `tune=iq` tools: quantization matrices, variance-boost delta-q, chroma delta-q, deblocking and CDEF strength choice (default `iq`) |
-| `--crop WxH+X+Y` | crop the decoded image on the GPU at any pixel offset (also `X,Y,W,H`; stored orientation) |
-| `--max-size WxH` / `--max-height H` | shrink to fit inside `WxH` (`xH` or `Wx` for one side) on the GPU after decoding, never enlarge: ImageMagick's `-resize 'WxH>'` size and its Lanczos filter |
-| `--max-mp MP` | largest picture encoded (default 35.6, AV1 level 6.3). Larger pictures are written with level 31 (no limits) |
-| `--max-input-mp MP` | largest source decoded (default `--max-mp`); with a crop or `--max-size`, a larger source is decoded at full size and encoded once it fits |
+| `--crop WxH+X+Y` | crop the decoded image on the GPU at any pixel offset (also `X,Y,W,H`): source pixels before the EXIF rotation, clipped to the image like ImageMagick's `-crop`. A crop outside the image is an error (skipped in batch mode); with `--lossless` the crop is exact |
+| `--max-size WxH` / `--max-height H` | shrink to fit inside `WxH` (`Wx` or `xH` for one side) on the GPU after the crop, never enlarge: ImageMagick's `-resize 'WxH>'` size and its Lanczos filter. The box is the displayed size (turned for EXIF rotations by 90°) |
+| `--max-mp MP` | largest picture encoded, after crop and resize (default 35.6, AV1 level 6.3; single PNG and WebP images have no limit, as before). Larger pictures are written with level 31 (no limits): dav1d and libavif decode them, decoders that enforce levels may not |
+| `--max-input-mp MP` | largest source decoded (default: the `--max-mp` limit); with a crop or `--max-size`, a larger source is decoded at full size and encoded once it fits |
 | `--cpu-entropy` | entropy-code on the CPU (produces bytes identical to the GPU coder) |
 | `--stats` | print a JSON line with timings, throughput and CPU use |
 | `--debug-outputs` | also write `<out>.obu` and `<out>.recon.yuv` for decoder comparisons |
@@ -483,12 +483,18 @@ The encoder needs about 1 GB of GPU memory with these settings, and the JPEG dec
 JPEG engine. av1gpu also falls back to that path automatically.
 
 In a batch list, a line may add TAB-separated `crop=WxH+X+Y` and `max-size=WxH` options for its image; they
-replace `--crop` / `--max-size` for that image (a line that names an existing file as a whole is a path). Crop
-and resize run after decoding, on the planes that are about to be encoded: the image is decoded once, at full
-size, and there is no intermediate file. The resize filters the YCbCr planes (gamma-encoded, as ImageMagick
-filters sRGB) with ImageMagick's Lanczos taps and writes 10-bit output straight from the filtered values. On
-comic pages it matches `magick -resize x2960` to 0.14 of a 10-bit step on average (60–65 dB PSNR; ImageMagick's
-own JPEG decode differs by about as much) and costs about 5 % throughput.
+replace `--crop` / `--max-size` for that image. A line that names an existing file as a whole is a path, and a
+line with a bad option is skipped like an unreadable file. Crop and resize run on the GPU after decoding, on the
+planes that are about to be encoded: the image is decoded once, at full size, and there is no intermediate
+file. The resize filters the YCbCr planes (gamma-encoded, as ImageMagick filters sRGB) with ImageMagick's
+Lanczos taps, 4:2:0 chroma at its own sample positions, and writes 10-bit output straight from the filtered
+values. Images with transparency are filtered with alpha-weighted colour, as ImageMagick does, so the colour
+stored under transparent pixels does not bleed into the edges (ImageMagick's default filter for such images
+is Mitchell; av1gpu uses Lanczos for all). Output sizes match ImageMagick 7's geometry; from the same 16-bit
+RGB photo the planes differ from `magick -resize` by 0.19 of a 10-bit step on average (67 dB PSNR), from JPEGs
+by about 0.5 (62 dB; ImageMagick's own decode differs by about 0.7 with no resize). Shrinking 3840 × 5586
+pages to 2960 rows on the GPU runs at 169 MP/s of output on the L4, against 195 for pages shrunk beforehand
+([results](docs/RESULTS.md#crop-and-resize-contributed-by-pickae)).
 
 AVIF files made from JPEGs carry the source's ICC profile (PNG and WebP profiles are not read yet). EXIF orientation is signalled with `irot`/`imir` rather
 than by rotating pixels.
