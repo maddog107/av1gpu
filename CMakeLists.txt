@@ -207,7 +207,8 @@ if(AV1GPU_TESTS)
   add_executable(varboost_test tests/varboost_test.cu)
   target_link_libraries(varboost_test av1f)
   target_compile_options(varboost_test PRIVATE ${AV1GPU_CUDA_OPTIONS})
-  # gray JPEGs tagged 1x1 / 2x2 / 2x1 / 1x2 and libjpeg-turbo's decode of them (jpeg_gray_sampling_test.py)
+  # gray JPEGs tagged 1x1 / 2x2 / 2x1 / 1x2 (jpeg_gray_sampling_test.py) and, with --ycbcr, 3-component JPEGs with
+  # unusual sampling factors (jpeg_inverted_sampling_test.py), with libjpeg-turbo's decode of them
   add_executable(jpeg_gray_gen tests/jpeg_gray_gen.cpp)
   target_link_libraries(jpeg_gray_gen JPEG::JPEG)
   # decoder identity on tests/gate_images (dav1d + aomdec): cfl_edge_211x149.png gets CfL blocks with a split
@@ -222,6 +223,9 @@ if(AV1GPU_TESTS)
              --bin $<TARGET_FILE:av1gpu> --image ${PROJECT_SOURCE_DIR}/tests/gate_images/cfl_edge_211x149.png)
     # #44: a gray JPEG's sampling factors (2x2, 2x1, 1x2) do not change its planes, on the nvJPEG and the CPU route
     add_test(NAME jpeg_gray_sampling COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/jpeg_gray_sampling_test.py
+             --bin $<TARGET_FILE:av1gpu> --gen $<TARGET_FILE:jpeg_gray_gen>)
+    # luma with smaller sampling factors than chroma (Y 1x1, Cb / Cr 2x2, ...): libjpeg-turbo's planes, 4:2:0 and 4:4:4
+    add_test(NAME jpeg_inverted_sampling COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/jpeg_inverted_sampling_test.py
              --bin $<TARGET_FILE:av1gpu> --gen $<TARGET_FILE:jpeg_gray_gen>)
   endif()
 endif()

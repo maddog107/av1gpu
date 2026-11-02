@@ -600,7 +600,10 @@ static bool dispatch(ingest_ctx *c, std::unique_ptr<Batch> b) {
       o.tiles_x = (o.out_w + 63) / 64;
       o.tile0 = tiles;
       tiles += (long long)o.tiles_x * ((o.out_h + 15) / 16);
-      o.chroma = k == 0 ? 0 : cfull ? 2 : 1;
+      // luma with smaller sampling factors than a chroma component (e.g. Y 1x1, Cb / Cr 2x2): upsampled the way
+      // libjpeg-turbo's decoder does it, as subsampled chroma is for 4:4:4 output (not replicated)
+      const bool y_sub = in.h[0] != in.hmax || in.v[0] != in.vmax;
+      o.chroma = k == 0 ? (y_sub ? 2 : 0) : cfull ? 2 : 1;
       o.src = fp + k;
       o.W = W;
       o.H = H;
