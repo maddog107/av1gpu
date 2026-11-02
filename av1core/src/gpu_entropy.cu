@@ -31,6 +31,7 @@
 #include <cuda_runtime.h>
 #include <algorithm>
 #include <cstdio>
+#include <mutex>
 #include <cstring>
 
 namespace av1g_gpu {
@@ -1497,8 +1498,22 @@ size_t run_batch_device_scratch_bytes(const DevBatch &b) {
     return build_plan(b, P, err) ? 0 : P.total;
 }
 
+// k_sbsym's partition walk is recursive, so its stack need is not known to the driver: k_sbsym (208 bytes) + 5 levels
+// of w_partition (176 each, 128x128 superblocks) + the palette helpers (w_pal_info 152, w_pal_colors 184) = 1,424
+// bytes (ptxas, sm_89), above the default 1 KB.  Raised once, never lowered (the lossy encoder sets more already).
+static void ensure_walk_stack() {
+    static std::once_flag once;
+    std::call_once(once, [] {
+        size_t cur = 0;
+        if (cudaDeviceGetLimit(&cur, cudaLimitStackSize) == cudaSuccess && cur < 2048 &&
+            cudaDeviceSetLimit(cudaLimitStackSize, 2048) != cudaSuccess)
+            cudaGetLastError();
+    });
+}
+
 int run_batch_device(const DevBatch &b, cudaStream_t s, void *scratch, size_t scratchBytes, DevResult &out, std::string &err,
                      const DevEvents *ev) {
+    ensure_walk_stack();
     Plan P;
     if (build_plan(b, P, err)) return -1;
     if (!scratch || scratchBytes < P.total) {
