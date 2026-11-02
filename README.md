@@ -438,6 +438,12 @@ Batch mode is the fast path. It decodes, encodes and entropy-codes several batch
 GPU stays busy. Encoding images one process at a time is much slower, because each process pays
 for CUDA start-up.
 
+The Linux release binary (CUDA 13.4; it needs driver 580 or newer) has compiled GPU code for compute
+capability 7.5 to 12.0 and starts in one to two seconds on those GPUs. A newer GPU first has to compile it
+from PTX, which took over ten minutes in a test and is then kept in the CUDA compute cache. That cache
+holds 1 GB by default and is shared with other CUDA programs, so give av1gpu its own, e.g.
+`CUDA_CACHE_PATH=~/.cache/av1gpu-cuda CUDA_CACHE_MAXSIZE=4294967296`.
+
 | Option | Meaning |
 |---|---|
 | `--quality Q` | 0–100 on avifenc's `-q` scale with `tune=iq` (60 → AV1 qindex 120) |
