@@ -36,3 +36,6 @@ runs:
         path: .ccache
         key: ${{ inputs.key }}-${{ hashFiles('CMakeLists.txt', 'av1core/**', 'av1f/**', 'ingest/**', 'encoder/**', 'tests/**') }}
         restore-keys: ${{ inputs.key }}-
+    # statistics of this job only
+    - shell: bash
+      run: ccache -z
