@@ -1,0 +1,26 @@
+fetched 0a0c04b345da9b5a
+NVIDIA L4, 580.196.07, Enabled
+l4-580-main134 empty    1.92 s rc=0 cache=1 MB
+l4-580-main134 warm     1.86 s rc=0
+l4-580-main134 disabled 1.85 s rc=0
+l4-580-main134 empty    1.85 s rc=0 cache=1 MB
+l4-580-main134 warm     1.85 s rc=0
+l4-580-main134 disabled 1.86 s rc=0
+l4-580-v060 empty    2.10 s rc=0 cache=1 MB
+l4-580-v060 warm     2.10 s rc=0
+l4-580-v060 disabled 2.10 s rc=0
+l4-580-v060 empty    2.11 s rc=0 cache=1 MB
+l4-580-v060 warm     2.10 s rc=0
+l4-580-v060 disabled 2.11 s rc=0
+l4-580-umd134-main134 empty    2.04 s rc=0 cache=1 MB
+l4-580-umd134-main134 warm     1.92 s rc=0
+l4-580-umd134-main134 disabled 1.92 s rc=0
+l4-580-umd134-v060 empty    2.18 s rc=0 cache=1 MB
+l4-580-umd134-v060 warm     2.17 s rc=0
+l4-580-umd134-v060 disabled 2.16 s rc=0
+l4-580-v060-vs-main134 sr: 100 vs 100 files, 0 differ (22224 kB)
+l4-580-v060-vs-main134 sr444: 100 vs 100 files, 0 differ (22820 kB)
+l4-580-v060-vs-main134 std: 100 vs 100 files, 0 differ (5568 kB)
+median a: 212.925 MP/s ( 218.70 215.21 213.46 209.85 208.92 212.39 )
+median b: 222.955 MP/s ( 224.13 222.29 223.62 219.51 224.27 221.22 )
+L4E_DONE

@@ -1,0 +1,27 @@
+/usr/local/cuda-13.3/compat/libcuda.so.1
+/usr/local/cuda-13.3/compat/libcuda.so.610.57.04
+/usr/local/cuda-13.4/compat/libcuda.so.1
+/usr/local/cuda-13.4/compat/libcuda.so.615.71.10
+v060 empty    2.20 s rc=0 cache=1 MB
+v060 warm     1.23 s rc=0
+v060 disabled 1.24 s rc=0
+v060 empty    1.24 s rc=0 cache=1 MB
+v060 warm     1.24 s rc=0
+v060 disabled 1.24 s rc=0
+v050 empty    1.43 s rc=0 cache=1 MB
+v050 warm     1.43 s rc=0
+v050 disabled 1.44 s rc=0
+v060-umd13.3 empty    1.27 s rc=0 cache=1 MB
+v060-umd13.3 warm     1.28 s rc=0
+v060-umd13.3 disabled 1.29 s rc=0
+v050-umd13.3 empty    1.51 s rc=0 cache=1 MB
+v050-umd13.3 warm     1.50 s rc=0
+v050-umd13.3 disabled 1.48 s rc=0
+v060-umd13.4 empty    1.29 s rc=0 cache=1 MB
+v060-umd13.4 warm     1.31 s rc=0
+v060-umd13.4 disabled 1.29 s rc=0
+v050-umd13.4 empty    1.49 s rc=0 cache=1 MB
+v050-umd13.4 warm     1.50 s rc=0
+v050-umd13.4 disabled 1.50 s rc=0
+[av1gpu] 1 images (1.9 MP) in 504.9 ms: 1.98 img/s, 3.80 MP/s; 1 batches; out 0.01 MB (0.051 bpp); CPU 478 ms = 0.95 cores; skipped (unsupported): 0; WebP/PNG via CPU decode: 0; write failures 0
+[av1gpu] stage ms: ingest wait 0.0 | gpu setup 2.8 analysis 5.5 dp 1.5 recon 51.4 pack 0.1 postfilter 12.3 download 0.0 (gpu total 74.0, encode wall 74.1) | entropy wall 15.9 (gpu 9.2) | write 0.1 | peak dev 27 MB

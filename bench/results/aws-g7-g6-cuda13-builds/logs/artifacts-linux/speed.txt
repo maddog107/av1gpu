@@ -1,0 +1,14 @@
+round 1 a run 1: 244.48 MP/s, wall 6.79 s, 300 files
+round 1 a run 2: 238.36 MP/s, wall 6.94 s, 300 files
+round 1 a run 3: 240.62 MP/s, wall 6.89 s, 300 files
+round 1 b run 1: 243.38 MP/s, wall 6.83 s, 300 files
+round 1 b run 2: 244.36 MP/s, wall 6.81 s, 300 files
+round 1 b run 3: 245.64 MP/s, wall 6.77 s, 300 files
+round 2 b run 1: 241.91 MP/s, wall 6.86 s, 300 files
+round 2 b run 2: 238.82 MP/s, wall 6.94 s, 300 files
+round 2 b run 3: 242.37 MP/s, wall 6.89 s, 300 files
+round 2 a run 1: 238.40 MP/s, wall 6.95 s, 300 files
+round 2 a run 2: 238.81 MP/s, wall 6.94 s, 300 files
+round 2 a run 3: 244.07 MP/s, wall 6.80 s, 300 files
+median a: 239.715 MP/s ( 244.48 238.36 240.62 238.40 238.81 244.07 )
+median b: 242.875 MP/s ( 243.38 244.36 245.64 241.91 238.82 242.37 )
