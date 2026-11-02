@@ -1,7 +1,8 @@
 name: Release
 
-# A tag v* builds the portable Linux binary and the Windows zip and attaches them to a GitHub release. Pull
-# requests that touch the build only build them (download them from the run's artifacts to test on a GPU).
+# A tag v* builds the portable Linux tarballs and Windows zips, each with CUDA 13 and with CUDA 12 (-cuda12, for older
+# drivers), and attaches them to a GitHub release. Pull requests that touch the build only build them (download them
+# from the run's artifacts to test on a GPU).
 on:
   push:
     tags: ["v*"]
@@ -11,12 +12,22 @@ on:
 
 jobs:
   linux-x86_64:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # CUDA 13.4, driver 580 or newer (and still Turing, sm_75).  On Blackwell, drivers from R615 recompile kernels
+          # built with nvcc older than 13.2.2 when they load (a reconvergence fix; with 12.9 that took 8-15 s at every
+          # start without a warm compute cache, #49); 13.4's code is also faster there
+          - cuda: "13.4.3"
+            suffix: ""
+          # CUDA 12.9 for drivers from 525 up
+          - cuda: "12.9.1"
+            suffix: "-cuda12"
+    name: linux-x86_64${{ matrix.suffix }}
     runs-on: ubuntu-24.04
-    # Ubuntu 22.04 (glibc 2.35), so the binary also runs on newer distributions.  CUDA 13.4: on Blackwell, drivers
-    # from R615 recompile kernels built with nvcc older than 13.2.2 when they load (a reconvergence fix; with 12.9
-    # that took 8-15 s at every start without a warm compute cache, #49).  CUDA 13 runs on drivers from 580 up and
-    # still targets Turing (sm_75)
-    container: nvidia/cuda:13.4.3-devel-ubuntu22.04
+    # Ubuntu 22.04 (glibc 2.35), so the binary also runs on newer distributions
+    container: nvidia/cuda:${{ matrix.cuda }}-devel-ubuntu22.04
     defaults:
       run:
         shell: bash
@@ -28,13 +39,15 @@ jobs:
             libjpeg-turbo8-dev libpng-dev libwebp-dev zlib1g-dev
           pip3 install cmake==3.31.6 ninja    # Ubuntu 22.04's CMake is older than 3.24
       # every architecture from Turing to Blackwell (the CMakeLists default); -j 1 because each k_recon
-      # translation unit needs several GB per compile and two at once ran the runner out of memory
+      # translation unit needs several GB per compile and two at once ran the runner out of memory (CUDA 13.4: 2-3 h)
       - run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DAV1GPU_STATIC_DEPS=ON -DAV1GPU_TESTS=OFF
       - run: cmake --build build -j 1
       - name: Package
+        env:
+          SUFFIX: ${{ matrix.suffix }}
         run: |
           V=${GITHUB_REF_NAME#v}; case "$GITHUB_REF" in refs/tags/*) ;; *) V=dev-${GITHUB_SHA::7};; esac
-          D=av1gpu-$V-linux-x86_64
+          D=av1gpu-$V-linux-x86_64$SUFFIX
           mkdir $D && cp build/av1gpu LICENSE THIRD_PARTY_NOTICES.md $D/ && strip --strip-debug $D/av1gpu
           ldd $D/av1gpu | tee ldd.txt
           if grep -E "jpeg|png|webp|libz|cudart" ldd.txt; then echo "not linked in statically"; exit 1; fi
@@ -47,6 +60,15 @@ jobs:
           path: ${{ env.PKG }}.tar.gz*
 
   windows-x86_64:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - cuda: "13.4.3"
+            suffix: ""
+          - cuda: "12.9.1"
+            suffix: "-cuda12"
+    name: windows-x86_64${{ matrix.suffix }}
     runs-on: windows-2022
     defaults:
       run:
@@ -59,15 +81,18 @@ jobs:
         with:
           path: build-deps/vcpkg-archives
           key: vcpkg-x64-windows-static-${{ hashFiles('tools/windows/build.ps1') }}
-      # every architecture from Turing to Blackwell; CUDA 12.9 (Blackwell with driver 616 or newer recompiles its
-      # kernels on the first run, see the Linux job); the zip holds av1gpu.exe (C++ runtime and image libraries
-      # linked in) and nvjpeg64_12.dll, so only the NVIDIA driver is needed
+      # every architecture from Turing to Blackwell, CUDA as in the Linux job (13.x: driver 580+, 12.9: 528+); the
+      # zip holds av1gpu.exe (C++ runtime and image libraries linked in) and the toolkit's nvjpeg64_<major>.dll, so
+      # only the NVIDIA driver is needed
       - name: Build and package
+        env:
+          CUDA_VERSION: ${{ matrix.cuda }}
+          SUFFIX: ${{ matrix.suffix }}
         run: |
           $v = "$env:GITHUB_REF_NAME".TrimStart("v")
           if ("$env:GITHUB_REF" -notlike "refs/tags/*") { $v = "dev-" + "$env:GITHUB_SHA".Substring(0, 7) }
-          ./tools/windows/build.ps1 -Jobs 2 -Package -PackageVersion $v
-          "PKG=av1gpu-$v-windows-x86_64" >> $env:GITHUB_ENV
+          ./tools/windows/build.ps1 -Jobs 2 -Package -PackageVersion $v -CudaVersion $env:CUDA_VERSION -PackageSuffix "$env:SUFFIX"
+          "PKG=av1gpu-$v-windows-x86_64$env:SUFFIX" >> $env:GITHUB_ENV
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ env.PKG }}
@@ -87,5 +112,5 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --title "av1gpu $GITHUB_REF_NAME" \
-            --notes "Linux x86_64 and Windows x64 binaries for NVIDIA GPUs from Turing (RTX 20, T4) to Blackwell. Need only the NVIDIA driver (580 or newer on Linux, 528 or newer on Windows). See the README for usage." \
+            --notes "Linux x86_64 and Windows x64 binaries for NVIDIA GPUs from Turing (RTX 20, T4) to Blackwell; they need only the NVIDIA driver. Pick the CUDA 13 builds (no suffix) if your driver is 580 or newer: they are faster, and on Blackwell with driver 615 or newer the driver does not recompile them at every start. The -cuda12 builds are for older drivers (525 or newer on Linux, 528 or newer on Windows). See the README for usage." \
             av1gpu-*.tar.gz* av1gpu-*.zip*

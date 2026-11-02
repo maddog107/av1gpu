@@ -321,6 +321,29 @@ project. Before you rely on it, note:
   unreadable files. PNG and WebP inputs are decoded on the CPU, on every core av1gpu may use.
 - Tools not implemented: palette, intra block copy, loop restoration, superres, film grain.
 
+## 📦 Download
+
+Each [release](https://github.com/maddog107/av1gpu/releases) has four builds, each with a `.sha256`. Take the
+CUDA 13 build for your system unless your NVIDIA driver is older than 580:
+
+| File | Built with | NVIDIA driver |
+|---|---|---|
+| `av1gpu-<version>-linux-x86_64.tar.gz` | CUDA 13.4 | 580 or newer |
+| `av1gpu-<version>-linux-x86_64-cuda12.tar.gz` | CUDA 12.9 | 525 or newer |
+| `av1gpu-<version>-windows-x86_64.zip` | CUDA 13.4 | 580 or newer |
+| `av1gpu-<version>-windows-x86_64-cuda12.zip` | CUDA 12.9 | 528 or newer |
+
+All four run on GPUs from Turing to Blackwell (compute capability 7.5 to 12.0) and need only the driver. The
+Linux binaries have the image libraries and nvJPEG linked in; for Windows, see [Windows](#-windows). Both builds
+give the same files. The CUDA 13 build is faster on Blackwell (+14–16 % on an RTX PRO 4500) and starts in
+one to two seconds. With the CUDA 12 build on Blackwell, drivers 615 and newer recompile its kernels when they
+load (a fix for a reconvergence bug). That added 8–15 s to every start without a warm CUDA compute cache
+([#49](https://github.com/maddog107/av1gpu/issues/49)).
+
+A GPU newer than these first has to compile the code from PTX, which took over ten minutes in a test. The
+result is then kept in the CUDA compute cache. That cache holds 1 GB by default and is shared with other CUDA
+programs, so give av1gpu its own, e.g. `CUDA_CACHE_PATH=~/.cache/av1gpu-cuda CUDA_CACHE_MAXSIZE=4294967296`.
+
 ## 🛠️ Building
 
 On Linux you need CUDA 12.0 or newer (12.8 or newer to target Blackwell), CMake 3.24 or newer, a C++17
@@ -374,9 +397,11 @@ with nvcc.
 
 ## 💻 Windows
 
-From v0.5.0 the [releases](https://github.com/maddog107/av1gpu/releases) also have a Windows x64 zip.
-Unzip it anywhere. `av1gpu.exe` needs only the NVIDIA driver (528 or newer) and the `nvjpeg64_12.dll`
-beside it; the C++ runtime and the image libraries are linked in. The options are the same as on Linux:
+From v0.5.0 the [releases](https://github.com/maddog107/av1gpu/releases) also have Windows x64 zips (see
+[Download](#-download)). The CUDA 13 zip needs driver 580 or newer and carries `nvjpeg64_13.dll`. The
+`-cuda12` zip needs 528 or newer and carries `nvjpeg64_12.dll`. Unzip either anywhere: `av1gpu.exe` needs only
+the driver and that DLL beside it, because the C++ runtime and the image libraries are linked in. The options
+are the same as on Linux:
 
 ```bat
 av1gpu.exe photo.jpg photo.avif
@@ -401,22 +426,21 @@ Differences from Linux:
 - The tests (`ctest`, `tests/*.py`) run on Linux only.
 - On Windows Server 2019 and Windows 10 before version 1903, non-ASCII file names do not work (those
   versions ignore the executable's UTF-8 code page setting).
-- The zip is still built with CUDA 12.9 (Linux: 13.4). On Blackwell with driver 616 or newer, the driver
-  recompiles its kernels when they load, so a run without a warm compute cache starts slower
-  ([#49](https://github.com/maddog107/av1gpu/issues/49)).
 
 **Building on Windows.** You need Visual Studio 2022 or its Build Tools with the "Desktop development with
-C++" workload. `tools\windows\build.ps1` gets the rest: the parts of CUDA 12.9 av1gpu uses, from NVIDIA's
-redistributable archives (about 140 MB; `-CudaRoot` uses an installed toolkit instead), and libjpeg-turbo,
-libpng, zlib and libwebp, built static by a pinned vcpkg release. CMake comes with the workload's default
-"C++ CMake tools" component; Ninja is downloaded if it is not there.
+C++" workload. `tools\windows\build.ps1` gets the rest: the parts of CUDA av1gpu uses, from NVIDIA's
+redistributable archives (13.4 by default, about 100 MB; `-CudaVersion 12.9.1` for the `-cuda12` build;
+`-CudaRoot` uses an installed toolkit instead), and libjpeg-turbo, libpng, zlib and libwebp, built static by a
+pinned vcpkg release. CMake comes with the workload's default "C++ CMake tools" component; Ninja is downloaded
+if it is not there.
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File tools\windows\build.ps1 -Archs native
 ```
 
-`build\av1gpu.exe` then needs `nvjpeg64_12.dll` from the toolkit's `bin` folder beside it. Leave out
-`-Archs` for every GPU from Turing to Blackwell; `-Package` makes the release zip.
+`build\av1gpu.exe` then needs the toolkit's `nvjpeg64_13.dll` (in `bin\x64`; CUDA 12: `nvjpeg64_12.dll` in
+`bin`) beside it. Leave out `-Archs` for every GPU from Turing to Blackwell; `-Package` makes the release zip
+(`-PackageSuffix -cuda12` names it as the release does).
 
 ## 🚀 Usage
 
@@ -437,12 +461,6 @@ build/av1gpu --batch photos/ --outdir avif/ --preset slow
 Batch mode is the fast path. It decodes, encodes and entropy-codes several batches at once, so the
 GPU stays busy. Encoding images one process at a time is much slower, because each process pays
 for CUDA start-up.
-
-The Linux release binary (CUDA 13.4; it needs driver 580 or newer) has compiled GPU code for compute
-capability 7.5 to 12.0 and starts in one to two seconds on those GPUs. A newer GPU first has to compile it
-from PTX, which took over ten minutes in a test and is then kept in the CUDA compute cache. That cache
-holds 1 GB by default and is shared with other CUDA programs, so give av1gpu its own, e.g.
-`CUDA_CACHE_PATH=~/.cache/av1gpu-cuda CUDA_CACHE_MAXSIZE=4294967296`.
 
 | Option | Meaning |
 |---|---|

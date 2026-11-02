@@ -57,8 +57,19 @@ jobs:
       - run: build/av1gpu --help
 
   # Windows x64: MSVC as the host compiler, CUDA from NVIDIA's redistributable archives, the image libraries
-  # from vcpkg (tools/windows/build.ps1, as in the release)
+  # from vcpkg (tools/windows/build.ps1, as in the release); CUDA 12.9 for Turing and Blackwell, CUDA 13.4 for Turing
+  # only (it compiles Blackwell code slowly; what changes on Windows with 13 is the toolkit's parts and CCCL needing
+  # MSVC's conforming preprocessor)
   windows-build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - cuda: "12.9.1"
+            archs: "75;120"
+          - cuda: "13.4.3"
+            archs: "75"
+    name: windows-build (CUDA ${{ matrix.cuda }})
     runs-on: windows-2022
     defaults:
       run:
@@ -71,5 +82,5 @@ jobs:
         with:
           path: build-deps/vcpkg-archives
           key: vcpkg-x64-windows-static-${{ hashFiles('tools/windows/build.ps1') }}
-      - run: ./tools/windows/build.ps1 -Archs "75;120" -Jobs 2
+      - run: ./tools/windows/build.ps1 -Archs "${{ matrix.archs }}" -CudaVersion ${{ matrix.cuda }} -Jobs 2
       - run: build/av1gpu.exe --help
