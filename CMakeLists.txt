@@ -104,6 +104,10 @@ if(CMAKE_CUDA_COMPILER_ID STREQUAL "Clang")
   # a toolkit newer than it knows, but would warn about that in every file
   add_compile_options($<$<COMPILE_LANGUAGE:CUDA>:-Wno-unknown-cuda-version>)
 endif()
+if(MSVC AND CUDAToolkit_VERSION VERSION_GREATER_EQUAL 13)
+  # CUDA 13's CCCL (cub) stops with an error under MSVC's traditional preprocessor
+  add_compile_options("$<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=/Zc:preprocessor>")
+endif()
 # nvcc only: constexpr host functions (std::min, ...) callable from device code; Clang allows that by default
 set(AV1GPU_CUDA_OPTIONS $<$<AND:$<COMPILE_LANGUAGE:CUDA>,$<CUDA_COMPILER_ID:NVIDIA>>:--expt-relaxed-constexpr>)
 if(AV1GPU_STATIC_DEPS AND NOT WIN32)
