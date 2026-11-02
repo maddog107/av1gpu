@@ -1,0 +1,50 @@
+== photos30_q60_120_200: --images /home/ubuntu/sets/gate30 --q 60,120,200
+rc 0 (18 s)
+[gate] q60: 30/30 identical in dav1d and aomdec (420 30; 15305396 bytes), 0 not encoded (unsupported input), rc=0 PASS
+[gate] q120: 30/30 identical in dav1d and aomdec (420 30; 6912233 bytes), 0 not encoded (unsupported input), rc=0 PASS
+[gate] q200: 30/30 identical in dav1d and aomdec (420 30; 1506769 bytes), 0 not encoded (unsupported input), rc=0 PASS
+== photos30_444_10_q120: --images /home/ubuntu/sets/gate30 --q 120 --expect-format 444 --expect-depth 10 -- --yuv 444 --depth 10
+rc 0 (10 s)
+[gate] q120: 30/30 identical in dav1d and aomdec (444 10-bit 30; 7031153 bytes), 0 not encoded (unsupported input), rc=0 PASS
+== photos30_slow: --images /home/ubuntu/sets/gate30 -- --preset slow
+rc 0 (17 s)
+[gate] q120: 30/30 identical in dav1d and aomdec (420 30; 6795673 bytes), 0 not encoded (unsupported input), rc=0 PASS
+== rgba: --images /home/ubuntu/data/rgba/set --expect-alpha
+rc 0 (2 s)
+[gate] q120: 39/39 identical in dav1d and aomdec (420 39; 684196 bytes); alpha items 35/35 identical (alpha qindex 120), 0 not encoded (unsupported input), rc=0 PASS
+== kodak_lossless: --images /home/ubuntu/ll/kodak --lossless
+rc 0 (2 s)
+[gate] lossless: 24/24 identical in dav1d and aomdec (444 24; 13370817 bytes), 0 not encoded (unsupported input), rc=0 PASS
+== thumbs_q60_120: --images /home/ubuntu/sets/gate_thumbs --q 60,120
+rc 0 (3 s)
+[gate] q60: 28/28 identical in dav1d and aomdec (420 28; 656250 bytes), 0 not encoded (unsupported input), rc=0 PASS
+[gate] q120: 28/28 identical in dav1d and aomdec (420 28; 365619 bytes), 0 not encoded (unsupported input), rc=0 PASS
+== odd_q120: --images /home/ubuntu/sets/odd
+rc 0 (1 s)
+[gate] q120: 30/30 identical in dav1d and aomdec (420 30; 39025 bytes), 0 not encoded (unsupported input), rc=0 PASS
+== odd_444_10: --images /home/ubuntu/sets/odd --expect-depth 10 -- --yuv 444 --depth 10
+rc 0 (2 s)
+[gate] q120: 30/30 identical in dav1d and aomdec (444 10-bit 30; 39940 bytes), 0 not encoded (unsupported input), rc=0 PASS
+== gray_q120: --images /home/ubuntu/sets/gray
+rc 0 (1 s)
+[gate] q120: 9/9 identical in dav1d and aomdec (420 9; 265760 bytes); alpha items 3/3 identical (alpha qindex 120), 0 not encoded (unsupported input), rc=0 PASS
+== photos30_q13_26: --images /home/ubuntu/sets/gate30 --q 13,26
+rc 0 (11 s)
+[gate] q13: 30/30 identical in dav1d and aomdec (420 30; 35303948 bytes), 0 not encoded (unsupported input), rc=0 PASS
+[gate] q26: 30/30 identical in dav1d and aomdec (420 30; 26520815 bytes), 0 not encoded (unsupported input), rc=0 PASS
+== photos30_444_q13_26: --images /home/ubuntu/sets/gate30 --q 13,26 --expect-format 444 -- --yuv 444
+rc 0 (12 s)
+[gate] q13: 30/30 identical in dav1d and aomdec (444 30; 38088538 bytes), 0 not encoded (unsupported input), rc=0 PASS
+[gate] q26: 30/30 identical in dav1d and aomdec (444 30; 27692679 bytes), 0 not encoded (unsupported input), rc=0 PASS
+== mono_q13_26_120: --images /home/ubuntu/sets/mono --q 13,26,120
+rc 0 (13 s)
+[gate] q13: 47/47 identical in dav1d and aomdec (420 5, mono 42; 37109539 bytes), 0 not encoded (unsupported input), rc=0 PASS
+[gate] q26: 47/47 identical in dav1d and aomdec (420 5, mono 42; 29495597 bytes), 0 not encoded (unsupported input), rc=0 PASS
+[gate] q120: 47/47 identical in dav1d and aomdec (420 5, mono 42; 8435721 bytes), 0 not encoded (unsupported input), rc=0 PASS
+== mono_slow: --images /home/ubuntu/sets/mono -- --preset slow
+rc 0 (11 s)
+[gate] q120: 47/47 identical in dav1d and aomdec (420 5, mono 42; 8358690 bytes), 0 not encoded (unsupported input), rc=0 PASS
+== photos30_444_slow: --images /home/ubuntu/sets/gate30 --expect-format 444 -- --yuv 444 --preset slow
+rc 0 (9 s)
+[gate] q120: 30/30 identical in dav1d and aomdec (444 30; 7082141 bytes), 0 not encoded (unsupported input), rc=0 PASS
+GATE_DONE

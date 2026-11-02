@@ -1,0 +1,66 @@
+racecheck (analysis mode) on av1gpu --batch, 3 size-range photos: hazards per pair of source locations
+
+== v0.5.0 b6545c1, default: RACECHECK SUMMARY: 8 hazards displayed (8 errors, 0 warnings) | rc 0 825 s
+    7046576  Error: Read k_entropy_win gpu_entropy.cu:1061  <->  Write k_entropy_win gpu_entropy.cu:1015
+    1927868  Error: Read k_entropy_win gpu_entropy.cu:1061  <->  Write k_entropy_win gpu_entropy.cu:998
+     278256  Error: Read vload gpu_entropy.cu:957  <->  Write vstore gpu_entropy.cu:958
+     244888  Error: Write vstore gpu_entropy.cu:958  <->  Read vload gpu_entropy.cu:957
+     228056  Error: Read k_entropy_win gpu_entropy.cu:1058  <->  Write k_entropy_win gpu_entropy.cu:1015
+      61456  Error: Read k_entropy_win gpu_entropy.cu:1058  <->  Write k_entropy_win gpu_entropy.cu:998
+       1584  Error: Read k_entropy_win gpu_entropy.cu:1061  <->  Write k_entropy_win gpu_entropy.cu:1033
+        256  Error: Write vstore gpu_entropy.cu:958  <->  Read __nanosleep gpu_entropy.cu:957
+         72  Error: Read k_entropy_win gpu_entropy.cu:1058  <->  Write k_entropy_win gpu_entropy.cu:1033
+== v0.5.0 b6545c1, --yuv 444 --depth 10: RACECHECK SUMMARY: 8 hazards displayed (8 errors, 0 warnings) | rc 0 961 s
+    7133332  Error: Read k_entropy_win gpu_entropy.cu:1061  <->  Write k_entropy_win gpu_entropy.cu:1015
+    1968372  Error: Read k_entropy_win gpu_entropy.cu:1061  <->  Write k_entropy_win gpu_entropy.cu:998
+     282392  Error: Read vload gpu_entropy.cu:957  <->  Write vstore gpu_entropy.cu:958
+     249072  Error: Write vstore gpu_entropy.cu:958  <->  Read vload gpu_entropy.cu:957
+     230260  Error: Read k_entropy_win gpu_entropy.cu:1058  <->  Write k_entropy_win gpu_entropy.cu:1015
+      63340  Error: Read k_entropy_win gpu_entropy.cu:1058  <->  Write k_entropy_win gpu_entropy.cu:998
+       1520  Error: Read k_entropy_win gpu_entropy.cu:1061  <->  Write k_entropy_win gpu_entropy.cu:1033
+        280  Error: Write vstore gpu_entropy.cu:958  <->  Read __nanosleep gpu_entropy.cu:957
+         88  Error: Read k_entropy_win gpu_entropy.cu:1058  <->  Write k_entropy_win gpu_entropy.cu:1033
+== v0.6 main 6a4956e, default: RACECHECK SUMMARY: 103 hazards displayed (102 errors, 1 warning) | rc 0 562 s
+    7046576  Error: Read k_entropy_win gpu_entropy.cu:1090  <->  Write win_group gpu_entropy.cu:992
+    1927868  Error: Read k_entropy_win gpu_entropy.cu:1090  <->  Write k_entropy_win gpu_entropy.cu:1061
+     279176  Error: Read vload gpu_entropy.cu:1020  <->  Write vstore gpu_entropy.cu:1021
+     246872  Error: Write vstore gpu_entropy.cu:1021  <->  Read vload gpu_entropy.cu:1020
+     228056  Error: Read k_entropy_win gpu_entropy.cu:1087  <->  Write win_group gpu_entropy.cu:992
+      61456  Error: Read k_entropy_win gpu_entropy.cu:1087  <->  Write k_entropy_win gpu_entropy.cu:1061
+      52064  Error: Read [clone k_recon] rc_chroma k_recon.cuh:1373  <->  Write [clone k_recon] rc_chroma k_recon.cuh:1374
+       1584  Error: Read k_entropy_win gpu_entropy.cu:1090  <->  Write win_group gpu_entropy.cu:988
+        232  Error: Write vstore gpu_entropy.cu:1021  <->  Read __nanosleep gpu_entropy.cu:1020
+         72  Error: Read k_entropy_win gpu_entropy.cu:1087  <->  Write win_group gpu_entropy.cu:988
+          4  Warning: Read [clone k_recon] rc_chroma k_recon.cuh:1373  <->  Write [clone k_recon] rc_chroma k_recon.cuh:1374
+== v0.6 main 6a4956e, --yuv 444 --depth 10: RACECHECK SUMMARY: 8 hazards displayed (8 errors, 0 warnings) | rc 0 616 s
+    7133332  Error: Read k_entropy_win gpu_entropy.cu:1090  <->  Write win_group gpu_entropy.cu:992
+    1968372  Error: Read k_entropy_win gpu_entropy.cu:1090  <->  Write k_entropy_win gpu_entropy.cu:1061
+     282824  Error: Read vload gpu_entropy.cu:1020  <->  Write vstore gpu_entropy.cu:1021
+     251264  Error: Write vstore gpu_entropy.cu:1021  <->  Read vload gpu_entropy.cu:1020
+     230260  Error: Read k_entropy_win gpu_entropy.cu:1087  <->  Write win_group gpu_entropy.cu:992
+      63340  Error: Read k_entropy_win gpu_entropy.cu:1087  <->  Write k_entropy_win gpu_entropy.cu:1061
+       1520  Error: Read k_entropy_win gpu_entropy.cu:1090  <->  Write win_group gpu_entropy.cu:988
+        256  Error: Write vstore gpu_entropy.cu:1021  <->  Read __nanosleep gpu_entropy.cu:1020
+         88  Error: Read k_entropy_win gpu_entropy.cu:1087  <->  Write win_group gpu_entropy.cu:988
+== 63683ef (#36 merged, before #37), default: RACECHECK SUMMARY: 8 hazards displayed (8 errors, 0 warnings) | rc 0 590 s
+    7046576  Error: Read k_entropy_win gpu_entropy.cu:1061  <->  Write k_entropy_win gpu_entropy.cu:1015
+    1927868  Error: Read k_entropy_win gpu_entropy.cu:1061  <->  Write k_entropy_win gpu_entropy.cu:998
+     277904  Error: Read vload gpu_entropy.cu:957  <->  Write vstore gpu_entropy.cu:958
+     245368  Error: Write vstore gpu_entropy.cu:958  <->  Read vload gpu_entropy.cu:957
+     228056  Error: Read k_entropy_win gpu_entropy.cu:1058  <->  Write k_entropy_win gpu_entropy.cu:1015
+      61456  Error: Read k_entropy_win gpu_entropy.cu:1058  <->  Write k_entropy_win gpu_entropy.cu:998
+       1584  Error: Read k_entropy_win gpu_entropy.cu:1061  <->  Write k_entropy_win gpu_entropy.cu:1033
+        256  Error: Write vstore gpu_entropy.cu:958  <->  Read __nanosleep gpu_entropy.cu:957
+         72  Error: Read k_entropy_win gpu_entropy.cu:1058  <->  Write k_entropy_win gpu_entropy.cu:1033
+== 980cc10 (#37 merged), default: RACECHECK SUMMARY: 103 hazards displayed (100 errors, 3 warnings) | rc 0 551 s
+    7046576  Error: Read k_entropy_win gpu_entropy.cu:1061  <->  Write k_entropy_win gpu_entropy.cu:1015
+    1927868  Error: Read k_entropy_win gpu_entropy.cu:1061  <->  Write k_entropy_win gpu_entropy.cu:998
+     277952  Error: Read vload gpu_entropy.cu:957  <->  Write vstore gpu_entropy.cu:958
+     245112  Error: Write vstore gpu_entropy.cu:958  <->  Read vload gpu_entropy.cu:957
+     228056  Error: Read k_entropy_win gpu_entropy.cu:1058  <->  Write k_entropy_win gpu_entropy.cu:1015
+      61456  Error: Read k_entropy_win gpu_entropy.cu:1058  <->  Write k_entropy_win gpu_entropy.cu:998
+      52016  Error: Read [clone k_recon] rc_chroma k_recon.cuh:1373  <->  Write [clone k_recon] rc_chroma k_recon.cuh:1374
+       1584  Error: Read k_entropy_win gpu_entropy.cu:1061  <->  Write k_entropy_win gpu_entropy.cu:1033
+        256  Error: Write vstore gpu_entropy.cu:958  <->  Read __nanosleep gpu_entropy.cu:957
+         72  Error: Read k_entropy_win gpu_entropy.cu:1058  <->  Write k_entropy_win gpu_entropy.cu:1033
+         20  Warning: Read [clone k_recon] rc_chroma k_recon.cuh:1373  <->  Write [clone k_recon] rc_chroma k_recon.cuh:1374

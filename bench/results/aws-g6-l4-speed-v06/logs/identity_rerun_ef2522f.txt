@@ -1,0 +1,8 @@
+rerun 23:35:46
+webp_default: inputs 7, files 7 / 7, differ 0, skipped 0, rc 0/0, digest 73245a4e4383e2c4, opts [] 
+webp_lossless: inputs 7, files 7 / 7, differ 0, skipped 0, rc 0/0, digest fca5473f754de376, opts [--lossless] 
+mixed_list: inputs 33, files 33 / 33, differ 0, skipped 0, rc 0/0, digest 4fe366312c129c3e, opts [] 
+single_file: inputs 316379, files 0 / 0, differ 0, skipped 302301, rc 0/127, digest e3b0c44298fc1c14, opts [single_file /home/ubuntu/old/build/av1gpu /home/ubuntu/new/build/av1gpu] 
+single_file: inputs 316379, files 0 / 0, differ 0, skipped 302301, rc 0/127, digest e3b0c44298fc1c14, opts [444 --depth 10] 
+single_file: inputs 316379, files 0 / 0, differ 0, skipped 302301, rc 0/127, digest e3b0c44298fc1c14, opts [slow] 
+RERUN_DONE

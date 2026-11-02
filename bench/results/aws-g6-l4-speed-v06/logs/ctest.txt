@@ -1,0 +1,43 @@
+Test project /home/ubuntu/new/build
+    Start 1: fuzz_dav1d_aomdec
+    Start 2: fuzz_lossless
+    Start 3: avif_alpha
+    Start 4: gate_cfl_edge
+1/5 Test #3: avif_alpha .......................   Passed    0.21 sec
+    Start 5: batch_skip_unreadable
+2/5 Test #4: gate_cfl_edge ....................   Passed    3.09 sec
+3/5 Test #2: fuzz_lossless ....................   Passed    4.06 sec
+4/5 Test #5: batch_skip_unreadable ............   Passed    4.13 sec
+5/5 Test #1: fuzz_dav1d_aomdec ................   Passed    7.60 sec
+
+100% tests passed, 0 tests failed out of 5
+
+Total Test time (real) =   7.60 sec
+ctest rc 0 (8 s)
+GPU FUZZ (run_batch_device, device arrays, non-blocking stream, 1 scratch allocations) seeds 1..400: 400 cases (131 4:4:4, 80 monochrome, 157 10-bit, 105 lossless), 493 tiles, 53441232 symbols, 3 symbol-capacity errors reported + rerun (+2 reruns over the default bound), order check ok, 0 mismatches -> PASSED
+gpu_fuzz_test rc 0
+GPU FUZZ (run_batch_device, device arrays, non-blocking stream, 4 scratch allocations) seeds 77..276: 200 cases (104 4:4:4, 31 monochrome, 122 10-bit, 62 lossless), 212 tiles, 18934367 symbols, 2 symbol-capacity errors reported + rerun (+2 reruns over the default bound), order check ok, 0 mismatches -> PASSED
+gpu_fuzz_test (444/10/ll) rc 0
+GPU POSTFILTER seeds 1..200: 200 cases (140 with deblocking/CDEF; 4:4:4: 71, 56 with deblocking/CDEF; 10-bit: 74, 46 with deblocking/CDEF), 0 mismatches -> PASSED
+gpu_postfilter_test rc 0
+device: NVIDIA L4 (sm_89)
+1. dequant (incl. quantizer matrices) + inverse transforms: 2048 cases, 0 host/device mismatches (257 flagged non-conformant on both)
+2/3. intra prediction (incl. edge filter/upsampling, filter intra) + CFL: 1024 cases (252 CFL, 129 of them 4:4:4), 0 host/device mismatches
+4. od_ec + CDF adaptation: 128 streams, 507606 symbols, 0 host/device mismatches
+5a. dequant (incl. quantizer matrices) + inverse transforms at 10 bits: 2048 cases, 0 host/device mismatches (576 flagged non-conformant on both)
+5b. intra prediction (incl. edge filter/upsampling, filter intra) + CFL at 10 bits: 1024 cases (275 CFL, 136 of them 4:4:4), 0 host/device mismatches
+6. lossless WHT (8 bits): 200000 blocks, 0 host/device mismatches, 0 in-range residuals not reconstructed exactly, 50548 flagged out of range, 0 wrong flags
+6. lossless WHT (10 bits): 200000 blocks, 0 host/device mismatches, 0 in-range residuals not reconstructed exactly, 49923 flagged out of range, 0 wrong flags
+GPU_DSP_TEST PASSED
+gpu_dsp_test rc 0
+  device-math LUT differs: strength 200 base 62 var 64: 36 vs host 37
+  device-math LUT differs: strength 200 base 232 var 64: 182 vs host 183
+LUT (3 strengths x 255 bases x 1024 variances): device-math 2 differ (informational), uploaded 0 differ
+random planes: 22836 SB results (3 orders), 4794 boosted (TILE order), 0 differ
+tune=iq frame decisions (4:2:0, 4:4:4, monochrome x 255 bases): 0 differ from libaom av1_set_quantizer, 0 device/host differ (rdmult device-math: 3 differ, informational)
+10-bit LUT (3 strengths x 255 x 1024): uploaded 0 differ from the host, host 0 differ from libaom's 10-bit path
+random 10-bit planes: 3869 SB results (TILE order), 1829 boosted, 0 differ; 8x8 variances vs libaom highbd_10: 0 differ
+10-bit tune=iq frame decisions (3 layouts x 255 bases): 0 differ from libaom's high-bitdepth rules
+PASS
+varboost_test rc 0
+CTEST_DONE
