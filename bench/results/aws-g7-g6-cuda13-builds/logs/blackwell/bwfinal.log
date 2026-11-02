@@ -1,0 +1,22 @@
+== start-up
+main134 empty    1.34 s rc=0 cache=1 MB
+main134 warm     1.18 s rc=0
+main134 disabled 1.17 s rc=0
+main134 empty    1.18 s rc=0 cache=1 MB
+main134 warm     1.18 s rc=0
+main134 disabled 1.17 s rc=0
+main134-umd13.4 empty    1.36 s rc=0 cache=1 MB
+main134-umd13.4 warm     1.34 s rc=0
+main134-umd13.4 disabled 1.34 s rc=0
+main134-umd13.4 empty    1.33 s rc=0 cache=1 MB
+main134-umd13.4 warm     1.40 s rc=0
+main134-umd13.4 disabled 1.34 s rc=0
+v050-umd13.4 empty    13.79 s rc=0 cache=334 MB
+v050-umd13.4 warm     1.53 s rc=0
+v050-umd13.4 disabled 13.14 s rc=0
+v050 empty    1.12 s rc=0 cache=1 MB
+v050 warm     1.10 s rc=0
+v050 disabled 1.12 s rc=0
+== PTX JIT forced (595 UMD, then 13.4 UMD)
+forced PTX JIT UMD 595: rc=1 1.58 s, cache 1 MB
+forced PTX JIT UMD 595, warm: rc=1 0.86 s

@@ -331,6 +331,29 @@ project. Before you rely on it, note:
 - Palette mode runs on screen content and flat-colour images that pass its detection (`--palette`). Tools not
   implemented: intra block copy, loop restoration, superres, film grain.
 
+## 📦 Download
+
+Each [release](https://github.com/maddog107/av1gpu/releases) has four builds, each with a `.sha256`. Take the
+CUDA 13 build for your system unless your NVIDIA driver is older than 580:
+
+| File | Built with | NVIDIA driver |
+|---|---|---|
+| `av1gpu-<version>-linux-x86_64.tar.gz` | CUDA 13.4 | 580 or newer |
+| `av1gpu-<version>-linux-x86_64-cuda12.tar.gz` | CUDA 12.9 | 525 or newer |
+| `av1gpu-<version>-windows-x86_64.zip` | CUDA 13.4 | 580 or newer |
+| `av1gpu-<version>-windows-x86_64-cuda12.zip` | CUDA 12.9 | 528 or newer |
+
+All four run on GPUs from Turing to Blackwell (compute capability 7.5 to 12.0) and need only the driver. The
+Linux binaries have the image libraries and nvJPEG linked in; for Windows, see [Windows](#-windows). Both builds
+give the same files. The CUDA 13 build is faster on Blackwell (+14–16 % on an RTX PRO 4500) and starts in
+one to two seconds. With the CUDA 12 build on Blackwell, drivers 615 and newer recompile its kernels when they
+load (a fix for a reconvergence bug). That added 8–15 s to every start without a warm CUDA compute cache
+([#49](https://github.com/maddog107/av1gpu/issues/49)).
+
+A GPU newer than these first has to compile the code from PTX, which took over ten minutes in a test. The
+result is then kept in the CUDA compute cache. That cache holds 1 GB by default and is shared with other CUDA
+programs, so give av1gpu its own, e.g. `CUDA_CACHE_PATH=~/.cache/av1gpu-cuda CUDA_CACHE_MAXSIZE=4294967296`.
+
 ## 🛠️ Building
 
 On Linux you need CUDA 12.0 or newer (12.8 or newer to target Blackwell), CMake 3.24 or newer, a C++17
@@ -348,6 +371,9 @@ cmake --build build
 `-DCMAKE_CUDA_ARCHITECTURES=native` builds only for the GPU in the machine, which is much quicker.
 Leave it out to build a portable binary for compute capability 7.5 through 12.0. The binary links the
 CUDA runtime statically, so at run time it needs only the NVIDIA driver and `libnvjpeg`.
+For Blackwell, build with CUDA 13.3 or newer: from driver 615, NVIDIA recompiles Blackwell kernels built by
+nvcc older than 13.2.2 when they load (a fix for a reconvergence bug), which added 8–15 s to every start
+without a warm compute cache ([#49](https://github.com/maddog107/av1gpu/issues/49)).
 
 Most of the build time goes to the four wavefront kernels (`encoder/src/k_recon*.cu`). How much memory
 and time each one takes depends on the CUDA version and the targets: up to 18 GB with CUDA 12.8, about
@@ -381,9 +407,11 @@ with nvcc.
 
 ## 💻 Windows
 
-From v0.5.0 the [releases](https://github.com/maddog107/av1gpu/releases) also have a Windows x64 zip.
-Unzip it anywhere. `av1gpu.exe` needs only the NVIDIA driver (528 or newer) and the `nvjpeg64_12.dll`
-beside it; the C++ runtime and the image libraries are linked in. The options are the same as on Linux:
+From v0.5.0 the [releases](https://github.com/maddog107/av1gpu/releases) also have Windows x64 zips (see
+[Download](#-download)). The CUDA 13 zip needs driver 580 or newer and carries `nvjpeg64_13.dll`. The
+`-cuda12` zip needs 528 or newer and carries `nvjpeg64_12.dll`. Unzip either anywhere: `av1gpu.exe` needs only
+the driver and that DLL beside it, because the C++ runtime and the image libraries are linked in. The options
+are the same as on Linux:
 
 ```bat
 av1gpu.exe photo.jpg photo.avif
@@ -397,7 +425,8 @@ directories are created as needed.
 Tested on an L4 under Windows Server 2022 (AWS g6.4xlarge): every output of 30 test runs (1,226 files)
 and of the decoder-gate encodes (2,125 files) was byte-identical to the Linux build's. With v0.5.0 it ran at 67–83 % of the Linux speed on the same instance type
 with hardware-accelerated GPU scheduling on (JPEG 86 against 128 MP/s), and slower without it; Windows has not been timed with v0.6
-([results](docs/RESULTS.md#windows)). The GPU must be in WDDM mode, as GeForce and RTX cards are: TCC mode,
+([results](docs/RESULTS.md#windows)). The CUDA 13 and `-cuda12` zips (v0.7.1's code) give the same files as the Linux
+tarballs (224 files each, on driver 582.78). The GPU must be in WDDM mode, as GeForce and RTX cards are: TCC mode,
 the default of data-centre GPUs under NVIDIA's data-centre driver, has no CUDA memory pools, and av1gpu
 stops with an error that says so.
 
@@ -410,17 +439,19 @@ Differences from Linux:
   versions ignore the executable's UTF-8 code page setting).
 
 **Building on Windows.** You need Visual Studio 2022 or its Build Tools with the "Desktop development with
-C++" workload. `tools\windows\build.ps1` gets the rest: the parts of CUDA 12.9 av1gpu uses, from NVIDIA's
-redistributable archives (about 140 MB; `-CudaRoot` uses an installed toolkit instead), and libjpeg-turbo,
-libpng, zlib and libwebp, built static by a pinned vcpkg release. CMake comes with the workload's default
-"C++ CMake tools" component; Ninja is downloaded if it is not there.
+C++" workload. `tools\windows\build.ps1` gets the rest: the parts of CUDA av1gpu uses, from NVIDIA's
+redistributable archives (13.4 by default, about 100 MB; `-CudaVersion 12.9.1` for the `-cuda12` build;
+`-CudaRoot` uses an installed toolkit instead), and libjpeg-turbo, libpng, zlib and libwebp, built static by a
+pinned vcpkg release. CMake comes with the workload's default "C++ CMake tools" component; Ninja is downloaded
+if it is not there.
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File tools\windows\build.ps1 -Archs native
 ```
 
-`build\av1gpu.exe` then needs `nvjpeg64_12.dll` from the toolkit's `bin` folder beside it. Leave out
-`-Archs` for every GPU from Turing to Blackwell; `-Package` makes the release zip.
+`build\av1gpu.exe` then needs the toolkit's `nvjpeg64_13.dll` (in `bin\x64`; CUDA 12: `nvjpeg64_12.dll` in
+`bin`) beside it. Leave out `-Archs` for every GPU from Turing to Blackwell; `-Package` makes the release zip
+(`-PackageSuffix -cuda12` names it as the release does).
 
 ## 🚀 Usage
 

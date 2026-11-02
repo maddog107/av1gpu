@@ -1,18 +1,24 @@
 # Fetch the parts of the CUDA toolkit av1gpu needs (nvcc, cudart, CCCL, nvJPEG) from NVIDIA's redistributable
-# archives into one directory, checking each archive's SHA-256 against NVIDIA's manifest.  About 140 MB instead of
-# the full installer; no administrator rights or Visual Studio integration needed (av1gpu builds with Ninja).
+# archives into one directory, checking each archive's SHA-256 against NVIDIA's manifest.  About 100 MB (CUDA 13.4)
+# or 140 MB (12.9) instead of the full installer; no administrator rights or Visual Studio integration needed
+# (av1gpu builds with Ninja).
 #
-#   powershell -ExecutionPolicy Bypass -File tools\windows\get-cuda.ps1 -Version 12.9.1 -Dest C:\cuda-12.9.1
+#   powershell -ExecutionPolicy Bypass -File tools\windows\get-cuda.ps1 -Version 13.4.3 -Dest C:\cuda-13.4.3
 #
 # Then pass -DCUDAToolkit_ROOT=<Dest> -DCMAKE_CUDA_COMPILER=<Dest>\bin\nvcc.exe to CMake (build.ps1 does).
 param(
-    [string]$Version = "12.9.1",
+    [string]$Version = "13.4.3",
     [string]$Dest = "$PSScriptRoot\..\..\build-deps\cuda-$Version"
 )
 $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"   # Invoke-WebRequest is many times slower with the progress bar
 $base = "https://developer.download.nvidia.com/compute/cuda/redist"
-$components = @("cuda_nvcc", "cuda_cudart", "cuda_cccl", "libnvjpeg", "cuda_profiler_api")
+if ([int]$Version.Split(".")[0] -ge 13) {
+    # CUDA 13 split cuda_nvcc into cuda_nvcc, cuda_crt and libnvvm (cicc), and renamed cuda_cccl to cccl
+    $components = @("cuda_nvcc", "cuda_crt", "libnvvm", "cuda_cudart", "cccl", "libnvjpeg", "cuda_profiler_api")
+} else {
+    $components = @("cuda_nvcc", "cuda_cudart", "cuda_cccl", "libnvjpeg", "cuda_profiler_api")
+}
 
 if (Test-Path "$Dest\bin\nvcc.exe") { Write-Host "CUDA $Version already in $Dest"; exit 0 }
 $tmp = Join-Path ([System.IO.Path]::GetTempPath()) "av1gpu-cuda-$Version"

@@ -1,20 +1,51 @@
 name: Release
 
-# A tag v* builds the portable Linux binary and the Windows zip and attaches them to a GitHub release. Pull
-# requests that touch the build only build them (download them from the run's artifacts to test on a GPU).
+# A tag v* builds the portable Linux tarballs and Windows zips, each with CUDA 13 and with CUDA 12 (-cuda12, for older
+# drivers), and attaches them to a GitHub release. Pull requests that touch the build only build them (download them
+# from the run's artifacts to test on a GPU).
 on:
   push:
     tags: ["v*"]
   pull_request:
-    paths: [".github/workflows/release.yml", "CMakeLists.txt", "tools/windows/**"]
+    paths: [".github/workflows/release.yml", ".github/actions/**", "CMakeLists.txt", "tools/windows/**"]
   workflow_dispatch:
+    inputs:
+      ccache:
+        description: Compile through ccache, as pull requests do
+        type: boolean
+        default: false
+
+# a newer push to a pull request cancels its older run (tag and manual runs each get their own group)
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  # the Linux build, the same in the k_recon jobs and the package jobs
+  LINUX_PACKAGES: python3-pip pkg-config g++ file curl libjpeg-turbo8-dev libpng-dev libwebp-dev zlib1g-dev
+  LINUX_CMAKE: -G Ninja -DCMAKE_BUILD_TYPE=Release -DAV1GPU_STATIC_DEPS=ON -DAV1GPU_TESTS=OFF
+  # pull requests (and manual runs that ask for it) compile through ccache (.github/actions/ccache); tags compile clean
+  CCACHE: ${{ github.event_name == 'pull_request' || inputs.ccache == true }}
 
 jobs:
-  linux-x86_64:
+  # every architecture from Turing to Blackwell (the CMakeLists default): with CUDA 13.4 each k_recon translation unit
+  # takes ~9 GB and 25-45 min to compile, and a 16 GB runner can only compile them one at a time (2.5 h in all).  So
+  # they compile in jobs of their own (CUDA 12.9's, 7-11 min each, two per job), which the package jobs link
+  # (-DAV1GPU_RECON_OBJECTS)
+  linux-recon:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {cuda: "13.4.3", recon: "k_recon"}
+          - {cuda: "13.4.3", recon: "k_recon_444_8"}
+          - {cuda: "13.4.3", recon: "k_recon_420_10"}
+          - {cuda: "13.4.3", recon: "k_recon_444_10"}
+          - {cuda: "12.9.1", recon: "k_recon k_recon_444_8"}
+          - {cuda: "12.9.1", recon: "k_recon_420_10 k_recon_444_10"}
+    name: linux-recon (CUDA ${{ matrix.cuda }}, ${{ matrix.recon }})
     runs-on: ubuntu-24.04
-    # Ubuntu 22.04 (glibc 2.35), so the binary also runs on newer distributions; CUDA 12.9 runs on
-    # drivers from 525 up and still targets Turing (sm_75)
-    container: nvidia/cuda:12.9.1-devel-ubuntu22.04
+    container: nvidia/cuda:${{ matrix.cuda }}-devel-ubuntu22.04
     defaults:
       run:
         shell: bash
@@ -22,17 +53,74 @@ jobs:
       - uses: actions/checkout@v4
       - run: |
           apt-get update
-          DEBIAN_FRONTEND=noninteractive apt-get install -y python3-pip pkg-config g++ file \
-            libjpeg-turbo8-dev libpng-dev libwebp-dev zlib1g-dev
+          DEBIAN_FRONTEND=noninteractive apt-get install -y $LINUX_PACKAGES
           pip3 install cmake==3.31.6 ninja    # Ubuntu 22.04's CMake is older than 3.24
-      # every architecture from Turing to Blackwell (the CMakeLists default); -j 1 because each k_recon
-      # translation unit needs several GB per compile and two at once ran the runner out of memory
-      - run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DAV1GPU_STATIC_DEPS=ON -DAV1GPU_TESTS=OFF
-      - run: cmake --build build -j 1
+      - if: env.CCACHE == 'true'
+        uses: ./.github/actions/ccache
+        with:
+          key: ccache-release-ubuntu22.04-cuda${{ matrix.cuda }}-all-nvcc-${{ strategy.job-index }}
+      - run: cmake -S . -B build $LINUX_CMAKE ${{ env.CCACHE == 'true' && '-DCMAKE_CUDA_COMPILER_LAUNCHER=ccache' || '' }}
+      - env:
+          RECON: ${{ matrix.recon }}
+        run: cmake --build build -j 1 --target $(for s in $RECON; do echo CMakeFiles/av1gpu_recon.dir/encoder/src/$s.cu.o; done)
+      - if: env.CCACHE == 'true'
+        run: ccache -sv && ccache --evict-older-than $(( $(date +%s) - CCACHE_T0 ))s
+      - uses: actions/upload-artifact@v4
+        with:
+          name: recon-linux-${{ matrix.cuda }}-${{ strategy.job-index }}
+          path: build/CMakeFiles/av1gpu_recon.dir/encoder/src/*.cu.o
+          if-no-files-found: error
+          retention-days: 1
+
+  linux-x86_64:
+    needs: linux-recon
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # CUDA 13.4, driver 580 or newer (and still Turing, sm_75).  On Blackwell, drivers from R615 recompile kernels
+          # built with nvcc older than 13.2.2 when they load (a reconvergence fix; with 12.9 that took 8-15 s at every
+          # start without a warm compute cache, #49); 13.4's code is also faster there
+          - cuda: "13.4.3"
+            suffix: ""
+          # CUDA 12.9 for drivers from 525 up
+          - cuda: "12.9.1"
+            suffix: "-cuda12"
+    name: linux-x86_64${{ matrix.suffix }}
+    runs-on: ubuntu-24.04
+    # Ubuntu 22.04 (glibc 2.35), so the binary also runs on newer distributions
+    container: nvidia/cuda:${{ matrix.cuda }}-devel-ubuntu22.04
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y $LINUX_PACKAGES
+          pip3 install cmake==3.31.6 ninja    # Ubuntu 22.04's CMake is older than 3.24
+      - if: env.CCACHE == 'true'
+        uses: ./.github/actions/ccache
+        with:
+          key: ccache-release-ubuntu22.04-cuda${{ matrix.cuda }}-all-nvcc-rest
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: recon-linux-${{ matrix.cuda }}-*
+          merge-multiple: true
+          path: recon
+      - run: |
+          cmake -S . -B build $LINUX_CMAKE -DAV1GPU_RECON_OBJECTS=$PWD/recon \
+            ${{ env.CCACHE == 'true' && '-DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_CUDA_COMPILER_LAUNCHER=ccache' || '' }}
+      # the rest, without the k_recon files: ~3 GB at -j 4
+      - run: cmake --build build -j 4
+      - if: env.CCACHE == 'true'
+        run: ccache -sv && ccache --evict-older-than $(( $(date +%s) - CCACHE_T0 ))s
       - name: Package
+        env:
+          SUFFIX: ${{ matrix.suffix }}
         run: |
           V=${GITHUB_REF_NAME#v}; case "$GITHUB_REF" in refs/tags/*) ;; *) V=dev-${GITHUB_SHA::7};; esac
-          D=av1gpu-$V-linux-x86_64
+          D=av1gpu-$V-linux-x86_64$SUFFIX
           mkdir $D && cp build/av1gpu LICENSE THIRD_PARTY_NOTICES.md $D/ && strip --strip-debug $D/av1gpu
           ldd $D/av1gpu | tee ldd.txt
           if grep -E "jpeg|png|webp|libz|cudart" ldd.txt; then echo "not linked in statically"; exit 1; fi
@@ -44,7 +132,19 @@ jobs:
           name: ${{ env.PKG }}
           path: ${{ env.PKG }}.tar.gz*
 
-  windows-x86_64:
+  # Windows: the k_recon objects as on Linux, with tools/windows/build.ps1 -Target
+  windows-recon:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {cuda: "13.4.3", recon: "k_recon"}
+          - {cuda: "13.4.3", recon: "k_recon_444_8"}
+          - {cuda: "13.4.3", recon: "k_recon_420_10"}
+          - {cuda: "13.4.3", recon: "k_recon_444_10"}
+          - {cuda: "12.9.1", recon: "k_recon k_recon_444_8"}
+          - {cuda: "12.9.1", recon: "k_recon_420_10 k_recon_444_10"}
+    name: windows-recon (CUDA ${{ matrix.cuda }}, ${{ matrix.recon }})
     runs-on: windows-2022
     defaults:
       run:
@@ -57,14 +157,74 @@ jobs:
         with:
           path: build-deps/vcpkg-archives
           key: vcpkg-x64-windows-static-${{ hashFiles('tools/windows/build.ps1') }}
-      # every architecture from Turing to Blackwell; CUDA 12.9 as on Linux; the zip holds av1gpu.exe (C++ runtime and
-      # image libraries linked in) and nvjpeg64_12.dll, so only the NVIDIA driver is needed
+          restore-keys: vcpkg-x64-windows-static-
+      - if: env.CCACHE == 'true'
+        uses: ./.github/actions/ccache
+        with:
+          key: ccache-release-windows-2022-cuda${{ matrix.cuda }}-all-msvc-${{ strategy.job-index }}
+      - env:
+          CUDA_VERSION: ${{ matrix.cuda }}
+          RECON: ${{ matrix.recon }}
+        run: |
+          $t = $env:RECON.Split(" ") | ForEach-Object { "CMakeFiles/av1gpu_recon.dir/encoder/src/$_.cu.obj" }
+          ./tools/windows/build.ps1 -CudaVersion $env:CUDA_VERSION -Target $t -Ccache:($env:CCACHE -eq 'true')
+      - if: env.CCACHE == 'true'
+        run: ccache -sv; ccache --evict-older-than "$([DateTimeOffset]::UtcNow.ToUnixTimeSeconds() - [long]$env:CCACHE_T0)s"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: recon-windows-${{ matrix.cuda }}-${{ strategy.job-index }}
+          path: build/CMakeFiles/av1gpu_recon.dir/encoder/src/*.cu.obj
+          if-no-files-found: error
+          retention-days: 1
+
+  windows-x86_64:
+    needs: windows-recon
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - cuda: "13.4.3"
+            suffix: ""
+          - cuda: "12.9.1"
+            suffix: "-cuda12"
+    name: windows-x86_64${{ matrix.suffix }}
+    runs-on: windows-2022
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}\build-deps\vcpkg-archives
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: build-deps/vcpkg-archives
+          key: vcpkg-x64-windows-static-${{ hashFiles('tools/windows/build.ps1') }}
+          restore-keys: vcpkg-x64-windows-static-
+      - if: env.CCACHE == 'true'
+        uses: ./.github/actions/ccache
+        with:
+          key: ccache-release-windows-2022-cuda${{ matrix.cuda }}-all-msvc-rest
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: recon-windows-${{ matrix.cuda }}-*
+          merge-multiple: true
+          path: recon
+      # every architecture from Turing to Blackwell, CUDA as in the Linux job (13.x: driver 580+, 12.9: 528+); the
+      # zip holds av1gpu.exe (C++ runtime and image libraries linked in) and the toolkit's nvjpeg64_<major>.dll, so
+      # only the NVIDIA driver is needed
       - name: Build and package
+        env:
+          CUDA_VERSION: ${{ matrix.cuda }}
+          SUFFIX: ${{ matrix.suffix }}
         run: |
           $v = "$env:GITHUB_REF_NAME".TrimStart("v")
           if ("$env:GITHUB_REF" -notlike "refs/tags/*") { $v = "dev-" + "$env:GITHUB_SHA".Substring(0, 7) }
-          ./tools/windows/build.ps1 -Jobs 2 -Package -PackageVersion $v
-          "PKG=av1gpu-$v-windows-x86_64" >> $env:GITHUB_ENV
+          ./tools/windows/build.ps1 -Jobs 4 -Package -PackageVersion $v -CudaVersion $env:CUDA_VERSION -PackageSuffix "$env:SUFFIX" `
+            -ReconObjects "$pwd\recon" -Ccache:($env:CCACHE -eq 'true')
+          "PKG=av1gpu-$v-windows-x86_64$env:SUFFIX" >> $env:GITHUB_ENV
+      - if: env.CCACHE == 'true'
+        run: ccache -sv; ccache --evict-older-than "$([DateTimeOffset]::UtcNow.ToUnixTimeSeconds() - [long]$env:CCACHE_T0)s"
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ env.PKG }}
@@ -79,10 +239,11 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
+          pattern: av1gpu-*
           merge-multiple: true
       - env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --title "av1gpu $GITHUB_REF_NAME" \
-            --notes "Linux x86_64 and Windows x64 binaries for NVIDIA GPUs from Turing (RTX 20, T4) to Blackwell. Need only the NVIDIA driver (525 or newer on Linux, 528 or newer on Windows). See the README for usage." \
+            --notes "Linux x86_64 and Windows x64 binaries for NVIDIA GPUs from Turing (RTX 20, T4) to Blackwell; they need only the NVIDIA driver. Pick the CUDA 13 builds (no suffix) if your driver is 580 or newer: they are faster, and on Blackwell with driver 615 or newer the driver does not recompile them at every start. The -cuda12 builds are for older drivers (525 or newer on Linux, 528 or newer on Windows). See the README for usage." \
             av1gpu-*.tar.gz* av1gpu-*.zip*

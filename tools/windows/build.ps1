@@ -6,18 +6,23 @@
 #
 #   powershell -ExecutionPolicy Bypass -File tools\windows\build.ps1              # all GPUs, Turing .. Blackwell
 #   powershell -ExecutionPolicy Bypass -File tools\windows\build.ps1 -Archs native -Package
+#   powershell -ExecutionPolicy Bypass -File tools\windows\build.ps1 -CudaVersion 12.9.1 -PackageSuffix -cuda12
 #
-# The executable is build\av1gpu.exe; it needs nvjpeg64_*.dll from the toolkit beside it (-Package puts both in
-# av1gpu-<version>-windows-x86_64.zip, with a .sha256).
+# The executable is build\av1gpu.exe; it needs the toolkit's nvjpeg64_<CUDA major>.dll beside it (-Package puts both
+# in av1gpu-<version>-windows-x86_64<suffix>.zip, with a .sha256).  CUDA 13 needs driver 580 or newer, 12.9 528.
 param(
     [string]$Archs = "",                 # CMAKE_CUDA_ARCHITECTURES; empty: the CMakeLists default
     [string]$CudaRoot = "",              # a CUDA 12.x / 13.x toolkit; empty: get-cuda.ps1 -Version $CudaVersion
-    [string]$CudaVersion = "12.9.1",
+    [string]$CudaVersion = "13.4.3",
     [string]$VcpkgRoot = "",             # an existing vcpkg checkout; empty: build-deps\vcpkg-<tag>
     [string]$BuildDir = "build",
     [int]$Jobs = 0,                      # parallel compile jobs (0: Ninja's default)
+    [string[]]$Target = @(),             # build only these targets or files (the release: k_recon objects in jobs of their own)
+    [string]$ReconObjects = "",          # link the k_recon objects from this directory (-DAV1GPU_RECON_OBJECTS)
+    [switch]$Ccache,                     # compile through ccache (on the PATH)
     [switch]$Package,
-    [string]$PackageVersion = ""         # zip name: av1gpu-<this>-windows-x86_64 (default: the CMake project version)
+    [string]$PackageVersion = "",        # zip name: av1gpu-<this>-windows-x86_64 (default: the CMake project version)
+    [string]$PackageSuffix = ""          # appended to the zip name, e.g. -cuda12
 )
 $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"
@@ -34,7 +39,7 @@ function Run($exe) {
     if ($LASTEXITCODE -ne 0) { throw "$exe failed with exit code $LASTEXITCODE" }
 }
 
-# MSVC environment: Visual Studio 2022 (CUDA 12.9 accepts its compilers, 19.3x / 19.4x)
+# MSVC environment: Visual Studio 2022 (CUDA 12.9 and 13.x accept its compilers, 19.3x / 19.4x)
 if (-not (Get-Command cl.exe -ErrorAction SilentlyContinue)) {
     $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
     $vs = & $vswhere -version "[17.0,18.0)" -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 `
@@ -82,29 +87,37 @@ $cfg = @("-S", $repo, "-B", $BuildDir, "-G", "Ninja", "-DCMAKE_BUILD_TYPE=Releas
     "-DCMAKE_TOOLCHAIN_FILE=$VcpkgRoot\scripts\buildsystems\vcpkg.cmake", "-DVCPKG_TARGET_TRIPLET=$triplet",
     "-DCUDAToolkit_ROOT=$CudaRoot", "-DCMAKE_CUDA_COMPILER=$CudaRoot\bin\nvcc.exe")
 if ($Archs) { $cfg += "-DCMAKE_CUDA_ARCHITECTURES=$Archs" }
+if ($ReconObjects) { $cfg += "-DAV1GPU_RECON_OBJECTS=$ReconObjects" }
+if ($Ccache) {
+    $cfg += @("-DCMAKE_C_COMPILER_LAUNCHER=ccache", "-DCMAKE_CXX_COMPILER_LAUNCHER=ccache", "-DCMAKE_CUDA_COMPILER_LAUNCHER=ccache")
+}
 Run cmake @cfg
 $b = @("--build", $BuildDir)
 if ($Jobs -gt 0) { $b += @("-j", "$Jobs") }
+if ($Target) { $b += @("--target") + $Target }
 Run cmake @b
 
 if ($Package) {
     if (-not $PackageVersion) {
         $PackageVersion = (Select-String -Path "$repo\CMakeLists.txt" -Pattern 'project\(av1gpu VERSION ([0-9.]+)').Matches[0].Groups[1].Value
     }
-    $name = "av1gpu-$PackageVersion-windows-x86_64"
+    $name = "av1gpu-$PackageVersion-windows-x86_64$PackageSuffix"
     $pkg = Join-Path $BuildDir $name
     if (Test-Path $pkg) { Remove-Item -Recurse -Force $pkg }
     New-Item -ItemType Directory -Force -Path $pkg | Out-Null
     Copy-Item "$BuildDir\av1gpu.exe", "$repo\LICENSE", "$repo\THIRD_PARTY_NOTICES.md" $pkg
-    $nvjpeg = Get-ChildItem "$CudaRoot\bin" -Recurse -Filter "nvjpeg64_*.dll" | Select-Object -First 1
-    if (-not $nvjpeg) { throw "nvjpeg64_*.dll not found under $CudaRoot\bin" }
-    Copy-Item $nvjpeg.FullName $pkg
     # only Windows system DLLs and nvJPEG: no Visual C++ runtime, no CUDA runtime DLL
     $imports = (dumpbin /nologo /dependents "$pkg\av1gpu.exe" | Select-String -Pattern '^\s+(\S+\.dll)$').Matches |
         ForEach-Object { $_.Groups[1].Value }
     Write-Host "av1gpu.exe imports: $($imports -join ', ')"
     $bad = $imports | Where-Object { $_ -match '^(msvcp|vcruntime|ucrtbase|api-ms-win-crt|cudart|jpeg|turbojpeg|libpng|zlib|libwebp)' }
     if ($bad) { throw "not linked in statically: $($bad -join ', ')" }
+    # the nvJPEG DLL the executable delay-loads (nvjpeg64_<CUDA major>.dll), from the toolkit (CUDA 13: bin\x64)
+    $dll = $imports | Where-Object { $_ -match '^nvjpeg64_\d+\.dll$' } | Select-Object -First 1
+    if (-not $dll) { throw "av1gpu.exe does not import nvjpeg64_*.dll" }
+    $nvjpeg = Get-ChildItem "$CudaRoot\bin" -Recurse -Filter $dll | Select-Object -First 1
+    if (-not $nvjpeg) { throw "$dll not found under $CudaRoot\bin" }
+    Copy-Item $nvjpeg.FullName $pkg
     cmd /c "`"$pkg\av1gpu.exe`" --help >nul 2>&1"
     if ($LASTEXITCODE -ne 0) { throw "av1gpu.exe --help failed ($LASTEXITCODE)" }
     $zip = Join-Path $BuildDir "$name.zip"

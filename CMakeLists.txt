@@ -16,7 +16,7 @@ if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
   set(AV1GPU_DEFAULT_ARCHS ON)
 endif()
 
-project(av1gpu VERSION 0.7.0 LANGUAGES C CXX)
+project(av1gpu VERSION 0.7.1 LANGUAGES C CXX)
 
 option(AV1GPU_CUDA "Build the CUDA encoder" ON)
 if(WIN32)
@@ -104,6 +104,10 @@ if(CMAKE_CUDA_COMPILER_ID STREQUAL "Clang")
   # a toolkit newer than it knows, but would warn about that in every file
   add_compile_options($<$<COMPILE_LANGUAGE:CUDA>:-Wno-unknown-cuda-version>)
 endif()
+if(MSVC AND CUDAToolkit_VERSION VERSION_GREATER_EQUAL 13)
+  # CUDA 13's CCCL (cub) stops with an error under MSVC's traditional preprocessor
+  add_compile_options("$<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=/Zc:preprocessor>")
+endif()
 # nvcc only: constexpr host functions (std::min, ...) callable from device code; Clang allows that by default
 set(AV1GPU_CUDA_OPTIONS $<$<AND:$<COMPILE_LANGUAGE:CUDA>,$<CUDA_COMPILER_ID:NVIDIA>>:--expt-relaxed-constexpr>)
 if(AV1GPU_STATIC_DEPS AND NOT WIN32)
@@ -152,29 +156,48 @@ target_link_libraries(gpujpegingest PUBLIC CUDA::cudart_static ${AV1GPU_NVJPEG} 
 # CUDA 13.2 for the default targets (ptxas for sm_100 / sm_120), under 2 GB with CUDA 12.9 / 13.0 or for one older target
 # (L4 instance, 2026-10-31).  So with Ninja at most AV1GPU_RECON_JOBS of them compile at once (the rest of the build
 # stays parallel).  Default: one per 20 GB of memory available at configure time, 1-4.
-if(NOT DEFINED AV1GPU_RECON_JOBS)
-  cmake_host_system_information(RESULT _av1gpu_mem_mib QUERY AVAILABLE_PHYSICAL_MEMORY)
-  math(EXPR _av1gpu_recon_jobs "${_av1gpu_mem_mib} / 20480")
-  if(_av1gpu_recon_jobs LESS 1)
-    set(_av1gpu_recon_jobs 1)
-  elseif(_av1gpu_recon_jobs GREATER 4)
-    set(_av1gpu_recon_jobs 4)
-  endif()
-  set(AV1GPU_RECON_JOBS ${_av1gpu_recon_jobs} CACHE STRING "k_recon files compiled at once (up to ~18 GB of memory each)")
-  message(STATUS "av1gpu: ${_av1gpu_mem_mib} MiB available, compiling ${AV1GPU_RECON_JOBS} k_recon file(s) at once")
-endif()
-set_property(GLOBAL APPEND PROPERTY JOB_POOLS av1gpu_recon=${AV1GPU_RECON_JOBS})
-add_library(av1gpu_recon OBJECT
+# AV1GPU_RECON_OBJECTS=<dir> links k_recon.cu.o, k_recon_444_8.cu.o, ... (.obj with MSVC) from <dir> instead: each
+# built separately in this same configuration, as the target CMakeFiles/av1gpu_recon.dir/encoder/src/<file>.cu.o
+# (the release workflow compiles the four in parallel jobs)
+set(AV1GPU_RECON_SOURCES
   encoder/src/k_recon.cu encoder/src/k_recon_444_8.cu encoder/src/k_recon_420_10.cu encoder/src/k_recon_444_10.cu)
-set_property(TARGET av1gpu_recon PROPERTY JOB_POOL_COMPILE av1gpu_recon)
-target_include_directories(av1gpu_recon PRIVATE encoder/src)
-target_compile_options(av1gpu_recon PRIVATE ${AV1GPU_CUDA_OPTIONS})
-target_link_libraries(av1gpu_recon PRIVATE av1f av1core_gpu gpujpegingest PNG::PNG ${AV1GPU_WEBP} Threads::Threads)
+set(AV1GPU_RECON_OBJECTS "" CACHE PATH "Directory with the prebuilt k_recon objects (empty: compile them)")
+if(AV1GPU_RECON_OBJECTS)
+  set(_av1gpu_recon_objects "")
+  foreach(_src ${AV1GPU_RECON_SOURCES})
+    get_filename_component(_obj ${_src} NAME)
+    set(_obj "${AV1GPU_RECON_OBJECTS}/${_obj}${CMAKE_CUDA_OUTPUT_EXTENSION}")
+    if(NOT EXISTS "${_obj}")
+      message(FATAL_ERROR "AV1GPU_RECON_OBJECTS: ${_obj} not found")
+    endif()
+    list(APPEND _av1gpu_recon_objects "${_obj}")
+  endforeach()
+  message(STATUS "av1gpu: k_recon objects from ${AV1GPU_RECON_OBJECTS}")
+else()
+  if(NOT DEFINED AV1GPU_RECON_JOBS)
+    cmake_host_system_information(RESULT _av1gpu_mem_mib QUERY AVAILABLE_PHYSICAL_MEMORY)
+    math(EXPR _av1gpu_recon_jobs "${_av1gpu_mem_mib} / 20480")
+    if(_av1gpu_recon_jobs LESS 1)
+      set(_av1gpu_recon_jobs 1)
+    elseif(_av1gpu_recon_jobs GREATER 4)
+      set(_av1gpu_recon_jobs 4)
+    endif()
+    set(AV1GPU_RECON_JOBS ${_av1gpu_recon_jobs} CACHE STRING "k_recon files compiled at once (up to ~18 GB of memory each)")
+    message(STATUS "av1gpu: ${_av1gpu_mem_mib} MiB available, compiling ${AV1GPU_RECON_JOBS} k_recon file(s) at once")
+  endif()
+  set_property(GLOBAL APPEND PROPERTY JOB_POOLS av1gpu_recon=${AV1GPU_RECON_JOBS})
+  add_library(av1gpu_recon OBJECT ${AV1GPU_RECON_SOURCES})
+  set_property(TARGET av1gpu_recon PROPERTY JOB_POOL_COMPILE av1gpu_recon)
+  target_include_directories(av1gpu_recon PRIVATE encoder/src)
+  target_compile_options(av1gpu_recon PRIVATE ${AV1GPU_CUDA_OPTIONS})
+  target_link_libraries(av1gpu_recon PRIVATE av1f av1core_gpu gpujpegingest PNG::PNG ${AV1GPU_WEBP} Threads::Threads)
+  set(_av1gpu_recon_objects $<TARGET_OBJECTS:av1gpu_recon>)
+endif()
 
 # encoder: analysis, partition DP, wavefront reconstruction, batching
 add_library(av1gpu_encoder STATIC
   encoder/src/k_misc.cu encoder/src/k_an_a.cu encoder/src/k_an_b.cu encoder/src/k_an_c.cu encoder/src/k_an_d.cu
-  encoder/src/k_an_uv.cu $<TARGET_OBJECTS:av1gpu_recon> encoder/src/k_lossless.cu encoder/src/k_pal.cu encoder/src/pipeline.cpp
+  encoder/src/k_an_uv.cu ${_av1gpu_recon_objects} encoder/src/k_lossless.cu encoder/src/k_pal.cu encoder/src/pipeline.cpp
   encoder/src/imageio.cpp encoder/src/entropy_gpu.cpp encoder/src/entropy_dev.cu encoder/src/batch.cpp)
 target_include_directories(av1gpu_encoder PUBLIC encoder/src)
 target_compile_options(av1gpu_encoder PRIVATE
