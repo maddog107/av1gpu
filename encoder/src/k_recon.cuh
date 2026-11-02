@@ -245,7 +245,6 @@ __device__ __forceinline__ int rc_pred(const RcShared<BD> &S, int plane, int c, 
         const int v = rc_cflL(S.u)[i * cw + j];
         return av1g_clip1<BD>(S.dcv[plane] + av1g_round2signed(alpha * (v - S.cflAvg), 6));
     }
-    if (pal_cand(c)) return S.palCol[S.palMap[i * cw + j]];   // luma palette (the block's tx = the block)
     const int m = cand_mode(c);
     if (m == AV1G_DC_PRED) return S.dcv[plane];
     if (slot >= 0 && S.edgeFilter && av1g_is_directional(m))
@@ -381,6 +380,16 @@ __device__ float rc_residual(int W, int H, RcShared<BD> &S, int plane, int c, bo
         __syncwarp();
         return warp_sum(e);
     }
+    if (plane == 0 && pal_cand(c)) {   // luma palette (one tx block of the block's size): the colours of the map
+        for (int p = lane; p < W * H; p += 32) {
+            const int i = p >> T.lw, j = p & (W - 1);
+            const int r = (int)src[i * sp + j] - (int)S.palCol[S.palMap[p]];
+            res[p] = (int16_t)r;
+            e += (float)(r * r);
+        }
+        __syncwarp();
+        return warp_sum(e);
+    }
     rc_prepare_edges(S, plane, c, cfl, T.lw, T.lh);
     for (int p = lane; p < W * H; p += 32) {
         const int i = p >> T.lw, j = p & (W - 1);
@@ -498,6 +507,8 @@ __device__ void rc_final_quant(int W, int H, RcShared<BD> &S, const EvalIn &e, i
     float *tmp = big ? BG.tmp : S.u.w[0].tmp;
     if (plane == 0 && is_fi(c)) {
         if (tid < 32) rc_residual<BD>(W, H, S, plane, c, cfl, alpha, src, sp, res, (av1g_pixel_t(BD) *)tmp);
+    } else if (plane == 0 && pal_cand(c)) {
+        for (int p = tid; p < W * H; p += RC_NT) res[p] = (int16_t)((int)src[(p >> T.lw) * sp + (p & (W - 1))] - (int)S.palCol[S.palMap[p]]);
     } else {
         if (tid < 32) rc_prepare_edges<BD>(S, plane, c, cfl, T.lw, T.lh);
         __syncthreads();
@@ -576,6 +587,11 @@ __device__ void rc_write_pred(int W, int H, const RcShared<BD> &S, int plane, in
     if (plane == 0 && is_fi(c)) {
         if (g.t == 0)
             av1g_predict_filter_intra<BD>(c - 128, T.lw, T.lh, S.ea[0] + AV1G_EDGE_OFF, S.el[0] + AV1G_EDGE_OFF, dst, pitch);
+        g.sync();
+        return;
+    }
+    if (plane == 0 && pal_cand(c)) {
+        for (int p = g.t; p < W * H; p += g.nt) dst[(p >> T.lw) * pitch + (p & (W - 1))] = (av1g_pixel_t(BD))S.palCol[S.palMap[p]];
         g.sync();
         return;
     }
@@ -689,6 +705,39 @@ __device__ __forceinline__ void rc_tick(const GpBatch &B, const GpParams &P, int
 
 // ---------------------------------------------------------------------------
 // luma of one block (tx size = block size, tx_depth 0)
+// the luma palette of candidate c (pal_dev.cuh) for the block at (x, y): colours, its map in the SB's colour-map slot (at
+// S.nMap) and its bits, rebuilt from the source exactly as k_pal built it (warp 0; histogram scratch in the union).  Not
+// inlined: it stays out of rc_luma's register allocation.  The analysis only proposes palettes of 2 or more colours, and
+// this rebuilds the same one; should it ever come out smaller, a 2-colour palette keeps the block valid.
+template <int BD>
+__device__ __noinline__ void rc_pal_prepare(RcShared<BD> &S, const GpBatch &B, const GpImage &I, uint32_t sb, const av1g_pixel_t(BD) *src,
+                                            int x, int y, int W, int H, int bsize, int c, const float *C) {
+    const int tid = threadIdx.x;
+    if (tid < 32) {
+        const int ow = min(W, I.MiCols * 4 - x), oh = min(H, I.MiRows * 4 - y);
+        uint32_t *hist = (uint32_t *)S.u.raw;
+        uint16_t *dv = (uint16_t *)(S.u.raw + 4096), *dc = dv + 64;
+        const int nd = pal_hist<BD>(src, I.spitch[0], ow, oh, hist, dv, dc);
+        int n = 0;
+        if (tid == 0) {
+            if (nd >= 2 && nd <= 64) n = pal_kmeans(dv, dc, nd, pal_target(c), pal_top(c), BD, S.palCol);
+            if (n < 2) {
+                S.palCol[0] = (uint16_t)min((int)src[0], (1 << BD) - 2);
+                S.palCol[1] = (uint16_t)(S.palCol[0] + 1);
+                n = 2;
+            }
+        }
+        n = __shfl_sync(0xffffffffu, n, 0);
+        __syncwarp();
+        uint8_t *map = B.oMap + (size_t)sb * GP_SB_MAP + S.nMap;
+        pal_map(src, I.spitch[0], W, H, ow, oh, S.palCol, n, map, tid, 32);
+        __syncwarp();
+        const float bits = pal_bits(n, S.palCol, map, W, ow, oh, bsize, BD, C);
+        if (tid == 0) { S.palBits = bits; S.palN = n; S.palMap = map; }
+    }
+    __syncthreads();
+}
+
 template <int BD>
 __device__ __noinline__ void rc_luma(int W, int H, RcShared<BD> &S, const GpBatch &B, const GpParams &P, uint32_t sb, const GpImage &I, int bsize, int x,
                         int y, int availU, int availL, const TileBox &tb, const BlockQ &bq, float lambda, const float *C,
@@ -731,39 +780,9 @@ __device__ __noinline__ void rc_luma(int W, int H, RcShared<BD> &S, const GpBatc
     const int spP[3] = {I.spitch[0], I.spitch[0], I.spitch[0]};
     const int nc = max(1, min((int)br.ncand, P.Krecheck));
     const int set = av1g_get_tx_set_intra(txSz, 0);
-    // luma palette candidate (screen-content frames): the block's palette, its map in the SB's map slot and its bits, by
-    // warp 0 (histogram scratch in the union); a candidate without a palette here falls back to DC_PRED
-    bool pal = false;
-    int palNT = 0;
-    bool palTop = false;
-    if (B.oPal && I.sct)
-        for (int k = 0; k < nc; k++)
-            if (pal_cand(br.cand[k])) { pal = true; palNT = pal_target(br.cand[k]); palTop = pal_top(br.cand[k]); }
-    if (pal) {
-        if (tid < 32) {
-            const int ow = min(W, I.MiCols * 4 - x), oh = min(H, I.MiRows * 4 - y);
-            uint32_t *hist = (uint32_t *)S.u.raw;
-            uint16_t *dv = (uint16_t *)(S.u.raw + 4096), *dc = dv + 64;
-            const int nd = pal_hist<BD>(src, I.spitch[0], ow, oh, hist, dv, dc);
-            int n = 0;
-            if (tid == 0 && nd >= 2 && nd <= 64) n = pal_kmeans(dv, dc, nd, palNT, palTop, BD, S.palCol);
-            n = __shfl_sync(0xffffffffu, n, 0);
-            __syncwarp();
-            if (n < 2) n = 0;
-            uint8_t *map = B.oMap + (size_t)sb * GP_SB_MAP + S.nMap;
-            if (n) {
-                pal_map(src, I.spitch[0], W, H, ow, oh, S.palCol, n, map, tid, 32);
-                __syncwarp();
-                const float bits = pal_bits(n, S.palCol, map, W, ow, oh, bsize, BD, C);
-                if (tid == 0) S.palBits = bits;
-            }
-            if (tid == 0) { S.palN = n; S.palMap = map; }
-        }
-        __syncthreads();
-        pal = S.palN > 0;
-    }
-    auto candAt = [&](int k) -> int { return pal_cand(br.cand[k]) && !pal ? cand_pack(AV1G_DC_PRED, 0) : br.cand[k]; };
-    int bestC = candAt(0), bestT = br.tx;
+    // luma palette candidate (screen-content frames; k_pal makes it candidate 0): its palette, map and bits
+    if (B.oPal && I.sct && pal_cand(br.cand[0])) rc_pal_prepare<BD>(S, B, I, sb, src, x, y, W, H, bsize, br.cand[0], C);
+    int bestC = br.cand[0], bestT = br.tx;
     __syncthreads();
     rc_tick(B, P, 0);  // luma setup: edges, contexts
     const bool big = rc_big(W, H);
@@ -818,7 +837,7 @@ __device__ __noinline__ void rc_luma(int W, int H, RcShared<BD> &S, const GpBatc
                 int n = 0;
                 for (int i = base; i < total && n < 32; i++, n++) {
                     const int k = i / nTypes;
-                    S.taskC[n] = k < nc ? candAt(k) : 128 + (k - nc);
+                    S.taskC[n] = k < nc ? br.cand[k] : 128 + (k - nc);
                     S.taskT[n] = types[i % nTypes];
                     S.taskP[n] = 0;
                 }
@@ -836,8 +855,8 @@ __device__ __noinline__ void rc_luma(int W, int H, RcShared<BD> &S, const GpBatc
         // pass 1: candidates with DCT_DCT (+ the analysis winner with its tx type, + filter-intra modes)
         if (tid == 0) {
             int n = 0;
-            for (int k = 0; k < nc; k++) { S.taskC[n] = candAt(k); S.taskT[n] = AV1G_DCT_DCT; S.taskP[n] = 0; n++; }
-            if (br.tx != AV1G_DCT_DCT) { S.taskC[n] = candAt(0); S.taskT[n] = br.tx; S.taskP[n] = 0; n++; }
+            for (int k = 0; k < nc; k++) { S.taskC[n] = br.cand[k]; S.taskT[n] = AV1G_DCT_DCT; S.taskP[n] = 0; n++; }
+            if (br.tx != AV1G_DCT_DCT) { S.taskC[n] = br.cand[0]; S.taskT[n] = br.tx; S.taskP[n] = 0; n++; }
             if (fiOk)
                 for (int f = 0; f < 5; f++) { S.taskC[n] = 128 + f; S.taskT[n] = AV1G_DCT_DCT; S.taskP[n] = 0; n++; }
             S.nTask = n;
@@ -867,7 +886,7 @@ __device__ __noinline__ void rc_luma(int W, int H, RcShared<BD> &S, const GpBatc
                 int n = 0;
                 for (int t = 0; t < 16; t++) {
                     if (!av1g_tx_type_in_set_intra(set, t)) continue;
-                    if (!skip1 && (t == AV1G_DCT_DCT || (bestC == candAt(0) && t == br.tx))) continue;
+                    if (!skip1 && (t == AV1G_DCT_DCT || (bestC == br.cand[0] && t == br.tx))) continue;
                     S.taskC[n] = bestC; S.taskT[n] = t; S.taskP[n] = 0; n++;
                 }
                 S.nTask = n;
@@ -880,10 +899,14 @@ __device__ __noinline__ void rc_luma(int W, int H, RcShared<BD> &S, const GpBatc
                     if (tid < 32) rc_prepare_edges<BD>(S, 0, bestC, false, T.lw, T.lh);
                     __syncthreads();
                     int16_t *res = S.u.w[0].res;
-                    for (int p = tid; p < W * H; p += RC_NT) {
-                        const int i = p >> T.lw, j = p & (W - 1);
-                        res[p] = (int16_t)((int)src[i * I.spitch[0] + j] - rc_pred<BD>(S, 0, bestC, false, 0, i, j, T.lw, T.lh, W, 0));
-                    }
+                    if (pal_cand(bestC))
+                        for (int p = tid; p < W * H; p += RC_NT)
+                            res[p] = (int16_t)((int)src[(p >> T.lw) * I.spitch[0] + (p & (W - 1))] - (int)S.palCol[S.palMap[p]]);
+                    else
+                        for (int p = tid; p < W * H; p += RC_NT) {
+                            const int i = p >> T.lw, j = p & (W - 1);
+                            res[p] = (int16_t)((int)src[i * I.spitch[0] + j] - rc_pred<BD>(S, 0, bestC, false, 0, i, j, T.lw, T.lh, W, 0));
+                        }
                     __syncthreads();
                     if (W == 64 || H == 64) {   // only the 64-point distortion uses the energy (never in pass 2)
                         float en = 0.f;

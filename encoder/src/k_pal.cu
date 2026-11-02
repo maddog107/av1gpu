@@ -114,24 +114,40 @@ __device__ __forceinline__ void pal_block(const GpBatch &B, const GpParams &P, i
     }
 }
 
-// a fixed grid that walks the shape's blocks: in batches without screen-content frames (the detection's flag, set on
-// the GPU) every CTA returns at once
+// the palette shapes of a batch: shape bs[k] covers the combined block indices start[k] .. start[k + 1]
+struct PalShapes {
+    int n;
+    int bs[AV1G_BLOCK_SIZES];
+    uint32_t start[AV1G_BLOCK_SIZES + 1];
+};
+
+// one launch, a fixed grid that walks every palette shape's blocks: in batches without screen-content frames (the
+// detection's flag, set on the GPU) every CTA returns at once
 template <int BD>
-__global__ void __launch_bounds__(32) k_pal_an(GpBatch B, GpParams P, int bs, uint32_t nTotal) {
+__global__ void __launch_bounds__(32) k_pal_an(GpBatch B, GpParams P, PalShapes sh) {
     __shared__ PalSmem<BD> S;
     if (!*B.palAny) return;
-    for (uint32_t gb = blockIdx.x; gb < nTotal; gb += gridDim.x) {
-        pal_block<BD>(B, P, bs, gb, S);
+    for (uint32_t g = blockIdx.x; g < sh.start[sh.n]; g += gridDim.x) {
+        int k = 0;
+        while (g >= sh.start[k + 1]) k++;
+        pal_block<BD>(B, P, sh.bs[k], g - sh.start[k], S);
         __syncwarp();
     }
 }
 
 void gp_launch_pal_analysis(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st, int bd) {
     if (!B.oPal || !B.palAny) return;
+    PalShapes sh;
+    sh.n = 0;
+    sh.start[0] = 0;
     for (int s = AV1G_BLOCK_8X8; s < AV1G_BLOCK_SIZES; s++) {
         if (!shTotal[s] || !av1g_palette_allowed(s) || (s >= 13 && s <= 15)) continue;
-        const uint32_t grid = shTotal[s] < 4096 ? shTotal[s] : 4096;
-        if (bd == 10) k_pal_an<10><<<grid, 32, 0, st>>>(B, P, s, shTotal[s]);
-        else k_pal_an<8><<<grid, 32, 0, st>>>(B, P, s, shTotal[s]);
+        sh.bs[sh.n] = s;
+        sh.start[sh.n + 1] = sh.start[sh.n] + shTotal[s];
+        sh.n++;
     }
+    if (!sh.n) return;
+    const uint32_t grid = sh.start[sh.n] < 2048 ? sh.start[sh.n] : 2048;   // the L4 holds 232 of these CTAs at once (4 per SM)
+    if (bd == 10) k_pal_an<10><<<grid, 32, 0, st>>>(B, P, sh);
+    else k_pal_an<8><<<grid, 32, 0, st>>>(B, P, sh);
 }
