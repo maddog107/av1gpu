@@ -185,6 +185,9 @@ int CoefReader::header(const uint8_t *data, size_t size, double max_mp, bool wan
   for (int c = 0; c < std::min(info.ncomp, 4); ++c) {
     info.h[c] = cinfo_.comp_info[c].h_samp_factor;
     info.v[c] = cinfo_.comp_info[c].v_samp_factor;
+    // one component: its scans are non-interleaved, an MCU is one block whatever the SOF says (T.81 A.2.2), and
+    // libjpeg-turbo ignores the factors; so 1x1 here (the hardware route also gets them as 1x1: hw_sof_gray_11)
+    if (info.ncomp == 1) info.h[c] = info.v[c] = info.hmax = info.vmax = 1;
     info.qt_slot[c] = cinfo_.comp_info[c].quant_tbl_no;
     // width_in_blocks is only set by jpeg_start_decompress/read_coefficients; compute it here.
     long dw = ((long)info.width * info.h[c] + info.hmax - 1) / info.hmax;
