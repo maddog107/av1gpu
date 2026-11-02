@@ -178,7 +178,7 @@ void gp_launch_var16(const uint8_t *y, int pitch, int MiCols, int MiRows, float 
 #define SC_MIN_RANGE 8
 template <typename Px>
 __global__ void __launch_bounds__(SC_WPB * 32) k_sc_count(const GpImage *img, int n, uint32_t total, int bd, unsigned long long *cnt) {
-    __shared__ uint32_t hist[SC_WPB][256];
+    __shared__ uint32_t hist[SC_WPB][256], last[SC_WPB][256];
     __shared__ uint8_t v[SC_WPB][256], dil[SC_WPB][256];
     const int wi = threadIdx.x >> 5, lane = threadIdx.x & 31;
     const uint32_t g = blockIdx.x * SC_WPB + wi;
@@ -223,33 +223,49 @@ __global__ void __launch_bounds__(SC_WPB * 32) k_sc_count(const GpImage *img, in
         if (lane == 0) atomicAdd(&cnt[SC_NC * lo + 1], 1ull);
         return;
     }
-    if (ncol <= 1 || lane) return;
-    if (ncol > 4) {   // lane 0: dilate with the dominant value, then at most 6 colours?
-        // dominant value (av1_find_dominant_value: the first value to reach the highest count in raster order)
-        for (int i = 0; i < 256; i++) H[i] = 0;
-        int dom = 0, domCount = 0;
-        for (int i = 0; i < 256; i++)
-            if (++H[V[i]] > (uint32_t)domCount) { dom = V[i]; domCount = (int)H[V[i]]; }
-        uint8_t *D = dil[wi];
-        for (int i = 0; i < 256; i++) D[i] = V[i];
-        for (int r = 0; r < 16; r++)
-            for (int c = 0; c < 16; c++)
-                if (V[r * 16 + c] == dom)
-                    for (int dr = -1; dr <= 1; dr++)
-                        for (int dc = -1; dc <= 1; dc++)
-                            if (r + dr >= 0 && r + dr < 16 && c + dc >= 0 && c + dc < 16) D[(r + dr) * 16 + c + dc] = (uint8_t)dom;
-        for (int i = 0; i < 256; i++) H[i] = 0;
-        int n2 = 0;
-        for (int i = 0; i < 256; i++)
-            if (!H[D[i]]++) n2++;
-        if (n2 > 6) return;
-    }
+    if (ncol <= 1) return;
     // per-pixel variance of the source (aom_variance16x16 / aom_highbd_10_variance16x16, then ROUND_POWER_OF_TWO(v, 8))
     long long S = sum, Q = sse;
     if (bd == 10) { Q = (Q + 8) >> 4; S = (S + 2) >> 2; }
     const long long var = Q - ((S * S) >> 8);
     const int perPixel = (int)((var + 128) >> 8);
-    if (ncol <= 4 || perPixel > 5) {
+    bool friendly = true;
+    if (ncol > 4) {   // 5..40 colours: dilate with the dominant value, then at most 6 colours, and the variance
+        if (perPixel <= 5) return;
+        // dominant value (av1_find_dominant_value: the first value to reach the highest count in raster order, i.e.
+        // among the values of the highest count the one whose last occurrence comes first)
+        uint32_t *Lst = last[wi];
+        for (int i = lane; i < 256; i += 32) Lst[i] = 0;
+        __syncwarp();
+        for (int i = lane; i < 256; i += 32) atomicMax(&Lst[V[i]], (uint32_t)i);
+        __syncwarp();
+        uint32_t key = 0;   // count << 16 | (255 - last) << 8 | value: the largest is the dominant value
+        for (int k = lane; k < 256; k += 32)
+            if (H[k]) key = max(key, (H[k] << 16) | ((255u - Lst[k]) << 8) | (uint32_t)k);
+        for (int o = 16; o > 0; o >>= 1) key = max(key, __shfl_xor_sync(0xffffffffu, key, o));
+        const int dom = (int)(key & 255u);
+        // dilation: a pixel becomes dom where dom occurs in its 3x3 neighbourhood (inside the block)
+        uint8_t *D = dil[wi];
+        for (int i = lane; i < 256; i += 32) {
+            const int r = i >> 4, c = i & 15;
+            bool hit = false;
+            for (int dr = -1; dr <= 1; dr++)
+                for (int dc = -1; dc <= 1; dc++) {
+                    const int rr = r + dr, cc = c + dc;
+                    hit |= rr >= 0 && rr < 16 && cc >= 0 && cc < 16 && V[rr * 16 + cc] == dom;
+                }
+            D[i] = hit ? (uint8_t)dom : V[i];
+        }
+        for (int i = lane; i < 256; i += 32) H[i] = 0;
+        __syncwarp();
+        for (int i = lane; i < 256; i += 32) H[D[i]] = 1;
+        __syncwarp();
+        int n2 = 0;
+        for (int i = lane; i < 256; i += 32) n2 += (int)H[i];
+        for (int o = 16; o > 0; o >>= 1) n2 += __shfl_xor_sync(0xffffffffu, n2, o);
+        friendly = n2 <= 6;
+    }
+    if (friendly && lane == 0) {
         atomicAdd(&cnt[SC_NC * lo], 1ull);
         if (mx - mn >= SC_MIN_RANGE) atomicAdd(&cnt[SC_NC * lo + 2], 1ull);
     }
