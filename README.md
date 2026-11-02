@@ -22,15 +22,10 @@
 </p>
 
 > [!TIP]
-> **TL;DR:** av1gpu turns JPEGs into AVIFs on an NVIDIA GPU **8.0× faster than libaom running on all 16 CPU
-> threads at once** (7.4× against a tuned build), with the **same file sizes** on SSIMULACRA2 (libaom speed 6:
-> +0.1 % as avifenc runs it, +0.7 % with its tiling turned off; a second metric, CVVDP, says +4.2 %), while
-> using only **0.3 of a CPU core**. The 100 test photos went from **160 MB of JPEG to 22.5 MB of AVIF
-> (−86 %)**, and its files are **31 % smaller than WebP** at the same quality. SVT-AV1 needs presets 4–6 on
-> all 16 threads (16–49 MP/s) for the same sizes; built with PGO, it is still 6.2× slower. On the same GPU
-> av1gpu is **15× faster than NVIDIA's own NVENC AV1 encoder**, whose files are about 28 % bigger than
-> libaom's. It also writes **4:4:4, 10-bit, lossless and transparent** AVIFs (4:4:4 and 10-bit 7.0–10.4× faster
-> than libaom in the same format). One prebuilt binary, no CPU farm.
+> **TL;DR:** av1gpu converts JPEGs to AVIF on an NVIDIA GPU **8× faster than libaom on 16 CPU threads, with the
+> same file sizes**, using a third of one CPU core. Files come out **86 % smaller than the JPEGs** and **31 % smaller
+> than WebP**, and it is **15× faster than NVENC**, the AV1 encoder built into the same GPU. 4:4:4, 10-bit, lossless
+> and transparency included. One prebuilt binary, no CPU farm.
 
 ## ⚡ Overview
 
