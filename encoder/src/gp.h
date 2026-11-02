@@ -99,7 +99,9 @@ struct GpImage {
     uint8_t *cLvl[3], *cDc[3];
     // (appended, so the fields above keep their offsets and the 4:2:0 kernels their code)
     int ssx, ssy;            // chroma subsampling: 1, 1 (4:2:0, monochrome) or 0, 0 (4:4:4)
-    int sct;                 // 1: screen-content tools (palette candidates; set by the detection, gp_launch_sc_detect)
+    int sct;                 // 1: screen-content tools (palette candidates; set by the detection, gp_launch_sc_detect,
+                             // in the device copy)
+    uint32_t scBlk0;         // the detection's first 16x16 block of this image ((W / 16) * (H / 16) blocks per image)
 };
 
 // Analysis result per (shape, position).
@@ -169,6 +171,7 @@ struct GpBatch {
     // palettes (frames with GpImage::sct): per-SB slots, null when no frame of the batch has screen-content tools
     av1g_palette *oPal;        // [nSb * GP_SB_PAL] (block = SB-local leaf index, map_off SB-local)
     uint8_t *oMap;             // [nSb * GP_SB_MAP]
+    const uint32_t *palAny;    // device flag: some image of the batch has GpImage::sct (the lossy palette search runs)
 };
 
 // Lossless analysis (k_lossless.cu): per-plane 4x4 cost tables (uint16, 1/16 bit, position-major:

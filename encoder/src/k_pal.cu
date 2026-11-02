@@ -23,13 +23,11 @@ struct PalSmem {
     uint16_t dv[64], dc[64], col[8];
 };
 
+// block gb of shape bs (one warp)
 template <int BD>
-__global__ void __launch_bounds__(32) k_pal_an(GpBatch B, GpParams P, int bs, uint32_t nTotal) {
+__device__ __forceinline__ void pal_block(const GpBatch &B, const GpParams &P, int bs, uint32_t gb, PalSmem<BD> &S) {
     typedef av1g_pixel_t(BD) Px;
-    __shared__ PalSmem<BD> S;
     const int lane = threadIdx.x;
-    const uint32_t gb = blockIdx.x;
-    if (gb >= nTotal) return;
     const uint32_t *starts = B.shImgStart + (size_t)bs * (B.nimg + 1);
     int lo = 0, hi = B.nimg - 1;
     while (lo < hi) {
@@ -116,11 +114,24 @@ __global__ void __launch_bounds__(32) k_pal_an(GpBatch B, GpParams P, int bs, ui
     }
 }
 
+// a fixed grid that walks the shape's blocks: in batches without screen-content frames (the detection's flag, set on
+// the GPU) every CTA returns at once
+template <int BD>
+__global__ void __launch_bounds__(32) k_pal_an(GpBatch B, GpParams P, int bs, uint32_t nTotal) {
+    __shared__ PalSmem<BD> S;
+    if (!*B.palAny) return;
+    for (uint32_t gb = blockIdx.x; gb < nTotal; gb += gridDim.x) {
+        pal_block<BD>(B, P, bs, gb, S);
+        __syncwarp();
+    }
+}
+
 void gp_launch_pal_analysis(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st, int bd) {
-    if (!B.oPal) return;
+    if (!B.oPal || !B.palAny) return;
     for (int s = AV1G_BLOCK_8X8; s < AV1G_BLOCK_SIZES; s++) {
         if (!shTotal[s] || !av1g_palette_allowed(s) || (s >= 13 && s <= 15)) continue;
-        if (bd == 10) k_pal_an<10><<<shTotal[s], 32, 0, st>>>(B, P, s, shTotal[s]);
-        else k_pal_an<8><<<shTotal[s], 32, 0, st>>>(B, P, s, shTotal[s]);
+        const uint32_t grid = shTotal[s] < 4096 ? shTotal[s] : 4096;
+        if (bd == 10) k_pal_an<10><<<grid, 32, 0, st>>>(B, P, s, shTotal[s]);
+        else k_pal_an<8><<<grid, 32, 0, st>>>(B, P, s, shTotal[s]);
     }
 }

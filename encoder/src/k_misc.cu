@@ -164,117 +164,128 @@ void gp_launch_var16(const uint8_t *y, int pitch, int MiCols, int MiRows, float 
     else k_var16<<<(n + 127) / 128, 128, 0, st>>>(y, pitch, MiCols, MiRows, cols16, rows16, out);
 }
 // screen-content detection: libaom 3.13's estimate_screen_content_antialiasing_aware (av1/encoder/encoder.c, the full
-// scan without the fast checkerboard) on the 16x16 luma blocks that fit the picture, one thread per block.  Samples are
+// scan without the fast checkerboard) on the 16x16 luma blocks that fit the picture, one warp per block.  Samples are
 // counted at 8 bits (10-bit: >> 2, as libaom down-converts); a block with 2..4 colours is palette-friendly; one with
 // 5..40 is too if a dilation by its dominant value leaves at most 6 colours and its variance (source depth, libaom's
 // per-pixel variance) is above 5; one with more than 40 is photo-like.  av1gpu adds one condition: a palette-friendly
 // block must also span at least SC_MIN_RANGE 8-bit levels.  Photos pass libaom's rule through smooth areas (sky, studio
-// backgrounds: 16x16 blocks of 2..4 neighbouring levels); with the range they never did in the palette study (0 of 144
-// photos, 8 of the standard set's 100 and 2 of the 44 others by libaom's rule), while screen content kept 38 of 40.
+// backgrounds: 16x16 blocks of 2..4 neighbouring levels): 7 of the size range's 100, 8 of the standard set's 100 and 2
+// of the palette study's 44 photos.  With the range none of these 244 passes (highest score 0.12), while the study's
+// screen content keeps 38 of 40.
 // cnt[img]: palette-friendly (libaom's rule; debug output only), photo-like, palette-friendly with the range.
-#define SC_TPB 32
-#define SC_NC 3   // counters per image
+#define SC_WPB 8   // warps (16x16 blocks) per CTA
+#define SC_NC 3    // counters per image
 #define SC_MIN_RANGE 8
 template <typename Px>
-__global__ void __launch_bounds__(SC_TPB) k_sc_count(const Px *const *y, const int *pitch, const int *w, const int *h,
-                                                     const uint32_t *blk0, int n, int bd, unsigned long long *cnt) {
-    __shared__ uint16_t hist[SC_TPB][256];
-    __shared__ uint8_t v[SC_TPB][256], dil[SC_TPB][256];
-    const uint32_t g = blockIdx.x * SC_TPB + threadIdx.x;
-    if (g >= blk0[n]) return;
-    int img = 0;
-    while (img + 1 < n && blk0[img + 1] <= g) img++;
-    const int cols = w[img] / 16, bi = (int)(g - blk0[img]);
-    const int x0 = (bi % cols) * 16, y0 = (bi / cols) * 16, t = threadIdx.x;
-    const Px *s = y[img] + (size_t)y0 * pitch[img] + x0;
-    uint16_t *H = hist[t];
-    for (int i = 0; i < 256; i++) H[i] = 0;
-    // colours (libaom av1_count_colors_with_threshold, 40) and the dominant value (av1_find_dominant_value: the
-    // first value to reach the highest count in raster order)
-    int ncol = 0, dom = 0, domCount = 0, lo = 255, hi = 0;
-    for (int i = 0; i < 256; i++) {
-        const int p = s[(size_t)(i >> 4) * pitch[img] + (i & 15)] >> (bd - 8);
-        v[t][i] = (uint8_t)p;
-        if (!H[p]) ncol++;
-        if (++H[p] > domCount) { dom = p; domCount = H[p]; }
-        lo = min(lo, p);
-        hi = max(hi, p);
+__global__ void __launch_bounds__(SC_WPB * 32) k_sc_count(const GpImage *img, int n, uint32_t total, int bd, unsigned long long *cnt) {
+    __shared__ uint32_t hist[SC_WPB][256];
+    __shared__ uint8_t v[SC_WPB][256], dil[SC_WPB][256];
+    const int wi = threadIdx.x >> 5, lane = threadIdx.x & 31;
+    const uint32_t g = blockIdx.x * SC_WPB + wi;
+    if (g >= total) return;
+    int lo = 0, hi = n - 1;   // image of this block (the last whose first block is <= g)
+    while (lo < hi) {
+        const int mid = (lo + hi + 1) >> 1;
+        if (img[mid].scBlk0 <= g) lo = mid; else hi = mid - 1;
     }
-    if (ncol > 40) { atomicAdd(&cnt[SC_NC * img + 1], 1ull); return; }
-    if (ncol <= 1) return;
-    if (ncol > 4) {   // dilate with the dominant value, then at most 6 colours?
-        for (int i = 0; i < 256; i++) dil[t][i] = v[t][i];
+    const GpImage &I = img[lo];
+    const int cols = I.W / 16, bi = (int)(g - I.scBlk0);
+    const int x0 = (bi % cols) * 16, y0 = (bi / cols) * 16, sp = I.spitch[0];
+    const Px *s = (const Px *)I.src[0] + (size_t)y0 * sp + x0;
+    uint32_t *H = hist[wi];
+    uint8_t *V = v[wi];
+    // colours at 8 bits (libaom av1_count_colors_with_threshold, 40), value range; source sums for the variance
+    for (int i = lane; i < 256; i += 32) H[i] = 0;
+    __syncwarp();
+    int mn = 255, mx = 0, sum = 0;
+    long long sse = 0;
+    for (int i = lane; i < 256; i += 32) {
+        const int q = s[(size_t)(i >> 4) * sp + (i & 15)];
+        const int p = q >> (bd - 8);
+        V[i] = (uint8_t)p;
+        atomicAdd(&H[p], 1u);
+        mn = min(mn, p);
+        mx = max(mx, p);
+        sum += q;
+        sse += (long long)q * q;
+    }
+    __syncwarp();
+    int ncol = 0;
+    for (int i = lane; i < 256; i += 32) ncol += H[i] != 0;
+    for (int o = 16; o > 0; o >>= 1) {
+        ncol += __shfl_xor_sync(0xffffffffu, ncol, o);
+        mn = min(mn, __shfl_xor_sync(0xffffffffu, mn, o));
+        mx = max(mx, __shfl_xor_sync(0xffffffffu, mx, o));
+        sum += __shfl_xor_sync(0xffffffffu, sum, o);
+        sse += __shfl_xor_sync(0xffffffffu, sse, o);
+    }
+    if (ncol > 40) {
+        if (lane == 0) atomicAdd(&cnt[SC_NC * lo + 1], 1ull);
+        return;
+    }
+    if (ncol <= 1 || lane) return;
+    if (ncol > 4) {   // lane 0: dilate with the dominant value, then at most 6 colours?
+        // dominant value (av1_find_dominant_value: the first value to reach the highest count in raster order)
+        for (int i = 0; i < 256; i++) H[i] = 0;
+        int dom = 0, domCount = 0;
+        for (int i = 0; i < 256; i++)
+            if (++H[V[i]] > (uint32_t)domCount) { dom = V[i]; domCount = (int)H[V[i]]; }
+        uint8_t *D = dil[wi];
+        for (int i = 0; i < 256; i++) D[i] = V[i];
         for (int r = 0; r < 16; r++)
             for (int c = 0; c < 16; c++)
-                if (v[t][r * 16 + c] == dom)
+                if (V[r * 16 + c] == dom)
                     for (int dr = -1; dr <= 1; dr++)
                         for (int dc = -1; dc <= 1; dc++)
-                            if (r + dr >= 0 && r + dr < 16 && c + dc >= 0 && c + dc < 16) dil[t][(r + dr) * 16 + c + dc] = (uint8_t)dom;
+                            if (r + dr >= 0 && r + dr < 16 && c + dc >= 0 && c + dc < 16) D[(r + dr) * 16 + c + dc] = (uint8_t)dom;
         for (int i = 0; i < 256; i++) H[i] = 0;
         int n2 = 0;
         for (int i = 0; i < 256; i++)
-            if (!H[dil[t][i]]++) n2++;
+            if (!H[D[i]]++) n2++;
         if (n2 > 6) return;
     }
     // per-pixel variance of the source (aom_variance16x16 / aom_highbd_10_variance16x16, then ROUND_POWER_OF_TWO(v, 8))
-    long long sum = 0, sse = 0;
-    for (int i = 0; i < 256; i++) {
-        const int p = s[(size_t)(i >> 4) * pitch[img] + (i & 15)];
-        sum += p;
-        sse += (long long)p * p;
-    }
-    if (bd == 10) { sse = (sse + 8) >> 4; sum = (sum + 2) >> 2; }
-    const long long var = sse - ((sum * sum) >> 8);
+    long long S = sum, Q = sse;
+    if (bd == 10) { Q = (Q + 8) >> 4; S = (S + 2) >> 2; }
+    const long long var = Q - ((S * S) >> 8);
     const int perPixel = (int)((var + 128) >> 8);
     if (ncol <= 4 || perPixel > 5) {
-        atomicAdd(&cnt[SC_NC * img], 1ull);
-        if (hi - lo >= SC_MIN_RANGE) atomicAdd(&cnt[SC_NC * img + 2], 1ull);
+        atomicAdd(&cnt[SC_NC * lo], 1ull);
+        if (mx - mn >= SC_MIN_RANGE) atomicAdd(&cnt[SC_NC * lo + 2], 1ull);
     }
 }
-__global__ void k_sc_decide(const unsigned long long *cnt, const int *w, const int *h, int n, int *out) {
+// the decision per image, into the device copy of its GpImage (sct) and the batch flag
+__global__ void k_sc_decide(const unsigned long long *cnt, GpImage *img, int n, uint32_t *any) {
     const int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= n) return;
     // (palette-friendly - photo-like / 16) * 256 * 10 > area
     const long long pal = (long long)cnt[SC_NC * i + 2], photo = (long long)cnt[SC_NC * i + 1];
-    out[i] = (pal - photo / 16) * 256 * 10 > (long long)w[i] * h[i];
+    const int sct = (pal - photo / 16) * 256 * 10 > (long long)img[i].W * img[i].H;
+    img[i].sct = sct;
+    if (sct) atomicOr(any, 1u);
 }
-void gp_launch_sc_detect(int n, const uint8_t *const *y, const int *pitch, const int *w, const int *h, int bd, int *out, cudaStream_t st) {
-    // tables in one device buffer: the counters (2 per image), n plane pointers, pitches, sizes, block bases
-    std::vector<uint32_t> blk0(n + 1, 0);
-    for (int i = 0; i < n; i++) blk0[i + 1] = blk0[i] + (uint32_t)((w[i] / 16) * (h[i] / 16));
-    const size_t tb = SC_NC * n * 8 + n * sizeof(void *) + 3 * n * sizeof(int) + (n + 1) * 4;
-    uint8_t *d = nullptr;
-    if (cudaMallocAsync((void **)&d, tb, st) != cudaSuccess) return;
-    std::vector<uint8_t> h0(tb, 0);
-    size_t o = SC_NC * n * 8;
-    memcpy(h0.data() + o, y, n * sizeof(void *)); o += n * sizeof(void *);
-    memcpy(h0.data() + o, pitch, n * sizeof(int)); o += n * sizeof(int);
-    memcpy(h0.data() + o, w, n * sizeof(int)); o += n * sizeof(int);
-    memcpy(h0.data() + o, h, n * sizeof(int)); o += n * sizeof(int);
-    memcpy(h0.data() + o, blk0.data(), (n + 1) * 4);
-    cudaMemcpyAsync(d, h0.data(), tb, cudaMemcpyHostToDevice, st);
-    cudaStreamSynchronize(st);   // h0 is a pageable host buffer
-    unsigned long long *dc = (unsigned long long *)d;
-    const void *dy = d + SC_NC * n * 8;
-    const int *dp = (const int *)(d + SC_NC * n * 8 + n * sizeof(void *)), *dw = dp + n, *dh = dw + n;
-    const uint32_t *db = (const uint32_t *)(dh + n);
-    if (blk0[n]) {
-        if (bd == 10) k_sc_count<uint16_t><<<(blk0[n] + SC_TPB - 1) / SC_TPB, SC_TPB, 0, st>>>((const uint16_t *const *)dy, dp, dw, dh, db, n, bd, dc);
-        else k_sc_count<uint8_t><<<(blk0[n] + SC_TPB - 1) / SC_TPB, SC_TPB, 0, st>>>((const uint8_t *const *)dy, dp, dw, dh, db, n, bd, dc);
+void gp_launch_sc_detect(GpImage *dImg, const GpImage *hImg, int n, int bd, unsigned long long *cnt, uint32_t *any, cudaStream_t st) {
+    const uint32_t total = hImg[n - 1].scBlk0 + (uint32_t)((hImg[n - 1].W / 16) * (hImg[n - 1].H / 16));
+    cudaMemsetAsync(cnt, 0, (size_t)SC_NC * n * 8, st);
+    cudaMemsetAsync(any, 0, 4, st);
+    if (total) {
+        const uint32_t grid = (total + SC_WPB - 1) / SC_WPB;
+        if (bd == 10) k_sc_count<uint16_t><<<grid, SC_WPB * 32, 0, st>>>(dImg, n, total, bd, cnt);
+        else k_sc_count<uint8_t><<<grid, SC_WPB * 32, 0, st>>>(dImg, n, total, bd, cnt);
     }
-    k_sc_decide<<<(n + 63) / 64, 64, 0, st>>>(dc, dw, dh, n, out);
+    k_sc_decide<<<(n + 63) / 64, 64, 0, st>>>(cnt, dImg, n, any);
     if (getenv("GP_SC_DEBUG")) {   // per image: the counters and the scores (> 1: screen content; the decision: with the range)
         std::vector<unsigned long long> c(SC_NC * n);
-        cudaMemcpyAsync(c.data(), dc, SC_NC * n * 8, cudaMemcpyDeviceToHost, st);
+        cudaMemcpyAsync(c.data(), cnt, SC_NC * n * 8, cudaMemcpyDeviceToHost, st);
         cudaStreamSynchronize(st);
         for (int i = 0; i < n; i++) {
             const unsigned long long *q = &c[SC_NC * i];
-            auto sc = [&](unsigned long long p) { return ((double)p - (double)(q[1] / 16)) * 2560.0 / ((double)w[i] * h[i]); };
-            fprintf(stderr, "sc-detect %dx%d palette-friendly %llu photo-like %llu libaom-score %.3f with-range %llu score %.3f\n", w[i],
-                    h[i], q[0], q[1], sc(q[0]), q[2], sc(q[2]));
+            const int w = hImg[i].W, h = hImg[i].H;
+            auto sc = [&](unsigned long long p) { return ((double)p - (double)(q[1] / 16)) * 2560.0 / ((double)w * h); };
+            fprintf(stderr, "sc-detect %dx%d palette-friendly %llu photo-like %llu libaom-score %.3f with-range %llu score %.3f\n", w, h,
+                    q[0], q[1], sc(q[0]), q[2], sc(q[2]));
         }
     }
-    cudaFreeAsync(d, st);
 }
 
 void gp_launch_ssim_map(const uint8_t *y, int pitch, int MiCols, int MiRows, float *out, double *sum, cudaStream_t st, int bd) {

@@ -53,9 +53,10 @@ void gp_launch_recon(const GpBatch &B, const GpParams &P, const uint32_t *dSbLis
                      int bd = 8);
 void gp_launch_pack(const GpBatch &B, const GpPackOff *dOff, av1g_block *oB, uint32_t *oBT, av1g_txb *oT, int16_t *oC,
                     const GpPackAux &aux, cudaStream_t st, av1g_palette *oP = nullptr, uint8_t *oM = nullptr);
-// screen-content detection (libaom's anti-aliasing-aware mode 2 on 16x16 luma blocks): out[i] = 1 for the frames that
-// pass it.  y[i]: luma plane (10-bit: uint16_t samples), pitch[i] in samples
-void gp_launch_sc_detect(int n, const uint8_t *const *y, const int *pitch, const int *w, const int *h, int bd, int *out, cudaStream_t st);
+// screen-content detection (libaom's anti-aliasing-aware mode 2 on 16x16 luma blocks, k_misc.cu): sets dImg[i].sct (the
+// device copy of the batch's images, hImg its host copy with scBlk0 / W / H) and *any if some image passes.  cnt:
+// device scratch of 3 counters per image.  No host synchronisation (GP_SC_DEBUG=1: prints the counts, synchronising)
+void gp_launch_sc_detect(GpImage *dImg, const GpImage *hImg, int n, int bd, unsigned long long *cnt, uint32_t *any, cudaStream_t st);
 // cdef_idx of every block from the per-SB map (av1f search); frames with cdefOn[f] == 0 keep 0
 void gp_launch_set_cdef(av1g_block *blocks, uint32_t nB, const uint32_t *blockFrame, const uint32_t *frameSbBase,
                         const int *frameSbCols, const int *cdefOn, const int8_t *sbCdef, cudaStream_t st);

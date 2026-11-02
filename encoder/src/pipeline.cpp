@@ -241,23 +241,17 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
         nSb += (uint32_t)(I.sbCols * I.sbRows);
         for (int k = 0; k < I.sbCols * I.sbRows; k++) sbImg.push_back((uint32_t)i);
     }
-    // ---- screen-content tools (palette mode): per frame, the detection or --palette on; frames without them encode as
-    // before (no palette syntax at all) ----
-    bool anySct = false;
-    if (cfg_.palette && gp_palette_supported(cfg_)) {
-        std::vector<int> sct(n, cfg_.palette == 2 ? 1 : 0);
-        if (cfg_.palette == 1) {
-            std::vector<const uint8_t *> ys(n);
-            std::vector<int> pitch(n), w(n), h(n);
-            for (int i = 0; i < n; i++) { ys[i] = in[i].dsrc[0]; pitch[i] = in[i].spitch[0]; w[i] = in[i].W; h[i] = in[i].H; }
-            int *dSct = nullptr;
-            GPCK(cudaMallocAsync((void **)&dSct, n * sizeof(int), st));
-            gp_launch_sc_detect(n, ys.data(), pitch.data(), w.data(), h.data(), bd, dSct, st);
-            GPCK(cudaMemcpyAsync(sct.data(), dSct, n * sizeof(int), cudaMemcpyDeviceToHost, st));
-            GPCK(cudaStreamSynchronize(st));
-            cudaFreeAsync(dSct, st);
+    // ---- screen-content tools (palette mode): per frame, the detection (on the GPU, after the image upload) or --palette
+    // on; frames without them encode as before (no palette syntax at all) ----
+    const bool palOn = cfg_.palette && gp_palette_supported(cfg_);
+    bool anySct = palOn && cfg_.palette == 2;   // known on the host: --palette on, or (lossless) after the detection
+    if (palOn) {
+        uint32_t b0 = 0;
+        for (int i = 0; i < n; i++) {
+            imgs[i].scBlk0 = b0;
+            b0 += (uint32_t)((imgs[i].W / 16) * (imgs[i].H / 16));
+            imgs[i].sct = cfg_.palette == 2;
         }
-        for (int i = 0; i < n; i++) { imgs[i].sct = sct[i]; anySct |= sct[i] != 0; }
     }
     uint32_t shapeBase[GP_NSHAPES];
     uint64_t blkTotal = 0;
@@ -425,10 +419,21 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
     GPCK(A.get(B.oBlockTxb, (size_t)nSb * GP_MAX_LEAVES));
     GPCK(A.get(B.oTxb, (size_t)nSb * B.sbTxbCap));
     GPCK(A.get(B.oCoeffs, (size_t)nSb * B.sbCoefCap));
-    if (anySct) {
-        GPCK(A.get(B.oPal, (size_t)nSb * GP_SB_PAL));
-        GPCK(A.get(B.oMap, (size_t)nSb * GP_SB_MAP));
+    unsigned long long *dScCnt = nullptr;
+    uint32_t *dPalAny = nullptr;
+    if (palOn) {
+        GPCK(A.get(dScCnt, (size_t)3 * n));
+        GPCK(A.get(dPalAny, 1));
+        B.palAny = dPalAny;
     }
+    // palette slots: lossy batches get them whenever palettes are possible, so the detection can decide on the GPU
+    // without a host sync (k_pal and the closed loop read the images' sct, photos pay nothing else); lossless batches
+    // only with a screen-content frame (below), because their kernels are instantiated with or without palettes
+    auto palSlots = [&]() -> cudaError_t {
+        cudaError_t e = A.get(B.oPal, (size_t)nSb * GP_SB_PAL);
+        return e == cudaSuccess ? A.get(B.oMap, (size_t)nSb * GP_SB_MAP) : e;
+    };
+    if (palOn && (!ll || anySct)) GPCK(palSlots());
     GPCK(A.get(B.stats, 16));
     GPCK(A.get(B.prof, 16));
     GPCK(cudaMemsetAsync(B.prof, 0, 16 * sizeof(unsigned long long), st));
@@ -436,6 +441,18 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
     if (P.profile && getenv("GP_SBCYC_DUMP")) GPCK(A.get(B.sbCyc, nSb));
     GPCK(cudaMemsetAsync(B.stats, 0, 16 * sizeof(uint32_t), st));
     GPCK(cudaMemcpyAsync(B.img, imgs.data(), n * sizeof(GpImage), cudaMemcpyHostToDevice, st));
+    if (palOn && cfg_.palette == 1) {
+        gp_launch_sc_detect(B.img, imgs.data(), n, bd, dScCnt, dPalAny, st);
+        if (ll) {
+            uint32_t any = 0;
+            GPCK(cudaMemcpyAsync(&any, dPalAny, 4, cudaMemcpyDeviceToHost, st));
+            GPCK(cudaStreamSynchronize(st));
+            if (any) {
+                anySct = true;
+                GPCK(palSlots());
+            }
+        }
+    } else if (palOn) GPCK(cudaMemsetAsync(dPalAny, 1, 4, st));   // --palette on: every frame
     GPCK(cudaMemcpyAsync(B.shImgStart, shStart.data(), shStart.size() * 4, cudaMemcpyHostToDevice, st));
     GPCK(cudaMemcpyAsync(B.sbImg, sbImg.data(), nSb * 4, cudaMemcpyHostToDevice, st));
     // wavefront step lists
