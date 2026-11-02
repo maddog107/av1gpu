@@ -505,9 +505,58 @@ analysis, reconstruction or loop filters.
 | cwebp `-lossless` | 12,323,572 | 66.5 % | 11,339,964 | 983,608 | 44.4 |
 | cwebp `-lossless -z 9` | 12,187,462 | 65.7 % | 11,252,092 | 935,370 | 1.76 |
 
-Lossless WebP is far smaller on graphics because av1gpu (like libaom at these settings) has no palette mode or
-intra block copy. One image at a time is limited by the GPU entropy coder (about 126 ms for a Kodak image). The rate estimate behind the mode
-choices uses default-CDF costs, so it is approximate.
+Lossless WebP is far smaller on graphics: its back references and colour cache across the whole image do better than
+AV1's intra tools there. The table is without palette mode (next section), which makes the graphics 10 % smaller.
+One image at a time is limited by the GPU entropy coder (about 126 ms for a Kodak image). The rate estimate behind
+the mode choices uses default-CDF costs, so it is approximate.
+
+### Palette mode (screen content and flat colour)
+
+av1gpu codes palettes (AV1's palette mode) in the images that pass a screen-content detection: luma palettes in
+lossy frames, luma and chroma palettes in lossless ones. The detection is libaom's own, with one extra condition so
+that no photo passes it. Photos are therefore byte-identical to an encoder without palettes, and other images get a
+palette search. `--palette on` searches every image, `--palette off` none. Design, scope and the libaom
+measurements: [docs/PALETTE.md](PALETTE.md); data: [bench/results/aws-g6-l4-palette-study/](../bench/results/aws-g6-l4-palette-study/summary.md).
+
+BD-rate on SSIMULACRA2 against the same encoder without palettes, the median over images (mean in brackets),
+default settings, quality 30–90:
+
+| Images | n | 8-bit 4:2:0 | 10-bit 4:4:4 | vs libaom speed 6 with palette (C) |
+|---|---:|---:|---:|---:|
+| Screen content: charts, screenshots, web pages | 40 | −23.6 % (−24.0) | −19.5 % (−19.5) | −9.5 % |
+| Flat-colour art, PNG: the 11 of 24 that pass detection | 11 | −22.3 % (−16.2) | −12.7 % (−10.3) | +0.7 % |
+| Comics, flat-colour JPEGs, painted art, photos | 105 | identical files | identical files | |
+
+`--palette on` (every image, no detection) makes the flat-colour PNGs −6.8 % (−11.4) and their JPEG q90 versions
+−5.9 % (−8.9) against main, close to libaom C (+2.7 %, +1.0 %). Detection passes none of the JPEGs.
+
+Lossless: the 23 graphics of the comparison above are 10.1 % smaller in GBR (6.77 → 6.09 MB) and 9.9 % smaller
+with `--ycgco-re` (4.84 → 4.36 MB). The whole screen set (40) is 8.7 % smaller and the flat PNGs 3.7 %. Kodak is
+unchanged.
+
+Speed, MP/s, with the method of the v0.6 speed check (each set repeated to at least 1,000 MP, 2 rounds with
+alternating order, the median of 6 runs):
+
+| Images | main | palette | change |
+|---|---:|---:|---:|
+| size range, default | 229.3 | 226.3 | −1.3 % |
+| size range, `--yuv 444 --depth 10` | 162.2 | 163.8 | +0.9 % |
+| standard set, default | 74.4 | 75.0 | +0.8 % |
+| main against main (noise) | | | +0.2 % / +0.9 % |
+| screen + flat PNG (64 images), default | 152.7 | 57.0 | 0.37× |
+| the same, `--palette off` | 155.9 | 150.8 | −3.3 % |
+| the same, `--palette on` | 150.6 | 37.2 | 0.25× |
+LLSPEED_ROWS
+Photos run at main's speed: the detection pass is 0.09 ms of a 64 ms photo encode. Screen content runs at 0.37× of
+main's speed: the palette search tries up to 14 palettes per block and shape, and palette blocks code one entropy
+symbol per pixel.
+
+- **Byte identity, `cmp` of every file against main:** the standard set and the size range, default and
+  `--yuv 444 --depth 10`; Kodak `--lossless` and `--lossless --ycgco-re`; the study's comics, flat JPEGs, painted
+  pages and photos at five quality points in both formats; and `--palette off` on the images palette is tried on.
+- **Decoder gate, dav1d and aomdec, all N/N:** the 64 screen and flat PNGs in lossy 4:2:0 (three qindex values),
+  4:4:4, 10-bit, 10-bit 4:4:4, lossless GBR and YCgCo-Re.
+- **CPU fuzz** with random palettes: 3,000 cases, 0 mismatches.
 
 ### Transparency
 
