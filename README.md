@@ -122,6 +122,16 @@ decodes odd heights with wrong chroma, which makes it +29.5 % over all 99). Test
 -tune uhq`) on 99 of the photos; details in
 [docs/RESULTS.md](docs/RESULTS.md#nvenc-av1-on-the-same-l4).
 
+### 🔌 Against an FPGA encoder card: Bluedot Pulsar-AVIF
+
+**At its fastest setting, faster than a dedicated AVIF encoder card.** Bluedot's Pulsar-AVIF runs on an AMD
+Alveo U250 FPGA card (about $11,000) and is quoted at 409.85 images/s on the Kodak set (24 images of 768 × 512,
+encoded 24 at once; [web.dev, 2023](https://web.dev/articles/avif-updates-2023)). One L4, which rents for about
+$0.80/hour, does **557 images/s** on the same images with `--preset turbo3 --small-preset none` (461 counting
+CUDA start-up), 330 with `--small-preset none` and 138 with the default, which sends images below 1 MP to its
+slower preset. Pulsar's quality settings and file sizes aren't published, so this compares speed only
+([details](docs/RESULTS.md#fpga-bluedot-pulsar-avif)).
+
 ### 📈 Quality and file size
 
 <picture>

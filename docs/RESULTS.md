@@ -402,6 +402,34 @@ about 9.4 MP/s (4 encodes at once; 9.5 MP/s with the JPEGs decoded to raw 4:2:0 
 engine itself is the limit), against av1gpu's 104 MP/s there, and scored about +25 % against libaom speed 6
 (scored on a different machine, so not directly comparable with the L4's +29.5 %).
 
+### FPGA: Bluedot Pulsar-AVIF
+
+Bluedot's Pulsar-AVIF is an AVIF encoder on an AMD Alveo U250 FPGA card (about $11,000 retail in 2026; $8,995
+at its 2018 launch). Its only published speed is in Google's
+[Deploying AVIF for more responsive websites](https://web.dev/articles/avif-updates-2023) (last updated
+2023-05-24): 409.85 frames/s on the Kodak set (24 images of 768 × 512, encoded 24 at once), 60 ms per image at
+305 % CPU, on an Intel Xeon Platinum 8171 host with 10 cores. The same table has avifenc at 59.26 (libaom) and
+18.11 (SVT-AV1) frames/s on a 32-core Xeon Platinum 8370C, and the article says Pulsar-AVIF has "similar
+compression efficiency" without numbers or settings.
+
+av1gpu v0.6 on the L4 with the same 24 PNGs at quality 60, repeated to 1,000 MP (2,544 images) in batch mode,
+median of 6 runs (`bench/results/aws-g6-l4-speed-v06/`):
+
+| Encoder | images/s | with CUDA start-up | CPU cores | bytes, the 24 images |
+|---|---:|---:|---:|---:|
+| av1gpu default | 138 | 131 | 3.1 | 912,368 |
+| av1gpu `--small-preset none` | 330 | 294 | 6.1 | 917,825 |
+| av1gpu `--preset turbo3 --small-preset none` | **557** | **461** | 9.9 | 946,869 |
+| Pulsar-AVIF (published) | 409.85 | | 3.05 | not published |
+
+- **Speed only.** Pulsar's quality setting and file sizes aren't published, so there is no equal-quality
+  comparison.
+- **Small images are av1gpu's weakest case.** All 24 are below 1 MP, so the default encodes them with the slower
+  `base` preset (`--small-preset`), and each fills only a little of the GPU.
+- **CPU:** the PNGs are decoded on the CPU, which accounts for most of av1gpu's CPU use here. JPEGs are decoded
+  by the GPU's JPEG engine.
+- **Cost:** the L4 instance (g6.4xlarge) rents for about $0.80/hour on spot.
+
 ### 4:4:4 and 10-bit
 
 `--yuv 444` (AV1 High profile) and `--depth 10` arrived on 2026-10-31. They were measured on a g6.4xlarge with
