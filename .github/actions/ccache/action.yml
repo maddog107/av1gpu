@@ -1,0 +1,41 @@
+name: ccache
+description: >
+  ccache 4.14.2 on the PATH, with its directory (.ccache) restored from the newest cache entry whose key starts with
+  `key` (pull requests also read main's) and saved after the job under `key` and a hash of the sources
+inputs:
+  key:
+    description: OS, toolkit, architectures, compiler and job
+    required: true
+runs:
+  using: composite
+  steps:
+    - if: runner.os == 'Linux'
+      shell: bash
+      run: |
+        f=ccache-4.14.2-linux-x86_64-musl-static
+        curl -fsSL -o /tmp/$f.tar.gz https://github.com/ccache/ccache/releases/download/v4.14.2/$f.tar.gz
+        echo "d540ba01f160addbd3dd5e18eda9bd34005591b095c09ac8ae9d0a1b655e7ef5  /tmp/$f.tar.gz" | sha256sum -c
+        tar xzf /tmp/$f.tar.gz -C /usr/local/bin --strip-components=1 $f/ccache
+        echo "CCACHE_DIR=$GITHUB_WORKSPACE/.ccache" >> "$GITHUB_ENV"
+        echo "CCACHE_T0=$(date +%s)" >> "$GITHUB_ENV"
+    - if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        $f = "ccache-4.14.2-windows-x86_64"
+        $zip = Join-Path $env:RUNNER_TEMP "$f.zip"
+        Invoke-WebRequest "https://github.com/ccache/ccache/releases/download/v4.14.2/$f.zip" -OutFile $zip
+        if ((Get-FileHash -Algorithm SHA256 $zip).Hash -ne "6993ce645e53192cec592ee23186200b574ac4c59097ecde8d9cfd681b47ae84") {
+          throw "SHA-256 mismatch for $zip"
+        }
+        Expand-Archive $zip $env:RUNNER_TEMP
+        "$env:RUNNER_TEMP\$f" >> $env:GITHUB_PATH
+        "CCACHE_DIR=$env:GITHUB_WORKSPACE\.ccache" >> $env:GITHUB_ENV
+        "CCACHE_T0=$([DateTimeOffset]::UtcNow.ToUnixTimeSeconds())" >> $env:GITHUB_ENV
+    - uses: actions/cache@v4
+      with:
+        path: .ccache
+        key: ${{ inputs.key }}-${{ hashFiles('CMakeLists.txt', 'av1core/**', 'av1f/**', 'ingest/**', 'encoder/**', 'tests/**') }}
+        restore-keys: ${{ inputs.key }}-
+    # statistics of this job only
+    - shell: bash
+      run: ccache -z
