@@ -147,8 +147,10 @@ Palette prediction reads no neighbouring pixels, so it adds no dependency to the
   - `k_sbsym` codes the mode info and colours, and reserves the token slots;
   - `k_palsym` (one CUDA block per palette and plane) writes the index tokens into those slots in wavefront order.
 
-  The palette helpers are not inlined into the recursive partition walk. Inlined, they overflowed the lossless
-  path's default 1 KB stack.
+  The palette helpers are not inlined into the recursive partition walk, because every level would then carry
+  their locals. The walk's deepest path is still 1,424 bytes of stack (ptxas): k_sbsym, 5 levels of 128×128
+  partitions, and the palette helpers. That is above CUDA's default 1 KB, so `run_batch_device` raises the limit to
+  2 KB once. The lossy encoder already sets more.
 
 ### Tests
 
@@ -163,8 +165,9 @@ Palette prediction reads no neighbouring pixels, so it adds no dependency to the
   4:4:4, 8- and 10-bit, with and without tiles. All of it goes through av1core, dav1d and aomdec, plus the parser
   round trip. 3,000 cases (400 with palettes: 41,421 luma and 20,169 chroma palettes) had no mismatch. ctest's fuzz
   runs (200 lossy and 120 lossless cases) include palettes too, and ctest passes 9 of 9.
-- **GPU fuzz test** (`tests/gpu_fuzz_test.cu`): the GPU entropy coder against the CPU writer, on records with palettes
-  (GPU_FUZZ).
+- **GPU fuzz test** (`tests/gpu_fuzz_test.cu`): the GPU entropy coder against the CPU writer, on records with
+  palettes. 300 cases (seeds 1–300) and 200 lossless cases (seeds 1000–1199) had 0 mismatches. This test found the
+  stack overflow above.
 - **Byte identity against main.** No photo passes detection, so photos are unchanged. Every file was compared with
   `cmp`:
   - the standard set (100) and the size range (100), default and `--yuv 444 --depth 10`;
@@ -214,7 +217,8 @@ Measured with the method of `bench/results/aws-g6-l4-speed-v06/scripts/spd.py` (
 | screen + flat PNG (64 images), default | 152.7 | 57.0 | 0.37× |
 | the same, `--palette off` | 155.9 | 150.8 | −3.3 % |
 | the same, `--palette on` | 150.6 | 37.2 | 0.25× |
-LLSPEED_ROWS
+| the same, `--lossless` (`GP_ENCODE_MP=12`) | 51.6 | 49.3 | −4.5 % |
+| the same, `--lossless --ycgco-re` | 50.4 | 46.9 | −6.9 % |
 
 - **Photos:** within noise. The detection pass is 0.09 ms of a 64 ms photo encode (ncu). The first build was 2–3 %
   slower, for two reasons: a thread-per-block detection kernel (1.03 ms of the 64 ms), and a palette branch inside
@@ -226,7 +230,11 @@ LLSPEED_ROWS
   - the entropy coder: a palette block codes one adaptive symbol per pixel. Its GPU time grows from 3.1 to 17.2 s,
     on its own stream, so it is not the bottleneck.
 
-  FAST_EXPERIMENT
+  A cheaper search was tried and is not in the branch: k-means only at the largest size, and a stop at the first
+  size without improvement (`scripts/chain6.sh`). It ran at 102.5 MP/s on the same images (0.67×, against main's
+  153.0), but saved only 9.8 % on screen content instead of 23.6 %: the smaller palettes carry much of the gain.
+  Screening the palettes with a SATD estimate before the exact rate, as the analysis does for the intra modes, is
+  the next thing to try.
 
 ## What the first version leaves out
 

@@ -1,0 +1,194 @@
+[
+ {
+  "set": "comics",
+  "image": "comics_americasgreatest1941_p138.jpg",
+  "target": 877085,
+  "files": {
+   "A": {
+    "bytes": 877085,
+    "setting": 60,
+    "ssimulacra2": 69.57991328
+   },
+   "C": {
+    "bytes": 867559,
+    "setting": 61,
+    "ssimulacra2": 69.53620431
+   },
+   "D": {
+    "bytes": 869257,
+    "setting": 61,
+    "ssimulacra2": 69.26107231
+   },
+   "av1gpu": {
+    "bytes": 867831,
+    "setting": 107,
+    "ssimulacra2": 69.49795138
+   },
+   "av1gpu_pal": {
+    "bytes": 867831,
+    "setting": 107,
+    "ssimulacra2": 69.49795138
+   }
+  }
+ },
+ {
+  "set": "comics",
+  "image": "comics_superworld1940_p129.jpg",
+  "target": 1774424,
+  "files": {
+   "A": {
+    "bytes": 1774424,
+    "setting": 60,
+    "ssimulacra2": 76.60941746
+   },
+   "C": {
+    "bytes": 1753395,
+    "setting": 61,
+    "ssimulacra2": 76.62884026
+   },
+   "D": {
+    "bytes": 1753213,
+    "setting": 61,
+    "ssimulacra2": 76.41759272
+   },
+   "av1gpu": {
+    "bytes": 1772534,
+    "setting": 104,
+    "ssimulacra2": 76.47393528
+   },
+   "av1gpu_pal": {
+    "bytes": 1772534,
+    "setting": 104,
+    "ssimulacra2": 76.47393528
+   }
+  }
+ },
+ {
+  "set": "flat_png",
+  "image": "flat_wikipe_tan_mopping.png",
+  "target": 119597,
+  "files": {
+   "A": {
+    "bytes": 119597,
+    "setting": 60,
+    "ssimulacra2": 81.86212539
+   },
+   "C": {
+    "bytes": 116744,
+    "setting": 59,
+    "ssimulacra2": 81.98670853
+   },
+   "D": {
+    "bytes": 118634,
+    "setting": 61,
+    "ssimulacra2": 81.7341116
+   },
+   "av1gpu": {
+    "bytes": 119090,
+    "setting": 113,
+    "ssimulacra2": 81.44773343
+   },
+   "av1gpu_pal": {
+    "bytes": 119090,
+    "setting": 113,
+    "ssimulacra2": 81.44773343
+   }
+  }
+ },
+ {
+  "set": "flat_jpg",
+  "image": "flat_wikipe_tan_mopping.jpg",
+  "target": 127811,
+  "files": {
+   "A": {
+    "bytes": 127811,
+    "setting": 60,
+    "ssimulacra2": 81.69814441
+   },
+   "C": {
+    "bytes": 125256,
+    "setting": 61,
+    "ssimulacra2": 82.02087051
+   },
+   "D": {
+    "bytes": 127671,
+    "setting": 62,
+    "ssimulacra2": 81.41041655
+   },
+   "av1gpu": {
+    "bytes": 127270,
+    "setting": 110,
+    "ssimulacra2": 81.8024303
+   },
+   "av1gpu_pal": {
+    "bytes": 127270,
+    "setting": 110,
+    "ssimulacra2": 81.8024303
+   }
+  }
+ },
+ {
+  "set": "screen",
+  "image": "screen_synth_shot_text.png",
+  "target": 153447,
+  "files": {
+   "A": {
+    "bytes": 153447,
+    "setting": 60,
+    "ssimulacra2": 84.99505221
+   },
+   "C": {
+    "bytes": 150680,
+    "setting": 82,
+    "ssimulacra2": 90.0380237
+   },
+   "D": {
+    "bytes": 73271,
+    "setting": 99,
+    "ssimulacra2": 91.59217496
+   },
+   "av1gpu": {
+    "bytes": 153225,
+    "setting": 102,
+    "ssimulacra2": 87.16808323
+   },
+   "av1gpu_pal": {
+    "bytes": 152000,
+    "setting": 54,
+    "ssimulacra2": 90.19541728
+   }
+  }
+ },
+ {
+  "set": "screen",
+  "image": "screen_libreoffice_writer_7_5_0_windows10.png",
+  "target": 77666,
+  "files": {
+   "A": {
+    "bytes": 77666,
+    "setting": 60,
+    "ssimulacra2": 70.73863804
+   },
+   "C": {
+    "bytes": 77095,
+    "setting": 81,
+    "ssimulacra2": 73.21450209
+   },
+   "D": {
+    "bytes": 76943,
+    "setting": 91,
+    "ssimulacra2": 73.39041555
+   },
+   "av1gpu": {
+    "bytes": 77104,
+    "setting": 102,
+    "ssimulacra2": 71.39027631
+   },
+   "av1gpu_pal": {
+    "bytes": 77267,
+    "setting": 62,
+    "ssimulacra2": 72.93572973
+   }
+  }
+ }
+]

@@ -1,0 +1,5 @@
+noise r0 size_range/default old: 232.0 MP/s (runs 234.9, 232.0, 228.9)
+noise r0 size_range/default old2: 227.3 MP/s (runs 227.3, 228.6, 227.1)
+noise r1 size_range/default old2: 230.2 MP/s (runs 230.2, 231.7, 229.5)
+noise r1 size_range/default old: 228.0 MP/s (runs 225.2, 228.0, 230.0)
+SUMMARY noise size_range/default: old 229.5 MP/s, old2 229.1 MP/s, +0.2 %

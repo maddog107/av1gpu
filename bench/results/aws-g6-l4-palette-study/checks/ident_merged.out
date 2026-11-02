@@ -1,0 +1,18 @@
+std100_default main 2.332640933 s
+std100_default br 2.359938765 s
+IDENT std100_default: 100/100 identical (100 branch files)
+std100_444_10 main 2.610345925 s
+std100_444_10 br 2.626067518 s
+IDENT std100_444_10: 100/100 identical (100 branch files)
+sizes_default main 3.392244634 s
+sizes_default br 3.414324284 s
+IDENT sizes_default: 100/100 identical (100 branch files)
+sizes_444_10 main 4.032287827 s
+sizes_444_10 br 4.047298943 s
+IDENT sizes_444_10: 100/100 identical (100 branch files)
+kodak_ll main 1.619421048 s
+kodak_ll br 1.637622975 s
+IDENT kodak_ll: 24/24 identical (24 branch files)
+kodak_ll_ycgco main 1.590563900 s
+kodak_ll_ycgco br 1.601228168 s
+IDENT kodak_ll_ycgco: 24/24 identical (24 branch files)

@@ -1,0 +1,2 @@
+screen: n=40 av1gpu palette area 24.4 %, libaom C 17.8 % (q60)
+flat_png: n=24 av1gpu palette area 8.4 %, libaom C 8.8 % (q60)

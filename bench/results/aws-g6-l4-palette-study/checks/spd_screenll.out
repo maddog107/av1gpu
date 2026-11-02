@@ -1,0 +1,10 @@
+screenll r0 graphics/lossless new: 49.2 MP/s (runs 49.4, 49.2, 49.0)
+screenll r0 graphics/lossless old: 51.3 MP/s (runs 51.6, 51.3, 51.1)
+screenll r0 graphics/lossless ycgco-re new: 47.6 MP/s (runs 46.7, 47.6, 47.6)
+screenll r0 graphics/lossless ycgco-re old: 50.5 MP/s (runs 50.7, 50.3, 50.5)
+screenll r1 graphics/lossless old: 51.9 MP/s (runs 51.6, 51.9, 52.1)
+screenll r1 graphics/lossless new: 49.4 MP/s (runs 48.5, 49.4, 49.6)
+screenll r1 graphics/lossless ycgco-re old: 50.1 MP/s (runs 50.5, 49.6, 50.1)
+screenll r1 graphics/lossless ycgco-re new: 46.9 MP/s (runs 46.5, 47.0, 46.9)
+SUMMARY screenll graphics/lossless: new 49.3 MP/s, old 51.6 MP/s, -4.5 %
+SUMMARY screenll graphics/lossless ycgco-re: new 46.9 MP/s, old 50.4 MP/s, -6.9 %

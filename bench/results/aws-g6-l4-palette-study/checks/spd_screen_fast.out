@@ -1,0 +1,5 @@
+graphics r0 graphics/default new: 102.5 MP/s (runs 102.4, 102.5, 103.5)
+graphics r0 graphics/default old: 153.2 MP/s (runs 149.5, 153.2, 156.4)
+graphics r1 graphics/default old: 152.8 MP/s (runs 152.8, 153.1, 150.4)
+graphics r1 graphics/default new: 101.6 MP/s (runs 101.6, 99.2, 102.6)
+SUMMARY graphics graphics/default: new 102.5 MP/s, old 153.0 MP/s, -33.0 %

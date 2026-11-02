@@ -546,7 +546,9 @@ alternating order, the median of 6 runs):
 | screen + flat PNG (64 images), default | 152.7 | 57.0 | 0.37× |
 | the same, `--palette off` | 155.9 | 150.8 | −3.3 % |
 | the same, `--palette on` | 150.6 | 37.2 | 0.25× |
-LLSPEED_ROWS
+| the same, `--lossless` (`GP_ENCODE_MP=12`) | 51.6 | 49.3 | −4.5 % |
+| the same, `--lossless --ycgco-re` | 50.4 | 46.9 | −6.9 % |
+
 Photos run at main's speed: the detection pass is 0.09 ms of a 64 ms photo encode. Screen content runs at 0.37× of
 main's speed: the palette search tries up to 14 palettes per block and shape, and palette blocks code one entropy
 symbol per pixel.
@@ -556,7 +558,7 @@ symbol per pixel.
   pages and photos at five quality points in both formats; and `--palette off` on the images palette is tried on.
 - **Decoder gate, dav1d and aomdec, all N/N:** the 64 screen and flat PNGs in lossy 4:2:0 (three qindex values),
   4:4:4, 10-bit, 10-bit 4:4:4, lossless GBR and YCgCo-Re.
-- **CPU fuzz** with random palettes: 3,000 cases, 0 mismatches.
+- **CPU fuzz** with random palettes: 3,000 cases, 0 mismatches. GPU fuzz test: 500 cases, 0 mismatches. ctest: 9 of 9.
 
 ### Transparency
 

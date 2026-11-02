@@ -1,0 +1,7 @@
+GATE l420 exit 0: [gate] q20: 64/64 identical in dav1d and aomdec (420 64; 11118124 bytes), 0 not encoded (unsupported input), rc=0 PASS
+GATE l444 exit 0: [gate] q40: 64/64 identical in dav1d and aomdec (444 64; 9797502 bytes), 0 not encoded (unsupported input), rc=0 PASS
+GATE l10 exit 0: [gate] q40: 64/64 identical in dav1d and aomdec (420 10-bit 64; 10042508 bytes), 0 not encoded (unsupported input), rc=0 PASS
+GATE l444_10 exit 0: [gate] q80: 64/64 identical in dav1d and aomdec (444 10-bit 64; 7295821 bytes), 0 not encoded (unsupported input), rc=0 PASS
+GATE ljpg exit 0: [gate] q60: 30/30 identical in dav1d and aomdec (420 30; 8093842 bytes), 0 not encoded (unsupported input), rc=0 PASS
+GATE ll exit 0: [gate] lossless: 64/64 identical in dav1d and aomdec (444 64; 48214646 bytes), 0 not encoded (unsupported input), rc=0 PASS
+GATE llyc exit 0: [gate] lossless: 64/64 identical in dav1d and aomdec (444 10-bit 64; 37630690 bytes), 0 not encoded (unsupported input), rc=0 PASS
