@@ -60,6 +60,11 @@ struct DevFrame {
     uint32_t txbBase;      // first tx block in DevBatch::txb
     uint32_t nTxb;
     uint64_t coeffBase;    // base of the frame's coefficients in DevBatch::coeffs
+    // palettes (v5 records, allow_screen_content_tools frames): the frame's av1g_palette entries (block indices
+    // frame-relative) at DevBatch::palettes[palBase .. + nPal), stored back to back in frame order like the blocks;
+    // its colour index maps at DevBatch::colorMap[mapBase + map_off], nMap entries in all
+    uint32_t palBase = 0, nPal = 0;
+    uint64_t mapBase = 0, nMap = 0;
 };
 
 struct DevBatch {
@@ -69,6 +74,8 @@ struct DevBatch {
     const uint32_t *blockTxb = nullptr;   // device
     const av1g_txb *txb = nullptr;        // device
     const int16_t *coeffs = nullptr;      // device
+    const av1g_palette *palettes = nullptr;   // device (only read when a frame has nPal > 0)
+    const uint8_t *colorMap = nullptr;        // device
     // Symbol buffer capacity: scratch needs ~5 bytes per symbol of capacity (4 symbol + 1 payload
     // staging/packing).  0 = default 0.75 * luma pixels (x 2 for 4:4:4 frames) + 16 * blocks + 8 * tx blocks.  Measured:
     // 0.41 symbols/pixel for the encoder's dev batch (q120 class), 0.54 for libaom s6 q60 decisions;

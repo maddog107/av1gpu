@@ -47,7 +47,11 @@ struct FrameG {
     uint64_t coeffBase;                          // absolute index into the caller's coeffs[]
     uint32_t sbBase, nSb, tileBase, nTiles;
     int tileCols, tileRows, tileWsb, tileHsb;    // uniform tile grid
+    int bd;                                      // BitDepth (palette colours)
+    uint32_t palBase, nPal;                      // the frame's palettes: batch-global indices palBase .. + nPal
+    uint64_t mapBase;                            // its colour index maps in DevBatch::colorMap (absolute)
 };
+#define NO_PAL 0xFFFFFFFFu
 // lossless frame (base_q_idx 0, every DeltaQ 0: av1g_encode's rule): 4x4 WHT, no tx types, the lossless CfL rule.
 // The symbolization kernels take a template flag LL: batches without lossless frames run the LL = false
 // instantiations, which compile exactly as before lossless support.
@@ -78,11 +82,23 @@ struct Out {
     __device__ void put(uint32_t w) { if (EMIT && p) p[n] = w; n++; }
     __device__ void sym(uint32_t cid, int s, int N) { put(av1g_sym_pack(AV1G_SYM_ADAPT, cid, (uint32_t)s, (uint32_t)N)); }
     __device__ void bit(int b) { put(av1g_sym_pack(AV1G_SYM_BOOL, 0, (uint32_t)b, 2)); }
+    __device__ void lit(int v, int bits) { for (int i = bits - 1; i >= 0; i--) bit((v >> i) & 1); }   // L(bits)
+    __device__ void skip(uint32_t k) { n += k; }   // slots another kernel fills (palette tokens)
 };
 
 // ---------------------------------------------------------------------------
+// palette inputs of the symbolization (null in batches without screen-content frames)
+struct PalG {
+    const av1g_palette *pals;   // batch-global palette index -> entry (block frame-relative)
+    const uint8_t *cmap;        // DevBatch::colorMap
+    const uint32_t *blockPal;   // global block -> palette index, NO_PAL: none (null when the batch has no palettes)
+    uint8_t *mPalY, *mPalUV;    // PaletteSizes per 4x4 (miBase-relative like the other maps)
+    uint32_t *mPalIdx;          // palette index per 4x4
+    uint32_t *palTok;           // [2 * nPal] first symbol slot of the luma / chroma index-map tokens (emit pass)
+};
+
 __global__ void k_maps(const av1g_block *blocks, const uint32_t *blockFrame, const FrameG *frames, uint32_t nBlocks,
-                       uint8_t *mMiSize, uint8_t *mYMode, uint8_t *mSkip, uint8_t *mTx) {
+                       uint8_t *mMiSize, uint8_t *mYMode, uint8_t *mSkip, uint8_t *mTx, PalG pg) {
     const uint32_t b = blockIdx.x * blockDim.x + threadIdx.x;
     if (b >= nBlocks) return;
     const av1g_block k = blocks[b];
@@ -98,6 +114,76 @@ __global__ void k_maps(const av1g_block *blocks, const uint32_t *blockFrame, con
             mSkip[i] = k.skip;
             mTx[i] = tx;
         }
+    if (pg.mPalY) {   // batches with screen-content frames: PaletteSizes and the palette of every 4x4
+        const uint32_t gp = pg.blockPal ? pg.blockPal[b] : NO_PAL;
+        const uint8_t sy = gp != NO_PAL ? pg.pals[gp].size_y : 0, suv = gp != NO_PAL ? pg.pals[gp].size_uv : 0;
+        for (int y = k.mi_row; y < rEnd; y++)
+            for (int x = k.mi_col; x < cEnd; x++) {
+                const uint64_t i = F.miBase + (uint64_t)y * F.MiCols + x;
+                pg.mPalY[i] = sy;
+                pg.mPalUV[i] = suv;
+                pg.mPalIdx[i] = gp;
+            }
+    }
+}
+
+// batch-global palette index -> frame (frames' palettes are back to back)
+__device__ uint32_t frame_of_pal(const FrameG *F, uint32_t nF, uint32_t g) {
+    uint32_t lo = 0, hi = nF;
+    while (hi - lo > 1) {
+        const uint32_t mid = (lo + hi) >> 1;
+        if (F[mid].palBase <= g) lo = mid; else hi = mid;
+    }
+    return lo;
+}
+
+// blockPal[global block] = its palette (the list is in increasing block order per frame)
+__global__ void k_palblocks(const FrameG *F, uint32_t nF, const av1g_palette *pals, uint32_t nPal, uint32_t *blockPal, DevStatus *st) {
+    const uint32_t g = blockIdx.x * blockDim.x + threadIdx.x;
+    if (g >= nPal) return;
+    const FrameG &f = F[frame_of_pal(F, nF, g)];
+    const av1g_palette p = pals[g];
+    const bool bad = p.block >= f.nBlocks || (g > f.palBase && pals[g - 1].block >= p.block) || p.size_y == 1 || p.size_y > 8 ||
+                     p.size_uv == 1 || p.size_uv > 8 || !(p.size_y | p.size_uv) || !f.sct;
+    if (bad) { atomicOr(&st->error, AV1G_GPU_ERR_ORDER); return; }
+    blockPal[f.blockBase + p.block] = g;
+}
+
+// palette_tokens: the colour-index symbols of one map (CUDA block per (palette, plane)), written into the slots
+// k_sbsym reserved after the first index (palTok), in the spec's anti-diagonal order
+__global__ void k_palsym(const FrameG *F, uint32_t nF, const av1g_block *blocks, PalG pg, uint32_t *syms, const uint32_t *symTotal,
+                         uint64_t symCap) {
+    const uint32_t g = blockIdx.x >> 1;
+    const int uv = blockIdx.x & 1;
+    if (*symTotal > symCap) return;
+    const av1g_palette p = pg.pals[g];
+    const int n = uv ? p.size_uv : p.size_y;
+    if (!n) return;
+    const FrameG &f = F[frame_of_pal(F, nF, g)];
+    const av1g_block k = blocks[f.blockBase + p.block];
+    int w, h, onW, onH;
+    av1g_palette_map_dims(k.bsize, k.mi_row, k.mi_col, f.MiRows, f.MiCols, uv, f.ssx, f.ssy, &w, &h, &onW, &onH);
+    const uint8_t *map = pg.cmap + f.mapBase + p.map_off;
+    if (uv && p.size_y) map += 4 * av1g_bw4(k.bsize) * 4 * av1g_bh4(k.bsize);   // after the luma map
+    __shared__ uint32_t diag[128];   // first slot of each anti-diagonal (diagonal 0 is the NS-coded first index)
+    const int nd = onH + onW - 1;
+    for (int t = threadIdx.x; t < nd; t += blockDim.x) diag[t] = t ? (uint32_t)(min(t, onW - 1) - max(0, t - onH + 1) + 1) : 0;
+    __syncthreads();
+    if (threadIdx.x == 0)
+        for (int t = 1, s = 0; t < nd; t++) { const int l = diag[t]; diag[t] = s; s += l; }
+    __syncthreads();
+    const uint32_t base = pg.palTok[2 * g + uv];
+    for (int i = threadIdx.x; i < onW * onH; i += blockDim.x) {
+        const int r = i / onW, c = i % onW;
+        if (!r && !c) continue;
+        uint8_t order[8];
+        const int ctx = av1g_palette_color_context(map, w, r, c, n, order);
+        const int v = map[r * w + c];
+        int s = 0;
+        while (s < n - 1 && order[s] != v) s++;
+        const uint32_t cid = (uint32_t)(av1g_palette_color_cdf(&g_cdf_layout, uv, n, ctx) - (uint16_t *)&g_cdf_layout);
+        syms[base + diag[r + c] + (min(r + c, onW - 1) - c)] = av1g_sym_pack(AV1G_SYM_ADAPT, cid, (uint32_t)s, (uint32_t)n);
+    }
 }
 
 // inverse scans: iscan[(txSz * 3 + class) * 1024 + pos] = the scan index of coefficient pos, for the scans
@@ -355,11 +441,113 @@ struct Walk {
     int npend;
     int curQ, firstInSb, cdefDone;
     DevStatus *st;
+    PalG pg;    // palette inputs; pg.mPal* frame-relative here
     __device__ bool inside(int r, int c) const {
         return c >= T->miColStart && c < T->miColEnd && r >= T->miRowStart && r < T->miRowEnd;
     }
     __device__ int map(const uint8_t *m, int r, int c) const { return m[(uint64_t)r * F->MiCols + c]; }
+    __device__ uint32_t pal_at(int r, int c) const { return pg.mPalIdx[(uint64_t)r * F->MiCols + c]; }
 };
+
+// palette colours of one plane (uv 0: Y, 1: U and V), as Encoder::code_palette_colors writes them.  The palette
+// helpers are not inlined: w_block is inlined into the recursive w_partition, whose every level would carry their
+// locals on the stack otherwise (the default 1 KB stack of the lossless path overflowed)
+template <bool EMIT>
+__device__ __noinline__ void w_pal_colors(const Walk &w, Out<EMIT> &o, int r, int c, int aL, const av1g_palette &p, int uv) {
+    const FrameG &F = *w.F;
+    const int n = uv ? p.size_uv : p.size_y, bd = F.bd, maxV = 1 << bd;
+    const uint8_t *sizes = uv ? w.pg.mPalUV : w.pg.mPalY;
+    int aboveN = 0, leftN = 0;
+    const uint16_t *above = nullptr, *left = nullptr;
+    if ((r * 4) % 64) {
+        aboveN = w.map(sizes, r - 1, c);
+        if (aboveN) above = w.pg.pals[w.pal_at(r - 1, c)].colors[uv];
+    }
+    if (aL) {
+        leftN = w.map(sizes, r, c - 1);
+        if (leftN) left = w.pg.pals[w.pal_at(r, c - 1)].colors[uv];
+    }
+    uint16_t cache[16], lits[8];
+    uint8_t found[16];
+    const int cacheN = av1g_palette_cache(above, aboveN, left, leftN, cache);
+    int nFlags = 0, extra = 0, bits = 0;
+    const int nLit = av1g_palette_split(p.colors[uv], n, cache, cacheN, bd, uv, found, &nFlags, lits, &extra, &bits);
+    for (int i = 0; i < nFlags; i++) o.bit(found[i]);
+    if (nLit) o.lit(lits[0], bd);
+    if (nLit > 1) {
+        const int minVal = uv ? 0 : 1;
+        o.lit(extra, 2);
+        for (int k = 1; k < nLit; k++) {
+            o.lit(lits[k] - lits[k - 1] - minVal, bits);
+            bits = min(bits, av1g_ceil_log2(maxV - lits[k] - minVal));
+        }
+    }
+    if (!uv) return;
+    const uint16_t *v = p.colors[2];
+    int vBits = 0, vExtra = 0;
+    const int delta = av1g_palette_v_delta(v, n, bd, &vBits, &vExtra);
+    o.bit(delta);
+    if (!delta) {
+        for (int i = 0; i < n; i++) o.lit(v[i], bd);
+        return;
+    }
+    o.lit(vExtra, 2);
+    o.lit(v[0], bd);
+    for (int i = 1; i < n; i++) {
+        if (v[i] == v[i - 1]) { o.lit(0, vBits); continue; }
+        const int d0 = v[i] > v[i - 1] ? v[i] - v[i - 1] : v[i - 1] - v[i], neg = v[i] < v[i - 1];
+        if (d0 <= maxV - d0) { o.lit(d0, vBits); o.bit(neg); }
+        else { o.lit(maxV - d0, vBits); o.bit(!neg); }
+    }
+}
+
+// palette_mode_info; returns PaletteSizeY
+template <bool EMIT>
+__device__ __noinline__ int w_pal_info(const Walk &w, Out<EMIT> &o, uint32_t gp, int r, int c, int bsize, int aU, int aL, int hasChroma,
+                                       int yMode, int uvMode) {
+    av1g_palette pal;
+    pal.size_y = pal.size_uv = 0;
+    if (gp != NO_PAL) pal = w.pg.pals[gp];
+    const int bsizeCtx = av1g_palette_bsize_ctx(bsize);
+    if (yMode == AV1G_DC_PRED) {
+        const int ctx = (aU && w.map(w.pg.mPalY, r - 1, c) > 0) + (aL && w.map(w.pg.mPalY, r, c - 1) > 0);
+        o.sym(CID(palette_y_mode[bsizeCtx][ctx]), pal.size_y > 0, 2);
+        if (pal.size_y) {
+            o.sym(CID(palette_y_size[bsizeCtx]), pal.size_y - 2, 7);
+            w_pal_colors(w, o, r, c, aL, pal, 0);
+        }
+    }
+    if (hasChroma && uvMode == AV1G_DC_PRED) {
+        o.sym(CID(palette_uv_mode[pal.size_y > 0]), pal.size_uv > 0, 2);
+        if (pal.size_uv) {
+            o.sym(CID(palette_uv_size[bsizeCtx]), pal.size_uv - 2, 7);
+            w_pal_colors(w, o, r, c, aL, pal, 1);
+        }
+    }
+    return pal.size_y;
+}
+
+// palette_tokens: the first index of each map (NS), then the slots k_palsym fills
+template <bool EMIT>
+__device__ __noinline__ void w_pal_tokens(const Walk &w, Out<EMIT> &o, uint32_t gp, int r, int c, int bsize, uint32_t item) {
+    const FrameG &F = *w.F;
+    const av1g_palette &pal = w.pg.pals[gp];
+    const uint8_t *map = w.pg.cmap + F.mapBase + pal.map_off;
+    for (int uv = 0; uv < 2; uv++) {
+        const int n = uv ? pal.size_uv : pal.size_y;
+        if (!n) continue;
+        int mw, mh, onW, onH;
+        av1g_palette_map_dims(bsize, r, c, F.MiRows, F.MiCols, uv, F.ssx, F.ssy, &mw, &mh, &onW, &onH);
+        int nb = 0;
+        for (int x = n; x; x >>= 1) nb++;
+        const int m = (1 << nb) - n, v0 = map[0];
+        if (v0 < m) o.lit(v0, nb - 1);
+        else { o.lit(m + ((v0 - m) >> 1), nb - 1); o.bit((v0 - m) & 1); }
+        if (w.syms) w.pg.palTok[2 * gp + uv] = w.itemOff[item] + o.n;
+        o.skip((uint32_t)(onW * onH - 1));
+        map += mw * mh;
+    }
+}
 
 __device__ int w_derive(Walk &w, int r, int c, int bSize, int hasRows, int hasCols) {
     const av1g_block &b = w.blocks[w.cursor];
@@ -439,15 +627,14 @@ __device__ void w_block(Walk &w, int r, int c, int bsize) {
         if (bsize >= AV1G_BLOCK_8X8 && av1g_is_directional(k.uv_mode))
             o.sym(CID(angle_delta[k.uv_mode - AV1G_V_PRED]), k.angle_delta_uv + 3, 7);
     }
-    if (F.sct && bsize >= AV1G_BLOCK_8X8 && bw4 <= 16 && bh4 <= 16) {
-        const int bsizeCtx = AV1G_T(Mi_Width_Log2)[bsize] + AV1G_T(Mi_Height_Log2)[bsize] - 2;
-        if (k.y_mode == AV1G_DC_PRED) o.sym(CID(palette_y_mode[bsizeCtx][0]), 0, 2);
-        if (hasChroma && k.uv_mode == AV1G_DC_PRED) o.sym(CID(palette_uv_mode[0]), 0, 2);
-    }
-    if (F.fi && k.y_mode == AV1G_DC_PRED && bw4 <= 8 && bh4 <= 8) {  // filter_intra_mode_info
+    // palette_mode_info (screen-content frames)
+    const uint32_t gp = F.sct && w.pg.blockPal ? w.pg.blockPal[bi] : NO_PAL;
+    const int palY = F.sct && av1g_palette_allowed(bsize) ? w_pal_info(w, o, gp, r, c, bsize, aU, aL, hasChroma, k.y_mode, k.uv_mode) : 0;
+    if (F.fi && k.y_mode == AV1G_DC_PRED && !palY && bw4 <= 8 && bh4 <= 8) {  // filter_intra_mode_info
         o.sym(CID(filter_intra[bsize]), k.filter_intra != 0, 2);
         if (k.filter_intra) o.sym(CID(filter_intra_mode), k.filter_intra - 1, 5);
     }
+    if (gp != NO_PAL) w_pal_tokens(w, o, gp, r, c, bsize, item);
     if (F.txsel && bsize > AV1G_BLOCK_4X4) {
         const int maxRect = AV1G_T(Max_Tx_Size_Rect)[bsize];
         const int maxTxDepth = AV1G_T(Max_Tx_Depth)[bsize];
@@ -511,7 +698,7 @@ template <bool LL>
 __global__ void k_sbsym(const SbG *sbs, uint32_t nSb, const FrameG *frames, const TileG *tiles, const av1g_block *blocks,
                         const uint32_t *blockTxbG, const uint8_t *mMiSize, const uint8_t *mYMode, const uint8_t *mSkip,
                         const uint8_t *mTx, uint32_t *itemCount, const uint32_t *itemOff, uint32_t *syms,
-                        const uint32_t *symTotal, uint64_t symCap, DevStatus *st) {
+                        const uint32_t *symTotal, uint64_t symCap, DevStatus *st, PalG pg) {
     const uint32_t s = blockIdx.x * blockDim.x + threadIdx.x;
     if (s >= nSb) return;
     if (syms && *symTotal > symCap) return;
@@ -525,6 +712,12 @@ __global__ void k_sbsym(const SbG *sbs, uint32_t nSb, const FrameG *frames, cons
     w.mYMode = mYMode + w.F->miBase;
     w.mSkip = mSkip + w.F->miBase;
     w.mTx = mTx + w.F->miBase;
+    w.pg = pg;
+    if (pg.mPalY) {
+        w.pg.mPalY += w.F->miBase;
+        w.pg.mPalUV += w.F->miBase;
+        w.pg.mPalIdx += w.F->miBase;
+    }
     w.cursor = sb.firstBlock;
     w.end = sb.endBlock;
     w.itemCount = itemCount;
@@ -1152,6 +1345,11 @@ struct Plan {
     // scratch offsets
     size_t oF, oT, oSb, oBFrame, oBTile, oBTxbG, oTxbBlock, oSbFirst, oMap[4], oCtxL, oCtxD, oEob, oType, oCount, oOff, oCub,
         oSyms, oTb, oTe, oTq, oCapArr, oCapOff, oSizes, oStaging, oPacked, oResult, oCdfDef, oIscan, total;
+    // palettes: screen-content frames get the PaletteSizes / palette maps, batches with palettes the block -> palette
+    // table and the token slots
+    uint32_t nPal = 0;
+    bool anySct = false;
+    size_t oPalMap[2] = {0, 0}, oPalIdx = 0, oBlockPal = 0, oPalTok = 0;
 };
 
 int build_plan(const DevBatch &b, Plan &P, std::string &err) {
@@ -1160,8 +1358,8 @@ int build_plan(const DevBatch &b, Plan &P, std::string &err) {
     P.nF = b.nFrames;
     P.F.resize(P.nF);
     P.frameTile0.assign(P.nF + 1, 0);
-    const uint32_t b0 = b.frames[0].blockBase, t0 = b.frames[0].txbBase;
-    uint64_t miTotal = 0, ctxTotal[3] = {0, 0, 0}, pixels = 0, llSamples = 0;
+    const uint32_t b0 = b.frames[0].blockBase, t0 = b.frames[0].txbBase, p0 = b.frames[0].palBase;
+    uint64_t miTotal = 0, ctxTotal[3] = {0, 0, 0}, pixels = 0, llSamples = 0, mapTotal = 0;
     for (uint32_t f = 0; f < P.nF; f++) {
         const DevFrame &d = b.frames[f];
         const av1g_frame_params &fp = d.fp;
@@ -1191,6 +1389,15 @@ int build_plan(const DevBatch &b, Plan &P, std::string &err) {
         g.blockBase = P.nB; g.nBlocks = d.nBlocks; g.txbBase = P.nT; g.nTxb = d.nTxb; g.coeffBase = d.coeffBase;
         P.nB += d.nBlocks;
         P.nT += d.nTxb;
+        g.bd = av1g_bit_depth(&fp);
+        if (d.nPal && (d.palBase != p0 + P.nPal || !fp.allow_screen_content_tools || !b.palettes || !b.colorMap)) {
+            err = "palettes of frame " + std::to_string(f) + ": not back to back in frame order, or no allow_screen_content_tools / arrays";
+            return -1;
+        }
+        g.palBase = P.nPal; g.nPal = d.nPal; g.mapBase = d.mapBase;
+        P.nPal += d.nPal;
+        P.anySct |= fp.allow_screen_content_tools != 0;
+        mapTotal += d.nMap;
         pixels += (uint64_t)fp.width * fp.height * (g.ssx ? 1 : 2);   // 4:4:4: twice the samples of 4:2:0
         av1g::TileInfo ti;
         if (!av1g::compute_tiles(fp.width, fp.height, fp.tile_cols_log2, fp.tile_rows_log2, ti)) {
@@ -1231,7 +1438,8 @@ int build_plan(const DevBatch &b, Plan &P, std::string &err) {
     P.nItems = (uint64_t)P.nB + P.nT;
     if (P.nItems + 1 > 0x7FFFFFFFull) { err = "batch too large (items)"; return -1; }
     // default bound; lossless frames code every sample's WHT coefficient (sign, base / range levels, Golomb bits)
-    P.symCap = b.symbolCapacity ? b.symbolCapacity : pixels * 3 / 4 + 16ull * P.nB + 8ull * P.nT + 6ull * llSamples;
+    P.symCap = b.symbolCapacity ? b.symbolCapacity : pixels * 3 / 4 + 16ull * P.nB + 8ull * P.nT + 6ull * llSamples + mapTotal +
+                                                         64ull * P.nPal;   // a token per map entry, colour bits
     P.capBytes = P.symCap / 2 + 256ull * P.nTiles;
     size_t t1 = 0, t2 = 0;
     cub::DeviceScan::ExclusiveSum(nullptr, t1, (const uint32_t *)nullptr, (uint32_t *)nullptr, (int)(P.nItems + 1));
@@ -1268,6 +1476,15 @@ int build_plan(const DevBatch &b, Plan &P, std::string &err) {
     P.oResult = take(sizeof(DevStatus) + 8ull * (P.nTiles + 1));
     P.oCdfDef = take(4 * sizeof(av1g_cdfs));
     P.oIscan = take(2ull * kIscanTables * 1024);
+    if (P.anySct) {
+        P.oPalMap[0] = take(P.miTotal);
+        P.oPalMap[1] = take(P.miTotal);
+        P.oPalIdx = take(4ull * P.miTotal);
+    }
+    if (P.nPal) {
+        P.oBlockPal = take(4ull * P.nB);
+        P.oPalTok = take(8ull * P.nPal);
+    }
     P.total = o;
     return 0;
 }
@@ -1342,8 +1559,24 @@ int run_batch_device(const DevBatch &b, cudaStream_t s, void *scratch, size_t sc
     k_blocks<<<grid(nB, TB), TB, 0, s>>>(dF, P.nF, dT, blocks, blockTxb, nB, nT, dBFrame, dBTile, dBTxbG, dTxbBlock, dSbFirst, dSt);
     k_sbs<<<grid(nSb, TB), TB, 0, s>>>(dF, dT, nTiles, nSb, dSbFirst, dSb, dSt);
     k_tiles<<<nTiles, 32, 0, s>>>(dF, dT, dSb, blocks);
+    PalG pg;
+    memset(&pg, 0, sizeof pg);
+    if (P.anySct) {
+        pg.mPalY = S + P.oPalMap[0];
+        pg.mPalUV = S + P.oPalMap[1];
+        pg.mPalIdx = (uint32_t *)(S + P.oPalIdx);
+    }
+    if (P.nPal) {
+        pg.pals = b.palettes + b.frames[0].palBase;   // batch-global palette index 0 = frame 0's first
+        pg.cmap = b.colorMap;
+        uint32_t *dBlockPal = (uint32_t *)(S + P.oBlockPal);
+        pg.blockPal = dBlockPal;
+        pg.palTok = (uint32_t *)(S + P.oPalTok);
+        CK(cudaMemsetAsync(dBlockPal, 0xFF, 4ull * nB, s));
+        k_palblocks<<<grid(P.nPal, TB), TB, 0, s>>>(dF, P.nF, pg.pals, P.nPal, dBlockPal, dSt);
+    }
     rec(1);
-    k_maps<<<grid(nB, TB), TB, 0, s>>>(blocks, dBFrame, dF, nB, mMiSize, mYMode, mSkip, mTx);
+    k_maps<<<grid(nB, TB), TB, 0, s>>>(blocks, dBFrame, dF, nB, mMiSize, mYMode, mSkip, mTx, pg);
     bool anyLL = false;   // lossless frames in the batch: the LL instantiations (handle lossy frames too)
     for (const FrameG &g : P.F) anyLL |= g.qidx == 0;
     if (anyLL) k_txctx<true><<<grid(nT, TB), TB, 0, s>>>(blocks, dBFrame, dF, txb, dTxbBlock, b.coeffs, nT, dIscan, cL, cD, dEob, dType);
@@ -1355,9 +1588,9 @@ int run_batch_device(const DevBatch &b, cudaStream_t s, void *scratch, size_t sc
     else k_txsym<false, false><<<grid(nT, TB), TB, 0, s>>>(blocks, dBFrame, dBTile, dF, dT, txb, dTxbBlock, b.coeffs, nT, cL, cD,
                                                dEob, dType, dCount, nullptr, nullptr, nullptr, 0);
     if (anyLL) k_sbsym<true><<<grid(nSb, 32), 32, 0, s>>>(dSb, nSb, dF, dT, blocks, dBTxbG, mMiSize, mYMode, mSkip, mTx, dCount, nullptr, nullptr,
-                                          nullptr, 0, dSt);
+                                          nullptr, 0, dSt, pg);
     else k_sbsym<false><<<grid(nSb, 32), 32, 0, s>>>(dSb, nSb, dF, dT, blocks, dBTxbG, mMiSize, mYMode, mSkip, mTx, dCount, nullptr, nullptr,
-                                          nullptr, 0, dSt);
+                                          nullptr, 0, dSt, pg);
     rec(3);
     size_t cubBytes = P.cubItems;
     CK(cub::DeviceScan::ExclusiveSum(dCub, cubBytes, dCount, dOff, (int)(nItems + 1), s));
@@ -1367,9 +1600,10 @@ int run_batch_device(const DevBatch &b, cudaStream_t s, void *scratch, size_t sc
     else k_txsym<false, true><<<grid(nT, TB), TB, 0, s>>>(blocks, dBFrame, dBTile, dF, dT, txb, dTxbBlock, b.coeffs, nT, cL, cD,
                                               dEob, dType, dCount, dOff, dSyms, dOff + nItems, P.symCap);
     if (anyLL) k_sbsym<true><<<grid(nSb, 32), 32, 0, s>>>(dSb, nSb, dF, dT, blocks, dBTxbG, mMiSize, mYMode, mSkip, mTx, dCount, dOff, dSyms,
-                                          dOff + nItems, P.symCap, dSt);
+                                          dOff + nItems, P.symCap, dSt, pg);
     else k_sbsym<false><<<grid(nSb, 32), 32, 0, s>>>(dSb, nSb, dF, dT, blocks, dBTxbG, mMiSize, mYMode, mSkip, mTx, dCount, dOff, dSyms,
-                                          dOff + nItems, P.symCap, dSt);
+                                          dOff + nItems, P.symCap, dSt, pg);
+    if (P.nPal) k_palsym<<<2 * P.nPal, 128, 0, s>>>(dF, P.nF, blocks, pg, dSyms, dOff + nItems, P.symCap);
     rec(5);
     k_tilerange<<<grid(nTiles, 64), 64, 0, s>>>(dT, nTiles, dF, dBTxbG, dOff, nItems, nB, P.symCap, dTb, dTe, dTq, dCapArr,
                                                 dSizes, dSt);
@@ -1419,6 +1653,8 @@ int run_batch(const std::vector<const av1g_decision_record *> &frames, bool keep
     std::vector<uint32_t> blockTxb;
     std::vector<av1g_txb> txb;
     std::vector<int16_t> coeffs;
+    std::vector<av1g_palette> pals;
+    std::vector<uint8_t> cmap;
     for (uint32_t f = 0; f < nF; f++) {
         const av1g_decision_record &R = *frames[f];
         DevFrame &d = df[f];
@@ -1432,6 +1668,14 @@ int run_batch(const std::vector<const av1g_decision_record *> &frames, bool keep
         blockTxb.insert(blockTxb.end(), R.block_txb, R.block_txb + R.n_blocks);
         txb.insert(txb.end(), R.txb, R.txb + R.n_txb);
         coeffs.insert(coeffs.end(), R.coeffs, R.coeffs + R.n_coeffs);
+        d.palBase = (uint32_t)pals.size();
+        d.mapBase = cmap.size();
+        if (R.fp.version >= 5 && R.n_palettes) {
+            d.nPal = R.n_palettes;
+            d.nMap = R.n_color_map;
+            pals.insert(pals.end(), R.palettes, R.palettes + R.n_palettes);
+            cmap.insert(cmap.end(), R.color_map, R.color_map + R.n_color_map);
+        }
     }
     cudaEvent_t eu0, eu1, ed0, ed1;
     cudaEventCreate(&eu0); cudaEventCreate(&eu1); cudaEventCreate(&ed0); cudaEventCreate(&ed1);
@@ -1440,13 +1684,17 @@ int run_batch(const std::vector<const av1g_decision_record *> &frames, bool keep
     size_t bytes = 0;
     cudaEventRecord(eu0);
     av1g_block *dB; uint32_t *dBT; av1g_txb *dT; int16_t *dC;
-    if (up(dB, blocks, bytes, err) || up(dBT, blockTxb, bytes, err) || up(dT, txb, bytes, err) || up(dC, coeffs, bytes, err))
+    av1g_palette *dP;
+    uint8_t *dM;
+    if (up(dB, blocks, bytes, err) || up(dBT, blockTxb, bytes, err) || up(dT, txb, bytes, err) || up(dC, coeffs, bytes, err) ||
+        up(dP, pals, bytes, err) || up(dM, cmap, bytes, err))
         return -1;
     cudaEventRecord(eu1);
     DevBatch b;
     b.frames = df.data();
     b.nFrames = nF;
     b.blocks = dB; b.blockTxb = dBT; b.txb = dT; b.coeffs = dC;
+    b.palettes = dP; b.colorMap = dM;
     void *scratch = nullptr;
     DevResult r;
     DevStatus st;
@@ -1501,7 +1749,7 @@ int run_batch(const std::vector<const av1g_decision_record *> &frames, bool keep
         res.nTxb = P.nT;
     }
     res.deviceBytes = bytes;
-    cudaFree(dB); cudaFree(dBT); cudaFree(dT); cudaFree(dC); cudaFree(scratch);
+    cudaFree(dB); cudaFree(dBT); cudaFree(dT); cudaFree(dC); cudaFree(dP); cudaFree(dM); cudaFree(scratch);
     for (auto &e : ev.e) cudaEventDestroy(e);
     cudaEventDestroy(eu0); cudaEventDestroy(eu1); cudaEventDestroy(ed0); cudaEventDestroy(ed1);
     return 0;

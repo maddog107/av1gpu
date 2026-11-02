@@ -8,7 +8,10 @@
 // little-endian samples from both decoders).
 //
 //   av1g_fuzz --seed S --count N [--mode m2|full] [--out DIR] [--keep] [--maxdim D]
-//             [--big P] [--yuv444 P] [--depth10 P] [--lossless P] [--no-aom] [--quiet]
+//             [--big P] [--yuv444 P] [--depth10 P] [--lossless P] [--palette P] [--no-aom] [--quiet]
+// --palette P: P % of the screen-content cases (allow_screen_content_tools, 15 % of the lossy and 20 % of the
+// lossless cases) get random palettes (default 50; add_palettes below), from their own random stream: --palette 0
+// reproduces the cases of before palette support.
 // --yuv444 P: P % of the non-monochrome cases are 4:4:4 (default 40).  That choice comes from
 // its own random stream, so every other case of a seed is the same record as with
 // --yuv444 0, which reproduces the pre-4:4:4 (4:2:0 / monochrome only) case stream exactly.
@@ -38,6 +41,7 @@ static int g_pfBd10 = 0;   // index into g_pfStat: the case being filtered is 10
 #include "av1g/dsp.h"
 #include "internal.h"
 
+#include <algorithm>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
@@ -475,7 +479,141 @@ struct FuzzCase {
     std::vector<uint32_t> btx;
     std::vector<av1g_txb> txb;
     std::vector<int16_t> coeffs;
+    std::vector<av1g_palette> pal;
+    std::vector<uint8_t> cmap;
 };
+
+// ---------------------------------------------------------------------------
+// palettes (v5): in g_pctPal % of the screen-content cases, a random share of the eligible blocks gets a luma and / or
+// chroma palette (DC_PRED modes, no filter intra / CfL / angle deltas there), colours drawn to hit the palette cache
+// (from recent palettes), to force or avoid V delta coding and U duplicates, and index maps with runs or noise.  Own
+// random stream, applied after the blocks are made: --palette 0 gives the cases of before.
+static int g_pctPal = 50;
+struct PalCov {
+    uint64_t cases = 0, casesLL = 0, cases444 = 0, cases10 = 0, tiles = 0, blocksY = 0, blocksUV = 0, sizeY[9] = {}, sizeUV[9] = {};
+    uint64_t fromRecent = 0, uDup = 0, vNear = 0, thin = 0, offscreen = 0, sbTop = 0;
+    void report() const {
+        int missing = !cases + !casesLL + !cases444 + !cases10 + !tiles + !fromRecent + !uDup + !vNear + !thin + !offscreen + !sbTop;
+        printf("COVERAGE palette: %llu cases (lossless %llu, 4:4:4 %llu, 10-bit %llu, tiled %llu), blocks Y %llu UV %llu, sizes Y:",
+               (unsigned long long)cases, (unsigned long long)casesLL, (unsigned long long)cases444, (unsigned long long)cases10,
+               (unsigned long long)tiles, (unsigned long long)blocksY, (unsigned long long)blocksUV);
+        for (int n = 2; n <= 8; n++) { printf(" %llu", (unsigned long long)sizeY[n]); missing += !sizeY[n]; }
+        printf(" UV:");
+        for (int n = 2; n <= 8; n++) { printf(" %llu", (unsigned long long)sizeUV[n]); missing += !sizeUV[n]; }
+        printf("\n  colours from recent palettes %llu, U duplicates %llu, close V %llu, 4x16 / 16x4 blocks %llu, partly offscreen"
+               " maps %llu, blocks at an SB's top row %llu\nCOVERAGE palette missing items: %d\n",
+               (unsigned long long)fromRecent, (unsigned long long)uDup, (unsigned long long)vNear, (unsigned long long)thin,
+               (unsigned long long)offscreen, (unsigned long long)sbTop, missing);
+    }
+};
+static PalCov covPal;
+
+static void add_palettes(uint64_t cs, FuzzCase &fc, bool ll) {
+    av1g_decision_record &rec = fc.rec;
+    fc.pal.clear();
+    fc.cmap.clear();
+    if (!rec.fp.allow_screen_content_tools || g_pctPal <= 0) return;
+    Rng r(cs ^ 0x9A1E77E5C0DE5EEDull);
+    if (!r.chance(g_pctPal)) return;
+    const int bd = av1g_bit_depth(&rec.fp), mx = (1 << bd) - 1, mono = rec.fp.monochrome;
+    const int ssx = av1g_ssx(&rec.fp), ssy = av1g_ssy(&rec.fp);
+    const int MiCols = av1g_mi_cols(rec.fp.width), MiRows = av1g_mi_rows(rec.fp.height);
+    const int density = r.range(10, 90);
+    std::vector<uint16_t> recent;
+    auto pick = [&](int style, int base) {
+        if (!recent.empty() && r.chance(35)) { covPal.fromRecent++; return (int)recent[r.range(0, (int)recent.size() - 1)]; }
+        if (style == 0) return r.range(0, mx);
+        if (style == 1) return std::min(mx, std::max(0, base + r.range(-6, 6) * (1 << (bd - 8))));
+        return r.chance(50) ? r.range(0, 3) : mx - r.range(0, 3);
+    };
+    for (uint32_t b = 0; b < rec.n_blocks; b++) {
+        av1g_block &k = rec.blocks[b];
+        if (!av1g_palette_allowed(k.bsize) || !r.chance(density)) continue;
+        const int hc = av1g_has_chroma(k.bsize, k.mi_row, k.mi_col, mono, ssx, ssy);
+        int wantY = r.chance(75), wantUV = hc && r.chance(ll ? 60 : 45);
+        if (!wantY && !wantUV) { if (r.chance(50) || !hc) wantY = 1; else wantUV = 1; }
+        av1g_palette p;
+        memset(&p, 0, sizeof p);
+        p.block = b;
+        p.map_off = (uint32_t)fc.cmap.size();
+        const int style = r.range(0, 2), base = r.range(0, mx);
+        if (wantY) {
+            k.y_mode = AV1G_DC_PRED;
+            k.angle_delta_y = 0;
+            k.filter_intra = 0;
+            const int n = r.range(2, 8);
+            std::vector<int> c;
+            for (int guard = 0; (int)c.size() < n && guard < 1000; guard++) {
+                const int v = pick(style, base);
+                if (std::find(c.begin(), c.end(), v) == c.end()) c.push_back(v);
+            }
+            for (int v = 0; (int)c.size() < n; v++)
+                if (std::find(c.begin(), c.end(), v) == c.end()) c.push_back(v);
+            std::sort(c.begin(), c.end());
+            p.size_y = (uint8_t)n;
+            for (int i = 0; i < n; i++) p.colors[0][i] = (uint16_t)c[i];
+            covPal.blocksY++;
+            covPal.sizeY[n]++;
+        }
+        if (wantUV) {
+            k.uv_mode = AV1G_DC_PRED;
+            k.angle_delta_uv = 0;
+            k.cfl_alpha_u = k.cfl_alpha_v = 0;
+            const int n = r.range(2, 8);
+            std::vector<int> u;
+            for (int i = 0; i < n; i++) u.push_back(i && r.chance(15) ? u.back() : pick(style, base));
+            std::sort(u.begin(), u.end());
+            for (int i = 1; i < n; i++) covPal.uDup += u[i] == u[i - 1];
+            const int vStyle = r.range(0, 2), vBase = r.range(0, mx);
+            covPal.vNear += vStyle == 1;
+            for (int i = 0; i < n; i++) {
+                p.colors[1][i] = (uint16_t)u[i];
+                p.colors[2][i] = (uint16_t)(vStyle == 0 ? r.range(0, mx) : vStyle == 1 ? std::min(mx, std::max(0, vBase + r.range(-5, 5)))
+                                                          : (r.chance(50) ? r.range(0, 2) : mx - r.range(0, 2)));
+            }
+            p.size_uv = (uint8_t)n;
+            covPal.blocksUV++;
+            covPal.sizeUV[n]++;
+        }
+        for (int uv = 0; uv < 2; uv++) {
+            const int n = uv ? p.size_uv : p.size_y;
+            if (!n) continue;
+            int w, h, onW, onH;
+            av1g_palette_map_dims(k.bsize, k.mi_row, k.mi_col, MiRows, MiCols, uv, ssx, ssy, &w, &h, &onW, &onH);
+            covPal.offscreen += onW < w || onH < h;
+            const int mstyle = r.range(0, 2);
+            const size_t o = fc.cmap.size();
+            fc.cmap.resize(o + (size_t)w * h);
+            uint8_t *m = fc.cmap.data() + o;
+            for (int y = 0; y < h; y++)
+                for (int x = 0; x < w; x++) {
+                    int v = r.range(0, n - 1);
+                    if (mstyle == 1 && x && r.chance(70)) v = m[y * w + x - 1];
+                    else if (mstyle == 1 && y && r.chance(60)) v = m[(y - 1) * w + x];
+                    else if (mstyle == 2) v = ((x >> r.range(0, 3)) + (y >> 2)) % n;
+                    m[y * w + x] = (uint8_t)v;
+                }
+        }
+        covPal.thin += av1g_bw4(k.bsize) == 1 || av1g_bh4(k.bsize) == 1;
+        covPal.sbTop += (k.mi_row & 15) == 0;
+        for (int i = 0; i < p.size_y; i++) recent.push_back(p.colors[0][i]);
+        for (int i = 0; i < p.size_uv; i++) recent.push_back(p.colors[1][i]);
+        if (recent.size() > 24) recent.erase(recent.begin(), recent.begin() + (recent.size() - 24));
+        fc.pal.push_back(p);
+    }
+    if (fc.pal.empty()) return;
+    covPal.cases++;
+    covPal.casesLL += ll;
+    covPal.cases444 += !mono && rec.fp.chroma_format == AV1G_CHROMA_444;
+    covPal.cases10 += bd == 10;
+    av1g_tiles t;
+    av1g_tile_layout(rec.fp.width, rec.fp.height, rec.fp.tile_cols_log2, rec.fp.tile_rows_log2, &t);
+    covPal.tiles += t.cols * t.rows > 1;
+    rec.n_palettes = (uint32_t)fc.pal.size();
+    rec.palettes = fc.pal.data();
+    rec.n_color_map = fc.cmap.size();
+    rec.color_map = fc.cmap.data();
+}
 
 // Build the random legal record of seed cs (deterministic).  pct444: % of the non-monochrome
 // cases that are 4:4:4, drawn from a separate stream (0: the 4:2:0 / monochrome stream as before).
@@ -595,6 +733,7 @@ static bool make_case(uint64_t cs, bool m2, int maxdim, int bigPct, FuzzCase &fc
     rec.txb = fc.txb.data();
     rec.coeffs = fc.coeffs.data();
     if (av1g_layout(&rec, rec.n_txb, rec.n_coeffs) != AV1G_OK) { fprintf(stderr, "seed %llu: layout failed\n", (unsigned long long)cs); return false; }
+    add_palettes(cs, fc, false);
     if (rec.fp.delta_q_present) {  // random per-SB qindex map, legalized
         const int sbCols = (g.MiCols + 15) >> 4, sbRows = (g.MiRows + 15) >> 4;
         std::vector<uint8_t> target((size_t)sbCols * sbRows), legal(target.size());
@@ -827,6 +966,7 @@ static bool make_lossless_case(uint64_t cs, int maxdim, int bigPct, FuzzCase &fc
         fprintf(stderr, "seed %llu: lossless layout failed\n", (unsigned long long)cs);
         return false;
     }
+    add_palettes(cs, fc, true);
     S.bd = av1g_bit_depth(&rec.fp);
     S.np = rec.fp.monochrome ? 1 : 3;
     for (int p = 0; p < S.np; p++) {
@@ -916,6 +1056,7 @@ int main(int argc, char **argv) {
         else if (a == "--yuv444") pct444 = atoi(nx().c_str());
         else if (a == "--depth10") pct10 = atoi(nx().c_str());
         else if (a == "--lossless") pctLL = atoi(nx().c_str());
+        else if (a == "--palette") g_pctPal = atoi(nx().c_str());
         else if (a == "--no-aom") useAom = false;
         else if (a == "--quiet") quiet = true;
         else { fprintf(stderr, "unknown arg %s\n", a.c_str()); return 2; }
@@ -1314,6 +1455,7 @@ int main(int argc, char **argv) {
     }
     if (count > llCases) cov.report();
     if (llCases) covLL.report();
+    if (g_pctPal > 0) covPal.report();
     printf("SUMMARY seeds %llu..%llu mode %s: %d cases (%d lossy: %llu 4:4:4, %llu monochrome, %llu 10-bit; %d lossless, %llu with "
            "reconstruction != source), %d mismatches (%d parser round-trip failures), %d encode errors, blocks %llu, txb %llu, "
            "range-fixed txb %llu\n",

@@ -84,8 +84,11 @@ int main(int argc, char **argv) {
             std::vector<uint32_t> hbt(hb.size(), 0xDEADBEEFu);
             std::vector<av1g_txb> ht((size_t)g.range(0, 7));
             std::vector<int16_t> hc((size_t)g.range(0, 100), 12345);
+            std::vector<av1g_palette> hp((size_t)g.range(0, 3));            // leading junk palettes
+            std::vector<uint8_t> hm((size_t)g.range(0, 50), 7);
             for (auto &x : hb) memset(&x, 0x5A, sizeof x);
             for (auto &x : ht) memset(&x, 0xA5, sizeof x);
+            for (auto &x : hp) memset(&x, 0x3C, sizeof x);
             for (int i = 0; i < n; i++) {
                 const av1g_decision_record &R = cases[i].rec;
                 av1g_gpu::DevFrame &d = df[i];
@@ -98,20 +101,31 @@ int main(int argc, char **argv) {
                 hbt.insert(hbt.end(), R.block_txb, R.block_txb + R.n_blocks);
                 ht.insert(ht.end(), R.txb, R.txb + R.n_txb);
                 hc.insert(hc.end(), R.coeffs, R.coeffs + R.n_coeffs);
+                hm.resize(hm.size() + g.range(0, 20), 9);                   // gap
+                d.palBase = (uint32_t)hp.size(); d.mapBase = hm.size();
+                d.nPal = R.n_palettes; d.nMap = R.n_color_map;
+                if (R.n_palettes) {
+                    hp.insert(hp.end(), R.palettes, R.palettes + R.n_palettes);
+                    hm.insert(hm.end(), R.color_map, R.color_map + R.n_color_map);
+                }
             }
-            av1g_block *dB; uint32_t *dBT; av1g_txb *dT; int16_t *dC;
+            av1g_block *dB; uint32_t *dBT; av1g_txb *dT; int16_t *dC; av1g_palette *dP; uint8_t *dM;
             cudaMalloc(&dB, hb.size() * sizeof(av1g_block)); cudaMalloc(&dBT, hbt.size() * 4);
             cudaMalloc(&dT, ht.size() * sizeof(av1g_txb)); cudaMalloc(&dC, hc.size() * 2);
+            cudaMalloc(&dP, std::max<size_t>(1, hp.size()) * sizeof(av1g_palette)); cudaMalloc(&dM, std::max<size_t>(1, hm.size()));
             // on `stream`: a pageable cudaMemcpy runs on the legacy stream and may return before its DMA
             // lands, and the non-blocking stream does not wait for it
             cudaMemcpyAsync(dB, hb.data(), hb.size() * sizeof(av1g_block), cudaMemcpyHostToDevice, stream);
             cudaMemcpyAsync(dBT, hbt.data(), hbt.size() * 4, cudaMemcpyHostToDevice, stream);
             cudaMemcpyAsync(dT, ht.data(), ht.size() * sizeof(av1g_txb), cudaMemcpyHostToDevice, stream);
             cudaMemcpyAsync(dC, hc.data(), hc.size() * 2, cudaMemcpyHostToDevice, stream);
+            if (!hp.empty()) cudaMemcpyAsync(dP, hp.data(), hp.size() * sizeof(av1g_palette), cudaMemcpyHostToDevice, stream);
+            if (!hm.empty()) cudaMemcpyAsync(dM, hm.data(), hm.size(), cudaMemcpyHostToDevice, stream);
             cudaStreamSynchronize(stream);
             av1g_gpu::DevBatch b;
             b.frames = df.data(); b.nFrames = (uint32_t)n;
             b.blocks = dB; b.blockTxb = dBT; b.txb = dT; b.coeffs = dC;
+            b.palettes = dP; b.colorMap = dM;
             const bool squeeze = (c0 / batch) % 3 == 1;
             if (squeeze) b.symbolCapacity = 1000;
             av1g_gpu::DevResult r;
@@ -191,7 +205,7 @@ int main(int argc, char **argv) {
                 } else orderCheck = -1;
                 if (orderCheck < 0) { printf("swapped-block record was not reported as an order error\n"); bad++; }
             }
-            cudaFree(dB); cudaFree(dBT); cudaFree(dT); cudaFree(dC);
+            cudaFree(dB); cudaFree(dBT); cudaFree(dT); cudaFree(dC); cudaFree(dP); cudaFree(dM);
         }
         for (int i = 0; i < n; i++) {
             bool ok = br.tileBytes[i].size() == cpuBytes[i].size();

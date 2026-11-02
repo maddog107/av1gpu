@@ -213,4 +213,130 @@ AV1G_HDI int av1g_for_each_txb_ex(int bsize, int mi_row, int mi_col, int tx_dept
     return n;
 }
 
+/* ---- palette (v5) ---- */
+/* palette_mode_info() is present for this block (allow_screen_content_tools frames): MiSize >= BLOCK_8X8 (enum
+   order: 4x16 and 16x4 qualify) and both sides <= 64 */
+AV1G_HD int av1g_palette_allowed(int bsize) { return bsize >= AV1G_BLOCK_8X8 && av1g_bw4(bsize) <= 16 && av1g_bh4(bsize) <= 16; }
+/* bsizeCtx of has_palette_y / palette_size_*_minus_2 */
+AV1G_HD int av1g_palette_bsize_ctx(int bsize) { return AV1G_T(Mi_Width_Log2)[bsize] + AV1G_T(Mi_Height_Log2)[bsize] - 2; }
+
+/* Colour index map dimensions of a palette block (spec palette_tokens): plane 0 luma, 1 chroma; *w x *h is the
+ * stored map (whole block), *onw x *onh its coded part (inside MiCols x MiRows). */
+AV1G_HD void av1g_palette_map_dims(int bsize, int mi_row, int mi_col, int mi_rows, int mi_cols, int uv, int ssx, int ssy,
+                                   int *w, int *h, int *onw, int *onh) {
+    const int bw = 4 * av1g_bw4(bsize), bh = 4 * av1g_bh4(bsize);
+    int ow = (mi_cols - mi_col) * 4, oh = (mi_rows - mi_row) * 4;
+    ow = ow < bw ? ow : bw;
+    oh = oh < bh ? oh : bh;
+    if (!uv) { *w = bw; *h = bh; *onw = ow; *onh = oh; return; }
+    int cw = bw >> ssx, ch = bh >> ssy, cow = ow >> ssx, coh = oh >> ssy;
+    if (cw < 4) { cw += 2; cow += 2; }
+    if (ch < 4) { ch += 2; coh += 2; }
+    *w = cw; *h = ch; *onw = cow; *onh = coh;
+}
+
+/* get_palette_color_context(): the colour order (order[0..n-1]) and the cdf context of map entry (r, c), from its
+ * left, above-left and above neighbours in the map (stride = map width) */
+AV1G_HD int av1g_palette_color_context(const uint8_t *map, int stride, int r, int c, int n, uint8_t *order) {
+    int scores[8];
+    for (int i = 0; i < 8; i++) { scores[i] = 0; order[i] = (uint8_t)i; }
+    if (c > 0) scores[map[r * stride + c - 1]] += 2;
+    if (r > 0 && c > 0) scores[map[(r - 1) * stride + c - 1]] += 1;
+    if (r > 0) scores[map[(r - 1) * stride + c]] += 2;
+    for (int i = 0; i < 3; i++) {
+        int maxScore = scores[i], maxIdx = i;
+        for (int j = i + 1; j < n; j++)
+            if (scores[j] > maxScore) { maxScore = scores[j]; maxIdx = j; }
+        if (maxIdx != i) {
+            const uint8_t maxOrder = order[maxIdx];
+            for (int k = maxIdx; k > i; k--) { scores[k] = scores[k - 1]; order[k] = order[k - 1]; }
+            scores[i] = maxScore;
+            order[i] = maxOrder;
+        }
+    }
+    int hash = 0;
+    for (int i = 0; i < 3; i++) hash += scores[i] * AV1G_T(Palette_Color_Hash_Multipliers)[i];
+    return AV1G_T(Palette_Color_Context)[hash];
+}
+
+/* CeilLog2 (spec 4.7) */
+AV1G_HD int av1g_ceil_log2(int x) {
+    if (x < 2) return 0;
+    int i = 1, p = 2;
+    while (p < x) { i++; p <<= 1; }
+    return i;
+}
+
+/* get_palette_cache(): the sorted union (no duplicates) of the above and left palettes of one plane (0 Y, 1 U);
+ * above / left: their colours (n = 0: none; the caller applies the spec's (MiRow * 4) % 64 and AvailL rules).
+ * Returns the cache size (<= 16). */
+AV1G_HD int av1g_palette_cache(const uint16_t *above, int aboveN, const uint16_t *left, int leftN, uint16_t *cache) {
+    int ai = 0, li = 0, n = 0;
+    while (ai < aboveN && li < leftN) {
+        const int aC = above[ai], lC = left[li];
+        if (lC < aC) {
+            if (n == 0 || lC != cache[n - 1]) cache[n++] = (uint16_t)lC;
+            li++;
+        } else {
+            if (n == 0 || aC != cache[n - 1]) cache[n++] = (uint16_t)aC;
+            ai++;
+            if (lC == aC) li++;
+        }
+    }
+    while (ai < aboveN) { const int v = above[ai++]; if (n == 0 || v != cache[n - 1]) cache[n++] = (uint16_t)v; }
+    while (li < leftN) { const int v = left[li++]; if (n == 0 || v != cache[n - 1]) cache[n++] = (uint16_t)v; }
+    return n;
+}
+
+/* The palette-colour syntax of one plane as libaom writes it (palette_mode_info; write_palette_colors_y / _uv):
+ * every colour found in the cache is taken from it, the others are coded as literals.  Fills, for a palette
+ * pal[0..n-1] (plane 0: Y, 1: U) and the cache: found[i] for the cache flags that are coded (the spec's loop stops
+ * once n colours are found; *nFlags = flags coded), lit[0..nLit-1] the literal colours (ascending), and the
+ * literal coding parameters: *extra = palette_num_extra_bits (2 bits) and the delta bit count before the first
+ * delta.  Returns the number of literals. */
+AV1G_HD int av1g_palette_split(const uint16_t *pal, int n, const uint16_t *cache, int cacheN, int bd, int plane,
+                               uint8_t *found, int *nFlags, uint16_t *lit, int *extra, int *bits) {
+    int used[8] = {0, 0, 0, 0, 0, 0, 0, 0}, nIn = 0, nf = 0;
+    for (int i = 0; i < cacheN && nIn < n; i++) {
+        found[i] = 0;
+        for (int j = 0; j < n; j++)
+            if (pal[j] == cache[i]) { used[j] = 1; found[i] = 1; nIn++; break; }
+        nf++;
+    }
+    *nFlags = nf;
+    int nLit = 0;
+    for (int j = 0; j < n; j++)
+        if (!used[j]) lit[nLit++] = pal[j];
+    *extra = 0;
+    *bits = 0;
+    if (nLit > 1) {
+        const int minVal = plane == 0 ? 1 : 0, minBits = bd - 3;
+        int maxDelta = 0;
+        for (int i = 1; i < nLit; i++) maxDelta = lit[i] - lit[i - 1] > maxDelta ? lit[i] - lit[i - 1] : maxDelta;
+        int b = av1g_ceil_log2(maxDelta + 1 - minVal);
+        b = b > minBits ? b : minBits;
+        *extra = b - minBits;
+        *bits = b;
+    }
+    return nLit;
+}
+
+/* V colours (libaom write_palette_colors_uv): delta coding when cheaper than raw.  Returns 1 for delta coding and
+ * then sets *bits (the delta bit count) and *extra (palette_num_extra_bits_v) */
+AV1G_HD int av1g_palette_v_delta(const uint16_t *v, int n, int bd, int *bits, int *extra) {
+    const int maxVal = 1 << bd, minBits = bd - 4;
+    int maxD = 0, zeros = 0;
+    for (int i = 1; i < n; i++) {
+        const int d0 = v[i] > v[i - 1] ? v[i] - v[i - 1] : v[i - 1] - v[i];
+        const int d = d0 < maxVal - d0 ? d0 : maxVal - d0;
+        if (d > maxD) maxD = d;
+        if (d == 0) zeros++;
+    }
+    int b = av1g_ceil_log2(maxD + 1);
+    b = b > minBits ? b : minBits;
+    *bits = b;
+    *extra = b - minBits;
+    return 2 + bd + (b + 1) * (n - 1) - zeros < bd * n;
+}
+
 #endif

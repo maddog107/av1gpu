@@ -33,6 +33,12 @@ int gp_entropy_dev(const GpDevRecords &R, cudaStream_t st, GpEntScratch &scr,
         frames[f].txbBase = R.txb0[f];
         frames[f].nTxb = R.txb0[f + 1] - R.txb0[f];
         frames[f].coeffBase = R.coef0[f];
+        if (R.palettes && f + 1 < R.pal0.size()) {
+            frames[f].palBase = R.pal0[f];
+            frames[f].nPal = R.pal0[f + 1] - R.pal0[f];
+            frames[f].mapBase = R.map0[f];
+            frames[f].nMap = R.map0[f + 1] - R.map0[f];
+        }
     }
     av1g_gpu::DevBatch b;
     b.frames = frames.data();
@@ -41,6 +47,8 @@ int gp_entropy_dev(const GpDevRecords &R, cudaStream_t st, GpEntScratch &scr,
     b.blockTxb = R.blockTxbRel;
     b.txb = R.txb;
     b.coeffs = R.coeffs;
+    b.palettes = R.palettes;
+    b.colorMap = R.colorMap;
     b.symbolCapacity = scr.symbolHint;
     cudaEvent_t e0, e1;
     cudaEventCreate(&e0);

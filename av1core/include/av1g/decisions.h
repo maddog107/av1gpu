@@ -175,15 +175,35 @@
  *   are filtered at full resolution: chroma edges on every 4x4 (the chroma filters are still
  *   at most 6 taps), CDEF on 8x8 chroma blocks with the luma direction.
  *
+ * Palette (v5; spec 5.11.46 palette_mode_info, 5.11.49 palette_tokens, 7.11.4).  With
+ *   fp.allow_screen_content_tools = 1, blocks of 8x8 .. 64x64 (bsize >= BLOCK_8X8 in enum order, so 4x16 /
+ *   16x4 too; both sides <= 64) may carry a palette.  palettes[] has one av1g_palette per palette block, in
+ *   increasing block order:
+ *     size_y     0 or 2..8: luma palette (the block's y_mode must be DC_PRED and filter_intra 0);
+ *     size_uv    0 or 2..8: chroma palette (the block carries chroma, uv_mode DC_PRED); at least one is set;
+ *     colors     [0] Y: strictly ascending; [1] U: ascending (equal values allowed); [2] V: in U's index order;
+ *                every value < 1 << BitDepth.  The backend reuses the above / left palettes' colours (the
+ *                spec's palette cache) wherever they occur, as libaom does, so only the colours matter;
+ *     map_off    the block's colour index maps in color_map[]: the luma map (if size_y), Block_Width x
+ *                Block_Height entries row-major, then the chroma map (if size_uv), (Block_Width >> ssx) x
+ *                (Block_Height >> ssy) with 2 added to a side below 4 (spec palette_tokens).  Entries are
+ *                indices below the palette size.  Only the part inside the coded area (MiCols * 4 x MiRows * 4,
+ *                >> ssx / ssy) is coded; the backend overwrites the rest with the decoder's copies of the last
+ *                coded column / row.
+ *   The prediction of every tx block of a palette plane is the palette colour of each sample (no edges); the
+ *   residual is coded as usual (tx type set of DC_PRED).  Records of version 1 .. 4 have no palettes.
+ *
  * Frame-level decisions are in av1g_frame_params.  Loop restoration, segmentation, delta-lf,
- * palette, intra block copy, 4:2:2, limited range and bit depths other than 8 and 10 are not
+ * intra block copy, 4:2:2, limited range and bit depths other than 8 and 10 are not
  * supported.
  *
  * Versions.  2 added fp.chroma_format (formerly reserved[0]), 3 fp.bit_depth (formerly
  * reserved[1] of v2), 4 lossless frames (base_q_idx 0, formerly invalid) and the colour description
- * (fp.color_description .. matrix_coefficients, formerly reserved[0..3] of v3).  av1g_encode() accepts
- * version 1 .. 3 records unchanged: their reserved bytes are 0, i.e. 4:2:0 / 8-bit / default colour
- * description.  New fields are taken from reserved[] (which must be 0) so the struct layout stays fixed.
+ * (fp.color_description .. matrix_coefficients, formerly reserved[0..3] of v3), 5 palettes (the
+ * n_palettes / palettes / color_map fields appended to av1g_decision_record; ignored in older records).
+ * av1g_encode() accepts version 1 .. 4 records unchanged: their reserved bytes are 0, i.e. 4:2:0 / 8-bit /
+ * default colour description.  New frame fields are taken from reserved[] (which must be 0) so the struct
+ * layout stays fixed.
  * ==============================================================================
  */
 #ifndef AV1G_DECISIONS_H
@@ -196,7 +216,7 @@
 extern "C" {
 #endif
 
-#define AV1G_DECISIONS_VERSION 4
+#define AV1G_DECISIONS_VERSION 5
 
 /* av1g_frame_params.chroma_format */
 #define AV1G_CHROMA_420 0   /* Main profile, ssx = ssy = 1 */
@@ -260,9 +280,9 @@ typedef struct av1g_frame_params {
     uint8_t  enable_cdef, cdef_damping_minus_3, cdef_bits;   /* 0/1, 0..3, 0..3 */
     uint8_t  cdef_y_pri[8], cdef_y_sec[8], cdef_uv_pri[8], cdef_uv_sec[8];  /* pri 0..15, sec 0/1/2/4 */
     /* ---- v1 extension (0 = off, backward compatible) ---- */
-    uint8_t  allow_screen_content_tools; /* 1: frame header allows screen content tools; palette is still
-                                            never used (has_palette_y/uv coded as 0).  Only needed to
-                                            replay libaom streams whose screen-content detection set it. */
+    uint8_t  allow_screen_content_tools; /* 1: frame header allows screen content tools: blocks may use a palette
+                                            (v5 palettes[]; has_palette_y / uv are coded for every eligible
+                                            block).  allow_intrabc is always 0. */
     /* ---- v2 ---- */
     uint8_t  chroma_format;  /* AV1G_CHROMA_420 / AV1G_CHROMA_444 (see "Chroma format"); 0 if monochrome */
     /* ---- v3 ---- */
@@ -275,6 +295,16 @@ typedef struct av1g_frame_params {
     uint8_t  reserved[9];    /* must be 0 (future fields are taken from here) */
 } av1g_frame_params;
 
+/* v5: one per palette block (see "Palette"), 64 bytes */
+typedef struct av1g_palette {
+    uint32_t block;          /* index in blocks[] */
+    uint32_t map_off;        /* first colour index map entry in color_map[] */
+    uint8_t  size_y;         /* 0 or 2..8 */
+    uint8_t  size_uv;        /* 0 or 2..8 */
+    uint8_t  reserved[6];    /* 0 */
+    uint16_t colors[3][8];   /* Y, U, V */
+} av1g_palette;
+
 typedef struct av1g_decision_record {
     av1g_frame_params fp;
     uint32_t    n_blocks;
@@ -284,6 +314,11 @@ typedef struct av1g_decision_record {
     uint32_t   *block_txb;   /* [n_blocks + 1] first txb of each block (layout) */
     av1g_txb   *txb;         /* [n_txb] */
     int16_t    *coeffs;      /* [n_coeffs] */
+    /* ---- v5: palettes (fp.version >= 5; 0 / NULL: none) ---- */
+    uint32_t      n_palettes;
+    av1g_palette *palettes;  /* [n_palettes] increasing block order */
+    uint8_t      *color_map; /* [n_color_map] */
+    uint64_t      n_color_map;
 } av1g_decision_record;
 
 #ifdef __cplusplus

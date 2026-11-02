@@ -99,6 +99,7 @@ struct GpImage {
     uint8_t *cLvl[3], *cDc[3];
     // (appended, so the fields above keep their offsets and the 4:2:0 kernels their code)
     int ssx, ssy;            // chroma subsampling: 1, 1 (4:2:0, monochrome) or 0, 0 (4:4:4)
+    int sct;                 // 1: screen-content tools (palette candidates; set by the detection, gp_launch_sc_detect)
 };
 
 // Analysis result per (shape, position).
@@ -119,8 +120,12 @@ struct GpLeaf {
 // Closed-loop outputs per SB (fixed-capacity slots, compacted by k_pack).
 struct GpSbOut {
     uint32_t nBlocks, nTxb, nCoeffs;
-    uint32_t pad;
+    uint32_t nPal;             // palette blocks (GpBatch::oPal slots; their block fields SB-local)
+    uint32_t nMap;             // colour index map bytes (GpBatch::oMap slots)
+    uint32_t pad[3];
 };
+#define GP_SB_PAL 64           // palette blocks per SB at most (blocks of >= 32 pixels)
+#define GP_SB_MAP 8192         // colour index map bytes per SB at most (64 x 64 luma + the U / V map, 64 x 64 in 4:4:4)
 
 // External candidate (optional external screener hook, 8 bytes; unused by default).
 struct GpExtCand {
@@ -161,6 +166,9 @@ struct GpBatch {
     uint32_t sbTxbCap, sbCoefCap;  // per-SB output slots: GP_MAX_TXB / GP_SB_COEFFS, or the _444 sizes when the
                                    // batch has a 4:4:4 frame
     int any420, any444;        // the batch has 4:2:0 / 4:4:4 colour frames (chroma kernels per layout)
+    // palettes (frames with GpImage::sct): per-SB slots, null when no frame of the batch has screen-content tools
+    av1g_palette *oPal;        // [nSb * GP_SB_PAL] (block = SB-local leaf index, map_off SB-local)
+    uint8_t *oMap;             // [nSb * GP_SB_MAP]
 };
 
 // Lossless analysis (k_lossless.cu): per-plane 4x4 cost tables (uint16, 1/16 bit, position-major:

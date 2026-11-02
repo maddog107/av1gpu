@@ -81,6 +81,10 @@ static void usage() {
             "                          1 GB of GPU memory per megapixel of GP_ENCODE_MP (below)\n"
             "  --ycgco-re              with --lossless: RGB as YCgCo-Re (CICP matrix 16, libavif / H.273) instead of GBR:\n"
             "                          8-bit RGB -> 10-bit 4:4:4 (2 extra bits); usually smaller than GBR for photos\n"
+            "  --palette auto|on|off   palette mode for flat colours (screen content, graphics): auto (default) tries it in\n"
+            "                          the images that pass a screen-content detection (libaom's: few colours per 16x16\n"
+            "                          block, with sharp edges; photos do not and are encoded exactly as with off), on in\n"
+            "                          every image, off never.  Lossy: luma palettes; --lossless: luma and chroma\n"
             "  --ll-tile-area N        with --lossless: uniform tiles of at most N pixels (default 262144; more tiles code\n"
             "                          faster on the GPU, each costs ~0.1-0.4 %%; 0: the --tiles / preset tiling)\n"
             "  --alpha-quality Q       0..100: quality of the alpha channel; alpha quality defaults to --quality, as in avifenc\n"
@@ -314,6 +318,13 @@ static bool parse(int argc, char **argv, GpConfig &cfg, Opts &o) {
         }
         else if (a == "--dump-source") o.dumpSource = nxt();
         else if (a == "--lossless") cfg.lossless = 1;
+        else if (a == "--palette") {
+            const char *v = nxt();
+            if (!strcmp(v, "auto")) cfg.palette = 1;
+            else if (!strcmp(v, "off")) cfg.palette = 0;
+            else if (!strcmp(v, "on")) cfg.palette = 2;
+            else { fprintf(stderr, "unknown --palette %s (auto, on, off)\n", v); return false; }
+        }
         else if (a == "--crop" || a == "--max-size" || a == "--max-height") {
             const std::string v = a == "--max-height" ? std::string("x") + nxt() : nxt();
             std::string why;

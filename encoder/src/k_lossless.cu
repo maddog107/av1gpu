@@ -206,6 +206,98 @@ __device__ __forceinline__ float ll_uvmode_bits(int bs, int yMode, int uv, int d
     return b;
 }
 
+// ---------------------------------------------------------------------------
+// palette (screen-content frames, GpImage::sct; the PAL instantiations): exact palettes.  A block plane whose coded
+// samples take at most 8 values is predicted exactly by the palette of those values, so it has no residual at all.
+// ---------------------------------------------------------------------------
+// sample of plane region uv at plane pixel (x, y): luma value, or the chroma pair U << 16 | V
+template <int BD>
+__device__ __forceinline__ uint32_t ll_pal_sample(const GpImage &I, int uv, int x, int y) {
+    if (!uv) return gp_src<BD>(I, 0)[(size_t)y * I.spitch[0] + x];
+    return (uint32_t)gp_src<BD>(I, 1)[(size_t)y * I.spitch[1] + x] << 16 | gp_src<BD>(I, 2)[(size_t)y * I.spitch[2] + x];
+}
+
+// the distinct values of the w x h region at (x0, y0) of plane region uv, sorted, when there are 2..8 of them (else 0);
+// map (w x h, may be null): every sample's index.  Warp-wide, every lane returns the same.
+template <int BD>
+__device__ int ll_pal_values(const GpImage &I, int uv, int x0, int y0, int w, int h, uint32_t *vals, uint8_t *map, int lane) {
+    const int np = w * h;
+    int n = 0;
+    for (int base = 0; base < np; base += 32) {
+        const int i = base + lane;
+        const uint32_t v = i < np ? ll_pal_sample<BD>(I, uv, x0 + i % w, y0 + i / w) : 0;
+        bool member = i >= np;
+        for (int k = 0; k < n; k++) member |= v == vals[k];
+        uint32_t b = __ballot_sync(0xffffffffu, !member);
+        while (b) {
+            if (n == 8) return 0;
+            const uint32_t nv = __shfl_sync(0xffffffffu, v, __ffs(b) - 1);
+            vals[n++] = nv;
+            member |= v == nv;
+            b = __ballot_sync(0xffffffffu, !member);
+        }
+    }
+    if (n < 2) return 0;
+    for (int a = 1; a < n; a++) {
+        const uint32_t t = vals[a];
+        int j = a - 1;
+        while (j >= 0 && vals[j] > t) { vals[j + 1] = vals[j]; j--; }
+        vals[j + 1] = t;
+    }
+    if (map) {
+        for (int i = lane; i < np; i += 32) {
+            const uint32_t v = ll_pal_sample<BD>(I, uv, x0 + i % w, y0 + i / w);
+            int k = 0;
+            while (vals[k] != v) k++;
+            map[i] = (uint8_t)k;
+        }
+        __syncwarp();
+    }
+    return n;
+}
+
+// estimated bits of a palette (uv 0: luma, 1: chroma) and its index map (w x h, stride w): mode flag and size at
+// average contexts, colours as literals (no cache), every index at its exact context with the default CDFs
+__device__ float ll_pal_bits(int n, const uint32_t *vals, int uv, int bd, int bsizeCtx, const uint8_t *map, int w, int h, const float *C,
+                             int lane) {
+    float b = 0.f;
+    for (int i = lane; i < w * h; i += 32) {
+        if (!i) continue;
+        const int r = i / w, c = i % w;
+        uint8_t order[8];
+        const int ctx = av1g_palette_color_context(map, w, r, c, n, order);
+        int s = 0;
+        while (order[s] != map[i]) s++;
+        b += C[(uint32_t)(av1g_palette_color_cdf(&g_cdf_layout, uv, n, ctx) - (uint16_t *)&g_cdf_layout) + s];
+    }
+    for (int o = 16; o > 0; o >>= 1) b += __shfl_xor_sync(0xffffffffu, b, o);
+    // header: has_palette (context 0) + size, the literals, the first index (NS)
+    b += uv ? C[CID(palette_uv_mode[0]) + 1] + C[CID(palette_uv_size[bsizeCtx]) + n - 2]
+            : C[CID(palette_y_mode[bsizeCtx][0]) + 1] + C[CID(palette_y_size[bsizeCtx]) + n - 2];
+    uint16_t col[8], cache[1] = {0}, lits[8];
+    uint8_t found[1];
+    for (int i = 0; i < n; i++) col[i] = (uint16_t)(uv ? vals[i] >> 16 : vals[i]);
+    int nf, extra, bits;
+    av1g_palette_split(col, n, cache, 0, bd, uv, found, &nf, lits, &extra, &bits);
+    b += (float)bd;
+    if (n > 1) {
+        b += 2.f;
+        for (int k = 1; k < n; k++) {
+            b += (float)bits;
+            bits = min(bits, av1g_ceil_log2((1 << bd) - lits[k] - (uv ? 0 : 1)));
+        }
+    }
+    if (uv) {   // V: the cheaper of delta and raw coding (+ the flag)
+        uint16_t v[8];
+        for (int i = 0; i < n; i++) v[i] = (uint16_t)(vals[i] & 0xFFFF);
+        int vb, ve;
+        b += 1.f + (av1g_palette_v_delta(v, n, bd, &vb, &ve) ? (float)(2 + bd + (vb + 1) * (n - 1)) : (float)(bd * n));
+    }
+    int nb = 0;
+    for (int x = n; x; x >>= 1) nb++;
+    return b + (float)(nb - 1);
+}
+
 __device__ __forceinline__ int ll_find_image(const uint32_t *starts, int nimg, uint32_t g) {
     int lo = 0, hi = nimg - 1;
     while (lo < hi) {
@@ -265,8 +357,9 @@ __device__ __forceinline__ void ll_shape_arbl(int i, int j, int bw4, int bh4, in
     else bl = ol_decoded(x - 4, y + 4, x0, y0, sub, tb);
 }
 
-template <int BD>
+template <int BD, bool PAL>
 __global__ void __launch_bounds__(128) k_ll_shape(GpBatch B, GpLossless L, int bs, uint32_t nTotal, int fiOn) {
+    __shared__ uint8_t sMap[PAL ? 4 : 1][PAL ? 4096 : 1];
     const int warp = threadIdx.x >> 5, lane = threadIdx.x & 31;
     const uint32_t gb = blockIdx.x * 4 + warp;
     if (gb >= nTotal) return;
@@ -374,6 +467,19 @@ __global__ void __launch_bounds__(128) k_ll_shape(GpBatch B, GpLossless L, int b
         for (int o = 16; o > 0; o >>= 1) best = fminf(best, __shfl_xor_sync(0xffffffffu, best, o));
         uvJ = best * frac;
     }
+    if (PAL && I.sct && av1g_palette_allowed(bs)) {   // exact palettes: no residual (its all-zero tx blocks ~ free)
+        const int ow = min(W, I.MiCols * 4 - x0), oh = min(H, I.MiRows * 4 - y0), bctx = av1g_palette_bsize_ctx(bs);
+        uint32_t vals[8];
+        int n = ll_pal_values<BD>(I, 0, x0, y0, ow, oh, vals, sMap[warp], lane);
+        if (n) bestJ = fminf(bestJ, ll_pal_bits(n, vals, 0, BD, bctx, sMap[warp], ow, oh, C, lane) + g_avgYMode[AV1G_DC_PRED]);
+        if (!I.mono && bw4 >= 2 && bh4 >= 2) {   // chroma palettes only for blocks of 8 or more in both directions
+            const int cw = ow >> I.ssx, ch = oh >> I.ssy;
+            n = ll_pal_values<BD>(I, 1, x0 >> I.ssx, y0 >> I.ssy, cw, ch, vals, sMap[warp], lane);
+            if (n)
+                uvJ = fminf(uvJ, ll_pal_bits(n, vals, 1, BD, bctx, sMap[warp], cw, ch, C, lane) +
+                                     ll_uvmode_bits(bs, AV1G_DC_PRED, AV1G_DC_PRED, 0, L.cfl && av1g_cfl_allowed_ex(bs, 1, I.ssx, I.ssy), C));
+        }
+    }
     if (lane == 0) {
         // the block's J in lambda units (k_dp adds lambda * partition bits); the best luma candidate (informational:
         // k_ll_decide decides again with exact availability)
@@ -410,9 +516,13 @@ __device__ __forceinline__ void ll_leaf_counts(const GpImage &I, int bs, int miR
     }
 }
 
-template <int BD>
+template <int BD, bool PAL>
 __global__ void __launch_bounds__(LL_NT) k_ll_decide(GpBatch B, GpLossless L, int fiOn) {
     __shared__ LLSbShared S;
+    // palettes: per leaf the luma / chroma palette sizes, then its palette slot and map offset; per warp a map buffer
+    __shared__ uint8_t palSz[PAL ? 2 * GP_MAX_LEAVES : 1];
+    __shared__ uint16_t palAt[PAL ? GP_MAX_LEAVES : 1], mapAt[PAL ? GP_MAX_LEAVES : 1];
+    __shared__ uint8_t sMap[PAL ? LL_NT / 32 : 1][PAL ? 4096 : 1];
     const uint32_t sb = blockIdx.x;
     const GpImage &I = B.img[B.sbImg[sb]];
     const int img = B.sbImg[sb];
@@ -438,7 +548,8 @@ __global__ void __launch_bounds__(LL_NT) k_ll_decide(GpBatch B, GpLossless L, in
         S.txb0[nl] = (uint16_t)t;
         S.nLeaves = nl;
         GpSbOut so;
-        so.nBlocks = (uint32_t)nl; so.nTxb = (uint32_t)t; so.nCoeffs = (uint32_t)t * 16; so.pad = 0;
+        memset(&so, 0, sizeof so);
+        so.nBlocks = (uint32_t)nl; so.nTxb = (uint32_t)t; so.nCoeffs = (uint32_t)t * 16;
         B.sbOut[sb] = so;
     }
     __syncthreads();
@@ -501,8 +612,16 @@ __global__ void __launch_bounds__(LL_NT) k_ll_decide(GpBatch B, GpLossless L, in
             }
             bestY = bc;
         }
+        int palY = 0, palUV = 0;
+        uint32_t vals[8];
+        if (PAL && I.sct && av1g_palette_allowed(bs)) {   // exact luma palette (no residual) if it is cheaper
+            const int n = ll_pal_values<BD>(I, 0, c * 4, r * 4, nj * 4, ni * 4, vals, sMap[warp], lane);
+            if (n && ll_pal_bits(n, vals, 0, BD, av1g_palette_bsize_ctx(bs), sMap[warp], nj * 4, ni * 4, C, lane) +
+                         g_avgYMode[AV1G_DC_PRED] < S.red[warp][bestY])
+                palY = n;
+        }
         __syncwarp();
-        const LLCand yc = c_llCand[bestY];
+        const LLCand yc = c_llCand[palY ? 0 : bestY];   // candidate 0: DC_PRED
         blk.y_mode = (uint8_t)yc.mode;
         blk.angle_delta_y = (int8_t)yc.delta;
         blk.filter_intra = (uint8_t)(yc.fi >= 0 ? yc.fi + 1 : 0);
@@ -543,6 +662,7 @@ __global__ void __launch_bounds__(LL_NT) k_ll_decide(GpBatch B, GpLossless L, in
             }
             blk.uv_mode = (uint8_t)c_llCand[bc].mode;
             blk.angle_delta_uv = (int8_t)c_llCand[bc].delta;
+            float uvBest = bj;
             if (cflOk && L.cfl) {
                 // CfL on the single 4x4 chroma tx block per plane: exact DC prediction, alpha -16..16 per plane
                 int aU, aL, aUC, aLC;
@@ -584,10 +704,23 @@ __global__ void __launch_bounds__(LL_NT) k_ll_decide(GpBatch B, GpLossless L, in
                         blk.angle_delta_uv = 0;
                         blk.cfl_alpha_u = (int8_t)ba[0];
                         blk.cfl_alpha_v = (int8_t)ba[1];
+                        uvBest = Jc;
                     }
                 }
             }
+            if (PAL && I.sct && av1g_palette_allowed(bs) && av1g_bw4(bs) >= 2 && av1g_bh4(bs) >= 2) {   // exact chroma palette
+                const int n = ll_pal_values<BD>(I, 1, bx4 * 4, by4 * 4, cnj * 4, cni * 4, vals, sMap[warp], lane);
+                if (n && ll_pal_bits(n, vals, 1, BD, av1g_palette_bsize_ctx(bs), sMap[warp], cnj * 4, cni * 4, C, lane) +
+                             ll_uvmode_bits(bs, yc.mode, AV1G_DC_PRED, 0, cflOk, C) < uvBest) {
+                    palUV = n;
+                    blk.uv_mode = AV1G_DC_PRED;
+                    blk.angle_delta_uv = 0;
+                    blk.cfl_alpha_u = blk.cfl_alpha_v = 0;
+                }
+                __syncwarp();
+            }
         }
+        if (PAL && lane == 0) { palSz[2 * k] = (uint8_t)palY; palSz[2 * k + 1] = (uint8_t)palUV; }
         if (lane == 0) {
             B.oBlocks[(size_t)sb * GP_MAX_LEAVES + k] = blk;
             const int rEnd = min(r + av1g_bh4(bs), I.MiRows), cEnd = min(c + av1g_bw4(bs), I.MiCols);
@@ -599,16 +732,68 @@ __global__ void __launch_bounds__(LL_NT) k_ll_decide(GpBatch B, GpLossless L, in
         }
         __syncwarp();
     }
+    if (!PAL) return;
+    // ---- palettes: slots and map offsets in leaf (= decode) order, then the palettes and their maps ----
+    __syncthreads();
+    if (tid == 0) {
+        uint32_t np = 0, m = 0;
+        for (int k = 0; k < nl; k++) {
+            palAt[k] = 0xFFFF;
+            if (!palSz[2 * k] && !palSz[2 * k + 1]) continue;
+            palAt[k] = (uint16_t)np++;
+            mapAt[k] = (uint16_t)m;
+            const int bs = S.lbs[k], r = sbMiR + S.ly[k], c = sbMiC + S.lx[k];
+            for (int uv = 0; uv < 2; uv++)
+                if (palSz[2 * k + uv]) {
+                    int w, h, ow, oh;
+                    av1g_palette_map_dims(bs, r, c, I.MiRows, I.MiCols, uv, I.ssx, I.ssy, &w, &h, &ow, &oh);
+                    m += (uint32_t)(w * h);
+                }
+        }
+        GpSbOut so = B.sbOut[sb];
+        so.nPal = np;
+        so.nMap = m;
+        B.sbOut[sb] = so;
+    }
+    __syncthreads();
+    for (int k = warp; k < nl; k += LL_NT / 32) {
+        if (palAt[k] == 0xFFFF) continue;
+        const int bs = S.lbs[k], r = sbMiR + S.ly[k], c = sbMiC + S.lx[k];
+        av1g_palette p;
+        memset(&p, 0, sizeof p);
+        p.block = (uint32_t)k;
+        p.map_off = mapAt[k];
+        p.size_y = palSz[2 * k];
+        p.size_uv = palSz[2 * k + 1];
+        uint8_t *om = B.oMap + (size_t)sb * GP_SB_MAP + mapAt[k];
+        for (int uv = 0; uv < 2; uv++) {
+            if (!palSz[2 * k + uv]) continue;
+            int w, h, ow, oh;
+            av1g_palette_map_dims(bs, r, c, I.MiRows, I.MiCols, uv, I.ssx, I.ssy, &w, &h, &ow, &oh);
+            uint32_t vals[8];
+            const int sx = uv ? I.ssx : 0, sy = uv ? I.ssy : 0;
+            ll_pal_values<BD>(I, uv, (c * 4) >> sx, (r * 4) >> sy, ow, oh, vals, sMap[warp], lane);
+            for (int i = 0; i < palSz[2 * k + uv]; i++) {
+                if (uv) { p.colors[1][i] = (uint16_t)(vals[i] >> 16); p.colors[2][i] = (uint16_t)(vals[i] & 0xFFFF); }
+                else p.colors[0][i] = (uint16_t)vals[i];
+            }
+            for (int i = lane; i < w * h; i += 32) om[i] = sMap[warp][min(i / w, oh - 1) * ow + min(i % w, ow - 1)];   // + the copies
+            om += w * h;
+            __syncwarp();
+        }
+        if (lane == 0) B.oPal[(size_t)sb * GP_SB_PAL + palAt[k]] = p;
+    }
 }
 
 // ---------------------------------------------------------------------------
 // k_ll_coeffs: CTA per SB
 // ---------------------------------------------------------------------------
-template <int BD>
+template <int BD, bool PAL>
 __global__ void __launch_bounds__(LL_NT) k_ll_coeffs(GpBatch B, int edgeFilter) {
     __shared__ uint16_t ord[3][256];
     __shared__ uint8_t txbBlk[GP_MAX_TXB_444];
     __shared__ int nz[GP_MAX_LEAVES];
+    __shared__ uint8_t palOf[PAL ? GP_MAX_LEAVES : 1];   // the leaf's palette slot (0xFF: none)
     const uint32_t sb = blockIdx.x;
     const GpImage &I = B.img[B.sbImg[sb]];
     const uint32_t loc = sb - I.sbBase;
@@ -622,10 +807,13 @@ __global__ void __launch_bounds__(LL_NT) k_ll_coeffs(GpBatch B, int edgeFilter) 
     for (int i = tid; i < 3 * 256; i += LL_NT) ord[i >> 8][i & 255] = 0xFFFF;
     for (uint32_t k = tid; k < so.nBlocks; k += LL_NT) {
         nz[k] = 0;
+        if (PAL) palOf[k] = 0xFF;
         const uint32_t e = k + 1 < so.nBlocks ? bt[k + 1] : so.nTxb;
         for (uint32_t t = bt[k]; t < e; t++) txbBlk[t] = (uint8_t)k;
     }
     __syncthreads();
+    if (PAL)
+        for (uint32_t j = tid; j < so.nPal; j += LL_NT) palOf[B.oPal[(size_t)sb * GP_SB_PAL + j].block] = (uint8_t)j;
     for (uint32_t t = tid; t < so.nTxb; t += LL_NT) {
         const av1g_txb x = T[t];
         const int sx = x.plane ? I.ssx : 0, sy = x.plane ? I.ssy : 0;
@@ -653,6 +841,18 @@ __global__ void __launch_bounds__(LL_NT) k_ll_coeffs(GpBatch B, int edgeFilter) 
                                                   I.MiCols, I.ssx, I.ssy)
                            : 0;
         av1g_pixel_t(BD) pred[16];
+        const av1g_palette *pal = PAL && palOf[k] != 0xFF ? &B.oPal[(size_t)sb * GP_SB_PAL + palOf[k]] : nullptr;
+        if (pal && (plane ? pal->size_uv : pal->size_y)) {   // palette prediction: the colours of the map
+            const uint8_t *map = B.oMap + (size_t)sb * GP_SB_MAP + pal->map_off;
+            int w, h, ow, oh;
+            if (plane && pal->size_y) {
+                av1g_palette_map_dims(b.bsize, b.mi_row, b.mi_col, I.MiRows, I.MiCols, 0, I.ssx, I.ssy, &w, &h, &ow, &oh);
+                map += w * h;
+            }
+            av1g_palette_map_dims(b.bsize, b.mi_row, b.mi_col, I.MiRows, I.MiCols, plane > 0, I.ssx, I.ssy, &w, &h, &ow, &oh);
+            const int bx = x.x4 * 4 - ((b.mi_col * 4) >> sx), by = x.y4 * 4 - ((b.mi_row * 4) >> sy);
+            for (int i = 0; i < 16; i++) pred[i] = (av1g_pixel_t(BD))pal->colors[plane][map[(by + (i >> 2)) * w + bx + (i & 3)]];
+        } else
         ll_predict<BD>(I, plane, x.x4 * 4, x.y4 * 4, mode, delta, fi, haveL, haveA, ar, bl, edgeFilter, ft, pred);
         if (cfl) {
             const int maxLumaW = min(b.mi_col + av1g_bw4(b.bsize), I.MiCols) * 4;
@@ -682,6 +882,7 @@ __global__ void __launch_bounds__(LL_NT) k_ll_coeffs(GpBatch B, int edgeFilter) 
 // ---------------------------------------------------------------------------
 // launchers
 // ---------------------------------------------------------------------------
+// B.oPal set (the batch has screen-content frames): the palette instantiations
 void gp_launch_ll_analysis(const GpBatch &B, const GpLossless &L, const uint32_t *shTotal, int edgeFilter, int fiOn, cudaStream_t st,
                            int bd) {
     const uint64_t total = L.hostTotal;
@@ -690,20 +891,38 @@ void gp_launch_ll_analysis(const GpBatch &B, const GpLossless &L, const uint32_t
         if (bd == 10) k_ll_cost<10><<<grid, 128, 0, st>>>(B, L, edgeFilter);
         else k_ll_cost<8><<<grid, 128, 0, st>>>(B, L, edgeFilter);
     }
+    const bool pal = B.oPal != nullptr;
     for (int s = 0; s < GP_NSHAPES; s++) {
         if (!shTotal[s] || s >= AV1G_BLOCK_INVALID || (s >= 13 && s <= 15)) continue;
-        if (bd == 10) k_ll_shape<10><<<(shTotal[s] + 3) / 4, 128, 0, st>>>(B, L, s, shTotal[s], fiOn);
-        else k_ll_shape<8><<<(shTotal[s] + 3) / 4, 128, 0, st>>>(B, L, s, shTotal[s], fiOn);
+        const unsigned g = (shTotal[s] + 3) / 4;
+        if (bd == 10) {
+            if (pal) k_ll_shape<10, true><<<g, 128, 0, st>>>(B, L, s, shTotal[s], fiOn);
+            else k_ll_shape<10, false><<<g, 128, 0, st>>>(B, L, s, shTotal[s], fiOn);
+        } else {
+            if (pal) k_ll_shape<8, true><<<g, 128, 0, st>>>(B, L, s, shTotal[s], fiOn);
+            else k_ll_shape<8, false><<<g, 128, 0, st>>>(B, L, s, shTotal[s], fiOn);
+        }
     }
 }
 
 void gp_launch_ll_recon(const GpBatch &B, const GpLossless &L, int edgeFilter, int fiOn, cudaStream_t st, int bd) {
     if (!B.nSb) return;
+    const bool pal = B.oPal != nullptr;
     if (bd == 10) {
-        k_ll_decide<10><<<B.nSb, LL_NT, 0, st>>>(B, L, fiOn);
-        k_ll_coeffs<10><<<B.nSb, LL_NT, 0, st>>>(B, edgeFilter);
+        if (pal) {
+            k_ll_decide<10, true><<<B.nSb, LL_NT, 0, st>>>(B, L, fiOn);
+            k_ll_coeffs<10, true><<<B.nSb, LL_NT, 0, st>>>(B, edgeFilter);
+        } else {
+            k_ll_decide<10, false><<<B.nSb, LL_NT, 0, st>>>(B, L, fiOn);
+            k_ll_coeffs<10, false><<<B.nSb, LL_NT, 0, st>>>(B, edgeFilter);
+        }
     } else {
-        k_ll_decide<8><<<B.nSb, LL_NT, 0, st>>>(B, L, fiOn);
-        k_ll_coeffs<8><<<B.nSb, LL_NT, 0, st>>>(B, edgeFilter);
+        if (pal) {
+            k_ll_decide<8, true><<<B.nSb, LL_NT, 0, st>>>(B, L, fiOn);
+            k_ll_coeffs<8, true><<<B.nSb, LL_NT, 0, st>>>(B, edgeFilter);
+        } else {
+            k_ll_decide<8, false><<<B.nSb, LL_NT, 0, st>>>(B, L, fiOn);
+            k_ll_coeffs<8, false><<<B.nSb, LL_NT, 0, st>>>(B, edgeFilter);
+        }
     }
 }

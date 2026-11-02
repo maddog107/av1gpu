@@ -34,6 +34,8 @@ static_assert(sizeof(av1g_txb) == 16, "av1g_txb must be 16 bytes");
 static_assert(sizeof(((av1g_cdfs *)0)->coeff_base) == sizeof(Default_Coeff_Base_Cdf_host[0]), "cdf dims");
 static_assert(sizeof(((av1g_cdfs *)0)->coeff_br) == sizeof(Default_Coeff_Br_Cdf_host[0]), "cdf dims");
 static_assert(sizeof(((av1g_cdfs *)0)->y_mode) == sizeof(Default_Intra_Frame_Y_Mode_Cdf_host), "cdf dims");
+static_assert(sizeof(av1g_cdfs) % 16 == 0, "the GPU coder copies the CDF state in 16-byte units");
+static_assert(sizeof(av1g_palette) == 64, "av1g_palette must be 64 bytes");
 
 Error::Error(int c, const char *fmt, ...) : std::runtime_error("av1g"), code(c) {
     va_list ap;
@@ -281,6 +283,20 @@ private:
     int MiRow = 0, MiCol = 0, MiSize = 0, bw4 = 0, bh4 = 0, hasChroma = 0;
     int availU = 0, availL = 0, availUC = 0, availLC = 0, txSize = 0;
     int maxLumaW = 0, maxLumaH = 0;
+    // palette (v5): PaletteSizes per 4x4 (Y, UV) and the palette entry of each 4x4 (-1: none) for the contexts and the
+    // palette cache; the current block's palette and colour index maps (whole block, offscreen part copied)
+    std::vector<uint8_t> mapPalY, mapPalUV;
+    std::vector<int32_t> mapPalIdx;
+    std::vector<int32_t> blockPal;   // write mode: palettes[] entry of each block (-1: none)
+    av1g_palette curPal;
+    int32_t curPalIdx = -1;
+    std::vector<uint8_t> curMap[2];
+    int curMapW[2] = {0, 0};
+    const av1g_palette &palAt(int32_t i) const { return PS ? PS->palettes[i] : R->palettes[i]; }
+    int palette_cache(int plane, uint16_t *cache);
+    template <class S> void code_palette_colors(S &sk, int uv);
+    template <class S> void code_palette_tokens(S &sk);
+    template <class S> int ns(S &sk, int v, int n);
 
     uint8_t *plane_ptr(int p) { return plane[p].data(); }
     bool is_inside(int r, int c) const {
@@ -594,23 +610,46 @@ void Encoder::encode_block(S &sk, int r, int c, int bsize) {
             b.angle_delta_uv = (int8_t)(sk.sym(cdf.angle_delta[b.uv_mode - AV1G_V_PRED], b.angle_delta_uv + AV1G_MAX_ANGLE_DELTA, 7) -
                                         AV1G_MAX_ANGLE_DELTA);
     }
-    // palette_mode_info(): only present with allow_screen_content_tools; palette is never used
-    if (fp->allow_screen_content_tools && bsize >= AV1G_BLOCK_8X8 && bw4 <= 16 && bh4 <= 16) {
-        const int bsizeCtx = AV1G_T(Mi_Width_Log2)[bsize] + AV1G_T(Mi_Height_Log2)[bsize] - 2;
-        if (b.y_mode == AV1G_DC_PRED && sk.sym(cdf.palette_y_mode[bsizeCtx][0], 0, 2))
-            throw Error(AV1G_ERR_INVALID, "block %u: palette (has_palette_y) not supported", bIdx);
-        if (hasChroma && b.uv_mode == AV1G_DC_PRED && sk.sym(cdf.palette_uv_mode[0], 0, 2))
-            throw Error(AV1G_ERR_INVALID, "block %u: palette (has_palette_uv) not supported", bIdx);
+    // ---- palette_mode_info (only with allow_screen_content_tools) ----
+    memset(&curPal, 0, sizeof curPal);
+    curPalIdx = S::kWrite ? blockPal[bIdx] : -1;
+    if (curPalIdx >= 0) curPal = R->palettes[curPalIdx];
+    if (fp->allow_screen_content_tools && av1g_palette_allowed(bsize)) {
+        const int bsizeCtx = av1g_palette_bsize_ctx(bsize);
+        if (b.y_mode == AV1G_DC_PRED) {
+            const int ctx = (availU && mapAt(mapPalY, r - 1, c) > 0) + (availL && mapAt(mapPalY, r, c - 1) > 0);
+            if (sk.sym(cdf.palette_y_mode[bsizeCtx][ctx], curPal.size_y > 0, 2)) {
+                curPal.size_y = (uint8_t)(sk.sym(cdf.palette_y_size[bsizeCtx], curPal.size_y - 2, 7) + 2);
+                code_palette_colors(sk, 0);
+            }
+        } else if (curPal.size_y) {
+            throw Error(AV1G_ERR_INVALID, "block %u: a luma palette needs y_mode DC_PRED", bIdx);
+        }
+        if (hasChroma && b.uv_mode == AV1G_DC_PRED) {
+            if (sk.sym(cdf.palette_uv_mode[curPal.size_y > 0], curPal.size_uv > 0, 2)) {
+                curPal.size_uv = (uint8_t)(sk.sym(cdf.palette_uv_size[bsizeCtx], curPal.size_uv - 2, 7) + 2);
+                code_palette_colors(sk, 1);
+            }
+        } else if (curPal.size_uv) {
+            throw Error(AV1G_ERR_INVALID, "block %u: a chroma palette needs chroma with uv_mode DC_PRED", bIdx);
+        }
+    } else if (curPalIdx >= 0) {
+        throw Error(AV1G_ERR_INVALID, "block %u: palette not allowed (needs allow_screen_content_tools and a block of 8x8 .. 64x64)",
+                    bIdx);
     }
     // filter_intra_mode_info()
-    if (fp->enable_filter_intra && b.y_mode == AV1G_DC_PRED && bw4 <= 8 && bh4 <= 8) {
+    if (fp->enable_filter_intra && b.y_mode == AV1G_DC_PRED && curPal.size_y == 0 && bw4 <= 8 && bh4 <= 8) {
         if (sk.sym(cdf.filter_intra[bsize], b.filter_intra != 0, 2))
             b.filter_intra = (uint8_t)(sk.sym(cdf.filter_intra_mode, b.filter_intra - 1, 5) + 1);
         else
             b.filter_intra = 0;
     } else if (!S::kWrite) {
         b.filter_intra = 0;
+    } else if (b.filter_intra && curPal.size_y) {
+        throw Error(AV1G_ERR_INVALID, "block %u: filter_intra with a luma palette", bIdx);
     }
+    // ---- palette_tokens ----
+    if (curPal.size_y || curPal.size_uv) code_palette_tokens(sk);
 
     // ---- read_block_tx_size / read_tx_size(allowSelect = 1) ----
     if (fp->tx_mode_select && bsize > AV1G_BLOCK_4X4) {
@@ -676,7 +715,165 @@ void Encoder::encode_block(S &sk, int r, int c, int bsize) {
             mapAt(mapSkip, y, x) = b.skip;
             mapAt(mapTxSize, y, x) = (uint8_t)txSize;
             mapAt(mapMiSize, y, x) = (uint8_t)bsize;
+            mapAt(mapPalY, y, x) = curPal.size_y;
+            mapAt(mapPalUV, y, x) = curPal.size_uv;
+            mapPalIdx[(size_t)y * MiCols + x] = curPalIdx;
         }
+}
+
+// get_palette_cache( plane ) (plane 0: Y, 1: U) of the current block
+int Encoder::palette_cache(int plane, uint16_t *cache) {
+    std::vector<uint8_t> &sizes = plane ? mapPalUV : mapPalY;
+    int aboveN = 0, leftN = 0;
+    const uint16_t *above = nullptr, *left = nullptr;
+    if ((MiRow * 4) % 64) {   // the above block only inside the 64-pixel row (spec: no AvailU test, it is in the SB)
+        aboveN = mapAt(sizes, MiRow - 1, MiCol);
+        if (aboveN) above = palAt(mapPalIdx[(size_t)(MiRow - 1) * MiCols + MiCol]).colors[plane];
+    }
+    if (availL) {
+        leftN = mapAt(sizes, MiRow, MiCol - 1);
+        if (leftN) left = palAt(mapPalIdx[(size_t)MiRow * MiCols + MiCol - 1]).colors[plane];
+    }
+    return av1g_palette_cache(above, aboveN, left, leftN, cache);
+}
+
+// palette colours of one plane (uv = 0: palette_colors_y; 1: palette_colors_u and _v), spec palette_mode_info.
+// Write mode codes them as libaom does (cache hits, literals, V delta or raw) and checks the record's values.
+template <class S>
+void Encoder::code_palette_colors(S &sk, int uv) {
+    const int n = uv ? curPal.size_uv : curPal.size_y, maxV = 1 << bd;
+    uint16_t *col = curPal.colors[uv];
+    uint16_t cache[16];
+    const int cacheN = palette_cache(uv, cache);
+    uint8_t found[16] = {0};
+    uint16_t lits[8] = {0};
+    int nFlags = 0, extraW = 0, bitsW = 0, nLit = 0;
+    if (S::kWrite) {
+        for (int i = 0; i < n; i++) {
+            if (col[i] >= maxV) throw Error(AV1G_ERR_INVALID, "block %u: palette colour %d out of range", bIdx, col[i]);
+            if (i && (uv ? col[i] < col[i - 1] : col[i] <= col[i - 1]))
+                throw Error(AV1G_ERR_INVALID, "block %u: %s palette colours not ascending%s", bIdx, uv ? "U" : "Y",
+                            uv ? "" : " (or duplicated)");
+            if (uv && curPal.colors[2][i] >= maxV) throw Error(AV1G_ERR_INVALID, "block %u: V palette colour out of range", bIdx);
+        }
+        nLit = av1g_palette_split(col, n, cache, cacheN, bd, uv, found, &nFlags, lits, &extraW, &bitsW);
+    }
+    uint16_t got[8];
+    int idx = 0;
+    for (int i = 0; i < cacheN && idx < n; i++)
+        if (sk.bit(found[i])) got[idx++] = cache[i];
+    if (S::kWrite && n - idx != nLit) throw Error(AV1G_ERR_INTERNAL, "palette cache split");
+    if (idx < n) got[idx++] = (uint16_t)lit(sk, lits[0], bd);
+    if (idx < n) {
+        const int minVal = uv ? 0 : 1, minBits = bd - 3;
+        int bits = minBits + lit(sk, extraW, 2);
+        for (int k = 1; idx < n; k++) {
+            const int d = lit(sk, S::kWrite ? lits[k] - lits[k - 1] - minVal : 0, bits) + minVal;
+            const int v = std::min(got[idx - 1] + d, maxV - 1);   // Clip1
+            got[idx++] = (uint16_t)v;
+            bits = std::min(bits, av1g_ceil_log2(maxV - v - minVal));
+        }
+    }
+    std::sort(got, got + n);
+    if (S::kWrite) {
+        for (int i = 0; i < n; i++)
+            if (got[i] != col[i]) throw Error(AV1G_ERR_INTERNAL, "block %u: palette colour coding mismatch", bIdx);
+    } else {
+        for (int i = 0; i < n; i++) col[i] = got[i];
+    }
+    if (!uv) return;
+    // V: delta coded (with wrap-around and sign) or raw, whichever libaom finds cheaper
+    uint16_t *v = curPal.colors[2];
+    int vBits = 0, vExtra = 0;
+    const int useDelta = S::kWrite ? av1g_palette_v_delta(v, n, bd, &vBits, &vExtra) : 0;
+    if (sk.bit(useDelta)) {
+        const int bits = bd - 4 + lit(sk, vExtra, 2);
+        v[0] = (uint16_t)lit(sk, v[0], bd);
+        for (int i = 1; i < n; i++) {
+            int dW = 0, sW = 0;
+            if (S::kWrite && v[i] != v[i - 1]) {
+                const int d0 = v[i] > v[i - 1] ? v[i] - v[i - 1] : v[i - 1] - v[i];
+                const int neg = v[i] < v[i - 1];
+                if (d0 <= maxV - d0) { dW = d0; sW = neg; }
+                else { dW = maxV - d0; sW = !neg; }
+            }
+            int d = lit(sk, dW, bits);
+            if (d && sk.bit(sW)) d = -d;
+            int val = v[i - 1] + d;
+            if (val < 0) val += maxV;
+            if (val >= maxV) val -= maxV;
+            if (S::kWrite && val != v[i]) throw Error(AV1G_ERR_INTERNAL, "block %u: V palette coding mismatch", bIdx);
+            v[i] = (uint16_t)val;
+        }
+    } else {
+        for (int i = 0; i < n; i++) v[i] = (uint16_t)lit(sk, v[i], bd);
+    }
+}
+
+// NS(n) (spec 4.10.7) in the tile: L(w - 1), plus one bit for the upper values
+template <class S>
+int Encoder::ns(S &sk, int v, int n) {
+    int w = 0;
+    for (int x = n; x; x >>= 1) w++;
+    const int m = (1 << w) - n;
+    if (S::kWrite) {
+        if (v < m) lit(sk, v, w - 1);
+        else { lit(sk, m + ((v - m) >> 1), w - 1); sk.bit((v - m) & 1); }
+        return v;
+    }
+    const int x = lit(sk, 0, w - 1);
+    if (x < m) return x;
+    return (x << 1) - m + sk.bit(0);
+}
+
+// palette_tokens(): the colour index maps in anti-diagonal order with get_palette_color_context, then the copies of
+// the last coded column / row.  Write mode reads the record's maps and writes the copies back; parse mode stores
+// the palette and its maps.
+template <class S>
+void Encoder::code_palette_tokens(S &sk) {
+    uint32_t off = curPal.map_off;
+    if (!S::kWrite) off = (uint32_t)PS->color_map.size();
+    curPal.map_off = off;
+    for (int uv = 0; uv < 2; uv++) {
+        const int n = uv ? curPal.size_uv : curPal.size_y;
+        if (!n) continue;
+        int w, h, onW, onH;
+        av1g_palette_map_dims(MiSize, MiRow, MiCol, MiRows, MiCols, uv, ssx, ssy, &w, &h, &onW, &onH);
+        std::vector<uint8_t> &map = curMap[uv];
+        map.assign((size_t)w * h, 0);
+        curMapW[uv] = w;
+        if (S::kWrite) {
+            if (!R->color_map || (uint64_t)off + (uint64_t)w * h > R->n_color_map)
+                throw Error(AV1G_ERR_INVALID, "block %u: colour index map beyond color_map", bIdx);
+            memcpy(map.data(), R->color_map + off, (size_t)w * h);
+            for (int i = 0; i < onH; i++)
+                for (int j = 0; j < onW; j++)
+                    if (map[(size_t)i * w + j] >= n) throw Error(AV1G_ERR_INVALID, "block %u: colour index >= palette size", bIdx);
+        }
+        map[0] = (uint8_t)ns(sk, map[0], n);
+        for (int i = 1; i < onH + onW - 1; i++)
+            for (int j = std::min(i, onW - 1); j >= std::max(0, i - onH + 1); j--) {
+                uint8_t order[8];
+                const int ctx = av1g_palette_color_context(map.data(), w, i - j, j, n, order);
+                int s = 0;
+                if (S::kWrite)
+                    while (order[s] != map[(size_t)(i - j) * w + j]) s++;
+                s = sk.sym(av1g_palette_color_cdf(&cdf, uv, n, ctx), s, n);
+                map[(size_t)(i - j) * w + j] = order[s];
+            }
+        for (int i = 0; i < onH; i++)
+            for (int j = onW; j < w; j++) map[(size_t)i * w + j] = map[(size_t)i * w + onW - 1];
+        for (int i = onH; i < h; i++)
+            for (int j = 0; j < w; j++) map[(size_t)i * w + j] = map[(size_t)(onH - 1) * w + j];
+        if (S::kWrite) memcpy(R->color_map + off, map.data(), (size_t)w * h);
+        else PS->color_map.insert(PS->color_map.end(), map.begin(), map.end());
+        off += (uint32_t)(w * h);
+    }
+    if (!S::kWrite) {
+        curPal.block = bIdx;
+        curPalIdx = (int32_t)PS->palettes.size();
+        PS->palettes.push_back(curPal);
+    }
 }
 
 template <> uint8_t *Encoder::pix<8>(int p) { return plane[p].data(); }
@@ -694,6 +891,16 @@ void Encoder::predict_txb(const av1g_txb &t, int xi, int yi) {
     const int stepX = AV1G_T(Tx_Width)[txSz] >> 2, stepY = AV1G_T(Tx_Height)[txSz] >> 2;
     const int log2W = AV1G_T(Tx_Width_Log2)[txSz], log2H = AV1G_T(Tx_Height_Log2)[txSz];
     const int isCfl = plane > 0 && b.uv_mode == AV1G_UV_CFL_PRED;
+    if (plane == 0 ? curPal.size_y : curPal.size_uv) {   // palette prediction (spec 7.11.4): no edges
+        const int uv = plane > 0, mw = curMapW[uv];
+        const int x0 = startX - ((MiCol >> sx) << 2), y0 = startY - ((MiRow >> sy) << 2);
+        const uint8_t *map = curMap[uv].data();
+        const uint16_t *pal = curPal.colors[plane];
+        P *d = pix<BD>(plane) + (size_t)startY * pstride[plane] + startX;
+        for (int i = 0; i < (stepY << 2); i++)
+            for (int j = 0; j < (stepX << 2); j++) d[(size_t)i * pstride[plane] + j] = (P)pal[map[(size_t)(y0 + i) * mw + x0 + j]];
+        return;
+    }
     {
         const int mode = plane == 0 ? b.y_mode : (isCfl ? AV1G_DC_PRED : b.uv_mode);
         const int haveLeft = (plane == 0 ? availL : availLC) || xi > 0;
@@ -1257,6 +1464,7 @@ void Encoder::setup_frame() {
     }
     const size_t nmi = (size_t)MiRows * MiCols;
     mapMiSize.assign(nmi, 0); mapYMode.assign(nmi, 0); mapSkip.assign(nmi, 0); mapTxSize.assign(nmi, 0); mapUVMode.assign(nmi, 0);
+    mapPalY.assign(nmi, 0); mapPalUV.assign(nmi, 0); mapPalIdx.assign(nmi, -1);
     lfTxUV[0].assign((size_t)(MiRows >> ssy) * (MiCols >> ssx), 0);
     lfTxUV[1].assign((size_t)(MiRows >> ssy) * (MiCols >> ssx), 0);
     sbCdef.assign((size_t)sbCols * sbRows, -1);
@@ -1325,6 +1533,21 @@ void Encoder::run(av1g_output *out) {
     if (!R->blocks || !R->block_txb || !R->txb || (!R->coeffs && R->n_coeffs))
         throw Error(AV1G_ERR_INVALID, "record arrays missing");
     if (R->block_txb[R->n_blocks] != R->n_txb) throw Error(AV1G_ERR_INVALID, "layout stale (call av1g_layout)");
+    blockPal.assign(R->n_blocks, -1);
+    if (fp->version >= 5 && R->n_palettes) {
+        if (!R->palettes) throw Error(AV1G_ERR_INVALID, "record arrays missing (palettes)");
+        if (!fp->allow_screen_content_tools) throw Error(AV1G_ERR_INVALID, "palettes need allow_screen_content_tools = 1");
+        for (uint32_t i = 0; i < R->n_palettes; i++) {
+            const av1g_palette &p = R->palettes[i];
+            if (p.block >= R->n_blocks || (i && p.block <= R->palettes[i - 1].block))
+                throw Error(AV1G_ERR_INVALID, "palette %u: block %u out of order (palettes must be in increasing block order)", i, p.block);
+            if (p.size_y == 1 || p.size_y > 8 || p.size_uv == 1 || p.size_uv > 8 || (!p.size_y && !p.size_uv))
+                throw Error(AV1G_ERR_INVALID, "palette %u: sizes %d / %d (0 or 2..8, not both 0)", i, p.size_y, p.size_uv);
+            for (int k = 0; k < (int)sizeof p.reserved; k++)
+                if (p.reserved[k]) throw Error(AV1G_ERR_INVALID, "palette %u: reserved fields must be 0", i);
+            blockPal[p.block] = (int32_t)i;
+        }
+    }
     setup_frame();
     if (opts.flags & AV1G_ENC_CHECK_EDGES) {
         for (int p = 0; p < (mono ? 1 : 3); p++) {
@@ -1731,6 +1954,10 @@ void Encoder::parse(const uint8_t *obus, size_t n) {
     R->block_txb = PS->block_txb.data();
     R->txb = PS->txb.data();
     R->coeffs = PS->coeffs.data();
+    R->n_palettes = (uint32_t)PS->palettes.size();
+    R->palettes = PS->palettes.empty() ? nullptr : PS->palettes.data();
+    R->n_color_map = PS->color_map.size();
+    R->color_map = PS->color_map.empty() ? nullptr : PS->color_map.data();
     PS->seq_level_idx = sq.level;
 }
 

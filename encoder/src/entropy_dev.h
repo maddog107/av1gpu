@@ -18,6 +18,10 @@ struct GpDevRecords {
     uint32_t *blockTxbRel = nullptr;     // frame-relative first txb of each block (no trailing entry)
     av1g_txb *txb = nullptr;             // coeff_off frame-relative
     int16_t *coeffs = nullptr;
+    std::vector<uint32_t> pal0;          // [nFrames + 1] frame bases in palettes (empty: no palettes)
+    std::vector<uint64_t> map0;          // [nFrames + 1] frame bases in colorMap
+    av1g_palette *palettes = nullptr;    // block fields frame-relative; map_off relative to the frame's map0
+    uint8_t *colorMap = nullptr;
     void *pool = nullptr;                // cudaMallocAsync'ed; free with gp_dev_records_free
 };
 

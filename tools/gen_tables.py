@@ -133,6 +133,8 @@ SPEC_TABLES = [
     # 09.parsing.process.md
     "Intra_Mode_Context", "Coeff_Base_Ctx_Offset", "Coeff_Base_Pos_Ctx_Offset",
     "Mag_Ref_Offset_With_Tx_Class", "Filter_Intra_Mode_To_Intra_Dir",
+    # palette (10.additional.tables.md)
+    "Palette_Color_Context", "Palette_Color_Hash_Multipliers",
 ]
 
 # Default CDFs needed for intra-only coding (+ reserved M5 tools)
@@ -152,6 +154,9 @@ CDF_TABLES = [
     "Default_Eob_Pt_512_Cdf", "Default_Eob_Pt_1024_Cdf", "Default_Eob_Extra_Cdf",
     "Default_Dc_Sign_Cdf", "Default_Coeff_Base_Eob_Cdf", "Default_Coeff_Base_Cdf",
     "Default_Coeff_Br_Cdf",
+    # palette mode (allow_screen_content_tools)
+    "Default_Palette_Y_Size_Cdf", "Default_Palette_Uv_Size_Cdf",
+    r"Default_Palette_Size_\d_Y_Color_Cdf", r"Default_Palette_Size_\d_Uv_Color_Cdf",
 ]
 
 
