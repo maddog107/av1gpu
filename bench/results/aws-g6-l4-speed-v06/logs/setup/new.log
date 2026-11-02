@@ -1,0 +1,45 @@
+[1/44] Building CXX object CMakeFiles/av1core.dir/av1core/src/avif.cpp.o
+[2/44] Building CXX object CMakeFiles/avif_alpha_test.dir/tests/avif_alpha_test.cpp.o
+[3/44] Building CXX object CMakeFiles/av1g_fuzz.dir/tests/fuzz.cpp.o
+[4/44] Building CUDA object CMakeFiles/av1core_gpu.dir/av1core/src/gpu_postfilter.cu.o
+[5/44] Building CXX object CMakeFiles/av1core.dir/av1core/src/encoder.cpp.o
+[6/44] Linking CXX static library libav1core.a
+[7/44] Linking CXX executable av1g_fuzz
+[8/44] Linking CXX executable avif_alpha_test
+[9/44] Building CXX object CMakeFiles/gpujpegingest.dir/ingest/src/jpeg_reader.cpp.o
+[10/44] Building CUDA object CMakeFiles/av1f.dir/av1f/src/varboost.cu.o
+[11/44] Building CUDA object CMakeFiles/gpujpegingest.dir/ingest/src/kernels.cu.o
+[12/44] Building CUDA object CMakeFiles/gpujpegingest.dir/ingest/src/pipeline.cu.o
+[13/44] Linking CXX static library libgpujpegingest.a
+[14/44] Building CUDA object CMakeFiles/av1f.dir/av1f/src/lfsearch.cu.o
+[15/44] Linking CXX static library libav1f.a
+[16/44] Building CUDA object CMakeFiles/av1gpu_encoder.dir/encoder/src/k_misc.cu.o
+[17/44] Building CUDA object CMakeFiles/av1core_gpu.dir/av1core/src/gpu_entropy.cu.o
+[18/44] Linking CXX static library libav1core_gpu.a
+[19/44] Building CUDA object CMakeFiles/av1gpu_encoder.dir/encoder/src/k_an_b.cu.o
+[20/44] Building CUDA object CMakeFiles/av1gpu_encoder.dir/encoder/src/k_an_c.cu.o
+[21/44] Building CUDA object CMakeFiles/av1gpu_encoder.dir/encoder/src/k_an_a.cu.o
+[22/44] Building CUDA object CMakeFiles/av1gpu_recon.dir/encoder/src/k_recon_444_8.cu.o
+[23/44] Building CUDA object CMakeFiles/av1gpu_encoder.dir/encoder/src/k_an_d.cu.o
+[24/44] Building CUDA object CMakeFiles/av1gpu_encoder.dir/encoder/src/k_lossless.cu.o
+[25/44] Building CUDA object CMakeFiles/av1gpu_recon.dir/encoder/src/k_recon.cu.o
+[26/44] Building CXX object CMakeFiles/av1gpu_encoder.dir/encoder/src/pipeline.cpp.o
+[27/44] Building CXX object CMakeFiles/av1gpu_encoder.dir/encoder/src/imageio.cpp.o
+[28/44] Building CXX object CMakeFiles/av1gpu_encoder.dir/encoder/src/entropy_gpu.cpp.o
+[29/44] Building CUDA object CMakeFiles/av1gpu_encoder.dir/encoder/src/entropy_dev.cu.o
+[30/44] Building CXX object CMakeFiles/av1gpu_encoder.dir/encoder/src/batch.cpp.o
+[31/44] Building CXX object CMakeFiles/av1gpu.dir/encoder/apps/av1gpu.cpp.o
+[32/44] Building CUDA object CMakeFiles/gpu_fuzz_test.dir/tests/gpu_fuzz_test.cu.o
+[33/44] Linking CXX executable gpu_fuzz_test
+[34/44] Building CUDA object CMakeFiles/gpu_postfilter_test.dir/tests/gpu_postfilter_test.cu.o
+[35/44] Linking CXX executable gpu_postfilter_test
+[36/44] Building CUDA object CMakeFiles/av1gpu_encoder.dir/encoder/src/k_an_uv.cu.o
+[37/44] Building CUDA object CMakeFiles/varboost_test.dir/tests/varboost_test.cu.o
+[38/44] Linking CXX executable varboost_test
+[39/44] Building CUDA object CMakeFiles/gpu_dsp_test.dir/tests/gpu_dsp_test.cu.o
+[40/44] Linking CXX executable gpu_dsp_test
+[41/44] Building CUDA object CMakeFiles/av1gpu_recon.dir/encoder/src/k_recon_444_10.cu.o
+[42/44] Building CUDA object CMakeFiles/av1gpu_recon.dir/encoder/src/k_recon_420_10.cu.o
+[43/44] Linking CXX static library libav1gpu_encoder.a
+[44/44] Linking CXX executable av1gpu
+exit 0 after 182 s

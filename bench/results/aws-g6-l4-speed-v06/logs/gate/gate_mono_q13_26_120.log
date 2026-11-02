@@ -1,0 +1,3 @@
+[gate] q13: 47/47 identical in dav1d and aomdec (420 5, mono 42; 37109539 bytes), 0 not encoded (unsupported input), rc=0 PASS
+[gate] q26: 47/47 identical in dav1d and aomdec (420 5, mono 42; 29495597 bytes), 0 not encoded (unsupported input), rc=0 PASS
+[gate] q120: 47/47 identical in dav1d and aomdec (420 5, mono 42; 8435721 bytes), 0 not encoded (unsupported input), rc=0 PASS

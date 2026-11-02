@@ -1,0 +1,3886 @@
+{
+ "description": "av1gpu speed on an NVIDIA L4 (AWS g6.4xlarge, 16 vCPUs), 2026-11-01: v0.6 (main 6a4956e, #32-#40) against v0.5.0 (b6545c1) in the same session, after a byte-identity check of every output. Method as -v04: each set repeated to >= 1,000 MP (lossless and RGBA sets as published), a warm-up then 3 timed runs (--stats), 2 interleaved rounds with the binary order alternating; median of the 6 timed runs. mp_s_wall / img_s_wall: megapixels / images over the whole process's wall time (CUDA start-up included).",
+ "date": "2026-11-01",
+ "code": {
+  "new": "6a4956eaee2c6ffa2ec05d955afc1720031ceb52",
+  "old": "b6545c1a5a5d2105ead1e8db5b23d01ccb40b56c"
+ },
+ "environment": [
+  "NVIDIA L4, 595.112.07, 23034 MiB, 72.00 W, 2040 MHz",
+  "Build cuda_13.2.r13.2/compiler.37434383_0",
+  "compute-sanitizer",
+  "ncu",
+  "ncu-ui",
+  "pillow 13.0.0 numpy 2.5.4",
+  "1.4.1",
+  "    av1    - AOMedia Project AV1 Decoder v3.8.2",
+  "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
+  "16",
+  "Model name:                              AMD EPYC 7R13 Processor",
+  "               total        used        free      shared  buff/cache   available",
+  "Mem:              60           3          54           0           3          57",
+  "7.0.0-1014-aws",
+  "Ubuntu 24.04.5 LTS",
+  "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+  "cmake version 3.28.3",
+  "ll/cmp: 47 files, 18526228 bytes",
+  "sets/gray: 9 files",
+  "sets/odd: 30 files",
+  "sets/single: 10 files",
+  "sets/thumbs: 280 files",
+  "sets/webp: 7 files",
+  "demo photos: 99, 154M",
+  "new 6a4956eaee2c6ffa2ec05d955afc1720031ceb52 (rebuilt, logs/pipe6.log) old b6545c1a5a5d2105ead1e8db5b23d01ccb40b56c"
+ ],
+ "sets": {
+  "jpeg": {
+   "size_range": [
+    300,
+    1433.5289370000012,
+    3
+   ],
+   "standard": [
+    1300,
+    1023.4931199999986,
+    13
+   ]
+  },
+  "lossless": {
+   "files": 47,
+   "mp": 42.723264,
+   "bytes": 18526228
+  },
+  "alpha": {
+   "files": 780,
+   "mp": 202.4818
+  },
+  "thumbs": {
+   "files": 280,
+   "repeated_files": 6720,
+   "mp": 1019.3049599999855,
+   "repeats": 24
+  },
+  "kodak": {
+   "files": 24,
+   "repeated_files": 2544,
+   "mp": 1000.3415040000597,
+   "repeats": 106
+  }
+ },
+ "speed": {
+  "jpeg/size_range/default_enc2/new": {
+   "n": 6,
+   "mp_s": 207.11950000000002,
+   "img_s": 43.3445,
+   "cpu_cores": 0.244,
+   "mp": 1433.529,
+   "images": 300,
+   "bytes": 67615929,
+   "wall_s": 7.872,
+   "mp_s_wall": 182.10609779317673,
+   "img_s_wall": 38.11002730879739,
+   "rounds_img": [
+    43.654,
+    43.089
+   ],
+   "rounds_img_wall": [
+    38.358266206367475,
+    37.96507213363705
+   ],
+   "startup_s": 0.9485499999999996,
+   "runs": [
+    208.6,
+    207.8,
+    209.1,
+    205.9,
+    203.7,
+    206.4
+   ],
+   "peak_dev_mb": 943.6,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    208.596,
+    205.899
+   ],
+   "round_cores": [
+    0.246,
+    0.242
+   ],
+   "rounds_wall": [
+    183.2922899884925,
+    181.4134396355353
+   ],
+   "watts": 68.0,
+   "sm_util": 97.0,
+   "sm_mhz": 1770,
+   "power_samples": 34,
+   "j_per_mp": 0.328
+  },
+  "jpeg/size_range/default_enc2/old": {
+   "n": 6,
+   "mp_s": 117.96950000000001,
+   "img_s": 24.688000000000002,
+   "cpu_cores": 0.162,
+   "mp": 1433.529,
+   "images": 300,
+   "bytes": 67615929,
+   "wall_s": 13.151,
+   "mp_s_wall": 109.00823725912437,
+   "img_s_wall": 22.81256338569873,
+   "rounds_img": [
+    24.932,
+    24.514
+   ],
+   "rounds_img_wall": [
+    23.025558369790467,
+    22.670596236681025
+   ],
+   "startup_s": 0.9956000000000005,
+   "runs": [
+    119.1,
+    119.5,
+    118.7,
+    117.1,
+    117.3,
+    117.0
+   ],
+   "peak_dev_mb": 929.8,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    119.136,
+    117.137
+   ],
+   "round_cores": [
+    0.162,
+    0.162
+   ],
+   "rounds_wall": [
+    110.02601888095786,
+    108.3298571752437
+   ],
+   "watts": 68.5,
+   "sm_util": 99.9,
+   "sm_mhz": 1854,
+   "power_samples": 67,
+   "j_per_mp": 0.581
+  },
+  "jpeg/size_range/default_enc3/new": {
+   "n": 6,
+   "mp_s": 224.7305,
+   "img_s": 47.03,
+   "cpu_cores": 0.273,
+   "mp": 1433.529,
+   "images": 300,
+   "bytes": 67615929,
+   "wall_s": 7.3385,
+   "mp_s_wall": 195.35321983297226,
+   "img_s_wall": 40.882302311213564,
+   "rounds_img": [
+    47.349,
+    46.353
+   ],
+   "rounds_img_wall": [
+    41.16920543433512,
+    40.360554284945515
+   ],
+   "startup_s": 0.9571000000000005,
+   "runs": [
+    223.2,
+    226.3,
+    228.1,
+    221.2,
+    226.4,
+    221.5
+   ],
+   "peak_dev_mb": 927.4,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    226.255,
+    221.493
+   ],
+   "round_cores": [
+    0.274,
+    0.272
+   ],
+   "rounds_wall": [
+    196.72416632358997,
+    192.86008341181218
+   ],
+   "watts": 70.8,
+   "sm_util": 100.0,
+   "sm_mhz": 1658,
+   "power_samples": 32,
+   "j_per_mp": 0.315
+  },
+  "jpeg/size_range/default_enc3/old": {
+   "n": 6,
+   "mp_s": 120.89150000000001,
+   "img_s": 25.299500000000002,
+   "cpu_cores": 0.169,
+   "mp": 1433.529,
+   "images": 300,
+   "bytes": 67615929,
+   "wall_s": 12.8555,
+   "mp_s_wall": 111.51366942743405,
+   "img_s_wall": 23.33688458917135,
+   "rounds_img": [
+    25.914,
+    24.795
+   ],
+   "rounds_img_wall": [
+    23.818975784041285,
+    22.923511882020325
+   ],
+   "startup_s": 1.0001500000000014,
+   "runs": [
+    124.4,
+    121.5,
+    123.8,
+    118.5,
+    116.2,
+    120.3
+   ],
+   "peak_dev_mb": 957.1,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    123.827,
+    118.479
+   ],
+   "round_cores": [
+    0.171,
+    0.167
+   ],
+   "rounds_wall": [
+    113.8173084557364,
+    109.53839688240238
+   ],
+   "watts": 68.7,
+   "sm_util": 99.9,
+   "sm_mhz": 1785,
+   "power_samples": 64,
+   "j_per_mp": 0.568
+  },
+  "jpeg/size_range/default_enc4/new": {
+   "n": 6,
+   "mp_s": 229.65949999999998,
+   "img_s": 48.061499999999995,
+   "cpu_cores": 0.2905,
+   "mp": 1433.529,
+   "images": 300,
+   "bytes": 67615929,
+   "wall_s": 7.1850000000000005,
+   "mp_s_wall": 199.51756338169167,
+   "img_s_wall": 41.75379013225927,
+   "rounds_img": [
+    48.394,
+    47.832
+   ],
+   "rounds_img_wall": [
+    41.963911036508605,
+    41.3564929693962
+   ],
+   "startup_s": 0.9480499999999994,
+   "runs": [
+    231.2,
+    229.1,
+    233.1,
+    230.3,
+    228.6,
+    227.3
+   ],
+   "peak_dev_mb": 945.1,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    231.249,
+    228.563
+   ],
+   "round_cores": [
+    0.291,
+    0.29
+   ],
+   "rounds_wall": [
+    200.5216114141838,
+    197.61910669975188
+   ],
+   "watts": 69.9,
+   "sm_util": 100.0,
+   "sm_mhz": 1636,
+   "power_samples": 30,
+   "j_per_mp": 0.305
+  },
+  "jpeg/size_range/default_enc4/old": {
+   "n": 6,
+   "mp_s": 120.12950000000001,
+   "img_s": 25.14,
+   "cpu_cores": 0.175,
+   "mp": 1433.529,
+   "images": 300,
+   "bytes": 67615929,
+   "wall_s": 12.9375,
+   "mp_s_wall": 110.80548484622068,
+   "img_s_wall": 23.188680141012988,
+   "rounds_img": [
+    25.311,
+    25.051
+   ],
+   "rounds_img_wall": [
+    23.33903843161662,
+    23.108920043136653
+   ],
+   "startup_s": 1.004199999999999,
+   "runs": [
+    120.9,
+    119.5,
+    121.1,
+    119.7,
+    120.6,
+    117.3
+   ],
+   "peak_dev_mb": 927.4,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    120.946,
+    119.703
+   ],
+   "round_cores": [
+    0.176,
+    0.173
+   ],
+   "rounds_wall": [
+    111.5239614127898,
+    110.42435680172547
+   ],
+   "watts": 68.3,
+   "sm_util": 99.5,
+   "sm_mhz": 1848,
+   "power_samples": 66,
+   "j_per_mp": 0.569
+  },
+  "jpeg/size_range/nosmall_enc3/new": {
+   "n": 6,
+   "mp_s": 261.6925,
+   "img_s": 54.765,
+   "cpu_cores": 0.2965,
+   "mp": 1433.529,
+   "images": 300,
+   "bytes": 67663248,
+   "wall_s": 6.428,
+   "mp_s_wall": 223.0135688272161,
+   "img_s_wall": 46.67088747291811,
+   "rounds_img": [
+    54.657,
+    54.868
+   ],
+   "rounds_img_wall": [
+    46.56938838869916,
+    46.728971962616825
+   ],
+   "startup_s": 0.9495499999999999,
+   "runs": [
+    260.7,
+    265.2,
+    261.2,
+    262.2,
+    261.2,
+    264.5
+   ],
+   "peak_dev_mb": 1053.7,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    261.175,
+    262.184
+   ],
+   "round_cores": [
+    0.295,
+    0.298
+   ],
+   "rounds_wall": [
+    222.52856255821172,
+    223.2911214953271
+   ],
+   "watts": 69.8,
+   "sm_util": 99.5,
+   "sm_mhz": 1633,
+   "power_samples": 27,
+   "j_per_mp": 0.267
+  },
+  "jpeg/size_range/nosmall_enc3/old": {
+   "n": 6,
+   "mp_s": 140.055,
+   "img_s": 29.310000000000002,
+   "cpu_cores": 0.1875,
+   "mp": 1433.529,
+   "images": 300,
+   "bytes": 67663248,
+   "wall_s": 11.2315,
+   "mp_s_wall": 127.6347450674349,
+   "img_s_wall": 26.710602659751196,
+   "rounds_img": [
+    29.192,
+    29.403
+   ],
+   "rounds_img_wall": [
+    26.607538802660752,
+    26.792890952933824
+   ],
+   "startup_s": 0.9999000000000002,
+   "runs": [
+    140.2,
+    138.1,
+    139.5,
+    140.5,
+    139.9,
+    143.2
+   ],
+   "peak_dev_mb": 1053.7,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    139.494,
+    140.499
+   ],
+   "round_cores": [
+    0.187,
+    0.188
+   ],
+   "rounds_wall": [
+    127.14226164079822,
+    128.02795391622757
+   ],
+   "watts": 69.7,
+   "sm_util": 99.5,
+   "sm_mhz": 1807,
+   "power_samples": 55,
+   "j_per_mp": 0.498
+  },
+  "jpeg/size_range/nosmall_enc4/new": {
+   "n": 6,
+   "mp_s": 271.525,
+   "img_s": 56.823,
+   "cpu_cores": 0.311,
+   "mp": 1433.529,
+   "images": 300,
+   "bytes": 67663248,
+   "wall_s": 6.231999999999999,
+   "mp_s_wall": 230.02740831574414,
+   "img_s_wall": 48.13870001564199,
+   "rounds_img": [
+    56.628,
+    57.383
+   ],
+   "rounds_img_wall": [
+    47.99232122860342,
+    48.559404337973454
+   ],
+   "startup_s": 0.9516,
+   "runs": [
+    266.8,
+    270.6,
+    270.9,
+    274.6,
+    274.2,
+    272.1
+   ],
+   "peak_dev_mb": 1027.1,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    270.595,
+    274.199
+   ],
+   "round_cores": [
+    0.309,
+    0.312
+   ],
+   "rounds_wall": [
+    229.32794752839544,
+    232.0377144707025
+   ],
+   "watts": 69.5,
+   "sm_util": 100.0,
+   "sm_mhz": 1617,
+   "power_samples": 26,
+   "j_per_mp": 0.256
+  },
+  "jpeg/size_range/nosmall_enc4/old": {
+   "n": 6,
+   "mp_s": 141.96800000000002,
+   "img_s": 29.71,
+   "cpu_cores": 0.188,
+   "mp": 1433.529,
+   "images": 300,
+   "bytes": 67663248,
+   "wall_s": 11.092,
+   "mp_s_wall": 129.24008015944105,
+   "img_s_wall": 27.046557166148936,
+   "rounds_img": [
+    29.667,
+    30.03
+   ],
+   "rounds_img_wall": [
+    27.014858171994597,
+    27.28264823572208
+   ],
+   "startup_s": 1.00575,
+   "runs": [
+    137.7,
+    141.8,
+    142.2,
+    143.5,
+    143.9,
+    139.3
+   ],
+   "peak_dev_mb": 1030.9,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    141.763,
+    143.494
+   ],
+   "round_cores": [
+    0.188,
+    0.188
+   ],
+   "rounds_wall": [
+    129.08860873480413,
+    130.36822480902146
+   ],
+   "watts": 69.8,
+   "sm_util": 99.4,
+   "sm_mhz": 1839,
+   "power_samples": 54,
+   "j_per_mp": 0.492
+  },
+  "jpeg/size_range/tiles211_enc3/new": {
+   "n": 6,
+   "mp_s": 205.003,
+   "img_s": 42.902,
+   "cpu_cores": 0.249,
+   "mp": 1433.529,
+   "images": 300,
+   "bytes": 67474998,
+   "wall_s": 7.9495000000000005,
+   "mp_s_wall": 180.33053975548694,
+   "img_s_wall": 37.73844960698115,
+   "rounds_img": [
+    43.143,
+    42.434
+   ],
+   "rounds_img_wall": [
+    37.99873337555415,
+    37.41581441756048
+   ],
+   "startup_s": 0.9503000000000004,
+   "runs": [
+    205.1,
+    206.2,
+    212.5,
+    204.9,
+    202.8,
+    202.7
+   ],
+   "peak_dev_mb": 927.4,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    206.154,
+    202.766
+   ],
+   "round_cores": [
+    0.25,
+    0.249
+   ],
+   "rounds_wall": [
+    181.5742875237492,
+    178.78885008730356
+   ],
+   "watts": 69.3,
+   "sm_util": 100.0,
+   "sm_mhz": 1737,
+   "power_samples": 35,
+   "j_per_mp": 0.338
+  },
+  "jpeg/size_range/tiles211_enc3/old": {
+   "n": 6,
+   "mp_s": 112.614,
+   "img_s": 23.567,
+   "cpu_cores": 0.158,
+   "mp": 1433.529,
+   "images": 300,
+   "bytes": 67474998,
+   "wall_s": 13.73,
+   "mp_s_wall": 104.40861508711578,
+   "img_s_wall": 21.849983171693587,
+   "rounds_img": [
+    23.598,
+    23.535
+   ],
+   "rounds_img_wall": [
+    21.870671429612887,
+    21.826118588577664
+   ],
+   "startup_s": 1.0011,
+   "runs": [
+    112.5,
+    114.4,
+    112.8,
+    114.3,
+    112.5,
+    110.4
+   ],
+   "peak_dev_mb": 934.9,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    112.763,
+    112.46
+   ],
+   "round_cores": [
+    0.157,
+    0.159
+   ],
+   "rounds_wall": [
+    104.50747247940511,
+    104.29457984721718
+   ],
+   "watts": 67.5,
+   "sm_util": 100.0,
+   "sm_mhz": 1851,
+   "power_samples": 71,
+   "j_per_mp": 0.599
+  },
+  "jpeg/size_range/tiles233_enc3/new": {
+   "n": 6,
+   "mp_s": 236.696,
+   "img_s": 49.534,
+   "cpu_cores": 0.2845,
+   "mp": 1433.529,
+   "images": 300,
+   "bytes": 67889955,
+   "wall_s": 7.0024999999999995,
+   "mp_s_wall": 204.7167450637204,
+   "img_s_wall": 42.841842417639356,
+   "rounds_img": [
+    49.53,
+    49.786
+   ],
+   "rounds_img_wall": [
+    42.82655246252677,
+    42.992261392949274
+   ],
+   "startup_s": 0.94685,
+   "runs": [
+    236.7,
+    236.7,
+    232.0,
+    236.6,
+    239.0,
+    237.9
+   ],
+   "peak_dev_mb": 993.0,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    236.678,
+    237.9
+   ],
+   "round_cores": [
+    0.286,
+    0.283
+   ],
+   "rounds_wall": [
+    204.64368308351177,
+    205.43551160791057
+   ],
+   "watts": 71.0,
+   "sm_util": 100.0,
+   "sm_mhz": 1676,
+   "power_samples": 30,
+   "j_per_mp": 0.3
+  },
+  "jpeg/size_range/tiles233_enc3/old": {
+   "n": 6,
+   "mp_s": 126.543,
+   "img_s": 26.482,
+   "cpu_cores": 0.177,
+   "mp": 1433.529,
+   "images": 300,
+   "bytes": 67889955,
+   "wall_s": 12.339,
+   "mp_s_wall": 116.19302557714613,
+   "img_s_wall": 24.31615103227339,
+   "rounds_img": [
+    26.148,
+    26.816
+   ],
+   "rounds_img_wall": [
+    24.046168643796086,
+    24.586133420750695
+   ],
+   "startup_s": 1.0050500000000007,
+   "runs": [
+    128.9,
+    124.9,
+    122.8,
+    130.7,
+    124.2,
+    128.1
+   ],
+   "peak_dev_mb": 1018.9,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    124.949,
+    128.137
+   ],
+   "round_cores": [
+    0.174,
+    0.181
+   ],
+   "rounds_wall": [
+    114.90293363257453,
+    117.48311752171774
+   ],
+   "watts": 69.1,
+   "sm_util": 98.3,
+   "sm_mhz": 1789,
+   "power_samples": 61,
+   "j_per_mp": 0.546
+  },
+  "jpeg/size_range/turbo3_enc4/new": {
+   "n": 6,
+   "mp_s": 291.068,
+   "img_s": 60.913,
+   "cpu_cores": 0.3585,
+   "mp": 1433.529,
+   "images": 300,
+   "bytes": 69337887,
+   "wall_s": 5.8715,
+   "mp_s_wall": 244.15068668205777,
+   "img_s_wall": 51.09433154447334,
+   "rounds_img": [
+    60.992,
+    60.834
+   ],
+   "rounds_img_wall": [
+    51.15089514066496,
+    51.037767948281726
+   ],
+   "startup_s": 0.9470000000000001,
+   "runs": [
+    289.7,
+    291.4,
+    292.1,
+    289.4,
+    292.5,
+    290.7
+   ],
+   "peak_dev_mb": 812.9,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    291.445,
+    290.691
+   ],
+   "round_cores": [
+    0.357,
+    0.36
+   ],
+   "rounds_wall": [
+    244.42097186700767,
+    243.88040149710787
+   ],
+   "watts": 68.5,
+   "sm_util": 99.9,
+   "sm_mhz": 1642,
+   "power_samples": 24,
+   "j_per_mp": 0.235
+  },
+  "jpeg/size_range/turbo3_enc4/old": {
+   "n": 6,
+   "mp_s": 161.24650000000003,
+   "img_s": 33.745000000000005,
+   "cpu_cores": 0.2295,
+   "mp": 1433.529,
+   "images": 300,
+   "bytes": 69337887,
+   "wall_s": 9.89,
+   "mp_s_wall": 144.94840083572697,
+   "img_s_wall": 30.33389645463614,
+   "rounds_img": [
+    33.43,
+    34.156
+   ],
+   "rounds_img_wall": [
+    30.066145520144318,
+    30.662305805396564
+   ],
+   "startup_s": 1.0036499999999995,
+   "runs": [
+    159.3,
+    159.7,
+    160.7,
+    161.8,
+    163.2,
+    164.3
+   ],
+   "peak_dev_mb": 836.9,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    159.741,
+    163.21
+   ],
+   "round_cores": [
+    0.224,
+    0.254
+   ],
+   "rounds_wall": [
+    143.66897173782323,
+    146.5176819296811
+   ],
+   "watts": 68.4,
+   "sm_util": 99.8,
+   "sm_mhz": 1777,
+   "power_samples": 47,
+   "j_per_mp": 0.424
+  },
+  "jpeg/size_range/turbo3ns_enc4/new": {
+   "n": 6,
+   "mp_s": 366.78200000000004,
+   "img_s": 76.75800000000001,
+   "cpu_cores": 0.4185,
+   "mp": 1433.529,
+   "images": 300,
+   "bytes": 69593271,
+   "wall_s": 4.855,
+   "mp_s_wall": 295.2698417648013,
+   "img_s_wall": 61.79222919762377,
+   "rounds_img": [
+    76.552,
+    76.969
+   ],
+   "rounds_img_wall": [
+    61.61429451632779,
+    61.91950464396285
+   ],
+   "startup_s": 0.9483500000000002,
+   "runs": [
+    367.8,
+    365.8,
+    363.9,
+    365.7,
+    367.8,
+    368.6
+   ],
+   "peak_dev_mb": 926.4,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    365.797,
+    367.792
+   ],
+   "round_cores": [
+    0.418,
+    0.419
+   ],
+   "rounds_wall": [
+    294.4195933456562,
+    295.8780185758514
+   ],
+   "watts": 70.3,
+   "sm_util": 100.0,
+   "sm_mhz": 1577,
+   "power_samples": 15,
+   "j_per_mp": 0.192
+  },
+  "jpeg/size_range/turbo3ns_enc4/old": {
+   "n": 6,
+   "mp_s": 209.607,
+   "img_s": 43.8655,
+   "cpu_cores": 0.271,
+   "mp": 1433.529,
+   "images": 300,
+   "bytes": 69593271,
+   "wall_s": 7.8475,
+   "mp_s_wall": 182.67574485189317,
+   "img_s_wall": 38.229239489098546,
+   "rounds_img": [
+    44.286,
+    42.968
+   ],
+   "rounds_img_wall": [
+    38.54059609455293,
+    37.63643206624012
+   ],
+   "startup_s": 1.0071500000000002,
+   "runs": [
+    210.4,
+    211.6,
+    213.0,
+    208.8,
+    205.3,
+    203.8
+   ],
+   "peak_dev_mb": 926.4,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    211.619,
+    205.319
+   ],
+   "round_cores": [
+    0.278,
+    0.263
+   ],
+   "rounds_wall": [
+    184.16354059609455,
+    179.84305607828378
+   ],
+   "watts": 69.5,
+   "sm_util": 99.8,
+   "sm_mhz": 1737,
+   "power_samples": 36,
+   "j_per_mp": 0.331
+  },
+  "jpeg/standard/default_enc2/new": {
+   "n": 6,
+   "mp_s": 71.2365,
+   "img_s": 90.481,
+   "cpu_cores": 0.179,
+   "mp": 1023.493,
+   "images": 1300,
+   "bytes": 71429150,
+   "wall_s": 15.315999999999999,
+   "mp_s_wall": 66.8268628080784,
+   "img_s_wall": 84.8808166255186,
+   "rounds_img": [
+    90.003,
+    92.194
+   ],
+   "rounds_img_wall": [
+    84.44300097434233,
+    86.39021796916533
+   ],
+   "startup_s": 0.9460999999999995,
+   "runs": [
+    70.3,
+    71.6,
+    70.9,
+    70.6,
+    72.6,
+    73.5
+   ],
+   "peak_dev_mb": 1002.5,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    70.86,
+    72.584
+   ],
+   "round_cores": [
+    0.176,
+    0.182
+   ],
+   "rounds_wall": [
+    66.4821695355635,
+    68.01521796916533
+   ],
+   "watts": 70.5,
+   "sm_util": 100.0,
+   "sm_mhz": 1710,
+   "power_samples": 79,
+   "j_per_mp": 0.99
+  },
+  "jpeg/standard/default_enc2/old": {
+   "n": 6,
+   "mp_s": 37.4975,
+   "img_s": 47.6275,
+   "cpu_cores": 0.11699999999999999,
+   "mp": 1023.493,
+   "images": 1300,
+   "bytes": 71429150,
+   "wall_s": 28.2905,
+   "mp_s_wall": 36.17798091662284,
+   "img_s_wall": 45.95182887582982,
+   "rounds_img": [
+    47.295,
+    48.357
+   ],
+   "rounds_img_wall": [
+    45.647670213139506,
+    46.61336010613503
+   ],
+   "startup_s": 0.9964500000000012,
+   "runs": [
+    37.2,
+    37.2,
+    37.5,
+    38.5,
+    38.1,
+    37.5
+   ],
+   "peak_dev_mb": 995.2,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    37.236,
+    38.071
+   ],
+   "round_cores": [
+    0.123,
+    0.116
+   ],
+   "rounds_wall": [
+    35.93851609958215,
+    36.69880598085267
+   ],
+   "watts": 70.5,
+   "sm_util": 99.3,
+   "sm_mhz": 1876,
+   "power_samples": 158,
+   "j_per_mp": 1.881
+  },
+  "jpeg/standard/default_enc3/new": {
+   "n": 6,
+   "mp_s": 72.4225,
+   "img_s": 91.9885,
+   "cpu_cores": 0.1745,
+   "mp": 1023.493,
+   "images": 1300,
+   "bytes": 71429150,
+   "wall_s": 15.0845,
+   "mp_s_wall": 67.85085079096669,
+   "img_s_wall": 86.18144533304742,
+   "rounds_img": [
+    91.833,
+    92.356
+   ],
+   "rounds_img_wall": [
+    86.03004433856131,
+    86.46491519787163
+   ],
+   "startup_s": 0.9569000000000001,
+   "runs": [
+    71.7,
+    72.5,
+    72.3,
+    72.0,
+    72.7,
+    74.2
+   ],
+   "peak_dev_mb": 997.5,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    72.3,
+    72.712
+   ],
+   "round_cores": [
+    0.172,
+    0.176
+   ],
+   "rounds_wall": [
+    67.73165243862087,
+    68.07402726970403
+   ],
+   "watts": 71.6,
+   "sm_util": 100.0,
+   "sm_mhz": 1661,
+   "power_samples": 77,
+   "j_per_mp": 0.988
+  },
+  "jpeg/standard/default_enc3/old": {
+   "n": 6,
+   "mp_s": 38.2565,
+   "img_s": 48.591499999999996,
+   "cpu_cores": 0.136,
+   "mp": 1023.493,
+   "images": 1300,
+   "bytes": 71429150,
+   "wall_s": 27.755499999999998,
+   "mp_s_wall": 36.87541258511696,
+   "img_s_wall": 46.8376787732325,
+   "rounds_img": [
+    48.525,
+    49.285
+   ],
+   "rounds_img_wall": [
+    46.76427209611857,
+    47.511146845990794
+   ],
+   "startup_s": 0.992799999999999,
+   "runs": [
+    37.7,
+    38.2,
+    38.3,
+    39.1,
+    38.8,
+    38.1
+   ],
+   "peak_dev_mb": 1001.4,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    38.204,
+    38.802
+   ],
+   "round_cores": [
+    0.132,
+    0.139
+   ],
+   "rounds_wall": [
+    36.81761933882514,
+    37.40563555295666
+   ],
+   "watts": 70.2,
+   "sm_util": 99.8,
+   "sm_mhz": 1871,
+   "power_samples": 154,
+   "j_per_mp": 1.834
+  },
+  "jpeg/standard/default_enc4/new": {
+   "n": 6,
+   "mp_s": 72.73400000000001,
+   "img_s": 92.384,
+   "cpu_cores": 0.1735,
+   "mp": 1023.493,
+   "images": 1300,
+   "bytes": 71429150,
+   "wall_s": 15.029,
+   "mp_s_wall": 68.10124082041267,
+   "img_s_wall": 86.49948076492606,
+   "rounds_img": [
+    92.444,
+    91.57
+   ],
+   "rounds_img_wall": [
+    86.56279131708617,
+    85.83690987124464
+   ],
+   "startup_s": 0.9537000000000004,
+   "runs": [
+    73.3,
+    72.8,
+    72.7,
+    71.6,
+    72.1,
+    73.9
+   ],
+   "peak_dev_mb": 996.3,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    72.781,
+    72.093
+   ],
+   "round_cores": [
+    0.17,
+    0.179
+   ],
+   "rounds_wall": [
+    68.15108536422959,
+    67.57959722680754
+   ],
+   "watts": 71.4,
+   "sm_util": 99.7,
+   "sm_mhz": 1632,
+   "power_samples": 77,
+   "j_per_mp": 0.982
+  },
+  "jpeg/standard/default_enc4/old": {
+   "n": 6,
+   "mp_s": 37.5405,
+   "img_s": 47.682500000000005,
+   "cpu_cores": 0.155,
+   "mp": 1023.493,
+   "images": 1300,
+   "bytes": 71429150,
+   "wall_s": 28.2675,
+   "mp_s_wall": 36.20761172456693,
+   "img_s_wall": 45.989464746644096,
+   "rounds_img": [
+    47.801,
+    47.564
+   ],
+   "rounds_img_wall": [
+    46.097656111485406,
+    45.881273381802785
+   ],
+   "startup_s": 1.0037500000000001,
+   "runs": [
+    37.4,
+    37.9,
+    37.6,
+    38.0,
+    37.2,
+    37.4
+   ],
+   "peak_dev_mb": 1001.8,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    37.634,
+    37.447
+   ],
+   "round_cores": [
+    0.158,
+    0.151
+   ],
+   "rounds_wall": [
+    36.292791035778876,
+    36.122432413354986
+   ],
+   "watts": 70.8,
+   "sm_util": 99.9,
+   "sm_mhz": 1840,
+   "power_samples": 156,
+   "j_per_mp": 1.885
+  },
+  "jpeg/standard/nosmall_enc3/new": {
+   "n": 6,
+   "mp_s": 168.573,
+   "img_s": 214.1145,
+   "cpu_cores": 0.3395,
+   "mp": 1023.493,
+   "images": 1300,
+   "bytes": 71872515,
+   "wall_s": 7.019,
+   "mp_s_wall": 145.8211211880142,
+   "img_s_wall": 185.21617396935636,
+   "rounds_img": [
+    212.786,
+    215.573
+   ],
+   "rounds_img_wall": [
+    184.24036281179139,
+    186.1664041243019
+   ],
+   "startup_s": 0.9484499999999998,
+   "runs": [
+    167.6,
+    167.4,
+    167.5,
+    169.8,
+    169.7,
+    169.6
+   ],
+   "peak_dev_mb": 959.9,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    167.527,
+    169.721
+   ],
+   "round_cores": [
+    0.331,
+    0.364
+   ],
+   "rounds_wall": [
+    145.05286281179139,
+    146.56923958184163
+   ],
+   "watts": 71.3,
+   "sm_util": 100.0,
+   "sm_mhz": 1612,
+   "power_samples": 30,
+   "j_per_mp": 0.423
+  },
+  "jpeg/standard/nosmall_enc3/old": {
+   "n": 6,
+   "mp_s": 95.6705,
+   "img_s": 121.517,
+   "cpu_cores": 0.257,
+   "mp": 1023.493,
+   "images": 1300,
+   "bytes": 71872515,
+   "wall_s": 11.695,
+   "mp_s_wall": 87.51552608590588,
+   "img_s_wall": 111.15873182491491,
+   "rounds_img": [
+    121.69,
+    121.196
+   ],
+   "rounds_img_wall": [
+    111.2727895232389,
+    110.90257635215833
+   ],
+   "startup_s": 0.9963499999999996,
+   "runs": [
+    95.8,
+    96.4,
+    95.5,
+    96.9,
+    95.0,
+    95.4
+   ],
+   "peak_dev_mb": 961.7,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    95.807,
+    95.418
+   ],
+   "round_cores": [
+    0.265,
+    0.249
+   ],
+   "rounds_wall": [
+    87.60532397500643,
+    87.31385429107661
+   ],
+   "watts": 69.5,
+   "sm_util": 99.9,
+   "sm_mhz": 1811,
+   "power_samples": 57,
+   "j_per_mp": 0.727
+  },
+  "jpeg/standard/nosmall_enc4/new": {
+   "n": 6,
+   "mp_s": 172.1055,
+   "img_s": 218.6015,
+   "cpu_cores": 0.3435,
+   "mp": 1023.493,
+   "images": 1300,
+   "bytes": 71872515,
+   "wall_s": 6.897,
+   "mp_s_wall": 148.39703886255086,
+   "img_s_wall": 188.48800189284748,
+   "rounds_img": [
+    218.76,
+    218.443
+   ],
+   "rounds_img_wall": [
+    188.70663376397155,
+    188.26937002172338
+   ],
+   "startup_s": 0.9538499999999996,
+   "runs": [
+    171.3,
+    172.2,
+    172.6,
+    171.8,
+    172.7,
+    172.0
+   ],
+   "peak_dev_mb": 962.2,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    172.23,
+    171.981
+   ],
+   "round_cores": [
+    0.342,
+    0.359
+   ],
+   "rounds_wall": [
+    148.56916823922194,
+    148.2249094858798
+   ],
+   "watts": 70.5,
+   "sm_util": 100.0,
+   "sm_mhz": 1685,
+   "power_samples": 30,
+   "j_per_mp": 0.41
+  },
+  "jpeg/standard/nosmall_enc4/old": {
+   "n": 6,
+   "mp_s": 95.41499999999999,
+   "img_s": 121.19200000000001,
+   "cpu_cores": 0.249,
+   "mp": 1023.493,
+   "images": 1300,
+   "bytes": 71872515,
+   "wall_s": 11.7285,
+   "mp_s_wall": 87.26714706460089,
+   "img_s_wall": 110.84325069539426,
+   "rounds_img": [
+    120.362,
+    122.65
+   ],
+   "rounds_img_wall": [
+    110.03893685457932,
+    111.92423590185105
+   ],
+   "startup_s": 1.0073499999999997,
+   "runs": [
+    94.8,
+    95.0,
+    94.3,
+    96.9,
+    95.9,
+    96.6
+   ],
+   "peak_dev_mb": 961.5,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    94.762,
+    96.563
+   ],
+   "round_cores": [
+    0.248,
+    0.25
+   ],
+   "rounds_wall": [
+    86.63390892161843,
+    88.11820921222558
+   ],
+   "watts": 69.6,
+   "sm_util": 99.9,
+   "sm_mhz": 1864,
+   "power_samples": 58,
+   "j_per_mp": 0.729
+  },
+  "formats/420_10/new": {
+   "n": 6,
+   "mp_s": 229.538,
+   "img_s": 48.036500000000004,
+   "cpu_cores": 0.3155,
+   "mp": 1433.529,
+   "images": 300,
+   "bytes": 66785133,
+   "wall_s": 7.2005,
+   "mp_s_wall": 199.08777103487543,
+   "img_s_wall": 41.663845872990805,
+   "rounds_img": [
+    48.175,
+    47.433
+   ],
+   "rounds_img_wall": [
+    41.76527913128219,
+    41.21445253468883
+   ],
+   "startup_s": 0.9557999999999995,
+   "runs": [
+    231.4,
+    230.2,
+    230.0,
+    226.7,
+    226.1,
+    229.1
+   ],
+   "peak_dev_mb": 1140.6,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    230.201,
+    226.657
+   ],
+   "round_cores": [
+    0.319,
+    0.308
+   ],
+   "rounds_wall": [
+    199.5724627592928,
+    196.94037642533314
+   ],
+   "watts": 70.2,
+   "sm_util": 99.9,
+   "sm_mhz": 1670,
+   "power_samples": 32,
+   "j_per_mp": 0.306
+  },
+  "formats/420_10/old": {
+   "n": 6,
+   "mp_s": 120.22649999999999,
+   "img_s": 25.1605,
+   "cpu_cores": 0.1855,
+   "mp": 1433.529,
+   "images": 300,
+   "bytes": 66785133,
+   "wall_s": 12.9365,
+   "mp_s_wall": 110.82454140105958,
+   "img_s_wall": 23.192668177844936,
+   "rounds_img": [
+    25.645,
+    24.342
+   ],
+   "rounds_img_wall": [
+    23.603461841070022,
+    22.5022502250225
+   ],
+   "startup_s": 1.0113500000000002,
+   "runs": [
+    122.7,
+    122.5,
+    121.6,
+    113.6,
+    118.9,
+    116.3
+   ],
+   "peak_dev_mb": 1087.6,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    122.541,
+    116.315
+   ],
+   "round_cores": [
+    0.19,
+    0.184
+   ],
+   "rounds_wall": [
+    112.78749016522423,
+    107.52542754275427
+   ],
+   "watts": 68.5,
+   "sm_util": 99.8,
+   "sm_mhz": 1839,
+   "power_samples": 65,
+   "j_per_mp": 0.57
+  },
+  "formats/444_10/new": {
+   "n": 6,
+   "mp_s": 166.39350000000002,
+   "img_s": 34.822,
+   "cpu_cores": 0.234,
+   "mp": 1433.529,
+   "images": 300,
+   "bytes": 69418857,
+   "wall_s": 9.582,
+   "mp_s_wall": 149.62307334247572,
+   "img_s_wall": 31.312182734177487,
+   "rounds_img": [
+    35.355,
+    34.379
+   ],
+   "rounds_img_wall": [
+    31.719179530556143,
+    30.946977511863004
+   ],
+   "startup_s": 0.9675500000000001,
+   "runs": [
+    169.4,
+    168.4,
+    168.9,
+    164.3,
+    164.4,
+    162.7
+   ],
+   "peak_dev_mb": 1961.5,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    168.942,
+    164.276
+   ],
+   "round_cores": [
+    0.234,
+    0.233
+   ],
+   "rounds_wall": [
+    151.5678790441954,
+    147.87796575201153
+   ],
+   "watts": 70.6,
+   "sm_util": 100.0,
+   "sm_mhz": 1626,
+   "power_samples": 46,
+   "j_per_mp": 0.424
+  },
+  "formats/444_10/old": {
+   "n": 6,
+   "mp_s": 94.965,
+   "img_s": 19.8735,
+   "cpu_cores": 0.154,
+   "mp": 1433.529,
+   "images": 300,
+   "bytes": 69418857,
+   "wall_s": 16.1335,
+   "mp_s_wall": 88.85723398204735,
+   "img_s_wall": 18.595487216940995,
+   "rounds_img": [
+    20.011,
+    19.541
+   ],
+   "rounds_img_wall": [
+    18.704408005486624,
+    18.3094293561184
+   ],
+   "startup_s": 1.0317500000000006,
+   "runs": [
+    95.8,
+    95.6,
+    94.3,
+    93.3,
+    93.4,
+    96.7
+   ],
+   "peak_dev_mb": 2036.3,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    95.621,
+    93.377
+   ],
+   "round_cores": [
+    0.155,
+    0.153
+   ],
+   "rounds_wall": [
+    89.37770434565745,
+    87.49032651815685
+   ],
+   "watts": 69.0,
+   "sm_util": 98.9,
+   "sm_mhz": 1764,
+   "power_samples": 84,
+   "j_per_mp": 0.727
+  },
+  "formats/444_8/new": {
+   "n": 6,
+   "mp_s": 169.577,
+   "img_s": 35.488,
+   "cpu_cores": 0.22,
+   "mp": 1433.529,
+   "images": 300,
+   "bytes": 70820718,
+   "wall_s": 9.412500000000001,
+   "mp_s_wall": 152.30055819868977,
+   "img_s_wall": 31.872510050097997,
+   "rounds_img": [
+    35.212,
+    35.653
+   ],
+   "rounds_img_wall": [
+    31.638894747943475,
+    32.02732998825664
+   ],
+   "startup_s": 0.9602999999999993,
+   "runs": [
+    168.3,
+    169.5,
+    167.8,
+    169.6,
+    170.7,
+    170.4
+   ],
+   "peak_dev_mb": 1617.7,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    168.259,
+    170.366
+   ],
+   "round_cores": [
+    0.22,
+    0.22
+   ],
+   "rounds_wall": [
+    151.18424383041554,
+    153.0403544357852
+   ],
+   "watts": 70.8,
+   "sm_util": 100.0,
+   "sm_mhz": 1635,
+   "power_samples": 45,
+   "j_per_mp": 0.417
+  },
+  "formats/444_8/old": {
+   "n": 6,
+   "mp_s": 97.755,
+   "img_s": 20.4575,
+   "cpu_cores": 0.15,
+   "mp": 1433.529,
+   "images": 300,
+   "bytes": 70820718,
+   "wall_s": 15.6785,
+   "mp_s_wall": 91.43419698331543,
+   "img_s_wall": 19.134777946588194,
+   "rounds_img": [
+    20.369,
+    20.546
+   ],
+   "rounds_img_wall": [
+    19.05972045743329,
+    19.2098354357431
+   ],
+   "startup_s": 1.0169500000000005,
+   "runs": [
+    94.9,
+    97.3,
+    102.1,
+    101.0,
+    98.2,
+    95.9
+   ],
+   "peak_dev_mb": 1596.0,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    97.334,
+    98.176
+   ],
+   "round_cores": [
+    0.149,
+    0.151
+   ],
+   "rounds_wall": [
+    91.07554002541296,
+    91.7928539412179
+   ],
+   "watts": 69.1,
+   "sm_util": 98.8,
+   "sm_mhz": 1722,
+   "power_samples": 80,
+   "j_per_mp": 0.707
+  },
+  "lossless/cmp_1pass/new": {
+   "n": 6,
+   "mp_s": 33.007999999999996,
+   "img_s": 36.312,
+   "cpu_cores": 1.326,
+   "mp": 42.723,
+   "images": 47,
+   "bytes": 20035242,
+   "wall_s": 2.258,
+   "mp_s_wall": 18.92074115044248,
+   "img_s_wall": 20.814896755162245,
+   "rounds_img": [
+    36.061,
+    36.713
+   ],
+   "rounds_img_wall": [
+    20.69572875385293,
+    20.851818988464952
+   ],
+   "startup_s": 0.96995,
+   "runs": [
+    32.7,
+    32.8,
+    33.0,
+    33.4,
+    33.0,
+    33.5
+   ],
+   "peak_dev_mb": 2550.4,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    32.779,
+    33.372
+   ],
+   "round_cores": [
+    1.344,
+    1.306
+   ],
+   "rounds_wall": [
+    18.81241743725231,
+    18.95430346051464
+   ],
+   "watts": 63.0,
+   "sm_util": 50.0,
+   "sm_mhz": 2032,
+   "power_samples": 2,
+   "j_per_mp": 1.909
+  },
+  "lossless/cmp_1pass/old": {
+   "n": 6,
+   "mp_s": 30.002499999999998,
+   "img_s": 33.0055,
+   "cpu_cores": 1.2970000000000002,
+   "mp": 42.723,
+   "images": 47,
+   "bytes": 20035242,
+   "wall_s": 2.4505,
+   "mp_s_wall": 17.434407675137237,
+   "img_s_wall": 19.17976641929289,
+   "rounds_img": [
+    32.833,
+    33.121
+   ],
+   "rounds_img_wall": [
+    19.144602851323828,
+    19.23076923076923
+   ],
+   "startup_s": 1.0265,
+   "runs": [
+    29.8,
+    29.8,
+    30.0,
+    30.1,
+    30.4,
+    30.0
+   ],
+   "peak_dev_mb": 2550.4,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    29.846,
+    30.107
+   ],
+   "round_cores": [
+    1.285,
+    1.309
+   ],
+   "rounds_wall": [
+    17.40244399185336,
+    17.48076923076923
+   ],
+   "watts": 63.0,
+   "sm_util": 100.0,
+   "sm_mhz": 1582,
+   "power_samples": 2,
+   "j_per_mp": 2.1
+  },
+  "lossless/cmp_1pass_ycgco/new": {
+   "n": 6,
+   "mp_s": 34.072,
+   "img_s": 37.4825,
+   "cpu_cores": 1.4355,
+   "mp": 42.723,
+   "images": 47,
+   "bytes": 16781711,
+   "wall_s": 2.2060000000000004,
+   "mp_s_wall": 19.366743026513056,
+   "img_s_wall": 21.30554788395276,
+   "rounds_img": [
+    37.265,
+    37.668
+   ],
+   "rounds_img_wall": [
+    21.28623188405797,
+    21.32486388384755
+   ],
+   "startup_s": 0.95575,
+   "runs": [
+    33.9,
+    33.8,
+    34.4,
+    34.2,
+    33.9,
+    34.4
+   ],
+   "peak_dev_mb": 2666.4,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    33.874,
+    34.241
+   ],
+   "round_cores": [
+    1.424,
+    1.447
+   ],
+   "rounds_wall": [
+    19.349184782608695,
+    19.38430127041742
+   ],
+   "watts": 55.5,
+   "sm_util": 70.0,
+   "sm_mhz": 1770,
+   "power_samples": 2,
+   "j_per_mp": 1.629
+  },
+  "lossless/cmp_1pass_ycgco/old": {
+   "n": 6,
+   "mp_s": 30.8785,
+   "img_s": 33.9695,
+   "cpu_cores": 1.4024999999999999,
+   "mp": 42.723,
+   "images": 47,
+   "bytes": 16781711,
+   "wall_s": 2.3975,
+   "mp_s_wall": 17.81981927987524,
+   "img_s_wall": 19.603761584021164,
+   "rounds_img": [
+    33.836,
+    34.048
+   ],
+   "rounds_img_wall": [
+    19.61602671118531,
+    19.591496456857023
+   ],
+   "startup_s": 1.0154,
+   "runs": [
+    31.2,
+    30.6,
+    30.8,
+    30.8,
+    30.9,
+    31.2
+   ],
+   "peak_dev_mb": 2666.4,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    30.757,
+    30.95
+   ],
+   "round_cores": [
+    1.38,
+    1.405
+   ],
+   "rounds_wall": [
+    17.830968280467445,
+    17.808670279283035
+   ],
+   "watts": 56.3,
+   "sm_util": 100.0,
+   "sm_mhz": 1715,
+   "power_samples": 3,
+   "j_per_mp": 1.824
+  },
+  "lossless/cmp_4x/new": {
+   "n": 6,
+   "mp_s": 43.5745,
+   "img_s": 47.9365,
+   "cpu_cores": 1.4115,
+   "mp": 170.893,
+   "images": 188,
+   "bytes": 80140968,
+   "wall_s": 4.947,
+   "mp_s_wall": 34.54513597334941,
+   "img_s_wall": 38.00322753412772,
+   "rounds_img": [
+    47.622,
+    48.24
+   ],
+   "rounds_img_wall": [
+    37.74342501505722,
+    38.20361715098557
+   ],
+   "startup_s": 1.0222,
+   "runs": [
+    43.5,
+    43.0,
+    43.3,
+    43.9,
+    43.9,
+    43.7
+   ],
+   "peak_dev_mb": 2958.6,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    43.289,
+    43.85
+   ],
+   "round_cores": [
+    1.406,
+    1.415
+   ],
+   "rounds_wall": [
+    34.30897410158603,
+    34.72729120097541
+   ],
+   "watts": 70.4,
+   "sm_util": 100.0,
+   "sm_mhz": 1507,
+   "power_samples": 18,
+   "j_per_mp": 1.617
+  },
+  "lossless/cmp_4x/old": {
+   "n": 6,
+   "mp_s": 39.33,
+   "img_s": 43.266999999999996,
+   "cpu_cores": 1.3399999999999999,
+   "mp": 170.893,
+   "images": 188,
+   "bytes": 80140968,
+   "wall_s": 5.4245,
+   "mp_s_wall": 31.50450868605123,
+   "img_s_wall": 34.6582225894427,
+   "rounds_img": [
+    42.938,
+    44.27
+   ],
+   "rounds_img_wall": [
+    34.36300493511241,
+    35.23238380809595
+   ],
+   "startup_s": 1.0846999999999998,
+   "runs": [
+    39.0,
+    37.9,
+    39.1,
+    40.6,
+    40.2,
+    39.5
+   ],
+   "peak_dev_mb": 2989.9,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    39.031,
+    40.242
+   ],
+   "round_cores": [
+    1.691,
+    1.339
+   ],
+   "rounds_wall": [
+    31.236154267958327,
+    32.026424287856074
+   ],
+   "watts": 67.1,
+   "sm_util": 96.1,
+   "sm_mhz": 1636,
+   "power_samples": 21,
+   "j_per_mp": 1.706
+  },
+  "lossless/cmp_4x_ycgco/new": {
+   "n": 6,
+   "mp_s": 44.5025,
+   "img_s": 48.957,
+   "cpu_cores": 1.3775,
+   "mp": 170.893,
+   "images": 188,
+   "bytes": 67126844,
+   "wall_s": 4.874499999999999,
+   "mp_s_wall": 35.059252164788575,
+   "img_s_wall": 38.568808593565876,
+   "rounds_img": [
+    48.095,
+    49.342
+   ],
+   "rounds_img_wall": [
+    38.03358284442646,
+    38.80288957688339
+   ],
+   "startup_s": 1.0355,
+   "runs": [
+    44.3,
+    43.6,
+    43.7,
+    44.9,
+    44.7,
+    44.9
+   ],
+   "peak_dev_mb": 3126.0,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    43.719,
+    44.852
+   ],
+   "round_cores": [
+    1.36,
+    1.391
+   ],
+   "rounds_wall": [
+    34.57272911187538,
+    35.272033023735816
+   ],
+   "watts": 67.9,
+   "sm_util": 100.0,
+   "sm_mhz": 1598,
+   "power_samples": 18,
+   "j_per_mp": 1.527
+  },
+  "lossless/cmp_4x_ycgco/old": {
+   "n": 6,
+   "mp_s": 39.9305,
+   "img_s": 43.928,
+   "cpu_cores": 1.367,
+   "mp": 170.893,
+   "images": 188,
+   "bytes": 67126844,
+   "wall_s": 5.3645,
+   "mp_s_wall": 31.85633964634689,
+   "img_s_wall": 35.045273086160435,
+   "rounds_img": [
+    43.943,
+    43.0
+   ],
+   "rounds_img_wall": [
+    35.09426918051148,
+    34.48275862068966
+   ],
+   "startup_s": 1.0831499999999998,
+   "runs": [
+    40.0,
+    39.9,
+    39.9,
+    40.4,
+    39.0,
+    39.1
+   ],
+   "peak_dev_mb": 3096.9,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    39.944,
+    39.087
+   ],
+   "round_cores": [
+    1.27,
+    1.464
+   ],
+   "rounds_wall": [
+    31.900877356729513,
+    31.34501100513573
+   ],
+   "watts": 67.5,
+   "sm_util": 99.5,
+   "sm_mhz": 1659,
+   "power_samples": 20,
+   "j_per_mp": 1.692
+  },
+  "alpha/default/new": {
+   "n": 6,
+   "mp_s": 55.448499999999996,
+   "img_s": 213.598,
+   "cpu_cores": 3.2025,
+   "mp": 202.482,
+   "images": 780,
+   "bytes": 13977840,
+   "wall_s": 4.6129999999999995,
+   "mp_s_wall": 43.893984723164635,
+   "img_s_wall": 169.0881563994252,
+   "rounds_img": [
+    212.606,
+    213.708
+   ],
+   "rounds_img_wall": [
+    168.64864864864865,
+    169.8236446766819
+   ],
+   "startup_s": 0.94885,
+   "runs": [
+    55.5,
+    54.9,
+    55.2,
+    55.5,
+    55.4,
+    55.6
+   ],
+   "peak_dev_mb": 680.6,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    55.191,
+    55.477
+   ],
+   "round_cores": [
+    3.168,
+    3.412
+   ],
+   "rounds_wall": [
+    43.77989189189189,
+    44.08491182233834
+   ],
+   "watts": 65.5,
+   "sm_util": 100.0,
+   "sm_mhz": 1718,
+   "power_samples": 16,
+   "j_per_mp": 1.181
+  },
+  "alpha/default/old": {
+   "n": 6,
+   "mp_s": 31.1145,
+   "img_s": 119.8595,
+   "cpu_cores": 2.143,
+   "mp": 202.482,
+   "images": 780,
+   "bytes": 13977840,
+   "wall_s": 7.504,
+   "mp_s_wall": 26.9832209349847,
+   "img_s_wall": 103.94460904815276,
+   "rounds_img": [
+    121.129,
+    119.824
+   ],
+   "rounds_img_wall": [
+    104.75423045930701,
+    103.8753495805034
+   ],
+   "startup_s": 0.9963499999999996,
+   "runs": [
+    30.9,
+    31.5,
+    31.4,
+    30.1,
+    31.1,
+    31.1
+   ],
+   "peak_dev_mb": 682.5,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    31.444,
+    31.105
+   ],
+   "round_cores": [
+    2.282,
+    2.021
+   ],
+   "rounds_wall": [
+    27.193392425463337,
+    26.96524170994806
+   ],
+   "watts": 66.7,
+   "sm_util": 96.6,
+   "sm_mhz": 1901,
+   "power_samples": 32,
+   "j_per_mp": 2.143
+  },
+  "alpha/lossless/new": {
+   "n": 6,
+   "mp_s": 32.344,
+   "img_s": 124.595,
+   "cpu_cores": 1.393,
+   "mp": 202.482,
+   "images": 780,
+   "bytes": 154479220,
+   "wall_s": 7.324999999999999,
+   "mp_s_wall": 27.642594371840687,
+   "img_s_wall": 106.48464362281948,
+   "rounds_img": [
+    124.521,
+    125.682
+   ],
+   "rounds_img_wall": [
+    106.47010647010647,
+    107.12814173877216
+   ],
+   "startup_s": 1.0646999999999993,
+   "runs": [
+    32.4,
+    31.8,
+    32.3,
+    32.6,
+    32.2,
+    32.7
+   ],
+   "peak_dev_mb": 2921.2,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    32.325,
+    32.626
+   ],
+   "round_cores": [
+    1.393,
+    1.411
+   ],
+   "rounds_wall": [
+    27.63882063882064,
+    27.80964153275649
+   ],
+   "watts": 69.5,
+   "sm_util": 98.0,
+   "sm_mhz": 1579,
+   "power_samples": 32,
+   "j_per_mp": 2.15
+  },
+  "alpha/lossless/old": {
+   "n": 6,
+   "mp_s": 28.8035,
+   "img_s": 110.957,
+   "cpu_cores": 1.225,
+   "mp": 202.482,
+   "images": 780,
+   "bytes": 154479220,
+   "wall_s": 8.1145,
+   "mp_s_wall": 24.953224691807115,
+   "img_s_wall": 96.12466915384849,
+   "rounds_img": [
+    110.27,
+    111.508
+   ],
+   "rounds_img_wall": [
+    95.35452322738386,
+    96.33197480548351
+   ],
+   "startup_s": 1.0945999999999998,
+   "runs": [
+    28.6,
+    27.4,
+    28.9,
+    28.7,
+    29.3,
+    28.9
+   ],
+   "peak_dev_mb": 2913.3,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    28.625,
+    28.947
+   ],
+   "round_cores": [
+    1.225,
+    1.225
+   ],
+   "rounds_wall": [
+    24.75330073349633,
+    25.00703964431271
+   ],
+   "watts": 65.5,
+   "sm_util": 97.9,
+   "sm_mhz": 1666,
+   "power_samples": 37,
+   "j_per_mp": 2.274
+  },
+  "alpha/no_alpha/new": {
+   "n": 6,
+   "mp_s": 64.3455,
+   "img_s": 247.87099999999998,
+   "cpu_cores": 3.66,
+   "mp": 202.482,
+   "images": 780,
+   "bytes": 9918740,
+   "wall_s": 4.099,
+   "mp_s_wall": 49.39919851726289,
+   "img_s_wall": 190.29530942733206,
+   "rounds_img": [
+    244.931,
+    251.746
+   ],
+   "rounds_img_wall": [
+    188.99927307971893,
+    192.40256536753822
+   ],
+   "startup_s": 0.9484499999999998,
+   "runs": [
+    63.9,
+    63.4,
+    63.6,
+    64.8,
+    65.4,
+    65.4
+   ],
+   "peak_dev_mb": 678.4,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    63.582,
+    65.351
+   ],
+   "round_cores": [
+    3.606,
+    3.668
+   ],
+   "rounds_wall": [
+    49.062757450932885,
+    49.946225949679324
+   ],
+   "watts": 70.8,
+   "sm_util": 100.0,
+   "sm_mhz": 1761,
+   "power_samples": 12,
+   "j_per_mp": 1.101
+  },
+  "alpha/no_alpha/old": {
+   "n": 6,
+   "mp_s": 34.3345,
+   "img_s": 132.2625,
+   "cpu_cores": 2.0715,
+   "mp": 202.482,
+   "images": 780,
+   "bytes": 9918740,
+   "wall_s": 6.8955,
+   "mp_s_wall": 29.364464562413488,
+   "img_s_wall": 113.11762210311298,
+   "rounds_img": [
+    131.96,
+    132.565
+   ],
+   "rounds_img_wall": [
+    112.9125651418645,
+    113.32267906436147
+   ],
+   "startup_s": 0.9991000000000003,
+   "runs": [
+    34.3,
+    34.2,
+    35.2,
+    34.4,
+    34.6,
+    34.1
+   ],
+   "peak_dev_mb": 675.6,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    34.256,
+    34.413
+   ],
+   "round_cores": [
+    2.182,
+    1.961
+   ],
+   "rounds_wall": [
+    29.311233352634623,
+    29.417695772192356
+   ],
+   "watts": 68.2,
+   "sm_util": 97.3,
+   "sm_mhz": 1906,
+   "power_samples": 29,
+   "j_per_mp": 1.986
+  },
+  "alpha/q100/new": {
+   "n": 6,
+   "mp_s": 47.3865,
+   "img_s": 182.54149999999998,
+   "cpu_cores": 2.878,
+   "mp": 202.482,
+   "images": 780,
+   "bytes": 21768560,
+   "wall_s": 5.221,
+   "mp_s_wall": 38.78304514245496,
+   "img_s_wall": 149.39982423679572,
+   "rounds_img": [
+    181.253,
+    185.953
+   ],
+   "rounds_img_wall": [
+    148.3453784709015,
+    151.1627906976744
+   ],
+   "startup_s": 0.9561999999999999,
+   "runs": [
+    47.0,
+    47.1,
+    47.1,
+    48.3,
+    48.5,
+    47.6
+   ],
+   "peak_dev_mb": 818.5,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    47.052,
+    48.272
+   ],
+   "round_cores": [
+    2.797,
+    2.899
+   ],
+   "rounds_wall": [
+    38.50931913275009,
+    39.240697674418605
+   ],
+   "watts": 66.5,
+   "sm_util": 100.0,
+   "sm_mhz": 1672,
+   "power_samples": 20,
+   "j_per_mp": 1.403
+  },
+  "alpha/q100/old": {
+   "n": 6,
+   "mp_s": 29.064,
+   "img_s": 111.95949999999999,
+   "cpu_cores": 1.6495000000000002,
+   "mp": 202.482,
+   "images": 780,
+   "bytes": 21768560,
+   "wall_s": 7.978,
+   "mp_s_wall": 25.380134843908298,
+   "img_s_wall": 97.76920999520192,
+   "rounds_img": [
+    112.215,
+    110.932
+   ],
+   "rounds_img_wall": [
+    97.95303277659174,
+    97.00286034075363
+   ],
+   "startup_s": 1.0100000000000007,
+   "runs": [
+    29.0,
+    29.2,
+    29.1,
+    28.8,
+    29.1,
+    28.5
+   ],
+   "peak_dev_mb": 838.5,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    29.13,
+    28.797
+   ],
+   "round_cores": [
+    1.608,
+    1.691
+   ],
+   "rounds_wall": [
+    25.427853823935703,
+    25.18119636861087
+   ],
+   "watts": 64.2,
+   "sm_util": 94.7,
+   "sm_mhz": 1931,
+   "power_samples": 36,
+   "j_per_mp": 2.209
+  },
+  "thumbs/default/new": {
+   "n": 6,
+   "mp_s": 59.671,
+   "img_s": 393.39250000000004,
+   "cpu_cores": 1.2745,
+   "mp": 1019.305,
+   "images": 6720,
+   "bytes": 98193456,
+   "wall_s": 18.0335,
+   "mp_s_wall": 56.52374878464005,
+   "img_s_wall": 372.6456672269645,
+   "rounds_img": [
+    395.339,
+    391.699
+   ],
+   "rounds_img_wall": [
+    374.39411666388094,
+    371.1681855840928
+   ],
+   "startup_s": 0.949950000000003,
+   "runs": [
+    60.5,
+    60.0,
+    59.4,
+    59.4,
+    59.3,
+    59.9
+   ],
+   "peak_dev_mb": 809.9,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    59.966,
+    59.414
+   ],
+   "round_cores": [
+    1.27,
+    1.279
+   ],
+   "rounds_wall": [
+    56.78895760209482,
+    56.29964098315382
+   ],
+   "watts": 71.1,
+   "sm_util": 99.6,
+   "sm_mhz": 1658,
+   "power_samples": 93,
+   "j_per_mp": 1.191
+  },
+  "thumbs/default/old": {
+   "n": 6,
+   "mp_s": 32.4495,
+   "img_s": 213.9315,
+   "cpu_cores": 1.2654999999999998,
+   "mp": 1019.305,
+   "images": 6720,
+   "bytes": 98193456,
+   "wall_s": 32.411500000000004,
+   "mp_s_wall": 31.448882295519482,
+   "img_s_wall": 207.33390793323974,
+   "rounds_img": [
+    213.837,
+    214.026
+   ],
+   "rounds_img_wall": [
+    207.1963740634539,
+    207.4714418030256
+   ],
+   "startup_s": 0.9975499999999968,
+   "runs": [
+    32.9,
+    32.4,
+    32.1,
+    32.9,
+    32.5,
+    32.3
+   ],
+   "peak_dev_mb": 810.8,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    32.435,
+    32.464
+   ],
+   "round_cores": [
+    1.213,
+    1.269
+   ],
+   "rounds_wall": [
+    31.42802084296858,
+    31.46974374807039
+   ],
+   "watts": 70.9,
+   "sm_util": 99.7,
+   "sm_mhz": 1818,
+   "power_samples": 181,
+   "j_per_mp": 2.184
+  },
+  "thumbs/nosmall/new": {
+   "n": 6,
+   "mp_s": 143.848,
+   "img_s": 948.351,
+   "cpu_cores": 1.4055,
+   "mp": 1019.305,
+   "images": 6720,
+   "bytes": 98543448,
+   "wall_s": 8.036999999999999,
+   "mp_s_wall": 126.82895748126893,
+   "img_s_wall": 836.1487427944799,
+   "rounds_img": [
+    954.157,
+    942.222
+   ],
+   "rounds_img_wall": [
+    841.7888012025554,
+    831.0660400692555
+   ],
+   "startup_s": 0.9457000000000004,
+   "runs": [
+    144.4,
+    144.7,
+    145.4,
+    143.3,
+    142.9,
+    142.5
+   ],
+   "peak_dev_mb": 780.2,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    144.729,
+    142.918
+   ],
+   "round_cores": [
+    1.405,
+    1.406
+   ],
+   "rounds_wall": [
+    127.68445446573969,
+    126.05800148404649
+   ],
+   "watts": 71.6,
+   "sm_util": 100.0,
+   "sm_mhz": 1693,
+   "power_samples": 36,
+   "j_per_mp": 0.498
+  },
+  "thumbs/nosmall/old": {
+   "n": 6,
+   "mp_s": 88.369,
+   "img_s": 582.592,
+   "cpu_cores": 1.2235,
+   "mp": 1019.305,
+   "images": 6720,
+   "bytes": 98543448,
+   "wall_s": 12.543,
+   "mp_s_wall": 81.26589491687594,
+   "img_s_wall": 535.7638919081201,
+   "rounds_img": [
+    580.645,
+    584.539
+   ],
+   "rounds_img_wall": [
+    533.8417540514777,
+    537.6860297647623
+   ],
+   "startup_s": 1.0067000000000004,
+   "runs": [
+    88.1,
+    87.8,
+    88.7,
+    89.2,
+    88.7,
+    87.9
+   ],
+   "peak_dev_mb": 781.7,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    88.074,
+    88.664
+   ],
+   "round_cores": [
+    1.228,
+    1.222
+   ],
+   "rounds_wall": [
+    80.97434064188116,
+    81.5574491918707
+   ],
+   "watts": 70.7,
+   "sm_util": 99.4,
+   "sm_mhz": 1811,
+   "power_samples": 62,
+   "j_per_mp": 0.8
+  },
+  "kodak/default/new": {
+   "n": 6,
+   "mp_s": 54.352000000000004,
+   "img_s": 138.2235,
+   "cpu_cores": 3.0949999999999998,
+   "mp": 1000.342,
+   "images": 2544,
+   "bytes": 96711008,
+   "wall_s": 19.362000000000002,
+   "mp_s_wall": 51.666336864201156,
+   "img_s_wall": 131.39422415786575,
+   "rounds_img": [
+    135.273,
+    139.174
+   ],
+   "rounds_img_wall": [
+    128.73842416881737,
+    132.27953410981698
+   ],
+   "startup_s": 0.953149999999999,
+   "runs": [
+    53.2,
+    52.9,
+    54.1,
+    54.8,
+    54.7,
+    54.6
+   ],
+   "peak_dev_mb": 802.7,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    53.191,
+    54.725
+   ],
+   "round_cores": [
+    3.021,
+    3.096
+   ],
+   "rounds_wall": [
+    50.62203329791003,
+    52.01445507487521
+   ],
+   "watts": 71.5,
+   "sm_util": 99.8,
+   "sm_mhz": 1686,
+   "power_samples": 105,
+   "j_per_mp": 1.316
+  },
+  "kodak/default/old": {
+   "n": 6,
+   "mp_s": 30.737000000000002,
+   "img_s": 78.16900000000001,
+   "cpu_cores": 1.899,
+   "mp": 1000.342,
+   "images": 2544,
+   "bytes": 96711008,
+   "wall_s": 33.548500000000004,
+   "mp_s_wall": 29.817789693826498,
+   "img_s_wall": 75.83052294224836,
+   "rounds_img": [
+    78.853,
+    77.859
+   ],
+   "rounds_img_wall": [
+    76.50667629014795,
+    75.55014403231075
+   ],
+   "startup_s": 1.001450000000002,
+   "runs": [
+    31.0,
+    31.1,
+    30.7,
+    30.7,
+    30.6,
+    30.2
+   ],
+   "peak_dev_mb": 803.2,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    31.006,
+    30.615
+   ],
+   "round_cores": [
+    1.942,
+    1.785
+   ],
+   "rounds_wall": [
+    30.083664140502822,
+    29.7075401657114
+   ],
+   "watts": 70.4,
+   "sm_util": 99.9,
+   "sm_mhz": 1883,
+   "power_samples": 188,
+   "j_per_mp": 2.291
+  },
+  "kodak/nosmall/new": {
+   "n": 6,
+   "mp_s": 129.8875,
+   "img_s": 330.32,
+   "cpu_cores": 6.0975,
+   "mp": 1000.342,
+   "images": 2544,
+   "bytes": 97289450,
+   "wall_s": 8.6525,
+   "mp_s_wall": 115.61330110224188,
+   "img_s_wall": 294.0196832724242,
+   "rounds_img": [
+    331.416,
+    329.042
+   ],
+   "rounds_img_wall": [
+    295.12761020881675,
+    293.05379564566294
+   ],
+   "startup_s": 0.9483999999999995,
+   "runs": [
+    130.9,
+    129.6,
+    130.3,
+    130.2,
+    129.4,
+    128.9
+   ],
+   "peak_dev_mb": 767.7,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    130.318,
+    129.385
+   ],
+   "round_cores": [
+    6.112,
+    6.064
+   ],
+   "rounds_wall": [
+    116.04895591647333,
+    115.23349844487963
+   ],
+   "watts": 71.2,
+   "sm_util": 100.0,
+   "sm_mhz": 1676,
+   "power_samples": 40,
+   "j_per_mp": 0.548
+  },
+  "kodak/nosmall/old": {
+   "n": 6,
+   "mp_s": 77.508,
+   "img_s": 197.113,
+   "cpu_cores": 3.6025,
+   "mp": 1000.342,
+   "images": 2544,
+   "bytes": 97289450,
+   "wall_s": 13.906500000000001,
+   "mp_s_wall": 71.93367364213793,
+   "img_s_wall": 182.93670139372225,
+   "rounds_img": [
+    195.77,
+    201.182
+   ],
+   "rounds_img_wall": [
+    181.77920685959273,
+    186.55129427293392
+   ],
+   "startup_s": 0.9962,
+   "runs": [
+    77.4,
+    77.0,
+    75.7,
+    80.5,
+    79.1,
+    77.7
+   ],
+   "peak_dev_mb": 767.7,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    76.98,
+    79.108
+   ],
+   "round_cores": [
+    3.467,
+    3.92
+   ],
+   "rounds_wall": [
+    71.47852804573063,
+    73.35499010046198
+   ],
+   "watts": 69.6,
+   "sm_util": 99.8,
+   "sm_mhz": 1789,
+   "power_samples": 72,
+   "j_per_mp": 0.897
+  },
+  "kodak/turbo3_nosmall/new": {
+   "n": 6,
+   "mp_s": 219.067,
+   "img_s": 557.115,
+   "cpu_cores": 9.9465,
+   "mp": 1000.342,
+   "images": 2544,
+   "bytes": 100368114,
+   "wall_s": 5.515499999999999,
+   "mp_s_wall": 181.3862985774353,
+   "img_s_wall": 461.28898274889525,
+   "rounds_img": [
+    549.288,
+    565.84
+   ],
+   "rounds_img_wall": [
+    455.50581915846016,
+    467.47519294377065
+   ],
+   "startup_s": 0.9558,
+   "runs": [
+    216.2,
+    216.0,
+    215.1,
+    222.0,
+    222.5,
+    224.0
+   ],
+   "peak_dev_mb": 686.0,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    215.989,
+    222.497
+   ],
+   "round_cores": [
+    9.802,
+    10.067
+   ],
+   "rounds_wall": [
+    179.11226499552373,
+    183.81881661153986
+   ],
+   "watts": 71.2,
+   "sm_util": 95.5,
+   "sm_mhz": 1737,
+   "power_samples": 22,
+   "j_per_mp": 0.325
+  },
+  "kodak/turbo3_nosmall/old": {
+   "n": 6,
+   "mp_s": 129.3435,
+   "img_s": 328.9385,
+   "cpu_cores": 6.215999999999999,
+   "mp": 1000.342,
+   "images": 2544,
+   "bytes": 100368114,
+   "wall_s": 8.7225,
+   "mp_s_wall": 114.68528492214766,
+   "img_s_wall": 291.6596172528432,
+   "rounds_img": [
+    329.014,
+    328.863
+   ],
+   "rounds_img_wall": [
+    291.47571035747023,
+    291.8435241482161
+   ],
+   "startup_s": 0.9885999999999995,
+   "runs": [
+    129.4,
+    128.9,
+    130.4,
+    128.5,
+    129.3,
+    129.8
+   ],
+   "peak_dev_mb": 685.9,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    129.373,
+    129.314
+   ],
+   "round_cores": [
+    6.233,
+    6.199
+   ],
+   "rounds_wall": [
+    114.61296975252063,
+    114.75760009177469
+   ],
+   "watts": 71.0,
+   "sm_util": 98.6,
+   "sm_mhz": 1724,
+   "power_samples": 41,
+   "j_per_mp": 0.549
+  }
+ },
+ "identity": {
+  "runs": 66,
+  "files": 4698,
+  "differ": 0,
+  "sets": [
+   {
+    "set": "sr_default",
+    "inputs": 100,
+    "files_v050": 100,
+    "files_v06": 100,
+    "differ": 0,
+    "opts": "",
+    "env": ""
+   },
+   {
+    "set": "sr_turbo3_nosmall",
+    "inputs": 100,
+    "files_v050": 100,
+    "files_v06": 100,
+    "differ": 0,
+    "opts": "--preset turbo3 --small-preset none",
+    "env": ""
+   },
+   {
+    "set": "sr_nosmall",
+    "inputs": 100,
+    "files_v050": 100,
+    "files_v06": 100,
+    "differ": 0,
+    "opts": "--small-preset none",
+    "env": ""
+   },
+   {
+    "set": "sr_444",
+    "inputs": 100,
+    "files_v050": 100,
+    "files_v06": 100,
+    "differ": 0,
+    "opts": "--yuv 444",
+    "env": ""
+   },
+   {
+    "set": "sr_10",
+    "inputs": 100,
+    "files_v050": 100,
+    "files_v06": 100,
+    "differ": 0,
+    "opts": "--depth 10",
+    "env": ""
+   },
+   {
+    "set": "sr_444_10",
+    "inputs": 100,
+    "files_v050": 100,
+    "files_v06": 100,
+    "differ": 0,
+    "opts": "--yuv 444 --depth 10",
+    "env": ""
+   },
+   {
+    "set": "sr_base_nosmall",
+    "inputs": 100,
+    "files_v050": 100,
+    "files_v06": 100,
+    "differ": 0,
+    "opts": "--preset base --small-preset none",
+    "env": ""
+   },
+   {
+    "set": "sr_slow_nosmall",
+    "inputs": 100,
+    "files_v050": 100,
+    "files_v06": 100,
+    "differ": 0,
+    "opts": "--preset slow --small-preset none",
+    "env": ""
+   },
+   {
+    "set": "sr_fast_nosmall",
+    "inputs": 100,
+    "files_v050": 100,
+    "files_v06": 100,
+    "differ": 0,
+    "opts": "--preset fast --small-preset none",
+    "env": ""
+   },
+   {
+    "set": "sr_q30",
+    "inputs": 100,
+    "files_v050": 100,
+    "files_v06": 100,
+    "differ": 0,
+    "opts": "--quality 30",
+    "env": ""
+   },
+   {
+    "set": "sr_q90",
+    "inputs": 100,
+    "files_v050": 100,
+    "files_v06": 100,
+    "differ": 0,
+    "opts": "--quality 90",
+    "env": ""
+   },
+   {
+    "set": "sr_q95",
+    "inputs": 100,
+    "files_v050": 100,
+    "files_v06": 100,
+    "differ": 0,
+    "opts": "--quality 95",
+    "env": ""
+   },
+   {
+    "set": "sr_tune_none",
+    "inputs": 100,
+    "files_v050": 100,
+    "files_v06": 100,
+    "differ": 0,
+    "opts": "--tune none",
+    "env": ""
+   },
+   {
+    "set": "sr_tiles_2_1_1",
+    "inputs": 100,
+    "files_v050": 100,
+    "files_v06": 100,
+    "differ": 0,
+    "opts": "--tiles 2,1,1",
+    "env": ""
+   },
+   {
+    "set": "sr_default_enc1",
+    "inputs": 100,
+    "files_v050": 100,
+    "files_v06": 100,
+    "differ": 0,
+    "opts": "",
+    "env": "GP_ENCODERS=1"
+   },
+   {
+    "set": "sr_default_enc6",
+    "inputs": 100,
+    "files_v050": 100,
+    "files_v06": 100,
+    "differ": 0,
+    "opts": "",
+    "env": "GP_ENCODERS=6"
+   },
+   {
+    "set": "sr_slow",
+    "inputs": 100,
+    "files_v050": 100,
+    "files_v06": 100,
+    "differ": 0,
+    "opts": "--preset slow",
+    "env": ""
+   },
+   {
+    "set": "sr_444_q90",
+    "inputs": 100,
+    "files_v050": 100,
+    "files_v06": 100,
+    "differ": 0,
+    "opts": "--yuv 444 --quality 90",
+    "env": ""
+   },
+   {
+    "set": "sr_444_q95",
+    "inputs": 100,
+    "files_v050": 100,
+    "files_v06": 100,
+    "differ": 0,
+    "opts": "--yuv 444 --quality 95",
+    "env": ""
+   },
+   {
+    "set": "sr_444_slow",
+    "inputs": 100,
+    "files_v050": 100,
+    "files_v06": 100,
+    "differ": 0,
+    "opts": "--yuv 444 --preset slow",
+    "env": ""
+   },
+   {
+    "set": "sr_444_10_q95",
+    "inputs": 100,
+    "files_v050": 100,
+    "files_v06": 100,
+    "differ": 0,
+    "opts": "--yuv 444 --depth 10 --quality 95",
+    "env": ""
+   },
+   {
+    "set": "sr_10_q95",
+    "inputs": 100,
+    "files_v050": 100,
+    "files_v06": 100,
+    "differ": 0,
+    "opts": "--depth 10 --quality 95",
+    "env": ""
+   },
+   {
+    "set": "mono_default",
+    "inputs": 47,
+    "files_v050": 47,
+    "files_v06": 47,
+    "differ": 0,
+    "opts": "",
+    "env": ""
+   },
+   {
+    "set": "mono_q90",
+    "inputs": 47,
+    "files_v050": 47,
+    "files_v06": 47,
+    "differ": 0,
+    "opts": "--quality 90",
+    "env": ""
+   },
+   {
+    "set": "mono_q95",
+    "inputs": 47,
+    "files_v050": 47,
+    "files_v06": 47,
+    "differ": 0,
+    "opts": "--quality 95",
+    "env": ""
+   },
+   {
+    "set": "mono_slow",
+    "inputs": 47,
+    "files_v050": 47,
+    "files_v06": 47,
+    "differ": 0,
+    "opts": "--preset slow",
+    "env": ""
+   },
+   {
+    "set": "mono_nosmall",
+    "inputs": 47,
+    "files_v050": 47,
+    "files_v06": 47,
+    "differ": 0,
+    "opts": "--small-preset none",
+    "env": ""
+   },
+   {
+    "set": "mono_10",
+    "inputs": 47,
+    "files_v050": 47,
+    "files_v06": 47,
+    "differ": 0,
+    "opts": "--depth 10",
+    "env": ""
+   },
+   {
+    "set": "mono_tune_none",
+    "inputs": 47,
+    "files_v050": 47,
+    "files_v06": 47,
+    "differ": 0,
+    "opts": "--tune none",
+    "env": ""
+   },
+   {
+    "set": "std_q95",
+    "inputs": 100,
+    "files_v050": 100,
+    "files_v06": 100,
+    "differ": 0,
+    "opts": "--quality 95",
+    "env": ""
+   },
+   {
+    "set": "std_slow",
+    "inputs": 100,
+    "files_v050": 100,
+    "files_v06": 100,
+    "differ": 0,
+    "opts": "--preset slow",
+    "env": ""
+   },
+   {
+    "set": "thumbs_q95",
+    "inputs": 280,
+    "files_v050": 280,
+    "files_v06": 280,
+    "differ": 0,
+    "opts": "--quality 95",
+    "env": ""
+   },
+   {
+    "set": "thumbs_slow",
+    "inputs": 280,
+    "files_v050": 280,
+    "files_v06": 280,
+    "differ": 0,
+    "opts": "--preset slow",
+    "env": ""
+   },
+   {
+    "set": "kodak_q95",
+    "inputs": 24,
+    "files_v050": 24,
+    "files_v06": 24,
+    "differ": 0,
+    "opts": "--quality 95",
+    "env": ""
+   },
+   {
+    "set": "kodak_444_q90",
+    "inputs": 24,
+    "files_v050": 24,
+    "files_v06": 24,
+    "differ": 0,
+    "opts": "--yuv 444 --quality 90",
+    "env": ""
+   },
+   {
+    "set": "rgba_q95",
+    "inputs": 39,
+    "files_v050": 39,
+    "files_v06": 39,
+    "differ": 0,
+    "opts": "--quality 95",
+    "env": ""
+   },
+   {
+    "set": "odd_q95",
+    "inputs": 30,
+    "files_v050": 30,
+    "files_v06": 30,
+    "differ": 0,
+    "opts": "--quality 95",
+    "env": ""
+   },
+   {
+    "set": "odd_slow",
+    "inputs": 30,
+    "files_v050": 30,
+    "files_v06": 30,
+    "differ": 0,
+    "opts": "--preset slow",
+    "env": ""
+   },
+   {
+    "set": "std_default",
+    "inputs": 100,
+    "files_v050": 100,
+    "files_v06": 100,
+    "differ": 0,
+    "opts": "",
+    "env": ""
+   },
+   {
+    "set": "std_nosmall",
+    "inputs": 100,
+    "files_v050": 100,
+    "files_v06": 100,
+    "differ": 0,
+    "opts": "--small-preset none",
+    "env": ""
+   },
+   {
+    "set": "thumbs_default",
+    "inputs": 280,
+    "files_v050": 280,
+    "files_v06": 280,
+    "differ": 0,
+    "opts": "",
+    "env": ""
+   },
+   {
+    "set": "thumbs_nosmall",
+    "inputs": 280,
+    "files_v050": 280,
+    "files_v06": 280,
+    "differ": 0,
+    "opts": "--small-preset none",
+    "env": ""
+   },
+   {
+    "set": "kodak_default",
+    "inputs": 24,
+    "files_v050": 24,
+    "files_v06": 24,
+    "differ": 0,
+    "opts": "",
+    "env": ""
+   },
+   {
+    "set": "kodak_lossless",
+    "inputs": 24,
+    "files_v050": 24,
+    "files_v06": 24,
+    "differ": 0,
+    "opts": "--lossless",
+    "env": ""
+   },
+   {
+    "set": "kodak_lossless_ycgco",
+    "inputs": 24,
+    "files_v050": 24,
+    "files_v06": 24,
+    "differ": 0,
+    "opts": "--lossless --ycgco-re",
+    "env": ""
+   },
+   {
+    "set": "rgba_default",
+    "inputs": 39,
+    "files_v050": 39,
+    "files_v06": 39,
+    "differ": 0,
+    "opts": "",
+    "env": ""
+   },
+   {
+    "set": "rgba_aq100",
+    "inputs": 39,
+    "files_v050": 39,
+    "files_v06": 39,
+    "differ": 0,
+    "opts": "--alpha-quality 100",
+    "env": ""
+   },
+   {
+    "set": "rgba_lossless",
+    "inputs": 39,
+    "files_v050": 39,
+    "files_v06": 39,
+    "differ": 0,
+    "opts": "--lossless",
+    "env": ""
+   },
+   {
+    "set": "rgba_no_alpha",
+    "inputs": 39,
+    "files_v050": 39,
+    "files_v06": 39,
+    "differ": 0,
+    "opts": "--no-alpha",
+    "env": ""
+   },
+   {
+    "set": "gray_default",
+    "inputs": 9,
+    "files_v050": 9,
+    "files_v06": 9,
+    "differ": 0,
+    "opts": "",
+    "env": ""
+   },
+   {
+    "set": "gray_lossless",
+    "inputs": 9,
+    "files_v050": 8,
+    "files_v06": 8,
+    "differ": 0,
+    "opts": "--lossless",
+    "env": ""
+   },
+   {
+    "set": "odd_default",
+    "inputs": 30,
+    "files_v050": 30,
+    "files_v06": 30,
+    "differ": 0,
+    "opts": "",
+    "env": ""
+   },
+   {
+    "set": "odd_444_10",
+    "inputs": 30,
+    "files_v050": 30,
+    "files_v06": 30,
+    "differ": 0,
+    "opts": "--yuv 444 --depth 10",
+    "env": ""
+   },
+   {
+    "set": "odd_lossless",
+    "inputs": 30,
+    "files_v050": 10,
+    "files_v06": 10,
+    "differ": 0,
+    "opts": "--lossless",
+    "env": ""
+   },
+   {
+    "set": "misc_default",
+    "inputs": 13,
+    "files_v050": 13,
+    "files_v06": 13,
+    "differ": 0,
+    "opts": "",
+    "env": ""
+   },
+   {
+    "set": "png16_10_default",
+    "inputs": 8,
+    "files_v050": 8,
+    "files_v06": 8,
+    "differ": 0,
+    "opts": "--depth 10",
+    "env": ""
+   },
+   {
+    "set": "png16_10_lossless",
+    "inputs": 8,
+    "files_v050": 8,
+    "files_v06": 8,
+    "differ": 0,
+    "opts": "--lossless",
+    "env": ""
+   },
+   {
+    "set": "llgraphics_lossless",
+    "inputs": 23,
+    "files_v050": 23,
+    "files_v06": 23,
+    "differ": 0,
+    "opts": "--lossless --ycgco-re",
+    "env": ""
+   },
+   {
+    "set": "webp_default",
+    "inputs": 7,
+    "files_v050": 7,
+    "files_v06": 7,
+    "differ": 0,
+    "opts": "",
+    "env": ""
+   },
+   {
+    "set": "webp_lossless",
+    "inputs": 7,
+    "files_v050": 7,
+    "files_v06": 7,
+    "differ": 0,
+    "opts": "--lossless",
+    "env": ""
+   },
+   {
+    "set": "mixed_list",
+    "inputs": 33,
+    "files_v050": 33,
+    "files_v06": 33,
+    "differ": 0,
+    "opts": "",
+    "env": ""
+   },
+   {
+    "set": "mixed_list_444_10",
+    "inputs": 33,
+    "files_v050": 33,
+    "files_v06": 33,
+    "differ": 0,
+    "opts": "--yuv 444 --depth 10",
+    "env": ""
+   },
+   {
+    "set": "lljpeg_set",
+    "inputs": 25,
+    "files_v050": 25,
+    "files_v06": 25,
+    "differ": 0,
+    "opts": "",
+    "env": ""
+   },
+   {
+    "set": "single_file",
+    "inputs": 10,
+    "files_v050": 10,
+    "files_v06": 10,
+    "differ": 0,
+    "opts": "",
+    "env": ""
+   },
+   {
+    "set": "single_file",
+    "inputs": 10,
+    "files_v050": 10,
+    "files_v06": 10,
+    "differ": 0,
+    "opts": "--yuv 444 --depth 10",
+    "env": ""
+   },
+   {
+    "set": "single_file",
+    "inputs": 10,
+    "files_v050": 10,
+    "files_v06": 10,
+    "differ": 0,
+    "opts": "--preset slow",
+    "env": ""
+   }
+  ]
+ },
+ "gate": [
+  "== photos30_q60_120_200: --images /home/ubuntu/sets/gate30 --q 60,120,200",
+  "[gate] q60: 30/30 identical in dav1d and aomdec (420 30; 15305396 bytes), 0 not encoded (unsupported input), rc=0 PASS",
+  "[gate] q120: 30/30 identical in dav1d and aomdec (420 30; 6912233 bytes), 0 not encoded (unsupported input), rc=0 PASS",
+  "[gate] q200: 30/30 identical in dav1d and aomdec (420 30; 1506769 bytes), 0 not encoded (unsupported input), rc=0 PASS",
+  "== photos30_444_10_q120: --images /home/ubuntu/sets/gate30 --q 120 --expect-format 444 --expect-depth 10 -- --yuv 444 --depth 10",
+  "[gate] q120: 30/30 identical in dav1d and aomdec (444 10-bit 30; 7031153 bytes), 0 not encoded (unsupported input), rc=0 PASS",
+  "== photos30_slow: --images /home/ubuntu/sets/gate30 -- --preset slow",
+  "[gate] q120: 30/30 identical in dav1d and aomdec (420 30; 6795673 bytes), 0 not encoded (unsupported input), rc=0 PASS",
+  "== rgba: --images /home/ubuntu/data/rgba/set --expect-alpha",
+  "[gate] q120: 39/39 identical in dav1d and aomdec (420 39; 684196 bytes); alpha items 35/35 identical (alpha qindex 120), 0 not encoded (unsupported input), rc=0 PASS",
+  "== kodak_lossless: --images /home/ubuntu/ll/kodak --lossless",
+  "[gate] lossless: 24/24 identical in dav1d and aomdec (444 24; 13370817 bytes), 0 not encoded (unsupported input), rc=0 PASS",
+  "== thumbs_q60_120: --images /home/ubuntu/sets/gate_thumbs --q 60,120",
+  "[gate] q60: 28/28 identical in dav1d and aomdec (420 28; 656250 bytes), 0 not encoded (unsupported input), rc=0 PASS",
+  "[gate] q120: 28/28 identical in dav1d and aomdec (420 28; 365619 bytes), 0 not encoded (unsupported input), rc=0 PASS",
+  "== odd_q120: --images /home/ubuntu/sets/odd",
+  "[gate] q120: 30/30 identical in dav1d and aomdec (420 30; 39025 bytes), 0 not encoded (unsupported input), rc=0 PASS",
+  "== odd_444_10: --images /home/ubuntu/sets/odd --expect-depth 10 -- --yuv 444 --depth 10",
+  "[gate] q120: 30/30 identical in dav1d and aomdec (444 10-bit 30; 39940 bytes), 0 not encoded (unsupported input), rc=0 PASS",
+  "== gray_q120: --images /home/ubuntu/sets/gray",
+  "[gate] q120: 9/9 identical in dav1d and aomdec (420 9; 265760 bytes); alpha items 3/3 identical (alpha qindex 120), 0 not encoded (unsupported input), rc=0 PASS",
+  "== photos30_q13_26: --images /home/ubuntu/sets/gate30 --q 13,26",
+  "[gate] q13: 30/30 identical in dav1d and aomdec (420 30; 35303948 bytes), 0 not encoded (unsupported input), rc=0 PASS",
+  "[gate] q26: 30/30 identical in dav1d and aomdec (420 30; 26520815 bytes), 0 not encoded (unsupported input), rc=0 PASS",
+  "== photos30_444_q13_26: --images /home/ubuntu/sets/gate30 --q 13,26 --expect-format 444 -- --yuv 444",
+  "[gate] q13: 30/30 identical in dav1d and aomdec (444 30; 38088538 bytes), 0 not encoded (unsupported input), rc=0 PASS",
+  "[gate] q26: 30/30 identical in dav1d and aomdec (444 30; 27692679 bytes), 0 not encoded (unsupported input), rc=0 PASS",
+  "== mono_q13_26_120: --images /home/ubuntu/sets/mono --q 13,26,120",
+  "[gate] q13: 47/47 identical in dav1d and aomdec (420 5, mono 42; 37109539 bytes), 0 not encoded (unsupported input), rc=0 PASS",
+  "[gate] q26: 47/47 identical in dav1d and aomdec (420 5, mono 42; 29495597 bytes), 0 not encoded (unsupported input), rc=0 PASS",
+  "[gate] q120: 47/47 identical in dav1d and aomdec (420 5, mono 42; 8435721 bytes), 0 not encoded (unsupported input), rc=0 PASS",
+  "== mono_slow: --images /home/ubuntu/sets/mono -- --preset slow",
+  "[gate] q120: 47/47 identical in dav1d and aomdec (420 5, mono 42; 8358690 bytes), 0 not encoded (unsupported input), rc=0 PASS",
+  "== photos30_444_slow: --images /home/ubuntu/sets/gate30 --expect-format 444 -- --yuv 444 --preset slow",
+  "[gate] q120: 30/30 identical in dav1d and aomdec (444 30; 7082141 bytes), 0 not encoded (unsupported input), rc=0 PASS"
+ ],
+ "demo": [
+  {
+   "cmd": "ls photos | wc -l; du -sh photos",
+   "lines": [
+    [
+     0.003,
+     "99"
+    ],
+    [
+     0.004,
+     "154M\tphotos"
+    ]
+   ],
+   "total": 0.004
+  },
+  {
+   "cmd": "bash -c 'time av1gpu --batch photos/ --outdir avif/'",
+   "lines": [
+    [
+     3.098,
+     "[av1gpu] 99 images (477.7 MP) in 2478.1 ms: 39.95 img/s, 192.76 MP/s; 9 batches; out 22.52 MB (0.377 bpp); CPU 796 ms = 0.32 cores; skipped (unsupported): 0; WebP/PNG via CPU decode: 0; write failures 0"
+    ],
+    [
+     3.098,
+     "[av1gpu] stage ms: ingest wait 0.3 | gpu setup 40.8 analysis 1434.3 dp 33.8 recon 3434.6 pack 37.8 postfilter 380.0 download 0.0 (gpu total 5399.5, encode wall 5401.9) | entropy wall 1543.8 (gpu 1507.2) | write 17.6 | peak dev 812 MB"
+    ],
+    [
+     3.414,
+     ""
+    ],
+    [
+     3.414,
+     "real\t0m3.411s"
+    ],
+    [
+     3.414,
+     "user\t0m0.485s"
+    ],
+    [
+     3.414,
+     "sys\t0m1.225s"
+    ]
+   ],
+   "total": 3.414
+  },
+  {
+   "cmd": "du -sh avif/",
+   "lines": [
+    [
+     0.002,
+     "22M\tavif/"
+    ]
+   ],
+   "total": 0.003
+  }
+ ]
+}

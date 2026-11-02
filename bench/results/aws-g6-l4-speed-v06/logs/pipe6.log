@@ -1,0 +1,10 @@
+start 23:38:29
+build new 6a4956eaee2c6ffa2ec05d955afc1720031ceb52 rc 0 after 148 s
+mono 47 files;      40 Gray PseudoClass Gray ;
+identity done 23:52:35: 66 sets with 0 differences of 66
+6057c6daef8fc78a_typical.jpg (1800, 1200) 2.16 MP
+3065cbd41a1ad905_typical.jpg (1600, 1066) 1.71 MP
+b2fef7eca1352b4a_small.jpg (1024, 766) 0.78 MP
+checks + memcheck/synccheck done 23:54:56
+racecheck done 00:05:12
+PIPE6_DONE

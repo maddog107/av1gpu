@@ -1,0 +1,47 @@
+# nvdisasm -g -c k_recon.sm_89.cubin (cuobjdump -xelf of ef2522f build/av1gpu; k_recon unchanged in 6a4956e), k_recon<1,8> around racecheck offsets 0x26fa10 (read) / 0x26fa60 (write)
+        /*26f900*/                   LEA R10, P0, R16, R12, 0x4 ;
+        /*26f910*/                   PRMT R0, R18, 0x7054, R0 ;
+        /*26f920*/                   LEA.HI.X R11, R16, R13, R9, 0x4, P0 ;
+        /*26f930*/                   PRMT R9, RZ, 0x654, R0 ;
+        /*26f940*/                   ST.E [R10.64+0x4], R7 ;
+	//## File "/home/ubuntu/new/encoder/src/k_recon.cuh", line 124
+        /*26f950*/                   SHF.R.U32.HI R14, RZ, 0x6, R14 ;
+	//## File "/home/ubuntu/new/encoder/src/k_recon.cuh", line 621
+        /*26f960*/                   ST.E [R10.64], R8 ;
+        /*26f970*/                   PRMT R7, R2, 0x5410, RZ ;
+        /*26f980*/                   ST.E [R10.64+0x8], R9 ;
+        /*26f990*/                   ST.E [R10.64+0xc], R7 ;
+	//## File "/home/ubuntu/new/encoder/src/k_recon.cuh", line 1370
+        /*26f9a0*/                   STS [R14.X4+0x5af4], R2 ;
+.L_x_7448:
+        /*26f9b0*/                   BSYNC B1 ;
+.L_x_7447:
+        /*26f9c0*/                   LDL.LU R2, [R1+0x718] ;
+	//## File "/home/ubuntu/new/encoder/src/k_recon.cuh", line 1043
+        /*26f9d0*/                   S2R R0, SR_TID.X ;
+	//## File "/home/ubuntu/new/encoder/src/k_recon.cuh", line 1371
+        /*26f9e0*/                   WARPSYNC 0xffffffff ;
+        /*26f9f0*/                   BAR.SYNC.DEFER_BLOCKING 0x0 ;
+	//## File "/home/ubuntu/new/encoder/src/k_recon.cuh", line 671
+        /*26fa00*/                   ISETP.NE.AND P0, PT, R0, RZ, PT ;
+	//## File "/home/ubuntu/new/encoder/src/k_recon.cuh", line 1373
+        /*26fa10*/                   LDS.128 R8, [0x5af0] ;
+	//## File "/home/ubuntu/new/encoder/src/k_recon.cuh", line 1374
+        /*26fa20*/              @!P0 LDS R0, [0x5b00] ;
+	//## File "/home/ubuntu/new/encoder/src/k_recon.cuh", line 1373
+        /*26fa30*/                   IMAD.MOV.U32 R8, RZ, RZ, R9 ;
+	//## File "/home/ubuntu/new/encoder/src/k_recon.cuh", line 1374
+        /*26fa40*/              @!P0 IADD3 R11, R11, 0x2, RZ ;
+	//## File "/home/ubuntu/new/encoder/src/k_recon.cuh", line 1373
+        /*26fa50*/                   IMAD.MOV.U32 R9, RZ, RZ, R10 ;
+	//## File "/home/ubuntu/new/encoder/src/k_recon.cuh", line 1374
+        /*26fa60*/              @!P0 STS [0x5afc], R11 ;
+	//## File "/home/ubuntu/new/encoder/src/k_recon.cuh", line 1373
+        /*26fa70*/                   STL.64 [R1+0x360], R8 ;
+	//## File "/home/ubuntu/new/encoder/src/k_recon.cuh", line 1374
+        /*26fa80*/              @!P0 IMAD R0, R2, 0x2, R0 ;
+        /*26fa90*/              @!P0 STS [0x5b00], R0 ;
+	//## File "/home/ubuntu/new/encoder/src/k_recon.cuh", line 1375
+        /*26faa0*/                   BAR.SYNC.DEFER_BLOCKING 0x0 ;
+.L_x_6081:
+	//## File "/home/ubuntu/new/encoder/src/k_recon.cuh", line 1043

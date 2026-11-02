@@ -92,8 +92,9 @@ Presets change only the search effort; every preset produces valid, decoder-exac
 
 The default is `turbo` for images of 1 MP and above and `base` for smaller ones (`--small-preset`).
 In the original test set, images under 1 MP were 30 % of the files but only 3.5 % of the pixels.
-The slower preset therefore costs about 7 % throughput and recovers most of turbo's loss on small
-images.
+So there the slower preset cost about 7 % throughput and recovered most of turbo's loss on small images.
+On the L4's size-range photos (40 of the 100 below 1 MP), v0.6's default runs 14 % slower than
+`--small-preset none`.
 
 ## Source map
 
