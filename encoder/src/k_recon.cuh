@@ -1369,8 +1369,9 @@ __device__ __noinline__ void rc_chroma(int W, int H, RcShared<BD> &S, const GpBa
                                                  (uint32_t)S.nCoef + g.k * T.n, S.nTxb + g.k);
         if (g.t == 0) S.eobUV[g.k] = eob;
         __syncthreads();
-        eobs[0] = S.eobUV[0];
-        eobs[1] = S.eobUV[1];
+        // one word each: merged into a wider load they would also read S.nTxb, which thread 0 updates below
+        eobs[0] = *(const volatile int *)&S.eobUV[0];
+        eobs[1] = *(const volatile int *)&S.eobUV[1];
         if (tid == 0) { S.nTxb += 2; S.nCoef += 2 * T.n; }
         __syncthreads();
     } else
