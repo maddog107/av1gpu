@@ -1,0 +1,40 @@
+========= COMPUTE-SANITIZER
+[av1gpu] 3 images (4.6 MP) in 23555.7 ms: 0.13 img/s, 0.20 MP/s; 1 batches; out 0.16 MB (0.268 bpp); CPU 867 ms = 0.04 cores; skipped (unsupported): 0; WebP/PNG via CPU decode: 0; write failures 0
+[av1gpu] stage ms: ingest wait 0.0 | gpu setup 8.1 analysis 3758.6 dp 26.9 recon 15569.1 pack 8.3 postfilter 232.7 download 0.0 (gpu total 19765.3, encode wall 19774.0) | entropy wall 10186.5 (gpu 3054.0) | write 0.3 | peak dev 61 MB
+========= Leaked 262144 bytes at 0x77a3be240000
+=========     Saved host backtrace up to driver entry point at allocation time
+=========         Host Frame: cudaMalloc [0x15f326] in av1gpu
+=========         Host Frame: GpEncoder::init(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&) in pipeline.cpp:106 [0x3b189] in av1gpu
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) in batch.cpp:867 [0x70141] in av1gpu
+=========         Host Frame: main in av1gpu.cpp:700 [0x1b85f] in av1gpu
+========= 
+========= Leaked 262144 bytes at 0x77a3be280000
+=========     Saved host backtrace up to driver entry point at allocation time
+=========         Host Frame: cudaMalloc [0x15f326] in av1gpu
+=========         Host Frame: GpEncoder::init(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&) in pipeline.cpp:106 [0x3b189] in av1gpu
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) in batch.cpp:867 [0x70141] in av1gpu
+=========         Host Frame: main in av1gpu.cpp:700 [0x1b85f] in av1gpu
+========= 
+========= Leaked 262144 bytes at 0x77a3be2c0000
+=========     Saved host backtrace up to driver entry point at allocation time
+=========         Host Frame: cudaMalloc [0x15f326] in av1gpu
+=========         Host Frame: GpEncoder::init(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&) in pipeline.cpp:106 [0x3b189] in av1gpu
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) in batch.cpp:879 [0x706ed] in av1gpu
+=========         Host Frame: main in av1gpu.cpp:700 [0x1b85f] in av1gpu
+========= 
+========= Leaked 262144 bytes at 0x77a3be300000
+=========     Saved host backtrace up to driver entry point at allocation time
+=========         Host Frame: cudaMalloc [0x15f326] in av1gpu
+=========         Host Frame: GpEncoder::init(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&) in pipeline.cpp:106 [0x3b189] in av1gpu
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) in batch.cpp:879 [0x706ed] in av1gpu
+=========         Host Frame: main in av1gpu.cpp:700 [0x1b85f] in av1gpu
+========= 
+========= Leaked 262144 bytes at 0x77a3be340000
+=========     Saved host backtrace up to driver entry point at allocation time
+=========         Host Frame: cudaMalloc [0x15f326] in av1gpu
+=========         Host Frame: GpEncoder::init(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&) in pipeline.cpp:106 [0x3b189] in av1gpu
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) in batch.cpp:879 [0x706ed] in av1gpu
+=========         Host Frame: main in av1gpu.cpp:700 [0x1b85f] in av1gpu
+========= 
+========= LEAK SUMMARY: 1310720 bytes leaked in 5 allocations
+========= ERROR SUMMARY: 5 errors

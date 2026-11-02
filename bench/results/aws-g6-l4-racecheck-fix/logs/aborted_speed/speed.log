@@ -1,0 +1,5 @@
+GPU apps before: 0
+race r0 size_range/default new: 239.4 MP/s (runs 239.4, 242.9, 237.7; wall 206.9)
+race r0 size_range/default old: 237.8 MP/s (runs 237.8, 236.6, 241.0; wall 205.9)
+spd rc 143
+SPEED_DONE

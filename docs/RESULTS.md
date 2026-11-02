@@ -692,6 +692,7 @@ WebP/NVENC points. Bits per pixel are medians, interpolated per photo.)
 | v0.6: `ctest`, `gpu_fuzz_test` (600 cases), `gpu_postfilter_test` (200), `gpu_dsp_test`, `varboost_test` | pass, 0 mismatches |
 | v0.6: compute-sanitizer memcheck and synccheck, `av1gpu --batch` on 3 photos (0.8–2.2 MP), default and `--yuv 444 --depth 10` | 0 errors (memcheck lists only the 256 KB variance-boost tables of each encoder, which are not freed at exit; that code is unchanged since v0.5.0) |
 | v0.6: racecheck, same runs | the `k_entropy_win` reports as in v0.5.0, plus 1 report pair in `k_recon` (below) |
+| After v0.6.0, #43: racecheck, same runs, and `cmp` against v0.6.0 (13 sets, 1,267 files) | only the `k_entropy_win` reports; byte-identical (`bench/results/aws-g6-l4-racecheck-fix/`) |
 
 **`gpu_fuzz_test` failure.** The test failed with `device error 1` (`AV1G_GPU_ERR_SYMBOLS`) at a different
 batch from run to run (seed 521, 1481, ...), never under initcheck, which serialises GPU work. The test
@@ -717,7 +718,8 @@ counts as v0.5.0, and since #37 one more pair in `k_recon`'s concurrent U / V ch
 reads `eobUV[0..1]` with one 16-byte shared load (`LDS.128`) that also covers `nTxb`. Every thread loads
 that word, but only thread 0 uses it, and thread 0 is the one that writes it. No thread uses a value that
 races, so the output can't change. The report first appears with #37 (980cc10; 63683ef just before it has
-only the entropy pairs).
+only the entropy pairs). #43, after v0.6.0, reads the two values one word at a time: the report is gone, the
+output is byte-identical and the speed unchanged (`bench/results/aws-g6-l4-racecheck-fix/`).
 
 ### Compared with the RTX PRO 2000
 
