@@ -12,7 +12,8 @@
  *   Both routes produce native planes bit-exact with libjpeg-turbo's islow decode.  A finalize
  *   kernel then converts native sampling -> 4:2:0 (or mono), or with cfg.out_444 to full-resolution
  *   chroma (4:4:4 sources as coded, subsampled ones upsampled exactly like libjpeg-turbo's decoder:
- *   jdsample.c with do_fancy_upsampling), replicates edges, optionally applies the EXIF rotation, and
+ *   jdsample.c with do_fancy_upsampling; so is luma coded with smaller sampling factors than a chroma
+ *   component, for either output), replicates edges, optionally applies the EXIF rotation, and
  *   writes the output pool + activity maps.  Batches are packed by size class; ingest_next_batch()
  *   hands them out in dispatch order.
  *
