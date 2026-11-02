@@ -1,0 +1,5 @@
+start 04:48:54
+gpu tests done 04:49:16: gpu_fuzz_test rc 0;gpu_fuzz_test (444/10/ll) rc 0;gpu_postfilter_test rc 0;gpu_dsp_test rc 0;varboost_test rc 0;
+GPU apps: 0; other jobs: 1
+speed done 04:59:16
+POST_DONE

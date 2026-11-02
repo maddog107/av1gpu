@@ -1,0 +1,19 @@
+GPU apps before: 0
+race r0 size_range/default new: 240.7 MP/s (runs 240.9, 240.3, 240.7; wall 206.8)
+race r0 size_range/default old: 237.8 MP/s (runs 237.8, 239.9, 237.7; wall 205.8)
+race r0 size_range/444_10 new: 170.7 MP/s (runs 170.7, 172.9, 170.5; wall 153.4)
+race r0 size_range/444_10 old: 173.1 MP/s (runs 174.2, 173.0, 173.1; wall 155.4)
+race r0 standard/default new: 77.3 MP/s (runs 77.3, 77.3, 76.4; wall 72.2)
+race r0 standard/default old: 76.7 MP/s (runs 76.7, 76.8, 76.7; wall 71.7)
+race r1 size_range/default old: 234.2 MP/s (runs 234.3, 234.2, 233.4; wall 203.1)
+race r1 size_range/default new: 234.9 MP/s (runs 235.0, 234.9, 234.2; wall 203.5)
+race r1 size_range/444_10 old: 170.1 MP/s (runs 171.3, 170.1, 169.9; wall 152.8)
+race r1 size_range/444_10 new: 170.6 MP/s (runs 169.9, 170.6, 173.7; wall 153.3)
+race r1 standard/default old: 76.5 MP/s (runs 76.7, 76.5, 76.5; wall 71.5)
+race r1 standard/default new: 76.5 MP/s (runs 75.0, 76.5, 77.6; wall 71.5)
+noise r0 size_range/default old: 240.5 MP/s (runs 239.5, 240.5, 242.3; wall 207.1)
+noise r0 size_range/default old2: 243.2 MP/s (runs 245.9, 243.2, 239.6; wall 209.9)
+noise r1 size_range/default old2: 243.9 MP/s (runs 243.9, 244.7, 242.7; wall 210.3)
+noise r1 size_range/default old: 240.1 MP/s (runs 240.1, 240.8, 238.0; wall 207.3)
+spd rc 0
+SPEED_DONE

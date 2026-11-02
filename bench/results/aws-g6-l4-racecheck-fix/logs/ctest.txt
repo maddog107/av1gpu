@@ -1,0 +1,16 @@
+Test project /home/ubuntu/new/build
+    Start 1: fuzz_dav1d_aomdec
+    Start 2: fuzz_lossless
+    Start 3: avif_alpha
+    Start 4: gate_cfl_edge
+1/5 Test #3: avif_alpha .......................   Passed    0.41 sec
+    Start 5: batch_skip_unreadable
+2/5 Test #2: fuzz_lossless ....................   Passed    4.32 sec
+3/5 Test #4: gate_cfl_edge ....................   Passed    7.37 sec
+4/5 Test #1: fuzz_dav1d_aomdec ................   Passed    7.84 sec
+5/5 Test #5: batch_skip_unreadable ............   Passed    8.78 sec
+
+100% tests passed, 0 tests failed out of 5
+
+Total Test time (real) =   9.23 sec
+ctest rc 0 (10 s)

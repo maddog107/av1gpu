@@ -1,0 +1,15 @@
+start 04:33:51
+sass done 04:33:51
+identity done 04:35:38: 13 of 13 sets with 0 differences
+GPU apps: 0
+Terminated
+speed done 04:36:47
+6057c6daef8fc78a_typical.jpg (1800, 1200) 2.16 MP
+3065cbd41a1ad905_typical.jpg (1600, 1066) 1.71 MP
+b2fef7eca1352b4a_small.jpg (1024, 766) 0.78 MP
+6057c6daef8fc78a_typical.jpg (1800, 1200) 2.16 MP
+3065cbd41a1ad905_typical.jpg (1600, 1066) 1.71 MP
+b2fef7eca1352b4a_small.jpg (1024, 766) 0.78 MP
+ctest + memcheck/synccheck done 04:37:59
+racecheck done 04:48:41
+PIPE_DONE

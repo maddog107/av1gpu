@@ -1,0 +1,41 @@
+== /home/ubuntu/results/race/new_0.log: RACECHECK SUMMARY: 8 hazards displayed (8 errors, 0 warnings) | rc 0 567 s
+    7046576  Error: Read k_entropy_win gpu_entropy.cu:1090  <->  Write win_group gpu_entropy.cu:992
+    1927868  Error: Read k_entropy_win gpu_entropy.cu:1090  <->  Write k_entropy_win gpu_entropy.cu:1061
+     279176  Error: Read vload gpu_entropy.cu:1020  <->  Write vstore gpu_entropy.cu:1021
+     246920  Error: Write vstore gpu_entropy.cu:1021  <->  Read vload gpu_entropy.cu:1020
+     228056  Error: Read k_entropy_win gpu_entropy.cu:1087  <->  Write win_group gpu_entropy.cu:992
+      61456  Error: Read k_entropy_win gpu_entropy.cu:1087  <->  Write k_entropy_win gpu_entropy.cu:1061
+       1584  Error: Read k_entropy_win gpu_entropy.cu:1090  <->  Write win_group gpu_entropy.cu:988
+        232  Error: Write vstore gpu_entropy.cu:1021  <->  Read __nanosleep gpu_entropy.cu:1020
+         72  Error: Read k_entropy_win gpu_entropy.cu:1087  <->  Write win_group gpu_entropy.cu:988
+== /home/ubuntu/results/race/new_1.log: RACECHECK SUMMARY: 8 hazards displayed (8 errors, 0 warnings) | rc 0 642 s
+    7133332  Error: Read k_entropy_win gpu_entropy.cu:1090  <->  Write win_group gpu_entropy.cu:992
+    1968372  Error: Read k_entropy_win gpu_entropy.cu:1090  <->  Write k_entropy_win gpu_entropy.cu:1061
+     282832  Error: Read vload gpu_entropy.cu:1020  <->  Write vstore gpu_entropy.cu:1021
+     251256  Error: Write vstore gpu_entropy.cu:1021  <->  Read vload gpu_entropy.cu:1020
+     230260  Error: Read k_entropy_win gpu_entropy.cu:1087  <->  Write win_group gpu_entropy.cu:992
+      63340  Error: Read k_entropy_win gpu_entropy.cu:1087  <->  Write k_entropy_win gpu_entropy.cu:1061
+       1520  Error: Read k_entropy_win gpu_entropy.cu:1090  <->  Write win_group gpu_entropy.cu:988
+        256  Error: Write vstore gpu_entropy.cu:1021  <->  Read __nanosleep gpu_entropy.cu:1020
+         88  Error: Read k_entropy_win gpu_entropy.cu:1087  <->  Write win_group gpu_entropy.cu:988
+== /home/ubuntu/results/race/old_0.log: RACECHECK SUMMARY: 103 hazards displayed (103 errors, 0 warnings) | rc 0 568 s
+    7046576  Error: Read k_entropy_win gpu_entropy.cu:1090  <->  Write win_group gpu_entropy.cu:992
+    1927868  Error: Read k_entropy_win gpu_entropy.cu:1090  <->  Write k_entropy_win gpu_entropy.cu:1061
+     279192  Error: Read vload gpu_entropy.cu:1020  <->  Write vstore gpu_entropy.cu:1021
+     246864  Error: Write vstore gpu_entropy.cu:1021  <->  Read vload gpu_entropy.cu:1020
+     228056  Error: Read k_entropy_win gpu_entropy.cu:1087  <->  Write win_group gpu_entropy.cu:992
+      61456  Error: Read k_entropy_win gpu_entropy.cu:1087  <->  Write k_entropy_win gpu_entropy.cu:1061
+      52056  Error: Read [clone k_recon] rc_chroma k_recon.cuh:1373  <->  Write [clone k_recon] rc_chroma k_recon.cuh:1374
+       1584  Error: Read k_entropy_win gpu_entropy.cu:1090  <->  Write win_group gpu_entropy.cu:988
+        232  Error: Write vstore gpu_entropy.cu:1021  <->  Read __nanosleep gpu_entropy.cu:1020
+         72  Error: Read k_entropy_win gpu_entropy.cu:1087  <->  Write win_group gpu_entropy.cu:988
+== /home/ubuntu/results/race/old_1.log: RACECHECK SUMMARY: 8 hazards displayed (8 errors, 0 warnings) | rc 0 641 s
+    7133332  Error: Read k_entropy_win gpu_entropy.cu:1090  <->  Write win_group gpu_entropy.cu:992
+    1968372  Error: Read k_entropy_win gpu_entropy.cu:1090  <->  Write k_entropy_win gpu_entropy.cu:1061
+     282824  Error: Read vload gpu_entropy.cu:1020  <->  Write vstore gpu_entropy.cu:1021
+     251280  Error: Write vstore gpu_entropy.cu:1021  <->  Read vload gpu_entropy.cu:1020
+     230260  Error: Read k_entropy_win gpu_entropy.cu:1087  <->  Write win_group gpu_entropy.cu:992
+      63340  Error: Read k_entropy_win gpu_entropy.cu:1087  <->  Write k_entropy_win gpu_entropy.cu:1061
+       1520  Error: Read k_entropy_win gpu_entropy.cu:1090  <->  Write win_group gpu_entropy.cu:988
+        256  Error: Write vstore gpu_entropy.cu:1021  <->  Read __nanosleep gpu_entropy.cu:1020
+         88  Error: Read k_entropy_win gpu_entropy.cu:1087  <->  Write win_group gpu_entropy.cu:988
