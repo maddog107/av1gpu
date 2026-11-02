@@ -842,6 +842,57 @@ resolution, the other CUDA scheduling modes (spin, yield, auto), fewer hardware 
 (`GP_MAX_CONNECTIONS`) and fewer encoders or entropy threads did not help. A GeForce card under the desktop driver may behave differently; this
 is the only Windows measurement so far.
 
+The zips from #51's release-workflow run (v0.7.1's code, 2026-11-02): the CUDA 13 zip and the `-cuda12` zip, on a g6.8xlarge's L4
+under Windows Server 2022 with AWS's GRID driver 582.78 (R580, WDDM, GPU scheduling on). See
+[Release builds](#release-builds-cuda-13-and-cuda-12).
+- **Output:** the files are identical to the Linux tarballs of the same toolkit (size range, defaults and
+  `--yuv 444 --depth 10`, and Kodak; 224 files each).
+- **Start-up:** 1.1–1.3 s in every cache state.
+- **Speed:** 133.9 MP/s (CUDA 13) and 131.5 (`-cuda12`) on the size range × 3. That instance has 32 vCPUs, so these
+  numbers do not compare with the table above.
+
+## Release builds: CUDA 13 and CUDA 12
+
+From v0.7.1 each release has a CUDA 13.4 build (driver 580+) and a CUDA 12.9 `-cuda12` build (driver 525+ on
+Linux, 528+ on Windows) for Linux and Windows. AWS, 2026-11-02; scripts, logs and hashes are in
+`bench/results/aws-g7-g6-cuda13-builds/`.
+
+- **Why ([#49](https://github.com/maddog107/av1gpu/issues/49)):** from R615, the driver re-finalizes every
+  Blackwell kernel built by nvcc older than 13.2.2 when it loads. This fixes a reconvergence bug
+  ([615.71.09 notes](https://docs.nvidia.com/datacenter/tesla/tesla-release-notes-615-71-09/index.html)).
+  - The v0.6.0 binary (CUDA 12.9) was recompiled on every start without a warm compute cache, 226 MB of cache.
+  - On an RTX PRO 4500 Blackwell (g7.4xlarge) with the reporter's user-mode driver (615.71.10, from
+    `cuda-compat-13-4`), one JPEG in `--batch` took 9.3–9.7 s with an empty cache, 1.2–1.3 s warm and 8.8–9.2 s
+    with the cache disabled. On 595 it took 1.0 s, and v0.5.0 took 13.1–13.8 s.
+  - It isn't PTX JIT: `CUDA_DISABLE_PTX_JIT=1` changed nothing.
+  - A one-kernel test got a cache entry when built by nvcc 12.8, 12.9, 13.0 or 13.2 (V13.2.51), as `sm_120`,
+    `sm_120a` or `sm_120f`. Built by 13.3 or 13.4, it got none.
+  - The L4 is not affected.
+  - `CUDA_SELECTIVE_DEVICE_CODE_RECOMPILE=DISABLED` (patching only) starts fast, but its kernels encode 15 % slower
+    (298 against 349 MP/s).
+- **The CUDA 13.4 build** of the same code starts in 1.2–1.4 s on the RTX PRO 4500 in every cache state, on 595
+  and on 615. It also encodes faster, on the size range × 3 (median of 6, 2 alternating rounds):
+
+| GPU, driver | CUDA 12.9 build | CUDA 13.4 build |
+|---|---:|---:|
+| RTX PRO 4500, 595 | 351.0 MP/s | 406.9 (+16 %) |
+| RTX PRO 4500, 615 (12.9 re-finalized, warm cache) | 352.9 | 404.0 (+14 %) |
+| L4, 580.196.07 | 212.9 | 223.0 (+5 %) |
+| L4, 595.112.07 (#51's tarballs) | 239.7 | 242.9 (+1 %) |
+
+- **Same files:** #51's tarballs (CUDA 13.4 and `-cuda12`, v0.7.1's code) gave identical files (`cmp`) on the L4: the size
+  range (defaults and `--yuv 444 --depth 10`), the standard set and Kodak, 324 files.
+  - The Windows zips match them ([Windows](#windows)).
+  - Earlier, on the RTX PRO 4500 and the L4, the 13.4 build matched v0.6.0 on 300 files per run.
+- **Driver 580:** the CUDA 13.4 build ran on 580.196.07 (L4) with identical output.
+- **GPUs newer than the SASS:** a forced PTX JIT (`CUDA_FORCE_PTX_JIT=1`) of the 13.4 build was still compiling
+  after 10 minutes on the RTX PRO 4500. That is the first run on a GPU with no compiled code (README:
+  `CUDA_CACHE_PATH` / `CUDA_CACHE_MAXSIZE`).
+- **Build time:** in the release workflow, the CUDA 13.4 jobs took 2 h 36 min (Linux) and 2 h 29 min (Windows).
+  The `-cuda12` jobs took 49 and 47 min. Most of the difference is the k_recon files.
+- **Not tested:** Windows on Blackwell. AWS's GRID driver bucket stops at 596.86 (R595), before the recompile, and
+  the data-centre driver runs data-centre GPUs in TCC mode, where av1gpu stops.
+
 ## GeForce RTX 5090 (contributed by pickae)
 
 Contributed by pickae ([discussion #19](https://github.com/maddog107/av1gpu/discussions/19)) and measured on

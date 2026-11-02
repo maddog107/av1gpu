@@ -1,0 +1,21 @@
+cacheB 226 MB
+round 1 cfg A run 1 wall 4.79 s | 355.08 MP/s | files 300
+round 1 cfg A run 2 wall 4.73 s | 360.90 MP/s | files 300
+round 1 cfg A run 3 wall 4.82 s | 353.01 MP/s | files 300
+round 1 cfg B run 1 wall 5.16 s | 347.57 MP/s | files 300
+round 1 cfg B run 2 wall 5.16 s | 344.81 MP/s | files 300
+round 1 cfg B run 3 wall 5.06 s | 351.59 MP/s | files 300
+round 1 cfg C run 1 wall 5.85 s | 290.20 MP/s | files 300
+round 1 cfg C run 2 wall 5.70 s | 299.42 MP/s | files 300
+round 1 cfg C run 3 wall 5.59 s | 304.98 MP/s | files 300
+round 2 cfg C run 1 wall 5.72 s | 297.48 MP/s | files 300
+round 2 cfg C run 2 wall 5.72 s | 297.49 MP/s | files 300
+round 2 cfg C run 3 wall 5.70 s | 298.86 MP/s | files 300
+round 2 cfg B run 1 wall 5.14 s | 345.38 MP/s | files 300
+round 2 cfg B run 2 wall 5.02 s | 357.04 MP/s | files 300
+round 2 cfg B run 3 wall 4.99 s | 357.81 MP/s | files 300
+round 2 cfg A run 1 wall 4.86 s | 349.37 MP/s | files 300
+round 2 cfg A run 2 wall 4.81 s | 353.06 MP/s | files 300
+round 2 cfg A run 3 wall 4.84 s | 350.53 MP/s | files 300
+cmp A vs B: 300 files, 0 differ
+cmp A vs C: 300 files, 0 differ

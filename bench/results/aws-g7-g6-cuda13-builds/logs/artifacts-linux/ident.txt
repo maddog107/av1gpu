@@ -1,0 +1,4 @@
+cuda12 vs cuda13 sr: 100 vs 100 files, 0 differ (22224 kB)
+cuda12 vs cuda13 sr444: 100 vs 100 files, 0 differ (22820 kB)
+cuda12 vs cuda13 std: 100 vs 100 files, 0 differ (5568 kB)
+cuda12 vs cuda13 kodak: 24 vs 24 files, 0 differ (936 kB)

@@ -1,0 +1,15 @@
+== cmp (595)
+v060-vs-main134 sr: 100 vs 100 files, 0 differ (22224 kB)
+v060-vs-main134 sr444: 100 vs 100 files, 0 differ (22820 kB)
+v060-vs-main134 std: 100 vs 100 files, 0 differ (5568 kB)
+== cmp (13.4 UMD)
+v060-vs-main134-umd134 sr: 100 vs 100 files, 0 differ (22224 kB)
+v060-vs-main134-umd134 sr444: 100 vs 100 files, 0 differ (22820 kB)
+v060-vs-main134-umd134 std: 100 vs 100 files, 0 differ (5568 kB)
+== speed 595: a = v0.6.0, b = CUDA 13.4 build
+median a: 350.98 MP/s ( 353.70 359.35 348.95 346.18 353.01 339.68 )
+median b: 406.875 MP/s ( 405.89 409.46 402.39 408.76 407.86 400.50 )
+== speed 13.4 UMD: a = v0.6.0 (re-finalized, warm cache), b = CUDA 13.4 build
+median a: 352.905 MP/s ( 351.71 351.03 354.83 355.30 344.83 354.10 )
+median b: 404.015 MP/s ( 403.01 403.05 399.83 414.00 404.98 415.68 )
+BWFINAL2_DONE

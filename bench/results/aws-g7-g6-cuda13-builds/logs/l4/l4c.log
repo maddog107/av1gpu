@@ -1,0 +1,17 @@
+v060-vs-134_89 sr: 100 vs 100 files, 0 differ (22224 kB)
+v060-vs-134_89 sr444: 100 vs 100 files, 0 differ (22820 kB)
+v060-vs-134_89 std: 100 vs 100 files, 0 differ (5568 kB)
+round 1 a run 1: 236.57 MP/s, wall 7.01 s, 300 files
+round 1 a run 2: 239.61 MP/s, wall 6.93 s, 300 files
+round 1 a run 3: 238.00 MP/s, wall 6.96 s, 300 files
+round 1 b run 1: 235.82 MP/s, wall 7.04 s, 300 files
+round 1 b run 2: 240.86 MP/s, wall 6.90 s, 300 files
+round 1 b run 3: 240.08 MP/s, wall 6.92 s, 300 files
+round 2 b run 1: 239.33 MP/s, wall 6.94 s, 300 files
+round 2 b run 2: 240.85 MP/s, wall 6.90 s, 300 files
+round 2 b run 3: 236.18 MP/s, wall 7.02 s, 300 files
+round 2 a run 1: 231.07 MP/s, wall 7.16 s, 300 files
+round 2 a run 2: 232.70 MP/s, wall 7.11 s, 300 files
+round 2 a run 3: 235.97 MP/s, wall 7.02 s, 300 files
+median a: 236.27 MP/s ( 236.57 239.61 238.00 231.07 232.70 235.97 )
+median b: 239.705 MP/s ( 235.82 240.86 240.08 239.33 240.85 236.18 )

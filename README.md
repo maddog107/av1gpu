@@ -415,7 +415,8 @@ directories are created as needed.
 Tested on an L4 under Windows Server 2022 (AWS g6.4xlarge): every output of 30 test runs (1,226 files)
 and of the decoder-gate encodes (2,125 files) was byte-identical to the Linux build's. With v0.5.0 it ran at 67–83 % of the Linux speed on the same instance type
 with hardware-accelerated GPU scheduling on (JPEG 86 against 128 MP/s), and slower without it; Windows has not been timed with v0.6
-([results](docs/RESULTS.md#windows)). The GPU must be in WDDM mode, as GeForce and RTX cards are: TCC mode,
+([results](docs/RESULTS.md#windows)). The CUDA 13 and `-cuda12` zips (v0.7.1's code) give the same files as the Linux
+tarballs (224 files each, on driver 582.78). The GPU must be in WDDM mode, as GeForce and RTX cards are: TCC mode,
 the default of data-centre GPUs under NVIDIA's data-centre driver, has no CUDA memory pools, and av1gpu
 stops with an error that says so.
 
