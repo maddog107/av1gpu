@@ -96,19 +96,26 @@ static void usage() {
             "                          bits like the colour samples.\n"
             "  --no-alpha              do not code the alpha channel (as before alpha support): PNG colour is composited onto\n"
             "                          black, WebP and --lossless keep the stored RGB; a note says so\n"
-            "  --crop WxH+X+Y          crop the decoded image (also X,Y,W,H; source pixels, before the EXIF rotation)\n"
-            "  --max-size WxH          shrink to fit inside WxH (xH or Wx: one side only), aspect kept, never enlarged:\n"
-            "                          ImageMagick's -resize 'WxH>' size and filter (Lanczos), on the GPU after the decode\n"
+            "  --crop WxH+X+Y          crop the decoded image on the GPU (also X,Y,W,H): source pixels, before the EXIF\n"
+            "                          rotation; clipped to the image like ImageMagick's -crop; a crop outside it is an error\n"
+            "                          (batch mode: the image is skipped).  With --lossless the crop is exact\n"
+            "  --max-size WxH          shrink to fit inside WxH (Wx or xH: one side only), aspect kept, never enlarged, on the\n"
+            "                          GPU after the crop: ImageMagick's -resize 'WxH>' size and filter (Lanczos, 3 lobes)\n"
+            "                          on the YCbCr planes; transparent images with alpha-weighted colour, as ImageMagick.\n"
+            "                          The box is the displayed size (turned for EXIF rotations by 90 degrees).  With\n"
+            "                          --lossless the shrunk image is coded losslessly\n"
             "  --max-height H          same as --max-size xH\n"
-            "  --max-mp MP             largest picture encoded (default 35.6 = AV1 level 6.3, the most AVIF's Advanced\n"
-            "                          profile allows); larger ones are skipped.  Above it the stream says level 31 (no\n"
-            "                          limits): dav1d / libavif decode it, decoders that enforce levels may not\n"
-            "  --max-input-mp MP       largest source decoded (default: --max-mp); with --crop / --max-size, a larger source\n"
-            "                          is decoded at full size on the GPU and encoded once it fits --max-mp\n"
+            "  --max-mp MP             largest picture encoded, after crop / resize (default 35.6 = AV1 level 6.3, the most\n"
+            "                          AVIF's Advanced profile allows; single PNG / WebP images: no limit); larger ones are\n"
+            "                          skipped.  Above 35.6 the stream says level 31 (no limits): dav1d and libavif decode\n"
+            "                          it, decoders that enforce levels may not\n"
+            "  --max-input-mp MP       largest source decoded (default and at least: the --max-mp limit); with --crop /\n"
+            "                          --max-size, a larger source is decoded at full size and encoded once it fits --max-mp\n"
             "  --cpu-entropy           entropy-code on the CPU instead of the GPU (identical bytes)\n"
             "  --batch LIST|DIR        encode every file in LIST (one path per line) or DIR; outputs <name>.avif.  A LIST line\n"
             "                          may add TAB-separated crop=WxH+X+Y and max-size=WxH for its image (they replace\n"
-            "                          --crop / --max-size for it)\n"
+            "                          --crop / --max-size for it; a line that names an existing file is a path; a line\n"
+            "                          with a bad option is skipped)\n"
             "  --outdir DIR            batch output directory (outputs are named <input file name>.avif)\n"
             "  --stats                 print one JSON line with timings / counts\n"
             "  --debug-outputs         also write <out>.obu and <out>.recon.yuv (decoder identity tests)\n"
@@ -125,7 +132,7 @@ static void usage() {
             "  --qm L|auto --qm-uv L --edge-filter --lf q|LEVEL --lf-mul M --cdef ypri,ysec,uvpri,uvsec,damp-3\n"
             "  --vb 0|1 --vb-order tile|row|nearest --vb-strength PCT --f-lf off|q|search --f-cdef off|aom|search\n"
             "  --check                 compare the reconstruction with av1core's CPU decode of the record\n"
-            "  --dump-source F         (single image) write the encoder's input planes (visible Y, U, V) to F\n"
+            "  --dump-source F         (single image) write the encoder's input planes (visible Y, U, V, then alpha) to F\n"
             "  --gpu-entropy           GPU symbolization + entropy coding (default)\n"
             "\n"
             "environment (batch mode): GP_ENCODERS (concurrent encoders, default 3), GP_ENCODE_MP (MP per GPU batch,\n"
@@ -307,23 +314,21 @@ static bool parse(int argc, char **argv, GpConfig &cfg, Opts &o) {
         }
         else if (a == "--dump-source") o.dumpSource = nxt();
         else if (a == "--lossless") cfg.lossless = 1;
-        else if (a == "--crop") {
-            const char *v = nxt();
-            if (!gp_parse_crop(v, cfg.xform)) { fprintf(stderr, "bad --crop %s (WxH+X+Y or X,Y,W,H)\n", v); return false; }
-        }
-        else if (a == "--max-size") {
-            const char *v = nxt();
-            if (!gp_parse_max_size(v, cfg.xform)) { fprintf(stderr, "bad --max-size %s (WxH, xH or Wx)\n", v); return false; }
+        else if (a == "--crop" || a == "--max-size" || a == "--max-height") {
+            const std::string v = a == "--max-height" ? std::string("x") + nxt() : nxt();
+            std::string why;
+            if (!(a == "--crop" ? gp_parse_crop(v.c_str(), cfg.xform, &why) : gp_parse_max_size(v.c_str(), cfg.xform, &why))) {
+                fprintf(stderr, "bad %s %s: %s\n", a.c_str(), a == "--max-height" ? v.c_str() + 1 : v.c_str(),
+                        a == "--max-height" ? "expected a height in whole pixels, at least 1" : why.c_str());
+                return false;
+            }
         }
         else if (a == "--max-mp" || a == "--max-input-mp") {
-            const double v = atof(nxt());
-            if (!(v > 0 && v <= 1000)) { fprintf(stderr, "bad %s (megapixels, 0 < MP <= 1000)\n", a.c_str()); return false; }
-            (a == "--max-mp" ? cfg.maxMp : cfg.maxInputMp) = v;
-        }
-        else if (a == "--max-height") {
-            cfg.xform.maxW = 0;
-            cfg.xform.maxH = atoi(nxt());
-            if (cfg.xform.maxH <= 0) { fprintf(stderr, "bad --max-height\n"); return false; }
+            const char *v = nxt();
+            char *end = nullptr;
+            const double mp = strtod(v, &end);
+            if (end == v || *end || !(mp > 0 && mp <= 1000)) { fprintf(stderr, "bad %s %s: megapixels, 0 < MP <= 1000\n", a.c_str(), v); return false; }
+            (a == "--max-mp" ? cfg.maxMp : cfg.maxInputMp) = mp;
         }
         else if (a == "--ycgco-re") cfg.ycgcoRe = 1;
         else if (a == "--no-lossless-cfl") cfg.losslessCfl = 0;
@@ -394,7 +399,6 @@ static bool parse(int argc, char **argv, GpConfig &cfg, Opts &o) {
         cfg.smallMp = 0;
     }
     if (cfg.ycgcoRe && !cfg.lossless) { fprintf(stderr, "--ycgco-re needs --lossless\n"); return false; }
-    if (cfg.lossless && cfg.xform.active()) { fprintf(stderr, "--crop / --max-size cannot be combined with --lossless\n"); return false; }
     if (cfg.lossless && (o.yuvSet || o.depthSet)) {
         fprintf(stderr, "--yuv / --depth cannot be combined with --lossless (the format follows the input; --ycgco-re for 10-bit 4:4:4)\n");
         return false;
@@ -427,6 +431,10 @@ static int run_single(const GpConfig &cfg, const Opts &o) {
     std::string err;
     const GpFileKind kind = gp_sniff(o.in);
     if (kind == GP_FILE_JPEG && cfg.lossless) { fprintf(stderr, "%s: %s\n", o.in.c_str(), gp_lossless_jpeg_refusal); return 3; }
+    // the largest picture encoded and source decoded (megapixels, 0: none): JPEGs 35.6, PNG / WebP none without the options
+    const double dfltMp = kind == GP_FILE_JPEG ? 35.6 : 0, encMaxMp = gp_enc_max_mp(cfg, dfltMp), decMaxMp = gp_dec_max_mp(cfg, dfltMp);
+    char big[64];
+    snprintf(big, sizeof big, "larger than %.1f megapixels", decMaxMp);
     GpEncoder enc;
     if (enc.init(cfg, err)) { fprintf(stderr, "init: %s\n", err.c_str()); return 1; }
     GpFrameIn fin, afin;   // afin: the alpha frame (W = 0: none)
@@ -443,10 +451,9 @@ static int run_single(const GpConfig &cfg, const Opts &o) {
         ic.n_workers = 1;
         ic.max_wait_ms = 0;
         ic.activity = 0;
-        ic.pinned_bytes = 256ll << 20;   // D round 2: > 6000 px sides go to the CPU route (coefficients staged in this arena)
+        ic.pinned_bytes = gp_ingest_pinned_bytes(decMaxMp);   // D round 2: > 6000 px sides go to the CPU route (coefficients staged in this arena)
         ic.out_444 = cfg.yuv444;
-        ic.max_mp = std::max(cfg.maxInputMp > 0 ? cfg.maxInputMp : cfg.maxMp, cfg.maxMp);   // --max-mp / --max-input-mp
-        if (ic.max_mp > 35.6) ic.pinned_bytes = std::max<int64_t>(ic.pinned_bytes, (int64_t)(ic.max_mp * 1e6 * 3 * 2) + (16ll << 20));
+        ic.max_mp = decMaxMp;
         if (getenv("GP_INGEST_DECODER")) ic.decoder = atoi(getenv("GP_INGEST_DECODER"));   // 1: CPU entropy decode + GPU IDCT
         char eb[256] = {0};
         ictx = ingest_create(&ic, eb, sizeof eb);
@@ -458,7 +465,7 @@ static int run_single(const GpConfig &cfg, const Opts &o) {
         if (r != 1) {
             ingest_fallback fb;
             int nf = ingest_get_fallbacks(ictx, &fb, 1);
-            fprintf(stderr, "%s: %s\n", o.in.c_str(), nf ? gp_fallback_reason(fb.reason) : "decode failed");
+            fprintf(stderr, "%s: %s\n", o.in.c_str(), !nf ? "decode failed" : fb.reason == INGEST_FB_GIANT ? big : gp_fallback_reason(fb.reason));
             ingest_destroy(ictx);
             return 3;
         }
@@ -472,24 +479,6 @@ static int run_single(const GpConfig &cfg, const Opts &o) {
         }
         if (im.icc_size > 0) icc.assign(im.icc, im.icc + im.icc_size);
         if (!im.oriented) orientation = im.orientation;
-        if (cfg.xform.active()) {
-            GpXform x = cfg.xform;
-            if (orientation >= 5) std::swap(x.maxW, x.maxH);   // the box is what is displayed
-            std::vector<GpFrameIn> v = {fin};
-            if (gp_frames_transform(v, {x}, cfg.depth, 0, &dxf, err) || cudaDeviceSynchronize() != cudaSuccess) {
-                fprintf(stderr, "crop / resize: %s\n", err.c_str());
-                return 1;
-            }
-            fin = v[0];
-        }
-        if (cfg.depth == 10 && !cfg.lossless) {   // 8-bit JPEG samples -> 10-bit planes (libavif's full-range rescaling)
-            std::vector<GpFrameIn> v = {fin};
-            if (gp_frames_to_10bit(v, 0, &dconv, err) || cudaDeviceSynchronize() != cudaSuccess) {
-                fprintf(stderr, "10-bit conversion: %s\n", err.c_str());
-                return 1;
-            }
-            fin = v[0];
-        }
     } else {
         GpHostPlanes hp;
         int matrix = -1;
@@ -501,6 +490,7 @@ static int run_single(const GpConfig &cfg, const Opts &o) {
             return 3;
         }
         if (!note.empty()) fprintf(stderr, "%s: %s\n", o.in.c_str(), note.c_str());
+        if (decMaxMp > 0 && (double)hp.W * hp.H > decMaxMp * 1e6) { fprintf(stderr, "%s: %s\n", o.in.c_str(), big); return 3; }
         const size_t ys = hp.bytes(0), cs = hp.bytes(1), as = hp.abytes();   // bytes (10-bit: uint16_t samples)
         if (cudaMalloc(&dplanes, ys + 2 * cs + as) != cudaSuccess) { fprintf(stderr, "cudaMalloc failed\n"); return 1; }
         cudaMemcpy(dplanes, hp.data(0), ys, cudaMemcpyHostToDevice);
@@ -518,31 +508,49 @@ static int run_single(const GpConfig &cfg, const Opts &o) {
             afin.dsrc[0] = dplanes + ys + 2 * cs;
             afin.spitch[0] = hp.aw;
         }
-        if (cfg.xform.active()) {
-            std::vector<GpFrameIn> v = {fin};
-            if (afin.W > 0) v.push_back(afin);
-            if (gp_frames_transform(v, std::vector<GpXform>(v.size(), cfg.xform), cfg.depth, 0, &dxf, err) ||
-                cudaDeviceSynchronize() != cudaSuccess) {
-                fprintf(stderr, "crop / resize: %s\n", err.c_str());
-                return 1;
-            }
-            fin = v[0];
-            if (afin.W > 0) afin = v[1];
-        }
     }
-    if ((double)fin.W * fin.H > cfg.maxMp * 1e6) {
-        fprintf(stderr, "%s: %dx%d is larger than %.1f megapixels (--max-mp)\n", o.in.c_str(), fin.W, fin.H, cfg.maxMp);
+    if (cfg.xform.active()) {
+        // crop / shrink, straight to 10 bits with --depth 10; the alpha frame the same way and the colour with alpha-weighted
+        // taps.  An EXIF orientation that swaps the sides turns the box (the box is what is displayed)
+        GpXform x = cfg.xform;
+        if (orientation >= 5) std::swap(x.maxW, x.maxH);
+        int ow, oh;
+        if (!gp_xform_size(x, fin.W, fin.H, &ow, &oh)) {
+            fprintf(stderr, "%s: the crop %s is outside the %dx%d image\n", o.in.c_str(), gp_crop_str(x).c_str(), fin.W, fin.H);
+            return 3;
+        }
+        std::vector<GpFrameIn> v = {fin}, al = {afin};
+        if (afin.W > 0) v.push_back(afin);
+        if (gp_frames_transform(v, std::vector<GpXform>(v.size(), x), cfg.depth, 0, &dxf, err, &al) || cudaDeviceSynchronize() != cudaSuccess) {
+            fprintf(stderr, "crop / resize: %s\n", err.c_str());
+            return 1;
+        }
+        fin = v[0];
+        if (afin.W > 0) afin = v[1];
+    }
+    if (encMaxMp > 0 && (double)fin.W * fin.H > encMaxMp * 1e6) {
+        fprintf(stderr, "%s: %dx%d is larger than %.1f megapixels (--max-mp)\n", o.in.c_str(), fin.W, fin.H, encMaxMp);
         return 3;
     }
+    if (kind == GP_FILE_JPEG && cfg.depth == 10 && !cfg.lossless) {   // 8-bit JPEG samples -> 10-bit planes (libavif's full-range rescaling)
+        std::vector<GpFrameIn> v = {fin};
+        if (gp_frames_to_10bit(v, 0, &dconv, err) || cudaDeviceSynchronize() != cudaSuccess) {
+            fprintf(stderr, "10-bit conversion: %s\n", err.c_str());
+            return 1;
+        }
+        fin = v[0];
+    }
     const bool hasAlpha = afin.W > 0;
-    if (!o.dumpSource.empty()) {   // debug: the visible input planes as the encoder sees them (Y, then U, V; 10-bit: 16-bit LE)
+    if (!o.dumpSource.empty()) {   // debug: the visible input planes as the encoder sees them (Y, then U, V, then alpha; 10-bit: 16-bit LE)
         std::vector<uint8_t> yuv;
         const int B = fin.bitDepth == 10 ? 2 : 1;
-        for (int p = 0; p < (fin.mono ? 1 : 3); p++) {
-            const int s = (p && !fin.yuv444) ? 1 : 0, w = p ? (fin.W + s) >> s : fin.W, h = p ? (fin.H + s) >> s : fin.H;
+        for (int p = 0; p < (fin.mono ? 1 : 3) + hasAlpha; p++) {
+            const bool a = p == (fin.mono ? 1 : 3);
+            const int s = (p && !a && !fin.yuv444) ? 1 : 0, w = (fin.W + s) >> s, h = (fin.H + s) >> s;
             const size_t at = yuv.size();
             yuv.resize(at + (size_t)w * h * B);
-            cudaMemcpy2D(yuv.data() + at, (size_t)w * B, fin.dsrc[p], (size_t)fin.spitch[p] * B, (size_t)w * B, h, cudaMemcpyDeviceToHost);
+            cudaMemcpy2D(yuv.data() + at, (size_t)w * B, a ? afin.dsrc[0] : fin.dsrc[p], (size_t)(a ? afin.spitch[0] : fin.spitch[p]) * B,
+                         (size_t)w * B, h, cudaMemcpyDeviceToHost);
         }
         if (!gp_write_file(o.dumpSource, yuv.data(), yuv.size())) { fprintf(stderr, "write %s failed\n", o.dumpSource.c_str()); return 1; }
     }
