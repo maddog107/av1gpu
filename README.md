@@ -214,7 +214,7 @@ Screenshots, charts and flat-colour art that pass a screen-content detection get
 SSIMULACRA2 that makes the 40 screen images of the [palette study](docs/PALETTE.md) about 24 % smaller (median
 BD-rate). That is 9.5 % smaller than libaom speed 6 with palette, and 3.3 % bigger than libaom with palette and
 intra block copy. The flat-colour PNGs that pass detection are 22 % smaller. Photos never pass, so their files and
-speed are unchanged. Screen content encodes at about 0.37× main's speed (57 MP/s on the L4). `--palette off`
+speed are unchanged. Screen content encodes at about 0.37× the speed without it (57 against 153 MP/s on the L4). `--palette off`
 turns palette mode off, and `--palette on` tries it on every image.
 
 ### 🪟 Transparency
@@ -483,7 +483,7 @@ for CUDA start-up.
 | `--yuv 420` / `444` | chroma format (default `420`; `444` is AV1 High profile and keeps full-resolution colour) |
 | `--lossless` | exact (AV1 lossless). PNG/WebP RGB as GBR 4:4:4 at the source depth (as `avifenc -l`). JPEGs are refused (skipped in batch mode): a lossless AVIF of a JPEG is about twice its size, or more |
 | `--ycgco-re` | with `--lossless`: RGB as YCgCo-Re (`--cicp 1/13/16` in avifenc), 8-bit RGB → 10-bit 4:4:4; usually smaller |
-| `--palette M` | palette mode for screen content and flat colours: `auto` (default) tries it on the images that pass a screen-content detection (photos do not, and their output is unchanged), `on` on every image, `off` never (main's output and speed). Lossy: luma palettes; lossless: luma and chroma ([docs/PALETTE.md](docs/PALETTE.md)) |
+| `--palette M` | palette mode for screen content and flat colours: `auto` (default) tries it on the images that pass a screen-content detection (photos do not, and their output is unchanged), `on` on every image, `off` never (the output and speed without palette mode, as in v0.7). Lossy: luma palettes; lossless: luma and chroma ([docs/PALETTE.md](docs/PALETTE.md)) |
 | `--alpha-quality Q` | quality of the alpha channel of PNG/WebP files with transparency: defaults to `--quality`, as in avifenc 1.2+; `100` is lossless (also with `--lossless`) |
 | `--no-alpha` | drop transparency as before alpha support (PNG colour composited onto black) |
 | `--depth 8` / `10` | bit depth (default 8; 16-bit PNGs keep 10 bits, 8-bit sources are scaled to the 10-bit range) |
