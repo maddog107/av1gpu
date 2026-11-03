@@ -1,8 +1,9 @@
 # Measured results
 
-Two GPUs so far: the RTX PRO 2000 Blackwell the encoder was developed on (private images, below), and an
-NVIDIA L4 on AWS with the public `bench/` image sets ([NVIDIA L4](#nvidia-l4-aws-g64xlarge)). A contributor
-added speed measurements on a GeForce RTX 5090 ([RTX 5090](#geforce-rtx-5090-contributed-by-pickae)).
+The RTX PRO 2000 Blackwell the encoder was developed on (private images, below), and an NVIDIA L4 on AWS with
+the public `bench/` image sets ([NVIDIA L4](#nvidia-l4-aws-g64xlarge)). Recent releases were also checked on an RTX PRO
+4500 Blackwell on AWS ([Release builds](#release-builds-cuda-13-and-cuda-12)). A contributor added measurements
+on a GeForce RTX 5090 ([RTX 5090](#geforce-rtx-5090-contributed-by-pickae)).
 
 **The L4 run is the reference.** It uses public images, current baselines and a current CPU (AMD EPYC, 16
 vCPUs). The development section below compares against the development server's dual Xeon Silver 4110,
@@ -220,7 +221,7 @@ BD-rate on SSIMULACRA2 against libaom speed 6, median over images (mean in brack
 | av1gpu `--preset turbo3 --small-preset none` | | +5.7 % (+5.6 %)¹ |
 | libaom speed 9 | +17.7 % (+20.7 %) | +15.0 % (+17.2 %) |
 | SVT-AV1 preset 2 / 4 / 6 / 8 / 9 (below) | | −5.1 / −2.6 / +2.1 / +7.7 / +9.8 % |
-| WebP | +41.3 % (+55.3 %) | +42.1 % (+44.9 %)³ |
+| WebP³ | +40.4 % (+44.3 %) | +42.1 % (+44.9 %) |
 | NVENC AV1 (ffmpeg `av1_nvenc` p7, below) | | +29.5 % (+46.6 %)² |
 
 ¹ `turbo3` with the small-image preset left on: +1.2 % (+2.0 %).
@@ -230,13 +231,15 @@ the same tools as the rest of the table; see [NVENC AV1 on the same L4](#nvenc-a
 pipeline used for NVENC decodes photos with an odd height with wrong chroma; on the 76 even-height photos
 NVENC is +27.9 %.
 
-³ Scored with each .webp's own ICC profile. The first published run decoded WebP with dwebp, which leaves
-the profile out of its PNG, so the 13 photos with Adobe RGB, Camera RGB or Generic RGB profiles were scored
-as colour-shifted: +45.1 % (+61.2 %). `bench.py` now copies the profile back. The standard set has not been
-re-checked.
+³ Scored with each .webp's own ICC profile. The first published runs decoded WebP with dwebp, which leaves
+the profile out of its PNG, so the photos with Adobe RGB, Camera RGB, Generic RGB or display profiles were
+scored as colour-shifted: +41.3 % (+55.3 %) on the standard set (12 photos) and +45.1 % (+61.2 %) on the size
+range (13). `bench.py` now copies the profile back. The standard set was re-scored after pickae's RTX 5090 run
+pointed at it ([discussion #19](https://github.com/maddog107/av1gpu/discussions/19)); its .webp files were
+byte-identical to the L4 run's (`bench/results/webp-icc-standard/`).
 
-Against WebP at each image's WebP quality, the default is 30.0 % (standard) and 30.6 % (size range)
-smaller (31.2 % before the WebP ICC correction). Size range by image size (median, images in brackets):
+Against WebP at each image's WebP quality, the default is 29.7 % (standard) and 30.6 % (size range)
+smaller (30.0 % and 31.2 % before the WebP ICC correction). Size range by image size (median, images in brackets):
 
 | Encoder | < 1 MP | 1–5 MP | 5–10 MP | ≥ 10 MP |
 |---|---:|---:|---:|---:|
@@ -355,7 +358,7 @@ untiled libaom speed 6 anchor every comparison moves by about half a point:
 | SVT-AV1 preset 6, one tile | +1.8 % | +2.6 % |
 | SVT-AV1 preset 9, one tile | +9.4 % | +9.8 % |
 | NVENC AV1 | +29.5 % | +30.3 % |
-| WebP | +45.1 % | +46.0 % |
+| WebP (with its ICC profiles) | +42.1 % | +43.5 % |
 
 **What it means for av1gpu.** At its own file size (+0.7 % against untiled libaom speed 6), av1gpu's
 261 MP/s (v0.9.0) is 9.1× stock libaom speed 6, 8.8× the tuned build and 8.4× the tuned build at 8 × `-j 2`
@@ -998,9 +1001,10 @@ Linux, 528+ on Windows) for Linux and Windows. AWS, 2026-11-02; scripts, logs an
 ## GeForce RTX 5090 (contributed by pickae)
 
 Contributed by pickae ([discussion #19](https://github.com/maddog107/av1gpu/discussions/19)) and measured on
-their machine, not by us. Speed only: avifenc, libaom and `ssimulacra2` were not installed there, so there are no
-CPU baselines or BD-rates. The output was byte-identical to the L4's (see Correctness), so the L4's compression
-results apply unchanged. The raw results are not in `bench/results/`.
+their machine, not by us. The first run (v0.2.0, below) was speed only: avifenc, libaom and `ssimulacra2` were not
+installed there, so it has no CPU baselines or BD-rates. The output was byte-identical to the L4's (see
+Correctness), so the L4's compression results apply unchanged. A second run with v0.9.0 added the CPU baselines
+and BD-rates ([v0.9.0](#v090-the-full-benchpy)). The raw results are not in `bench/results/`.
 
 ### Setup
 
@@ -1079,3 +1083,47 @@ up by about the same factor.
   totals as in `bench/results/aws-g6-l4/` and `bench/results/aws-g6-l4-turbo-nosmall/`. The size-range totals
   differ only by the missing photo.
 - `tests/decoder_gate.py` was not run (no dav1d or aomdec on that machine).
+
+### v0.9.0: the full `bench.py`
+
+pickae's second run (2026-11-03): v0.9.0 (`7c2bf33`, native build) on the same machine, with `bench.py` as the
+README gives it. Baselines: avifenc 1.3.0 with libaom 3.13.1 (`tune=iq`), cwebp 1.5.0, `ssimulacra2` from libjxl
+v0.11.1. Standard set, 1,023 MP per speed run, quality 60:
+
+| Encoder | MP/s | CPU cores | L4, v0.9.0 |
+|---|---:|---:|---:|
+| av1gpu default | **214.3** | 0.3 | 81.2 |
+| libaom speed 6, 32 × avifenc `-j 1` | 33.2 | 32 | 21.1 (16 vCPUs) |
+| libaom speed 9, 32 × avifenc `-j 1` | 263.8 | 32 | 166.1 (16 vCPUs) |
+
+- **2.6× the L4** on the standard set, and 1.77× this card's v0.2.0 result (121.1 MP/s).
+- **Against the whole i9-13900K** (32 threads): 6.5× libaom speed 6 and 0.81× libaom speed 9, at 0.3 CPU cores (the
+  L4 against its 16 EPYC vCPUs: 3.9× and 0.49×).
+- **av1gpu wrote 71.43 MB**, 13 × 5,494,550 bytes, the same total as on the L4.
+
+BD-rate on SSIMULACRA2 against libaom speed 6, median (mean):
+
+| Encoder | RTX 5090 run | L4 |
+|---|---:|---:|
+| av1gpu default | −0.5 % (−1.4 %) | +0.3 % (−0.1 %) |
+| libaom speed 9 | +16.5 % (+19.5 %) | +17.7 % (+20.7 %) |
+| WebP | +40.2 % (+43.1 %) | +40.4 % (+44.3 %)³ |
+| av1gpu default vs WebP | −29.7 % (−30.5 %) | −29.7 % (−30.5 %)³ |
+
+av1gpu's files are the same on both machines, and so are WebP's, so the av1gpu-vs-WebP row matches to the digit.
+The rows against libaom speed 6 move because the reference differs. avifenc 1.3.0 maps `-q` to the quantizer as
+(100 − q) × 63 / 100 for every tuning; 1.4.0, used on the L4, has a table made for `tune=iq`. So `-q 60` is
+quantizer 25 in 1.3.0 and 30 in 1.4.0 (30 to 80: 44–13 against 49–15). The same libaom is sampled at lower
+quantizers, its quality-60 files are 27 % larger (107.55 against 84.50 MB), and the curves overlap over a
+different range. This run's WebP mean led to the standard set's re-score with ICC profiles (³ in
+[Compression](#compression-1)).
+
+pickae also timed their media tool end to end, including its CPU-side work (unpacking, page sorting, trim
+measurement). It calls `av1gpu --batch` with `--crop` / `--max-size` per line, `--tiles 2,2,2` and `--max-mp 100`:
+
+- **961 photos** of about 17 MP (16,470 MP, up to 48 MP), 10-bit 4:2:0 `turbo`: 22.7 s, over 700 MP/s, with the
+  card at 90 % utilisation or more for 85 % of the run.
+- **61 comic books** (about 37,250 MP of pages of about 3.3 MP), trimmed and shrunk on the card, 4:4:4 10-bit
+  `turbo`: 249 s. The card averaged 75 % utilisation; the tool's CPU-side page sorting was the limit.
+- Their CPU path (ImageMagick 7.1.2 / libheif with libaom speed 5 and 4, every thread), with quality settings
+  calibrated to the same SSIMULACRA2, took 60× and 25× as long. Those outputs were not scored.
