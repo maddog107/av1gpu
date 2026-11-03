@@ -468,6 +468,7 @@ static int run_single(const GpConfig &cfg0, const Opts &o) {
         ic.pinned_bytes = gp_ingest_pinned_bytes(decMaxMp);   // D round 2: > 6000 px sides go to the CPU route (coefficients staged in this arena)
         ic.out_444 = cfg.yuv444;
         ic.max_mp = decMaxMp;
+        ic.lazy_arena = 1;   // baseline JPEGs (the hardware decoder) never touch it: 24 ms of pinning saved
         if (getenv("GP_INGEST_DECODER")) ic.decoder = atoi(getenv("GP_INGEST_DECODER"));   // 1: CPU entropy decode + GPU IDCT
         char eb[256] = {0};
         ictx = ingest_create(&ic, eb, sizeof eb);

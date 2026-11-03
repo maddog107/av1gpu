@@ -63,9 +63,14 @@ static inline size_t align_up(size_t x, size_t a) { return (x + a - 1) / a * a; 
 // ------------------------------------------------------------------ pinned arena (FIFO first-fit)
 class Arena {
  public:
-  bool init(size_t cap) {
+  // lazy: only the size now; the memory is pinned by the first alloc (map() under the lock)
+  bool init(size_t cap, bool lazy = false, int device = 0) {
     cap_ = align_up(cap, 4096);
     free_[0] = cap_;
+    device_ = device;
+    return lazy || map();
+  }
+  bool map() {
 #ifndef _WIN32
     // huge pages, faulted in here and then registered: cudaHostAlloc of the 256 MiB arena took 145 ms on an L4 host
     // (g6.4xlarge), all of it with the driver lock held (the encoders' CUDA calls wait); this way the pages are
@@ -101,6 +106,11 @@ class Arena {
     n = align_up(std::max<size_t>(n, 1), 256);
     if (n > cap_) return nullptr;
     std::unique_lock<std::mutex> lk(m_);
+    if (!base_) {   // lazy arena: its first use (a worker thread)
+      if (map_failed_) return nullptr;
+      cudaSetDevice(device_);
+      if (!map()) { map_failed_ = true; return nullptr; }
+    }
     uint64_t ticket = next_ticket_++;
     for (;;) {
       if (closing_) return nullptr;
@@ -151,6 +161,8 @@ class Arena {
  private:
   uint8_t *base_ = nullptr;
   bool mapped_ = false;   // mmap + cudaHostRegister (else cudaHostAlloc)
+  bool map_failed_ = false;
+  int device_ = 0;
   size_t cap_ = 0, used_ = 0, peak_ = 0;
   std::map<size_t, size_t> free_;
   std::mutex m_;
@@ -1087,7 +1099,7 @@ ingest_ctx *ingest_create(const ingest_config *cfg, char *err, int errlen) {
     uint64_t thr = 1ull << 30;
     cudaMemPoolSetAttribute(mp, cudaMemPoolAttrReleaseThreshold, &thr);
   }
-  if (!c->arena.init((size_t)k.pinned_bytes)) return fail("cudaHostAlloc of the pinned arena failed");
+  if (!c->arena.init((size_t)k.pinned_bytes, k.lazy_arena != 0, k.device)) return fail("cudaHostAlloc of the pinned arena failed");
   for (int i = 0; i < k.max_inflight + 1; ++i) {
     cudaStream_t s;
     if (cudaStreamCreateWithPriority(&s, cudaStreamNonBlocking, c->stream_prio) != cudaSuccess)
