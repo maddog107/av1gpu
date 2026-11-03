@@ -1776,11 +1776,15 @@ int run_batch_device(const DevBatch &b, cudaStream_t s, void *scratch, size_t sc
 // host convenience wrapper: upload records -> run_batch_device -> download
 // ---------------------------------------------------------------------------
 template <class T>
-static int up(T *&d, const std::vector<T> &h, size_t &bytes, std::string &err) {
-    CK(cudaMalloc(&d, std::max<size_t>(1, h.size()) * sizeof(T)));
-    if (!h.empty()) CK(cudaMemcpy(d, h.data(), h.size() * sizeof(T), cudaMemcpyHostToDevice));
-    bytes += h.size() * sizeof(T);
+static int up(T *&d, const T *h, size_t n, size_t &bytes, std::string &err) {
+    CK(cudaMalloc(&d, std::max<size_t>(1, n) * sizeof(T)));
+    if (n) CK(cudaMemcpy(d, h, n * sizeof(T), cudaMemcpyHostToDevice));
+    bytes += n * sizeof(T);
     return 0;
+}
+template <class T>
+static int up(T *&d, const std::vector<T> &h, size_t &bytes, std::string &err) {
+    return up(d, h.data(), h.size(), bytes, err);
 }
 
 int run_batch(const std::vector<const av1g_decision_record *> &frames, bool keepSyms, BatchResult &res, std::string &err) {
@@ -1793,27 +1797,46 @@ int run_batch(const std::vector<const av1g_decision_record *> &frames, bool keep
     std::vector<int16_t> coeffs;
     std::vector<av1g_palette> pals;
     std::vector<uint8_t> cmap;
+    // the arrays to upload: one frame (single-file mode) straight from its record, several concatenated
+    const av1g_block *hB = nullptr; const uint32_t *hBT = nullptr; const av1g_txb *hT = nullptr; const int16_t *hC = nullptr;
+    const av1g_palette *hP = nullptr; const uint8_t *hM = nullptr;
+    size_t nBk = 0, nTx = 0, nCo = 0, nPa = 0, nMa = 0;
     for (uint32_t f = 0; f < nF; f++) {
         const av1g_decision_record &R = *frames[f];
+        const bool pal = R.fp.version >= 5 && R.n_palettes;
         DevFrame &d = df[f];
         d.fp = R.fp;
-        d.blockBase = (uint32_t)blocks.size();
+        d.blockBase = (uint32_t)nBk;
         d.nBlocks = R.n_blocks;
-        d.txbBase = (uint32_t)txb.size();
+        d.txbBase = (uint32_t)nTx;
         d.nTxb = R.n_txb;
-        d.coeffBase = coeffs.size();
+        d.coeffBase = nCo;
+        d.palBase = (uint32_t)nPa;
+        d.mapBase = nMa;
+        if (pal) {
+            d.nPal = R.n_palettes;
+            d.nMap = R.n_color_map;
+        }
+        nBk += R.n_blocks;
+        nTx += R.n_txb;
+        nCo += R.n_coeffs;
+        if (pal) { nPa += R.n_palettes; nMa += R.n_color_map; }
+        if (nF == 1) {
+            hB = R.blocks; hBT = R.block_txb; hT = R.txb; hC = R.coeffs;
+            if (pal) { hP = R.palettes; hM = R.color_map; }
+            continue;
+        }
         blocks.insert(blocks.end(), R.blocks, R.blocks + R.n_blocks);
         blockTxb.insert(blockTxb.end(), R.block_txb, R.block_txb + R.n_blocks);
         txb.insert(txb.end(), R.txb, R.txb + R.n_txb);
         coeffs.insert(coeffs.end(), R.coeffs, R.coeffs + R.n_coeffs);
-        d.palBase = (uint32_t)pals.size();
-        d.mapBase = cmap.size();
-        if (R.fp.version >= 5 && R.n_palettes) {
-            d.nPal = R.n_palettes;
-            d.nMap = R.n_color_map;
+        if (pal) {
             pals.insert(pals.end(), R.palettes, R.palettes + R.n_palettes);
             cmap.insert(cmap.end(), R.color_map, R.color_map + R.n_color_map);
         }
+    }
+    if (nF != 1) {
+        hB = blocks.data(); hBT = blockTxb.data(); hT = txb.data(); hC = coeffs.data(); hP = pals.data(); hM = cmap.data();
     }
     cudaEvent_t eu0, eu1, ed0, ed1;
     cudaEventCreate(&eu0); cudaEventCreate(&eu1); cudaEventCreate(&ed0); cudaEventCreate(&ed1);
@@ -1824,8 +1847,8 @@ int run_batch(const std::vector<const av1g_decision_record *> &frames, bool keep
     av1g_block *dB; uint32_t *dBT; av1g_txb *dT; int16_t *dC;
     av1g_palette *dP;
     uint8_t *dM;
-    if (up(dB, blocks, bytes, err) || up(dBT, blockTxb, bytes, err) || up(dT, txb, bytes, err) || up(dC, coeffs, bytes, err) ||
-        up(dP, pals, bytes, err) || up(dM, cmap, bytes, err))
+    if (up(dB, hB, nBk, bytes, err) || up(dBT, hBT, nBk, bytes, err) || up(dT, hT, nTx, bytes, err) || up(dC, hC, nCo, bytes, err) ||
+        up(dP, hP, nPa, bytes, err) || up(dM, hM, nMa, bytes, err))
         return -1;
     cudaEventRecord(eu1);
     DevBatch b;
