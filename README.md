@@ -350,7 +350,7 @@ CUDA 13 build for your system unless your NVIDIA driver is older than 580:
 All four run on GPUs from Turing to Blackwell (compute capability 7.5 to 12.0) and need only the driver. The
 Linux binaries have the image libraries and nvJPEG linked in; for Windows, see [Windows](#-windows). Both builds
 give the same files. The CUDA 13 build is faster on Blackwell (+14–16 % on an RTX PRO 4500) and starts
-quickly: one JPEG as its own process takes 0.5 s there (v0.9.0, driver 595), CUDA start-up included. With the
+quickly: one JPEG as its own process takes 0.34 s there (v0.10.0, driver 595), CUDA start-up included. With the
 CUDA 12 build on Blackwell, drivers 615 and newer recompile its kernels when they
 load (a fix for a reconvergence bug). That added 8–15 s to every start without a warm CUDA compute cache
 ([#49](https://github.com/maddog107/av1gpu/issues/49)).
@@ -477,8 +477,8 @@ build/av1gpu --batch photos/ --outdir avif/ --preset slow
 Batch mode is the fast path. It decodes, encodes and entropy-codes several batches at once, so the
 GPU stays busy. One process per image, as an upload pipeline runs it, pays for CUDA start-up every time,
 but briefly: on the L4 a cold `av1gpu photo.jpg photo.avif` takes 0.36 s for a 2.5 MP JPEG, 0.47 s for
-10 MP and 0.35 s for a 512 × 384 thumbnail, and a `--batch` of a photo and its thumbnail 0.58 s (0.51,
-0.58, 0.50 and 0.68 s on an RTX PRO 4500; [details](docs/RESULTS.md#single-image-start-up)).
+10 MP and 0.35 s for a 512 × 384 thumbnail, and a `--batch` of a photo and its thumbnail 0.58 s (0.34,
+0.42, 0.34 and 0.67 s on an RTX PRO 4500 with v0.10.0; [details](docs/RESULTS.md#single-image-start-up)).
 
 | Option | Meaning |
 |---|---|
