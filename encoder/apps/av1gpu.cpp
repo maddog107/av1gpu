@@ -12,6 +12,9 @@
 #include "av1f/tuneiq.h"
 
 #include <cuda_runtime.h>
+#ifndef _WIN32
+#include <unistd.h>
+#endif
 
 #include <algorithm>
 #include <chrono>
@@ -19,6 +22,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <string>
+#include <thread>
 #include <vector>
 #include <vector>
 
@@ -438,8 +442,11 @@ static bool parse(int argc, char **argv, GpConfig &cfg, Opts &o) {
 const char *gp_fallback_reason(int r);   // batch.cpp
 extern const char *const gp_lossless_jpeg_refusal;                                              // batch.cpp
 std::string gp_lossless_oom_hint(const GpConfig &cfg, const std::string &err, double batchMp);   // batch.cpp
-static int run_single(const GpConfig &cfg, const Opts &o) {
+static int run_single(const GpConfig &cfg0, const Opts &o) {
     std::string err;
+    // the reconstruction (CDEF applied, downloaded) only for the outputs that use it, as in batch mode
+    GpConfig cfg = cfg0;
+    cfg.wantRecon = o.debugOutputs || o.check;
     const GpFileKind kind = gp_sniff(o.in);
     if (kind == GP_FILE_JPEG && cfg.lossless) { fprintf(stderr, "%s: %s\n", o.in.c_str(), gp_lossless_jpeg_refusal); return 3; }
     // the largest picture encoded and source decoded (megapixels, 0: none): JPEGs 35.6, PNG / WebP none without the options
@@ -447,7 +454,6 @@ static int run_single(const GpConfig &cfg, const Opts &o) {
     char big[64];
     snprintf(big, sizeof big, "larger than %.1f megapixels", decMaxMp);
     GpEncoder enc;
-    if (enc.init(cfg, err)) { fprintf(stderr, "init: %s\n", err.c_str()); return 1; }
     GpFrameIn fin, afin;   // afin: the alpha frame (W = 0: none)
     std::vector<uint8_t> icc;
     int orientation = 1;
@@ -456,6 +462,11 @@ static int run_single(const GpConfig &cfg, const Opts &o) {
     memset(&ib, 0, sizeof ib);
     uint8_t *dplanes = nullptr, *dconv = nullptr, *dxf = nullptr;
     auto t0 = std::chrono::steady_clock::now();
+    // a JPEG is decoded in a thread while the encoder initialises: setting up nvJPEG's hardware decoder (~70 ms on an
+    // L4) overlaps the table uploads and kernel-module loads of GpEncoder::init
+    std::thread ingestT;
+    int ir = 0;
+    char eb[256] = {0};
     if (kind == GP_FILE_JPEG) {
         ingest_config ic;
         ingest_default_config(&ic);
@@ -465,15 +476,27 @@ static int run_single(const GpConfig &cfg, const Opts &o) {
         ic.pinned_bytes = gp_ingest_pinned_bytes(decMaxMp);   // D round 2: > 6000 px sides go to the CPU route (coefficients staged in this arena)
         ic.out_444 = cfg.yuv444;
         ic.max_mp = decMaxMp;
+        ic.lazy_arena = 1;   // baseline JPEGs (the hardware decoder) never touch it: 24 ms of pinning saved
         if (getenv("GP_INGEST_DECODER")) ic.decoder = atoi(getenv("GP_INGEST_DECODER"));   // 1: CPU entropy decode + GPU IDCT
-        char eb[256] = {0};
-        ictx = ingest_create(&ic, eb, sizeof eb);
+        ingestT = std::thread([&, ic]() {
+            ictx = ingest_create(&ic, eb, sizeof eb);
+            if (!ictx) return;
+            const char *paths[1] = {o.in.c_str()};
+            ingest_submit(ictx, paths, 1);
+            ingest_finish_submit(ictx);
+            ir = ingest_next_batch(ictx, &ib, -1);
+        });
+    }
+    const int initRc = enc.init(cfg, err);
+    if (ingestT.joinable()) ingestT.join();
+    if (initRc) {
+        fprintf(stderr, "init: %s\n", err.c_str());
+        if (ictx) ingest_destroy(ictx);
+        return 1;
+    }
+    if (kind == GP_FILE_JPEG) {
         if (!ictx) { fprintf(stderr, "ingest_create: %s\n", eb); return 1; }
-        const char *paths[1] = {o.in.c_str()};
-        ingest_submit(ictx, paths, 1);
-        ingest_finish_submit(ictx);
-        int r = ingest_next_batch(ictx, &ib, -1);
-        if (r != 1) {
+        if (ir != 1) {
             ingest_fallback fb;
             int nf = ingest_get_fallbacks(ictx, &fb, 1);
             fprintf(stderr, "%s: %s\n", o.in.c_str(), !nf ? "decode failed" : fb.reason == INGEST_FB_GIANT ? big : gp_fallback_reason(fb.reason));
@@ -595,7 +618,12 @@ static int run_single(const GpConfig &cfg, const Opts &o) {
     };
     if (E->encode({fin}, outs, tm, err)) return failed("encode");
     if (hasAlpha && encA.encode({afin}, aouts, tma, err)) return failed("encode (alpha)");
+#ifdef _WIN32
     if (ictx) { ingest_release_batch(ictx, ib.batch_id, nullptr); ingest_destroy(ictx); }
+#else
+    // Linux: the ingest is not torn down; the process ends after this image (main: _exit), and the kernel frees its
+    // memory faster than nvJPEG's teardown (the destroy took 77 ms on an L4, 35 ms of it freeing the preallocated decoder)
+#endif
     if (dplanes) cudaFree(dplanes);
     if (dconv) cudaFree(dconv);
     if (dxf) cudaFree(dxf);
@@ -724,6 +752,16 @@ static int run_single(const GpConfig &cfg, const Opts &o) {
 
 int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::string &outdir, bool gpuEntropy, bool stats,
                    const std::string &suffix);
+long gp_batch_input_count(const std::string &list);   // batch.cpp
+// A run with little GPU work to overlap: single-file mode, or a --batch of at most kShortBatch encodes (inputs times
+// --qindex values), such as one upload and its thumbnail.  Counted before CUDA starts (run_batch_mode reads the list
+// again).
+static bool gp_short_run(const Opts &o) {
+    const long kShortBatch = 8;
+    if (o.batch.empty()) return true;
+    const long n = gp_batch_input_count(o.batch);   // -1 (unreadable): run_batch_mode reports it
+    return n * std::max<long>(1, (long)o.qlist.size()) <= kShortBatch;
+}
 
 int main(int argc, char **argv) {
 #ifdef _WIN32
@@ -742,10 +780,14 @@ int main(int argc, char **argv) {
     }
 #endif
     // blocking sync: host threads sleep while waiting for the GPU (CPU budget <= 4 cores)
-    // more hardware work queues than the default 8: ingest (nvJPEG + per-worker streams), encoders
-    // (main + high-priority wavefront stream) and entropy threads use > 20 streams; aliased queues
-    // serialise unrelated work (nsys 2026-10-02: next batch's analysis queued behind entropy)
-    setenv("CUDA_DEVICE_MAX_CONNECTIONS", getenv("GP_MAX_CONNECTIONS") ? getenv("GP_MAX_CONNECTIONS") : "32", 0);
+    // hardware work queues: long batches use 32, more than the default 8: ingest (nvJPEG + per-worker streams), encoders
+    // (main + high-priority wavefront stream) and entropy threads use > 20 streams; aliased queues serialise unrelated
+    // work (nsys 2026-10-02: next batch's analysis queued behind entropy).  But every queue is set up with the context
+    // and torn down at exit: on an L4, 32 queues made each process 0.5 s slower than 1 (a 320 x 213 JPEG: 1.10 s against
+    // 0.59 s).  A single image or a short list has little work to overlap, so it gets one queue.
+    const char *conns = getenv("GP_MAX_CONNECTIONS");
+    if (!conns) conns = gp_short_run(o) ? "1" : "32";
+    setenv("CUDA_DEVICE_MAX_CONNECTIONS", conns, 0);
     // batch mode: every kernel module loaded with the context, not on first use.  A lazy load mid-run waited for
     // the GPU to drain while every thread's CUDA calls blocked (nsys, L4: 0.33-0.47 s at the first batch's post-filter
     // launch); eager loading moves that before the batch starts (unless CUDA_MODULE_LOADING is set)
@@ -779,5 +821,13 @@ int main(int argc, char **argv) {
         }
         return rc;
     }
-    return run_single(cfg, o);
+    const int rc = run_single(cfg, o);
+#ifndef _WIN32
+    // single image, Linux: end without the orderly CUDA / nvJPEG teardown (run_single closed every output file; the kernel
+    // releases the GPU context and memory as the process exits): 40 ms less per process on an L4
+    fflush(stdout);
+    fflush(stderr);
+    _exit(rc);
+#endif
+    return rc;
 }

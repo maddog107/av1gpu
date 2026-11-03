@@ -1,0 +1,5 @@
++ curl -sSLO https://github.com/maddog107/av1gpu/releases/download/v0.8.0/av1gpu-0.8.0-linux-x86_64.tar.gz
++ curl -sSLO https://github.com/maddog107/av1gpu/releases/download/v0.8.0/av1gpu-0.8.0-linux-x86_64.tar.gz.sha256
++ sha256sum -c av1gpu-0.8.0-linux-x86_64.tar.gz.sha256
+av1gpu-0.8.0-linux-x86_64.tar.gz: OK
++ tar -xzf av1gpu-0.8.0-linux-x86_64.tar.gz

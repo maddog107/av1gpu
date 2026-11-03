@@ -247,6 +247,12 @@ struct Agg {
 };
 }  // namespace
 
+// the number of inputs a --batch LIST|DIR names (-1: unreadable); av1gpu.cpp counts them before CUDA starts
+long gp_batch_input_count(const std::string &list) {
+    std::vector<std::string> paths, bad;
+    std::vector<GpXform> xf;
+    return list_inputs(list, paths, xf, GpXform(), bad) ? (long)paths.size() : -1;
+}
 
 // debug / batch gate (GP_WANT_RECON): <out>.obu (temporal delimiter + sequence header + frame) and the
 // encoder's reconstruction <out>.recon.yuv (visible planes, Y then U then V) for decoder comparison; an image with an

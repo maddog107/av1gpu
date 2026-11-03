@@ -1,0 +1,5 @@
+[41/43] Building CUDA object CMakeFiles/av1gpu_encoder.dir/encoder/src/k_an_uv.cu.o
+[42/43] Linking CXX static library libav1gpu_encoder.a
+[43/43] Linking CXX executable av1gpu
+exit 0 after 64 s
+BUILD_DONE

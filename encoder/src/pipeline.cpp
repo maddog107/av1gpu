@@ -84,6 +84,18 @@ av1g_decision_record GpFrameOut::record() {
     return r;
 }
 
+// The variance-boost LUT of av1f_vb_build_luts_bd (lut[base][var], 256 x 1024) holds only the row of the encoder's
+// qindex: k_sb_stats reads lut[base_q_idx][var], and every frame of an encoder has base_q_idx = its qindex.  The other
+// rows stay zero.  The row is the same av1f_varboost_qindex() on the host; all 256 rows took 24 ms per encoder.
+static cudaError_t gp_vb_lut_row(uint8_t *d_luts, int base, int strength, int bd, cudaStream_t st) {
+    uint8_t row[1024];
+    for (int v = 0; v < 1024; v++) row[v] = (uint8_t)(base == 0 ? 0 : av1f_varboost_qindex(base, (unsigned)v, strength, bd == 10 ? 10 : 8));
+    cudaError_t e = cudaMemsetAsync(d_luts, 0, 256 * 1024, st);
+    if (e == cudaSuccess) e = cudaMemcpyAsync(d_luts + (size_t)base * 1024, row, sizeof row, cudaMemcpyHostToDevice, st);
+    if (e == cudaSuccess) e = cudaStreamSynchronize(st);   // row is on the stack
+    return e;
+}
+
 GpEncoder::GpEncoder() { memset(ev_, 0, sizeof ev_); memset(evx_, 0, sizeof evx_); }
 GpEncoder::~GpEncoder() {
     for (auto &e : ev_)
@@ -108,7 +120,7 @@ int GpEncoder::init(const GpConfig &cfg, std::string &err) {
     }
     if (cfg_.vb) {
         GPCK(cudaMalloc(&vbLuts_, 256 * 1024));
-        if (av1f_vb_build_luts(vbLuts_, cfg_.vbStrength, 0)) { err = "av1f_vb_build_luts failed"; return -1; }
+        GPCK(gp_vb_lut_row(vbLuts_, cfg_.qindex, cfg_.vbStrength, 8, 0));
         GPCK(cudaDeviceSynchronize());
     }
     // keep freed stream-ordered allocations cached between batches
@@ -385,7 +397,7 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
         GPCK(cudaMemcpyAsync(dVd, vd.data(), n * sizeof(av1f_vb_desc), cudaMemcpyHostToDevice, st));
         if (bd == 10 && !vbLuts10_) {   // 10-bit LUTs on first use (libaom's 10-bit q tables)
             GPCK(cudaMalloc(&vbLuts10_, 256 * 1024));
-            if (av1f_vb_build_luts_bd(vbLuts10_, cfg_.vbStrength, 10, st)) { err = "av1f_vb_build_luts_bd failed"; A.release(); return -1; }
+            if (gp_vb_lut_row(vbLuts10_, cfg_.qindex, cfg_.vbStrength, 10, st)) { err = "variance-boost LUT failed"; A.release(); return -1; }
         }
         if (bd == 10)
             GPCK((cudaError_t)av1f_varboost_bd(dVd, n, (uint32_t)sbqTotal, vbLuts10_, cfg_.vbOrder, 10, nullptr, nullptr, dSbq, st));
@@ -777,7 +789,9 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
                     fp.cdef_uv_pri[k] = (uint8_t)r.uv_pri[k]; fp.cdef_uv_sec[k] = (uint8_t)r.uv_sec[k];
                 }
                 cdefOn[i] = 1;
-                // CDEF on the deblocked frame (the search left d_recon deblocked, and its maps and directions in pscr[i])
+                // CDEF on the deblocked frame (the search left d_recon deblocked, and its maps and directions in pscr[i]).
+                // Only the reconstruction download reads it (the search set cdef_idx), so without wantRecon it is skipped
+                if (!cfg_.wantRecon) continue;
                 av1g_pf_frame pf;
                 av1g_gpu_pf_attach(&fp, pscr[i], &pf);
                 pf.cdefIdx = dSbc + I.sbBase;

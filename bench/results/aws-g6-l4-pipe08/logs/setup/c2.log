@@ -1,0 +1,5 @@
+[25/29] Linking CXX static library libav1core_gpu.a
+[26/29] Building CUDA object CMakeFiles/av1gpu_encoder.dir/encoder/src/k_an_a.cu.o
+[27/29] Building CUDA object CMakeFiles/av1gpu_encoder.dir/encoder/src/k_an_uv.cu.o
+[28/29] Linking CXX static library libav1gpu_encoder.a
+[29/29] Linking CXX executable av1gpu

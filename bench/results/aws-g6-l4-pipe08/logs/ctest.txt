@@ -1,0 +1,39 @@
+Test project /home/ubuntu/new/build
+    Start 1: fuzz_dav1d_aomdec
+    Start 2: fuzz_lossless
+    Start 3: avif_alpha
+    Start 4: gate_cfl_edge
+1/9 Test #3: avif_alpha .......................   Passed    0.52 sec
+    Start 5: batch_skip_unreadable
+2/9 Test #4: gate_cfl_edge ....................   Passed    4.31 sec
+    Start 6: crop_resize
+3/9 Test #2: fuzz_lossless ....................   Passed    4.90 sec
+    Start 7: gate_crop_resize
+4/9 Test #5: batch_skip_unreadable ............   Passed    5.20 sec
+    Start 8: jpeg_gray_sampling
+5/9 Test #1: fuzz_dav1d_aomdec ................   Passed    8.46 sec
+    Start 9: jpeg_inverted_sampling
+6/9 Test #7: gate_crop_resize .................   Passed    3.62 sec
+7/9 Test #6: crop_resize ......................   Passed   13.83 sec
+8/9 Test #8: jpeg_gray_sampling ...............   Passed   85.00 sec
+9/9 Test #9: jpeg_inverted_sampling ...........   Passed  125.92 sec
+
+100% tests passed, 0 tests failed out of 9
+
+Total Test time (real) = 134.43 sec
+ctest rc 0 (135 s)
+GPU FUZZ (run_batch_device, device arrays, non-blocking stream, 1 scratch allocations) seeds 1..400: 400 cases (131 4:4:4, 80 monochrome, 157 10-bit, 105 lossless), 493 tiles, 53959098 symbols, 3 symbol-capacity errors reported + rerun (+2 reruns over the default bound), order check ok, 0 mismatches -> PASSED
+gpu_fuzz_test rc 0
+GPU POSTFILTER seeds 1..200: 200 cases (140 with deblocking/CDEF; 4:4:4: 71, 56 with deblocking/CDEF; 10-bit: 74, 46 with deblocking/CDEF), 0 mismatches -> PASSED
+gpu_postfilter_test rc 0
+  device-math LUT differs: strength 200 base 62 var 64: 36 vs host 37
+  device-math LUT differs: strength 200 base 232 var 64: 182 vs host 183
+LUT (3 strengths x 255 bases x 1024 variances): device-math 2 differ (informational), uploaded 0 differ
+random planes: 22836 SB results (3 orders), 4794 boosted (TILE order), 0 differ
+tune=iq frame decisions (4:2:0, 4:4:4, monochrome x 255 bases): 0 differ from libaom av1_set_quantizer, 0 device/host differ (rdmult device-math: 3 differ, informational)
+10-bit LUT (3 strengths x 255 x 1024): uploaded 0 differ from the host, host 0 differ from libaom's 10-bit path
+random 10-bit planes: 3869 SB results (TILE order), 1829 boosted, 0 differ; 8x8 variances vs libaom highbd_10: 0 differ
+10-bit tune=iq frame decisions (3 layouts x 255 bases): 0 differ from libaom's high-bitdepth rules
+PASS
+varboost_test rc 0
+CHECKS_DONE

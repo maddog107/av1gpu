@@ -92,6 +92,8 @@ typedef struct ingest_config {
   int64_t batch_pixels;   /* luma pixels per batch, small/regular classes (default 16e6) */
   double max_mp;          /* fallback above this (default 35.6) */
   double small_mp;        /* images below this go to the SMALL class (default 1.0) */
+  int lazy_arena;         /* 1: pin the arena when the first image needs it (CPU-route JPEGs), not in ingest_create
+                             (one image: baseline JPEGs go to the hardware decoder and never use it); default 0 */
 } ingest_config;
 
 typedef struct ingest_image {
