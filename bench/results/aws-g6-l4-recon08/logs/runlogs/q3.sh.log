@@ -1,0 +1,6 @@
+start 05:58:10 {'main': '/home/ubuntu/old/build/av1gpu', 'c1': '/home/ubuntu/bins/c1', 'c3': '/home/ubuntu/bins/c3'}
+== standard_default : 400 files, 315 MP (4x)
+  main: 70.75 MP/s, 89.86 img/s  rounds [71.21, 70.39]  vs main +0.00 %
+  c1: 72.85 MP/s, 92.53 img/s  rounds [73.46, 72.34]  vs main +2.98 %
+  c3: 72.42 MP/s, 91.99 img/s  rounds [72.49, 72.3]  vs main +2.37 %
+Terminated

@@ -1,0 +1,47 @@
+--- k_recon_main.cuh	2026-11-02 21:55:36
++++ k_recon.cuh	2026-11-02 21:34:28
+@@ -962,6 +962,7 @@
+         predRes = big ? S.bigG->res : S.u.w[0].res;
+         J0 = 0.f;   // only the tx-size trial uses it
+     }
++    rc_tick(B, P, 9);
+     int txDepth = 0;
+     if (trySplit) {
+         // ---- tx-size search: largest tx (above) vs one split level, closed loop: every sub tx block is
+@@ -1065,6 +1066,8 @@
+                 }
+                 eobAny |= rc_record_txb<1, BD>(Ws, Hs, S, B, sb, I, 0, txSub, tSel, xs >> 2, ys >> 2, sr4, sc4);
+             }
++        __syncthreads();
++        rc_tick(B, P, 10);
+         if (J1 < limit) {
+             txDepth = 1;
+             *outEob = eobAny;
+@@ -1081,6 +1084,7 @@
+             __syncthreads();
+         }
+     }
++    rc_tick(B, P, 11);
+     *outTxDepth = txDepth;
+     if (txDepth == 0) {
+         Px *dst = gp_rec<BD>(I, 0) + (size_t)y * I.rpitch[0] + x;
+--- batch_main.cpp	2026-11-02 21:55:39
++++ batch.cpp	2026-11-02 21:34:28
+@@ -1019,13 +1019,13 @@
+     if (cfg.P.profile) {
+         // k_recon CTA-cycles per phase vs the capacity of the recon wall time (SM clock: GP_CLOCK_GHZ)
+         unsigned long long tot = 0;
+-        for (int k = 0; k < 9; k++) tot += A.prof[k];
++        for (int k = 0; k < 16; k++) tot += A.prof[k];
+         const double clk = getenv("GP_CLOCK_GHZ") ? atof(getenv("GP_CLOCK_GHZ")) : 2.7;
+         const int rcCtas = getenv("GP_RC_CTAS") ? atoi(getenv("GP_RC_CTAS")) : 4;
+-        static const char *ph[9] = {"luma setup", "luma pass1", "luma pass2", "luma final", "chroma edges+CfL", "chroma SATD",
+-                                    "chroma RD", "chroma final", "maps+record"};
++        static const char *ph[16] = {"luma setup", "luma pass1", "luma pass2", "luma final", "chroma edges+CfL", "chroma SATD",
++                                    "chroma RD", "chroma final", "maps+record", "lf-levels", "lf-split", "lf-rebuild", "x12", "x13", "x14", "x15"};
+         fprintf(stderr, "[av1gpu] recon phases:");
+-        for (int k = 0; k < 9; k++) fprintf(stderr, " %s %.1f%%", ph[k], tot ? 100.0 * A.prof[k] / tot : 0.0);
++        for (int k = 0; k < 16; k++) fprintf(stderr, " %s %.1f%%", ph[k], tot ? 100.0 * A.prof[k] / tot : 0.0);
+         fprintf(stderr, "\n");
+         int sms = 0;
+         cudaDeviceGetAttribute(&sms, cudaDevAttrMultiProcessorCount, 0);

@@ -1,0 +1,12 @@
+images enc=default  wall 4.674831953
+images enc=default --prof wall 4.328864583
+images enc=1  wall 4.472729916
+images enc=1 --prof wall 4.519590818
+thumbs enc=default  wall 1.903964245
+thumbs enc=default --prof wall 1.915234725
+thumbs enc=1  wall 1.926875044
+thumbs enc=1 --prof wall 1.925806811
+images_std enc=default  wall 2.678748012
+images_std enc=default --prof wall 2.574081707
+images_std enc=1  wall 2.608413543
+images_std enc=1 --prof wall 2.653317820

@@ -1,0 +1,4 @@
+[av1gpu] 100 images (78.7 MP) in 1670.2 ms: 59.87 img/s, 47.14 MP/s; 1 batches; out 5.49 MB (0.558 bpp); CPU 335 ms = 0.20 cores; skipped (unsupported): 0; WebP/PNG via CPU decode: 0; write failures 0
+[av1gpu] stage ms: ingest wait 47.3 | gpu setup 3.0 analysis 513.3 dp 0.4 recon 837.4 pack 0.3 postfilter 7.2 download 0.0 (gpu total 1411.0, encode wall 371.4) | entropy wall 166.1 (gpu 152.7) | write 18.1 | peak dev 1171 MB
+[av1gpu] recon phases: luma setup 6.3% luma pass1 0.8% luma pass2 21.6% luma final 16.3% chroma edges+CfL 6.9% chroma SATD 9.8% chroma RD 19.9% chroma final 9.9% maps+record 2.7% lf-levels 5.7% lf-split 0.0% lf-rebuild 0.3% x12 0.0% x13 0.0% x14 0.0% x15 0.0%
+[av1gpu] recon CTA-cycles 7.6e+09 = 1.4% of 58 SMs x 4 CTAs x 2.7 GHz x recon 837 ms

@@ -1,0 +1,13 @@
+[1/13] Building CUDA object CMakeFiles/av1gpu_encoder.dir/encoder/src/k_pal.cu.o
+[2/13] Building CUDA object CMakeFiles/av1gpu_encoder.dir/encoder/src/k_an_c.cu.o
+[3/13] Building CUDA object CMakeFiles/av1gpu_encoder.dir/encoder/src/k_lossless.cu.o
+[4/13] Building CUDA object CMakeFiles/av1gpu_encoder.dir/encoder/src/k_an_b.cu.o
+[5/13] Building CUDA object CMakeFiles/av1gpu_encoder.dir/encoder/src/k_an_d.cu.o
+[6/13] Building CUDA object CMakeFiles/av1gpu_encoder.dir/encoder/src/k_an_a.cu.o
+[7/13] Building CUDA object CMakeFiles/av1gpu_encoder.dir/encoder/src/k_an_uv.cu.o
+[8/13] Building CUDA object CMakeFiles/av1gpu_recon.dir/encoder/src/k_recon_444_8.cu.o
+[9/13] Building CUDA object CMakeFiles/av1gpu_recon.dir/encoder/src/k_recon.cu.o
+[10/13] Building CUDA object CMakeFiles/av1gpu_recon.dir/encoder/src/k_recon_420_10.cu.o
+[11/13] Building CUDA object CMakeFiles/av1gpu_recon.dir/encoder/src/k_recon_444_10.cu.o
+[12/13] Linking CXX static library libav1gpu_encoder.a
+[13/13] Linking CXX executable av1gpu

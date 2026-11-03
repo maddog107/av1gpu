@@ -1,0 +1,9 @@
+clocks.current.sm [MHz], clocks.max.sm [MHz], power.draw [W], temperature.gpu, clocks_event_reasons.active
+2040 MHz, 2040 MHz, 28.45 W, 46, 0x0000000000000001
+pid, process_name
+start 05:44:15 {'main': '/home/ubuntu/old/build/av1gpu', 'c1': '/home/ubuntu/bins/c1'}
+== size_range_default : 300 files, 1434 MP (3x)
+  main: 240.49 MP/s, 50.33 img/s  rounds [242.36, 237.31]  vs main +0.00 %
+  c1: 252.03 MP/s, 52.75 img/s  rounds [252.67, 249.21]  vs main +4.80 %
+end 05:46:05
+SPD8_DONE

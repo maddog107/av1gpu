@@ -1,0 +1,27 @@
+start 06:26:21 {'main': '/home/ubuntu/bins/main_copy', 'recon08': '/home/ubuntu/bins/final', 'main_noise': '/home/ubuntu/old/build/av1gpu'}
+== size_range_default : 300 files, 1434 MP (3x)
+  main: 237.69 MP/s, 49.75 img/s  rounds [238.11, 236.67]  vs main +0.00 %
+  recon08: 247.32 MP/s, 51.76 img/s  rounds [247.52, 247.13]  vs main +4.05 %
+  main_noise: 233.84 MP/s, 48.94 img/s  rounds [234.2, 232.24]  vs main -1.62 %
+== standard_default : 1300 files, 1023 MP (13x)
+  main: 75.50 MP/s, 95.89 img/s  rounds [75.57, 75.42]  vs main +0.00 %
+  recon08: 78.07 MP/s, 99.16 img/s  rounds [78.35, 77.58]  vs main +3.41 %
+  main_noise: 74.64 MP/s, 94.81 img/s  rounds [74.07, 74.73]  vs main -1.13 %
+== thumbs_default : 6720 files, 1019 MP (24x)
+  main: 62.39 MP/s, 411.35 img/s  rounds [62.58, 61.6]  vs main +0.00 %
+  recon08: 64.40 MP/s, 424.59 img/s  rounds [64.53, 64.14]  vs main +3.22 %
+  main_noise: 62.15 MP/s, 409.75 img/s  rounds [62.32, 61.05]  vs main -0.38 %
+== single_jpeg_8mp: 3879c92c11164a6a_large.jpg (3264, 2448)
+  main: median 1256.3 ms (min 1250.5, max 1265.5)  vs main +0.00 %
+  recon08: median 1248.3 ms (min 1237.6, max 1332.0)  vs main -0.63 %
+  main_noise: median 1252.1 ms (min 1238.7, max 1261.5)  vs main -0.34 %
+== single_jpeg_2.5mp: 1068f4f5ac7e8d01_typical.jpg (1280, 1920)
+  main: median 1081.1 ms (min 1069.7, max 1093.2)  vs main +0.00 %
+  recon08: median 1074.2 ms (min 1067.3, max 1081.2)  vs main -0.65 %
+  main_noise: median 1081.9 ms (min 1067.5, max 1091.4)  vs main +0.07 %
+== single_thumb_512x384: d512_92a594bfb7613b85_huge.jpg (512, 384)
+  main: median 1107.1 ms (min 1096.3, max 1124.1)  vs main +0.00 %
+  recon08: median 1107.2 ms (min 1094.5, max 1115.4)  vs main +0.01 %
+  main_noise: median 1111.9 ms (min 1100.8, max 1125.9)  vs main +0.43 %
+end 06:44:05
+SPD8_DONE

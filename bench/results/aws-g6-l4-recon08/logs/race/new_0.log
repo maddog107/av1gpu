@@ -1,0 +1,41 @@
+========= COMPUTE-SANITIZER
+========= Error: Race reported between Read access at void av1g_gpu::k_entropy_win<av1g_gpu::Rc64>(const unsigned int *, const unsigned long *, const unsigned long *, const int *, const unsigned long *, const av1g_cdfs *, unsigned char *, unsigned long *, av1g_gpu::DevStatus *)+0x880 in gpu_entropy.cu:1284
+=========     and Write access at void av1g_gpu::k_entropy_win<av1g_gpu::Rc64>(const unsigned int *, const unsigned long *, const unsigned long *, const int *, const unsigned long *, const av1g_cdfs *, unsigned char *, unsigned long *, av1g_gpu::DevStatus *)+0x1990 in gpu_entropy.cu:1255 [587068 hazards]
+=========     and Write access at void av1g_gpu::win_group<(int)16>(unsigned short *, unsigned int, unsigned int, const unsigned int *, unsigned int *)+0x28c0 in gpu_entropy.cu:1186 [204596 hazards]
+=========     and Write access at void av1g_gpu::win_group<(int)4>(unsigned short *, unsigned int, unsigned int, const unsigned int *, unsigned int *)+0x31b0 in gpu_entropy.cu:1186 [1669156 hazards]
+========= 
+========= Error: Race reported between Read access at void av1g_gpu::k_entropy_win<av1g_gpu::Rc64>(const unsigned int *, const unsigned long *, const unsigned long *, const int *, const unsigned long *, const av1g_cdfs *, unsigned char *, unsigned long *, av1g_gpu::DevStatus *)+0x740 in gpu_entropy.cu:1281
+=========     and Write access at void av1g_gpu::k_entropy_win<av1g_gpu::Rc64>(const unsigned int *, const unsigned long *, const unsigned long *, const int *, const unsigned long *, const av1g_cdfs *, unsigned char *, unsigned long *, av1g_gpu::DevStatus *)+0x1990 in gpu_entropy.cu:1255 [18272 hazards]
+=========     and Write access at void av1g_gpu::win_group<(int)16>(unsigned short *, unsigned int, unsigned int, const unsigned int *, unsigned int *)+0x28c0 in gpu_entropy.cu:1186 [6836 hazards]
+=========     and Write access at void av1g_gpu::win_group<(int)4>(unsigned short *, unsigned int, unsigned int, const unsigned int *, unsigned int *)+0x31b0 in gpu_entropy.cu:1186 [54276 hazards]
+========= 
+========= Error: Race reported between Read access at av1g_gpu::vload(const int *)+0x630 in gpu_entropy.cu:1214
+=========     and Write access at av1g_gpu::vstore(int *, int)+0x33d0 in gpu_entropy.cu:1215 [77560 hazards]
+========= 
+========= Error: Race reported between Write access at av1g_gpu::vstore(int *, int)+0x1030 in gpu_entropy.cu:1215
+=========     and Read access at av1g_gpu::vload(const int *)+0x1660 in gpu_entropy.cu:1214 [65552 hazards]
+=========     and Read access at __nanosleep(unsigned int)+0x16b0 in gpu_entropy.cu:1214 [8 hazards]
+========= 
+========= Error: Race reported between Read access at void av1g_gpu::k_entropy_win<av1g_gpu::Rc64>(const unsigned int *, const unsigned long *, const unsigned long *, const int *, const unsigned long *, const av1g_cdfs *, unsigned char *, unsigned long *, av1g_gpu::DevStatus *)+0x880 in gpu_entropy.cu:1284
+=========     and Write access at void av1g_gpu::k_entropy_win<av1g_gpu::Rc64>(const unsigned int *, const unsigned long *, const unsigned long *, const int *, const unsigned long *, const av1g_cdfs *, unsigned char *, unsigned long *, av1g_gpu::DevStatus *)+0x1990 in gpu_entropy.cu:1255 [1340800 hazards]
+=========     and Write access at void av1g_gpu::win_group<(int)16>(unsigned short *, unsigned int, unsigned int, const unsigned int *, unsigned int *)+0x1f30 in gpu_entropy.cu:1182 [1584 hazards]
+=========     and Write access at void av1g_gpu::win_group<(int)16>(unsigned short *, unsigned int, unsigned int, const unsigned int *, unsigned int *)+0x28c0 in gpu_entropy.cu:1186 [429676 hazards]
+=========     and Write access at void av1g_gpu::win_group<(int)4>(unsigned short *, unsigned int, unsigned int, const unsigned int *, unsigned int *)+0x31b0 in gpu_entropy.cu:1186 [4743148 hazards]
+========= 
+========= Error: Race reported between Read access at void av1g_gpu::k_entropy_win<av1g_gpu::Rc64>(const unsigned int *, const unsigned long *, const unsigned long *, const int *, const unsigned long *, const av1g_cdfs *, unsigned char *, unsigned long *, av1g_gpu::DevStatus *)+0x740 in gpu_entropy.cu:1281
+=========     and Write access at void av1g_gpu::k_entropy_win<av1g_gpu::Rc64>(const unsigned int *, const unsigned long *, const unsigned long *, const int *, const unsigned long *, const av1g_cdfs *, unsigned char *, unsigned long *, av1g_gpu::DevStatus *)+0x1990 in gpu_entropy.cu:1255 [43184 hazards]
+=========     and Write access at void av1g_gpu::win_group<(int)16>(unsigned short *, unsigned int, unsigned int, const unsigned int *, unsigned int *)+0x1f30 in gpu_entropy.cu:1182 [72 hazards]
+=========     and Write access at void av1g_gpu::win_group<(int)16>(unsigned short *, unsigned int, unsigned int, const unsigned int *, unsigned int *)+0x28c0 in gpu_entropy.cu:1186 [13816 hazards]
+=========     and Write access at void av1g_gpu::win_group<(int)4>(unsigned short *, unsigned int, unsigned int, const unsigned int *, unsigned int *)+0x31b0 in gpu_entropy.cu:1186 [153128 hazards]
+========= 
+========= Error: Race reported between Read access at av1g_gpu::vload(const int *)+0x630 in gpu_entropy.cu:1214
+=========     and Write access at av1g_gpu::vstore(int *, int)+0x33d0 in gpu_entropy.cu:1215 [201616 hazards]
+========= 
+========= Error: Race reported between Write access at av1g_gpu::vstore(int *, int)+0x1030 in gpu_entropy.cu:1215
+=========     and Read access at av1g_gpu::vload(const int *)+0x1660 in gpu_entropy.cu:1214 [181456 hazards]
+=========     and Read access at __nanosleep(unsigned int)+0x16b0 in gpu_entropy.cu:1214 [224 hazards]
+========= 
+[av1gpu] 3 images (4.6 MP) in 478719.6 ms: 0.01 img/s, 0.01 MP/s; 1 batches; out 0.16 MB (0.268 bpp); CPU 506894 ms = 1.06 cores; skipped (unsupported): 0; WebP/PNG via CPU decode: 0; write failures 0
+[av1gpu] stage ms: ingest wait 0.0 | gpu setup 5674.7 analysis 210842.5 dp 5.5 recon 192491.8 pack 36.7 postfilter 27294.8 download 0.0 (gpu total 445991.4, encode wall 446003.3) | entropy wall 239740.5 (gpu 163336.3) | write 0.4 | peak dev 73 MB
+========= RACECHECK SUMMARY: 8 hazards displayed (8 errors, 0 warnings)
+rc 0 491 s

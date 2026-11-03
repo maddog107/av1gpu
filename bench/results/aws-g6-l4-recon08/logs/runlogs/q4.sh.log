@@ -1,0 +1,15 @@
+start 06:03:34 {'main': '/home/ubuntu/old/build/av1gpu', 'c1': '/home/ubuntu/bins/c1', 'c4': '/home/ubuntu/bins/c4'}
+== size_range_default : 300 files, 1434 MP (3x)
+  main: 236.21 MP/s, 49.43 img/s  rounds [236.82, 235.54]  vs main +0.00 %
+  c1: 245.56 MP/s, 51.39 img/s  rounds [247.34, 244.9]  vs main +3.96 %
+  c4: 249.02 MP/s, 52.12 img/s  rounds [248.61, 249.43]  vs main +5.42 %
+end 06:06:19
+SPD8_DONE
+start 06:06:19 {'main': '/home/ubuntu/old/build/av1gpu', 'c1': '/home/ubuntu/bins/c1', 'c4': '/home/ubuntu/bins/c4'}
+== standard_default : 400 files, 315 MP (4x)
+  main: 70.62 MP/s, 89.69 img/s  rounds [71.2, 70.11]  vs main +0.00 %
+  c1: 72.62 MP/s, 92.23 img/s  rounds [72.82, 72.48]  vs main +2.83 %
+  c4: 72.94 MP/s, 92.64 img/s  rounds [72.74, 72.95]  vs main +3.29 %
+end 06:08:27
+SPD8_DONE
+Q4_DONE

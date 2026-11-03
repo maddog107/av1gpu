@@ -1,0 +1,9 @@
+built after 109 s
+q_sr_default: inputs 100, files 100 / 100, differ 0, skipped 0, rc 0/0, digest dea4d62e01dc791f, opts [] 
+q_thumbs: inputs 280, files 280 / 280, differ 0, skipped 0, rc 0/0, digest 1d342d7bb647ae11, opts [] 
+q_std: inputs 100, files 100 / 100, differ 0, skipped 0, rc 0/0, digest 392cc5736fb8835e, opts [] 
+[av1gpu] stage ms: ingest wait 0.4 | gpu setup 79.8 analysis 1292.1 dp 12.0 recon 3325.5 pack 25.9 postfilter 380.8 download 0.0 (gpu total 5168.9, encode wall 5171.7) | entropy wall 1232.4 (gpu 1208.9) | write 16.2 | peak dev 1120 MB
+[av1gpu] stage ms: ingest wait 0.4 | gpu setup 51.2 analysis 1371.2 dp 17.8 recon 3068.3 pack 25.0 postfilter 338.8 download 0.0 (gpu total 4918.8, encode wall 4921.5) | entropy wall 1328.5 (gpu 1306.4) | write 16.9 | peak dev 1137 MB
+[av1gpu] stage ms: ingest wait 0.1 | gpu setup 3.7 analysis 847.8 dp 0.4 recon 1151.9 pack 0.4 postfilter 8.2 download 0.0 (gpu total 2067.5, encode wall 982.8) | entropy wall 209.4 (gpu 195.8) | write 6.8 | peak dev 1154 MB
+[av1gpu] stage ms: ingest wait 0.0 | gpu setup 4.9 analysis 765.1 dp 0.5 recon 1039.9 pack 0.3 postfilter 23.8 download 0.0 (gpu total 1911.4, encode wall 861.0) | entropy wall 186.9 (gpu 173.4) | write 6.8 | peak dev 1171 MB
+BNEW_DONE

@@ -1,0 +1,18 @@
+ptxas info    : 323309 bytes gmem, 1120 bytes cmem[4]
+ptxas info    : Compiling entry function '_Z7k_reconILi0ELi8EEv7GpBatch8GpParamsPKj' for 'sm_89'
+ptxas info    : Function properties for _Z7k_reconILi0ELi8EEv7GpBatch8GpParamsPKj
+    3088 bytes stack frame, 156 bytes spill stores, 308 bytes spill loads
+ptxas info    : Used 128 registers, used 4 barriers, 3088 bytes cumulative stack size, 23488 bytes smem, 896 bytes cmem[0], 2768 bytes cmem[2]
+ptxas info    : Compile time = 45664.645 ms
+ptxas info    : Function properties for _Z14rc_final_quantILi8EEviiR8RcSharedIXT_EERK6EvalIniibiPKN13av1g_pixel_ofIXT_EE4typeEi
+    0 bytes stack frame, 0 bytes spill stores, 24 bytes spill loads
+ptxas info    : Function properties for _Z14rc_pal_prepareILi8EEvR8RcSharedIXT_EERK7GpBatchRK7GpImagejPKN13av1g_pixel_ofIXT_EE4typeEiiiiiiPKf
+    0 bytes stack frame, 0 bytes spill stores, 28 bytes spill loads
+ptxas info    : Function properties for _Z15cta_inverse_addILi8EEiiiR8RcSharedIXT_EEPsiiiiPKhPN13av1g_pixel_ofIXT_EE4typeEiRK5RcGrp
+    0 bytes stack frame, 1216 bytes spill stores, 1480 bytes spill loads
+ptxas info    : Function properties for _Z7rc_lumaILi8EEviiR8RcSharedIXT_EERK7GpBatchRK8GpParamsjRK7GpImageiiiiiRK7TileBoxRK6BlockQfPKfPiSK_SK_SK_SK_SK_
+    0 bytes stack frame, 4696 bytes spill stores, 11288 bytes spill loads
+ptxas info    : Function properties for _Z9rc_chromaILi0ELi8EEviiR8RcSharedIXT0_EERK7GpBatchRK8GpParamsjRK7GpImageiiiiiiiRK7TileBoxRK6BlockQfPKfPiSK_SK_SK_SK_SK_
+    0 bytes stack frame, 532 bytes spill stores, 3148 bytes spill loads
+ptxas info    : Function properties for _ZN47_INTERNAL_0993775d_16_k_recon_444_8_cu_a105a0f010pal_kmeansEPKtS1_iibiPt
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
