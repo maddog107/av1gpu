@@ -777,7 +777,9 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
                     fp.cdef_uv_pri[k] = (uint8_t)r.uv_pri[k]; fp.cdef_uv_sec[k] = (uint8_t)r.uv_sec[k];
                 }
                 cdefOn[i] = 1;
-                // CDEF on the deblocked frame (the search left d_recon deblocked, and its maps and directions in pscr[i])
+                // CDEF on the deblocked frame (the search left d_recon deblocked, and its maps and directions in pscr[i]).
+                // Only the reconstruction download reads it (the search set cdef_idx), so without wantRecon it is skipped
+                if (!cfg_.wantRecon) continue;
                 av1g_pf_frame pf;
                 av1g_gpu_pf_attach(&fp, pscr[i], &pf);
                 pf.cdefIdx = dSbc + I.sbBase;

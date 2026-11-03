@@ -438,8 +438,11 @@ static bool parse(int argc, char **argv, GpConfig &cfg, Opts &o) {
 const char *gp_fallback_reason(int r);   // batch.cpp
 extern const char *const gp_lossless_jpeg_refusal;                                              // batch.cpp
 std::string gp_lossless_oom_hint(const GpConfig &cfg, const std::string &err, double batchMp);   // batch.cpp
-static int run_single(const GpConfig &cfg, const Opts &o) {
+static int run_single(const GpConfig &cfg0, const Opts &o) {
     std::string err;
+    // the reconstruction (CDEF applied, downloaded) only for the outputs that use it, as in batch mode
+    GpConfig cfg = cfg0;
+    cfg.wantRecon = o.debugOutputs || o.check;
     const GpFileKind kind = gp_sniff(o.in);
     if (kind == GP_FILE_JPEG && cfg.lossless) { fprintf(stderr, "%s: %s\n", o.in.c_str(), gp_lossless_jpeg_refusal); return 3; }
     // the largest picture encoded and source decoded (megapixels, 0: none): JPEGs 35.6, PNG / WebP none without the options
