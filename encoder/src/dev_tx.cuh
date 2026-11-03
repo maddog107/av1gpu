@@ -166,7 +166,8 @@ static __device__ float coeff_bits(int c, int eob, const int16_t *q, const uint1
 
 // Forward transform (dequant-domain coefficients into tmp, th x tw with row stride W + 1).
 // Runtime sizes; the passes are templated on the number of outputs per lane (TH / TW in 4..32) so
-// the accumulators stay in registers.
+// the accumulators stay in registers.  Below 32 the template value is also the length (H == TH, W == TW), so the
+// inner loops have a compile-time trip count and unroll fully (the same fmaf order per output).
 template <int TH>
 __device__ __forceinline__ void fwd_col_pass(const int16_t *res, float *tmp, int W, int H, int ck, int fud, int flr,
                                              const float *Fc, const float *FcT) {
@@ -182,9 +183,9 @@ __device__ __forceinline__ void fwd_col_pass(const int16_t *res, float *tmp, int
         float acc[TH];
 #pragma unroll
         for (int i = 0; i < TH; i++) acc[i] = 0.f;
-        for (int k = 0; k < H; k++) {
-            const float x = (float)res[(fud ? H - 1 - k : k) * W + jj];
-            const float4 *f4 = (const float4 *)(FcT + k * H);   // FcT[k][i] = Fc[i][k], 16-byte aligned
+        auto step = [&](int k, int HH) {
+            const float x = (float)res[(fud ? HH - 1 - k : k) * W + jj];
+            const float4 *f4 = (const float4 *)(FcT + k * HH);   // FcT[k][i] = Fc[i][k], 16-byte aligned
 #pragma unroll
             for (int i4 = 0; i4 < TH / 4; i4++) {
                 const float4 f = __ldg(&f4[i4]);
@@ -193,6 +194,12 @@ __device__ __forceinline__ void fwd_col_pass(const int16_t *res, float *tmp, int
                 acc[4 * i4 + 2] = fmaf(f.z, x, acc[4 * i4 + 2]);
                 acc[4 * i4 + 3] = fmaf(f.w, x, acc[4 * i4 + 3]);
             }
+        };
+        if constexpr (TH < 32) {   // H == TH
+#pragma unroll
+            for (int k = 0; k < TH; k++) step(k, TH);
+        } else {                   // H = 32 or 64
+            for (int k = 0; k < H; k++) step(k, H);
         }
 #pragma unroll
         for (int i = 0; i < TH; i++) tmp[i * TS + j] = acc[i];
@@ -210,9 +217,9 @@ __device__ __forceinline__ void fwd_row_pass(float *tmp, int W, int th, int rk, 
 #pragma unroll
             for (int jj = 0; jj < TW; jj++) acc[jj] = __ldg(&Fr[jj * W + jj]) * tmp[i * TS + jj];
         } else {
-            for (int k = 0; k < W; k++) {
+            auto step = [&](int k, int WW) {
                 const float x = tmp[i * TS + k];
-                const float4 *f4 = (const float4 *)(FrT + k * W);   // FrT[k][jj] = Fr[jj][k]
+                const float4 *f4 = (const float4 *)(FrT + k * WW);   // FrT[k][jj] = Fr[jj][k]
 #pragma unroll
                 for (int j4 = 0; j4 < TW / 4; j4++) {
                     const float4 f = __ldg(&f4[j4]);
@@ -221,6 +228,12 @@ __device__ __forceinline__ void fwd_row_pass(float *tmp, int W, int th, int rk, 
                     acc[4 * j4 + 2] = fmaf(f.z, x, acc[4 * j4 + 2]);
                     acc[4 * j4 + 3] = fmaf(f.w, x, acc[4 * j4 + 3]);
                 }
+            };
+            if constexpr (TW < 32) {   // W == TW
+#pragma unroll
+                for (int k = 0; k < TW; k++) step(k, TW);
+            } else {                   // W = 32 or 64
+                for (int k = 0; k < W; k++) step(k, W);
             }
         }
 #pragma unroll
