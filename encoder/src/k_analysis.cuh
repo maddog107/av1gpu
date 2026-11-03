@@ -10,9 +10,14 @@
 
 template <int W, int H, typename P = uint8_t>
 struct ASmem {
+    // shapes with a 32- or 64-sample side have only DCT_DCT for intra luma (no tx-type search), so every evaluation
+    // follows a fresh warp_residual: the quantized levels reuse the residual's storage (the column pass has read all of
+    // it before warp_quant_rate_rt writes a level).  Less shared memory per warp: 32x32 fits 3 CTAs per SM instead of 2.
+    static constexpr bool qInRes = W >= 32 || H >= 32;
     int16_t res[W * H];
     float tmp[TxD<W, H>::th * TxD<W, H>::TS];
-    int16_t q[TxD<W, H>::n];
+    int16_t qs[qInRes ? 2 : TxD<W, H>::n];
+    __device__ __forceinline__ int16_t *q() { return qInRes ? res : qs; }
     P ea[AV1G_EDGE_LEN], el[AV1G_EDGE_LEN];
     P pa[AV1G_EDGE_LEN], pl[AV1G_EDGE_LEN];   // edge-filter prepared edges (RD stage)
     int up[2];
@@ -285,6 +290,8 @@ __device__ __forceinline__ float warp_residual(const P *src, int sp, int c, int1
                             pl + AV1G_EDGE_OFF, upA, upL);
     }
     const P *EA = ef ? pa + AV1G_EDGE_OFF : A, *EL = ef ? pl + AV1G_EDGE_OFF : L;
+    // res may hold the previous evaluation's quantized levels (ASmem::qInRes): every lane is done reading them
+    __syncwarp();
     constexpr int nsx = W / 4;
     for (int sb = lane; sb < (W / 4) * (H / 4); sb += 32) {
         const int sx = (sb % nsx) * 4, sy = (sb / nsx) * 4;
@@ -459,7 +466,7 @@ __global__ void __launch_bounds__(NW * 32, (W * H <= 64 ? 768 : 512) / (NW * 32)
             e.intraDir = cand_mode(c);
             e.qm = av1g_qm(I.usingQm, I.qm[0], 0, txSz, t);
             EvalOut o;
-            warp_eval<W, H, BD>(S.res, S.tmp, S.q, e, o);
+            warp_eval<W, H, BD>(S.res, S.tmp, S.q(), e, o);
             const float J = o.D + lambda * (o.R + mbits(c) + overhead);
             if (J < bestJ) {
                 bestJ = J;

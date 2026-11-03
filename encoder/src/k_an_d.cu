@@ -16,9 +16,12 @@ static void launch_an(const GpBatch &B, const GpParams &P, uint32_t n, cudaStrea
 }
 
 void gp_launch_an_d(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st, int bd) {
+    // 64x64 / 64x32: one warp per CTA.  Their shared memory per warp (17.4 / 13.3 KB) limits the CTAs per SM, so with
+    // two warps per CTA an L4 SM held 2 / 3 CTAs (4 / 6 warps); with one, 5 / 7 warps.  Each warp still analyses one
+    // block, the same way.
     launch_an<32, 64, AV1G_BLOCK_32X64, 2>(B, P, shTotal[AV1G_BLOCK_32X64], st, bd);
-    launch_an<64, 32, AV1G_BLOCK_64X32, 2>(B, P, shTotal[AV1G_BLOCK_64X32], st, bd);
-    launch_an<64, 64, AV1G_BLOCK_64X64, 2>(B, P, shTotal[AV1G_BLOCK_64X64], st, bd);
+    launch_an<64, 32, AV1G_BLOCK_64X32, 1>(B, P, shTotal[AV1G_BLOCK_64X32], st, bd);
+    launch_an<64, 64, AV1G_BLOCK_64X64, 1>(B, P, shTotal[AV1G_BLOCK_64X64], st, bd);
     launch_an<16, 64, AV1G_BLOCK_16X64, 2>(B, P, shTotal[AV1G_BLOCK_16X64], st, bd);
     launch_an<64, 16, AV1G_BLOCK_64X16, 2>(B, P, shTotal[AV1G_BLOCK_64X16], st, bd);
 }
