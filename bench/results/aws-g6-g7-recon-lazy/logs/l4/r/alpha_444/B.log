@@ -1,0 +1,3 @@
+[av1gpu] 10 images (10.0 MP) in 912.2 ms: 10.96 img/s, 10.97 MP/s; 1 batches; out 0.63 MB (0.505 bpp); CPU 837 ms = 0.92 cores; skipped (unsupported): 0; WebP/PNG via CPU decode: 10; write failures 0
+[av1gpu] stage ms: ingest wait 0.0 | gpu setup 3.4 analysis 47.5 dp 0.3 recon 1047.2 pack 0.3 postfilter 2.7 download 0.0 (gpu total 1116.4, encode wall 553.3) | entropy wall 125.7 (gpu 122.0) | write 1.6 | peak dev 157 MB
+[av1gpu] alpha: 10 images with an alpha item (10.0 MP of alpha frames, qindex 100)

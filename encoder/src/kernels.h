@@ -7,7 +7,7 @@
 #include "gp.h"
 
 // Fill the device tables (forward transform matrices, distortion scales, symbol costs).  Call once
-// per process after the CUDA device is selected.
+// per process after the CUDA device is selected.  The closed loop's tables are left to gp_recon_prepare.
 int gp_init_tables(char *err, int errlen);
 
 // Pack offsets per SB (computed on the host in decode order).
@@ -51,6 +51,10 @@ void gp_launch_resize(const void *src, int spitch, int in10, int sx0, int tw, co
 // (monochrome frames of batches with 4:4:4 frames may be in the second group)
 void gp_launch_recon(const GpBatch &B, const GpParams &P, const uint32_t *dSbList, uint32_t n420, uint32_t n444, cudaStream_t st,
                      int bd = 8);
+// Upload the tables of the k_recon instantiations for bd with 4:2:0 / 4:4:4 groups, once per process each, before
+// their first launch (after gp_init_tables).  Each instantiation is its own kernel module, 39 MB of sm_120 code: with
+// lazy module loading (the default outside batch mode) a single image loads only the one it uses.  0, or -1.
+int gp_recon_prepare(int bd, bool k420, bool k444);
 void gp_launch_pack(const GpBatch &B, const GpPackOff *dOff, av1g_block *oB, uint32_t *oBT, av1g_txb *oT, int16_t *oC,
                     const GpPackAux &aux, cudaStream_t st, av1g_palette *oP = nullptr, uint8_t *oM = nullptr);
 // screen-content detection (libaom's anti-aliasing-aware mode 2 on 16x16 luma blocks, k_misc.cu): sets dImg[i].sct (the

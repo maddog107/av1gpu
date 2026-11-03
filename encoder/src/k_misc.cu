@@ -7,6 +7,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <mutex>
 #include <type_traits>
 #include <vector>
 
@@ -478,8 +479,10 @@ void cost_field(const av1g_cdfs &c, const Arr &field, float *out) {
 
 }  // namespace
 
+static GpHostTables hostTables;   // kept for gp_recon_prepare
+
 int gp_init_tables(char *err, int errlen) {
-    static GpHostTables H;
+    GpHostTables &H = hostTables;
     // forward matrices
     std::vector<float> fwd(GP_FWD_FLOATS, 0.f);
     int fwdOff[3][7];
@@ -591,12 +594,32 @@ int gp_init_tables(char *err, int errlen) {
     memcpy(H.avgYMode, avgY, sizeof H.avgYMode);
     memcpy(H.avgPart, avgPart, sizeof H.avgPart);
     H.avgSkip0 = avgSkip0;
+    // (not the k_recon modules: gp_recon_prepare uploads theirs on first use)
     int (*ups[])(const GpHostTables *) = {gp_upload_tables_misc, gp_upload_tables_an_a, gp_upload_tables_an_b,
-                                          gp_upload_tables_an_c, gp_upload_tables_an_d, gp_upload_tables_recon,
-                                          gp_upload_tables_recon_444_8, gp_upload_tables_recon_420_10,
-                                          gp_upload_tables_recon_444_10, gp_upload_tables_an_uv, gp_upload_tables_ll,
-                                          gp_upload_tables_pal};
+                                          gp_upload_tables_an_c, gp_upload_tables_an_d, gp_upload_tables_an_uv,
+                                          gp_upload_tables_ll, gp_upload_tables_pal};
     for (auto f : ups)
         if (f(&H)) { snprintf(err, errlen, "table upload failed"); return -1; }
+    return 0;
+}
+
+// The first upload to a k_recon instantiation's module loads it (lazy loading): 39 MB of sm_120 code each, about
+// 35 ms on an RTX PRO 4500, so a process loads only the ones its images use.  The copies come from pageable memory
+// on this thread's default stream and the kernels run on others, so they are synchronised before any thread goes on.
+int gp_recon_prepare(int bd, bool k420, bool k444) {
+    static std::once_flag once[4];
+    static int rc[4];
+    auto prep = [](int v) {   // v: 4:2:0 8-bit, 4:4:4 8-bit, 4:2:0 10-bit, 4:4:4 10-bit
+        std::call_once(once[v], [v]() {
+            int (*const up[])(const GpHostTables *) = {gp_upload_tables_recon, gp_upload_tables_recon_444_8,
+                                                       gp_upload_tables_recon_420_10, gp_upload_tables_recon_444_10};
+            rc[v] = up[v](&hostTables);
+            if (!rc[v] && cudaStreamSynchronize(cudaStreamPerThread) != cudaSuccess) rc[v] = -1;
+        });
+        return rc[v];
+    };
+    const int v = bd == 10 ? 2 : 0;
+    if (k420 && prep(v)) return -1;
+    if (k444 && prep(v + 1)) return -1;
     return 0;
 }

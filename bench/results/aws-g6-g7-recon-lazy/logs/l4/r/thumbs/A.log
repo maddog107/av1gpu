@@ -1,0 +1,2 @@
+[av1gpu] 200 images (26.7 MP) in 692.0 ms: 289.01 img/s, 38.64 MP/s; 0 batches; out 2.93 MB (0.876 bpp); CPU 222 ms = 0.32 cores; skipped (unsupported): 0; WebP/PNG via CPU decode: 0; write failures 0
+[av1gpu] stage ms: ingest wait 23.4 | gpu setup 0.0 analysis 202.5 dp 0.0 recon 254.5 pack 0.0 postfilter 0.0 download 0.0 (gpu total 512.9, encode wall 0.0) | entropy wall 27.5 (gpu 23.4) | write 8.7 | peak dev 514 MB

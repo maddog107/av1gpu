@@ -1,0 +1,2 @@
+/home/ubuntu/img/st/photo.jpg
+/home/ubuntu/img/st/d512.jpg

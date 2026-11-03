@@ -203,12 +203,32 @@ start-up, median of 12 runs with the binaries alternating (`bench/results/aws-g6
 - **One hardware queue is half of it.** v0.8.0 with `GP_MAX_CONNECTIONS=1` takes 543 ms for the photo on the L4 and
   629 on the RTX PRO 4500. The rest of #56, and #59's upload of a single image without a host copy, take it to
   359 and 506 ms.
-- **The RTX PRO 4500 starts slower than the L4** with v0.9.0: 506 against 359 ms for the photo. Its kernel code is
+- **The RTX PRO 4500 started slower than the L4** with v0.9.0: 506 against 359 ms for the photo. Its kernel code is
   larger: loading all 29 kernel modules of the binary takes about 200 ms there against 48 ms on the L4 (a standalone
   loader timing each module, `scripts/modload.c`), and 144 ms of that are the four reconstruction modules, 38 MB each for sm_120 against 7–8 MB
-  for sm_89 (nvcc 13.4 emits about 8× the instructions for `rc_luma` on sm_120). av1gpu loads every module at start
+  for sm_89 (nvcc 13.4 emits about 8× the instructions for `rc_luma` on sm_120). v0.9.0 loaded every module at start
   (the table uploads, `bench/results/aws-g6-l4-pipe08/`), though a photo uses one of the four reconstruction
-  variants; skipping the other three would save roughly 3 × 35 ms per process on Blackwell (not measured).
+  variants.
+
+v0.10.0 (#63) uploads each reconstruction variant's tables just before its first use, so a single image loads only
+the variant it uses. Cold `av1gpu IN OUT` again, v0.9.0 alternating in the same runs, on this run's inputs (the
+thumbnails are the photo's, made with PIL; `bench/results/aws-g6-g7-recon-lazy/`, all 1,155 output files identical
+to v0.9.0's on each GPU):
+
+| Input | RTX PRO 4500, v0.10.0 | RTX PRO 4500, v0.9.0 | L4, v0.10.0 | L4, v0.9.0 |
+|---|---:|---:|---:|---:|
+| 2.5 MP JPEG (1280 × 1920) | **342 ms** | 492 | **355** | 360 |
+| 10.5 MP JPEG (4320 × 2432) | **421** | 571 | **469** | 471 |
+| 512 × 384 thumbnail of the photo | **336** | 492 | **343** | 354 |
+| 213 × 320 thumbnail of the photo | **337** | 485 | **338** | 347 |
+| the photo, `--yuv 444 --depth 10` | **371** | 515 | **375** | 382 |
+| 683 × 1024 RGBA PNG | **457** | 610 | **460** | 482 |
+| the photo and its 512 × 384 thumbnail as one `--batch` | 666 | 670 | 574 | 577 |
+
+- **About 150 ms less per single image on Blackwell** (26–32 %), so the RTX PRO 4500 now starts as quickly as the
+  L4. A second copy of v0.9.0 differed by 0.8 % or less there. On the L4 the change is 3–22 ms.
+- **`--batch` is unchanged:** batch mode still loads every module when it starts, so that loading one mid-run cannot
+  stall the other encoders (#36).
 
 ### Compression
 
@@ -847,6 +867,7 @@ WebP/NVENC points. Bits per pixel are medians, interpolated per photo.)
 | v0.9.0 (main c553ffb, 2026-11-03, the release workflow's Linux packages) against the v0.8.0 tarballs, every output file: 103 runs (v0.6's identity list, the palette sets at four settings, short `--batch` lists with a photo and its thumbnail, single-file mode on 103 files from every set at six settings, error exits), on the L4 and on an RTX PRO 4500 Blackwell | byte-identical: 5,679 files on each GPU, and the same 5,679 files on both GPUs; the CUDA 12 builds (27 runs, 1,220 files) too (`bench/results/aws-g6-g7-v090-check/`) |
 | v0.9.0: `tests/decoder_gate.py`, 18 runs on each GPU (30 photos at qindex 60/120/200 and 4:4:4 10-bit, thumbnails, RGBA, odd sizes, monochrome, Kodak lossless, the palette sets at default, `--palette on`, 4:4:4 10-bit and lossless) | 691/691 encodes and 35/35 alpha items identical in dav1d and aomdec, on both GPUs |
 | v0.9.0: compute-sanitizer memcheck, racecheck and synccheck on 8 jobs per GPU (3 photos in batch mode at default and 4:4:4 10-bit, a photo and its thumbnail in batch mode, single-file mode on a photo, two thumbnails, a screen PNG and a lossless PNG) | memcheck 0 access errors (batch mode lists only the variance-boost tables, as since v0.6); racecheck only the `k_entropy_win` reports; synccheck 0 errors. On Blackwell, memcheck needs compute-sanitizer 2026.3 (CUDA 13.4): 2026.1 misreports CUB 3.4's scan kernel in the CUDA 13.4 builds there, also in a standalone test of CUB alone |
+| v0.10.0 (#63, the release workflow's Linux packages of 3739ede) against the v0.9.0 tarballs, every output file: batch mode (size range at 4:2:0 / 4:4:4 × 8 / 10 bits, standard set, thumbnails, grayscale, grayscale + photos at 4:4:4, RGBA, lossless), single-file mode (26 files at four settings, 14 lossless, repeated runs where a second reconstruction variant loads mid-encode), CUDA 12, on the L4 and on an RTX PRO 4500 | byte-identical: 1,155 / 1,155 files on each GPU (`bench/results/aws-g6-g7-recon-lazy/`) |
 
 **`gpu_fuzz_test` failure.** The test failed with `device error 1` (`AV1G_GPU_ERR_SYMBOLS`) at a different
 batch from run to run (seed 521, 1481, ...), never under initcheck, which serialises GPU work. The test
