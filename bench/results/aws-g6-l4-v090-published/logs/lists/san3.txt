@@ -1,0 +1,3 @@
+/home/ubuntu/pal/sizerange/037774ce28834ba2_tiny.jpg
+/home/ubuntu/pal/sizerange/06593b76585ed9a5_small.jpg
+/home/ubuntu/pal/sizerange/0af4d66572273aaf_typical.jpg

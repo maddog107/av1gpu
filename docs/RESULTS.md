@@ -980,6 +980,12 @@ Linux, 528+ on Windows) for Linux and Windows. AWS, 2026-11-02; scripts, logs an
   package ran the size range × 3 at 434.4 MP/s against v0.8.0's 406.4 (+6.9 %), the 280 thumbnails at 831 against
   776 images/s, and one JPEG as its own process (2.5 MP, CUDA start-up included) in 0.51 s against 1.03 s. Its
   5,679 test files are byte-identical to v0.8.0's and to the L4's, and the `-cuda12` package's to the CUDA 13.4 one's.
+- **v0.9.0's published packages** (built from the tag; `bench/results/aws-g6-l4-v090-published/`): since #58,
+  `k_an_c.cu`'s SASS is not reproducible between two builds for a few random architectures (same PTX). Against the
+  tested build, that hit sm_75 / 86 / 90 in the Linux CUDA 13.4 package (sm_89 and sm_120 identical) and sm_89 among
+  others in the `-cuda12` one. Run on an L4, both Linux packages wrote the same files as v0.8.0's and as each other
+  (4,394 outputs), and passed the decoder gate. memcheck was clean, and racecheck reported only `k_entropy_win`'s
+  known hand-off.
 - **Driver 580:** the CUDA 13.4 build ran on 580.196.07 (L4) with identical output.
 - **GPUs newer than the SASS:** a forced PTX JIT (`CUDA_FORCE_PTX_JIT=1`) of the 13.4 build was still compiling
   after 10 minutes on the RTX PRO 4500. That is the first run on a GPU with no compiled code (README:

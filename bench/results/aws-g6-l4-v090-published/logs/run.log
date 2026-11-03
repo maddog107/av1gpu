@@ -1,0 +1,120 @@
+av1gpu-0.8.0-linux-x86_64.tar.gz: OK
+av1gpu-0.8.0-linux-x86_64-cuda12.tar.gz: OK
+av1gpu-0.9.0-linux-x86_64.tar.gz: OK
+av1gpu-0.9.0-linux-x86_64-cuda12.tar.gz: OK
+NVIDIA L4, 595.112.07
+1.4.1
+7.0.0-1014-aws
+unknown option --version
+usage: av1gpu IN OUT.avif [options]
+unknown option --version
+usage: av1gpu IN OUT.avif [options]
+97 downloaded / verified
+23 graphics in /home/ubuntu/pal/graphics
+comics 31 images 223.6 MP
+flat_jpg 24 images 102.5 MP
+flat_png 24 images 102.5 MP
+painted 6 images 52.1 MP
+photo 44 images 117.8 MP
+screen 40 images 79.3 MP
+100/100 images (78.7 MP) in /home/ubuntu/pal/std100
+100/100 images (477.8 MP) in /home/ubuntu/pal/sizerange
+  345 /home/ubuntu/out/lists/all.txt
+   31 /home/ubuntu/out/lists/comics.txt
+   24 /home/ubuntu/out/lists/flat_jpg.txt
+   24 /home/ubuntu/out/lists/flat_png.txt
+   24 /home/ubuntu/out/lists/kodak.txt
+    6 /home/ubuntu/out/lists/painted.txt
+   44 /home/ubuntu/out/lists/photo.txt
+   40 /home/ubuntu/out/lists/screen.txt
+   64 /home/ubuntu/out/lists/scrflat.txt
+   24 /home/ubuntu/out/lists/single.txt
+  100 /home/ubuntu/out/lists/sizes.txt
+  100 /home/ubuntu/out/lists/std100.txt
+  200 /home/ubuntu/out/lists/thumbs.txt
+ 1026 total
+PREP_DONE
+== 1. v0.8.0 against v0.9.0, CUDA 13.4 packages
+PAIR c13_std100: 100/100 identical (exit A 0 B 0; list 100)
+PAIR B_std100_nosmall: 100/100 identical (exit A 0 B 0; list 100)
+PAIR B_sizes: 100/100 identical (exit A 0 B 0; list 100)
+PAIR B_sizes_444: 100/100 identical (exit A 0 B 0; list 100)
+PAIR B_sizes_10: 100/100 identical (exit A 0 B 0; list 100)
+PAIR B_sizes_444_10: 100/100 identical (exit A 0 B 0; list 100)
+PAIR B_sizes_slow: 100/100 identical (exit A 0 B 0; list 100)
+PAIR B_sizes_q90: 100/100 identical (exit A 0 B 0; list 100)
+PAIR B_sizes_q30: 100/100 identical (exit A 0 B 0; list 100)
+PAIR B_sizes_turbo3ns: 100/100 identical (exit A 0 B 0; list 100)
+PAIR B_thumbs: 200/200 identical (exit A 0 B 0; list 200)
+PAIR B_thumbs_444_10: 200/200 identical (exit A 0 B 0; list 200)
+PAIR B_kodak_ll: 24/24 identical (exit A 0 B 0; list 24)
+PAIR B_photo: 44/44 identical (exit A 0 B 0; list 44)
+PAIR B_comics: 31/31 identical (exit A 0 B 0; list 31)
+PAIR B_painted: 6/6 identical (exit A 0 B 0; list 6)
+PAIR B_flat_jpg: 24/24 identical (exit A 0 B 0; list 24)
+PAIR B_scrflat: 64/64 identical (exit A 0 B 0; list 64)
+PAIR B_scrflat_on: 64/64 identical (exit A 0 B 0; list 64)
+PAIR B_scrflat_444_10: 64/64 identical (exit A 0 B 0; list 64)
+PAIR B_scrflat_ll: 64/64 identical (exit A 0 B 0; list 64)
+SINGLE B_single: 24/24 identical
+SINGLE B_single_444_10: 24/24 identical
+SUBTOTAL c13: 1833/1833
+== 2. v0.8.0 against v0.9.0, CUDA 12.9 packages
+PAIR c12_std100: 100/100 identical (exit A 0 B 0; list 100)
+PAIR B_std100_nosmall: 100/100 identical (exit A 0 B 0; list 100)
+PAIR B_sizes: 100/100 identical (exit A 0 B 0; list 100)
+PAIR B_sizes_444: 100/100 identical (exit A 0 B 0; list 100)
+PAIR B_sizes_10: 100/100 identical (exit A 0 B 0; list 100)
+PAIR B_sizes_444_10: 100/100 identical (exit A 0 B 0; list 100)
+PAIR B_sizes_slow: 100/100 identical (exit A 0 B 0; list 100)
+PAIR B_sizes_q90: 100/100 identical (exit A 0 B 0; list 100)
+PAIR B_sizes_q30: 100/100 identical (exit A 0 B 0; list 100)
+PAIR B_sizes_turbo3ns: 100/100 identical (exit A 0 B 0; list 100)
+PAIR B_thumbs: 200/200 identical (exit A 0 B 0; list 200)
+PAIR B_thumbs_444_10: 200/200 identical (exit A 0 B 0; list 200)
+PAIR B_kodak_ll: 24/24 identical (exit A 0 B 0; list 24)
+PAIR B_photo: 44/44 identical (exit A 0 B 0; list 44)
+PAIR B_comics: 31/31 identical (exit A 0 B 0; list 31)
+PAIR B_painted: 6/6 identical (exit A 0 B 0; list 6)
+PAIR B_flat_jpg: 24/24 identical (exit A 0 B 0; list 24)
+PAIR B_scrflat: 64/64 identical (exit A 0 B 0; list 64)
+PAIR B_scrflat_on: 64/64 identical (exit A 0 B 0; list 64)
+PAIR B_scrflat_444_10: 64/64 identical (exit A 0 B 0; list 64)
+PAIR B_scrflat_ll: 64/64 identical (exit A 0 B 0; list 64)
+SINGLE B_single: 24/24 identical
+SINGLE B_single_444_10: 24/24 identical
+SUBTOTAL c12: 1833/1833
+== 3. v0.9.0: CUDA 13.4 against CUDA 12.9
+PAIR x_all: 345/345 identical (exit A 0 B 0; list 345)
+PAIR x_thumbs: 200/200 identical (exit A 0 B 0; list 200)
+PAIR x_sizes_444_10: 100/100 identical (exit A 0 B 0; list 100)
+PAIR x_scrflat_ll: 64/64 identical (exit A 0 B 0; list 64)
+SINGLE x_single: 24/24 identical
+SUBTOTAL x: 733/733
+TOTAL: 4399/4399 identical
+== 4. decoder gate (dav1d + aomdec), both v0.9.0 packages
+GATE c13_photo exit 0: [gate] q200: 30/30 identical in dav1d and aomdec (420 30; 1655615 bytes), 0 not encoded (unsupported input), rc=0 PASS
+GATE c13_photo_444_10 exit 0: [gate] q120: 30/30 identical in dav1d and aomdec (444 10-bit 30; 7503045 bytes), 0 not encoded (unsupported input), rc=0 PASS
+GATE c13_thumb exit 0: [gate] q120: 40/40 identical in dav1d and aomdec (420 40; 832227 bytes), 0 not encoded (unsupported input), rc=0 PASS
+GATE c13_scr exit 0: [gate] q40: 64/64 identical in dav1d and aomdec (420 64; 9194243 bytes), 0 not encoded (unsupported input), rc=0 PASS
+GATE c13_scr_ll exit 0: [gate] lossless: 64/64 identical in dav1d and aomdec (444 64; 48246526 bytes), 0 not encoded (unsupported input), rc=0 PASS
+GATE c12_photo exit 0: [gate] q200: 30/30 identical in dav1d and aomdec (420 30; 1655615 bytes), 0 not encoded (unsupported input), rc=0 PASS
+GATE c12_photo_444_10 exit 0: [gate] q120: 30/30 identical in dav1d and aomdec (444 10-bit 30; 7503045 bytes), 0 not encoded (unsupported input), rc=0 PASS
+GATE c12_thumb exit 0: [gate] q120: 40/40 identical in dav1d and aomdec (420 40; 832227 bytes), 0 not encoded (unsupported input), rc=0 PASS
+GATE c12_scr exit 0: [gate] q40: 64/64 identical in dav1d and aomdec (420 64; 9194243 bytes), 0 not encoded (unsupported input), rc=0 PASS
+GATE c12_scr_ll exit 0: [gate] lossless: 64/64 identical in dav1d and aomdec (444 64; 48246526 bytes), 0 not encoded (unsupported input), rc=0 PASS
+== 5. compute-sanitizer (memcheck, racecheck), both v0.9.0 packages
+sanitizer /usr/local/cuda/bin/compute-sanitizer (Version 2026.1.0.0 (build 37182542) (public-release))
+CS c13 memcheck batch: exit 0 ========= ERROR SUMMARY: 0 errors  kernels: 
+CS c13 memcheck photo: exit 0 ========= ERROR SUMMARY: 0 errors  kernels: 
+CS c13 memcheck thumb: exit 0 ========= ERROR SUMMARY: 0 errors  kernels: 
+CS c13 racecheck batch: exit 0 ========= RACECHECK SUMMARY: 20 hazards displayed (25 errors, 1 warning)  kernels:      79 in gpu_entropy 
+CS c13 racecheck photo: exit 0 ========= RACECHECK SUMMARY: 12 hazards displayed (12 errors, 0 warnings)  kernels:      43 in gpu_entropy 
+CS c13 racecheck thumb: exit 0 ========= RACECHECK SUMMARY: 11 hazards displayed (11 errors, 0 warnings)  kernels:      43 in gpu_entropy 
+CS c12 memcheck batch: exit 0 ========= ERROR SUMMARY: 0 errors  kernels: 
+CS c12 memcheck photo: exit 0 ========= ERROR SUMMARY: 0 errors  kernels: 
+CS c12 memcheck thumb: exit 0 ========= ERROR SUMMARY: 0 errors  kernels: 
+CS c12 racecheck batch: exit 0 ========= RACECHECK SUMMARY: 20 hazards displayed (25 errors, 1 warning)  kernels:      79 in gpu_entropy 
+CS c12 racecheck photo: exit 0 ========= RACECHECK SUMMARY: 12 hazards displayed (12 errors, 0 warnings)  kernels:      43 in gpu_entropy 
+CS c12 racecheck thumb: exit 0 ========= RACECHECK SUMMARY: 11 hazards displayed (11 errors, 0 warnings)  kernels:      43 in gpu_entropy 
+RUN_DONE
