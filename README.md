@@ -317,11 +317,11 @@ suite keeps checking it (see [Correctness](#-correctness)).
 av1gpu is a working encoder that runs in production on Bellazon. It is also a young, single-developer
 project. Before you rely on it, note:
 
-- **It has been tested on two GPU models:** the RTX PRO 2000 Blackwell it was developed on (compute
-  capability 12.0) and an NVIDIA L4 (8.9, on AWS; see [docs/RESULTS.md](docs/RESULTS.md#nvidia-l4-aws-g64xlarge)).
-  A contributor's speed run on a GeForce RTX 5090 (12.0) gave byte-identical output
-  ([results](docs/RESULTS.md#geforce-rtx-5090-contributed-by-pickae)), and so did the v0.9.0 release check on an
-  RTX PRO 4500 Blackwell (12.0): the same bytes as on the L4 for all 5,679 test files. The code uses only standard CUDA
+- **It has been tested on three GPU models:** the RTX PRO 2000 Blackwell it was developed on (compute
+  capability 12.0), an NVIDIA L4 (8.9, on AWS; see [docs/RESULTS.md](docs/RESULTS.md#nvidia-l4-aws-g64xlarge)) and
+  an RTX PRO 4500 Blackwell (12.0, on AWS), which wrote the same bytes as the L4 for all 5,679 files of the v0.9.0
+  release check. A contributor's speed run on a GeForce RTX 5090 (12.0) gave byte-identical output too
+  ([results](docs/RESULTS.md#geforce-rtx-5090-contributed-by-pickae)). The code uses only standard CUDA
   features, with no tensor cores, no architecture-specific intrinsics and no large shared-memory
   carve-outs. It builds for compute capability 7.5 through 12.0. Other GPUs should work but have not
   been run yet. Reports are welcome, especially `tests/decoder_gate.py` results.
