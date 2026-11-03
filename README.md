@@ -11,7 +11,7 @@
   <a href="LICENSE"><img alt="License: BSD 2-Clause" src="https://img.shields.io/badge/license-BSD--2--Clause-1baf7a?style=flat-square"></a>
   <img alt="CUDA 12+" src="https://img.shields.io/badge/CUDA-12%2B-76b900?style=flat-square&logo=nvidia&logoColor=white">
   <img alt="Output: AV1 / AVIF" src="https://img.shields.io/badge/output-AV1%20%2F%20AVIF-eb6834?style=flat-square">
-  <a href="docs/RESULTS.md"><img alt="Tested GPUs: RTX PRO 2000, L4" src="https://img.shields.io/badge/tested%20on-RTX%20PRO%202000%20%C2%B7%20L4-6250d6?style=flat-square"></a>
+  <a href="docs/RESULTS.md"><img alt="Tested GPUs: RTX PRO 2000, L4, RTX PRO 4500" src="https://img.shields.io/badge/tested%20on-RTX%20PRO%202000%20%C2%B7%20L4%20%C2%B7%20RTX%20PRO%204500-6250d6?style=flat-square"></a>
   <a href="https://github.com/maddog107/av1gpu/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/maddog107/av1gpu?style=flat-square&color=eda100"></a>
 </p>
 
