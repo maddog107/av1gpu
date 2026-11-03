@@ -1,0 +1,49 @@
+8040 instructions, 696883 samples, 708105020 warp instructions executed
+avg threads ( 0.0,  1.5]: samples   1.8 %  instructions   1.5 %
+avg threads ( 1.5,  4.5]: samples   0.0 %  instructions   0.0 %
+avg threads ( 4.5,  8.5]: samples   0.6 %  instructions   0.4 %
+avg threads ( 8.5, 16.5]: samples   1.1 %  instructions   0.7 %
+avg threads (16.5, 31.5]: samples   3.6 %  instructions   2.2 %
+avg threads (31.5, 33.0]: samples  92.6 %  instructions  95.1 %
+local-memory instructions: samples   0.1 %
+== hottest 40
+  28525 thr  32.0 480c0 SHF.R.U32.HI R45, RZ, 0x8, R43
+  19834 thr  32.0 4d580 SHF.R.U32.HI R45, RZ, 0x8, R37
+  19756 thr  32.0 57540 FFMA R28, R94, R28, R96
+  17387 thr  32.0 57240 FFMA R96, R95, R24, R96
+  14003 thr  32.0 575c0 FFMA R36, R94, R36, R104
+   9396 thr  32.0 590a0 @!P0  IMAD R21, R36, R21, 0x10
+   8278 thr  32.0 59480 @!P0  IMAD R25, R12, R25, 0x10
+   7787 thr  32.0 57350 FFMA R108, R95, R32, R108
+   5595 thr  32.0 57230 I2F.S16 R95, R95
+   5370 thr  32.0 495e0 IMAD R24, R24, 0x3, R23
+   4735 thr  32.0 568e0 IMAD.IADD R44, R44, 0x1, -R39
+   4695 thr  32.0 569e0 IMAD.IADD R36, R36, 0x1, -R53
+   4676 thr  32.0 56ae0 IMAD.IADD R34, R35, 0x1, -R40
+   4556 thr  32.0 567d0 IMAD.IADD R46, R46, 0x1, -R33
+   4418 thr  32.0 48140 SHF.R.U32.HI R22, RZ, 0x8, R60
+   4284 thr  32.0 584d0 FFMA R123, R92, R36, R123
+   4102 thr  32.0 4d600 LOP3.LUT R22, R60, 0xff, RZ, 0xc0, !PT
+   3999 thr  32.0 48910 IMAD.IADD R25, R24, 0x1, R25
+   3953 thr  32.0 48940 IMAD.IADD R22, R25, 0x1, R22
+   3908 thr  32.0 48980 IMAD.IADD R25, R23, 0x1, R24
+   3894 thr  32.0 48960 IMAD.IADD R23, R22, 0x1, R23
+   3783 thr  32.0 440e0 IMAD R24, R24, 0x3, R23
+   3739 thr  32.0 4de70 IMAD.IADD R25, R23, 0x1, R24
+   3635 thr  32.0 4de00 IMAD.IADD R25, R24, 0x1, R25
+   3631 thr  32.0 489b0 IMAD.IADD R22, R24, 0x1, R25
+   3614 thr  32.0 4de30 IMAD.IADD R22, R25, 0x1, R22
+   3614 thr  32.0 4de50 IMAD.IADD R23, R22, 0x1, R23
+   3596 thr  32.0 489e0 @!P0  FFMA R22, R22, 0.25, R23
+   3306 thr  32.0 4dea0 IMAD.IADD R22, R24, 0x1, R25
+   3183 thr  32.0 4ded0 @!P0  FFMA R22, R22, 0.25, R23
+   2719 thr  32.0 587e0 FFMA R44, R79, R44, R115
+   2555 thr  31.0 5ae90 IMAD.MOV.U32 R34, RZ, RZ, R35
+   2459 thr  32.0 498b0 ISETP.GE.AND P0, PT, R40, 0x5a, PT
+   2180 thr  32.0 58230 FFMA R115, R61, R40, R115
+   2175 thr  32.0 42f00 STS.U8 [R4+0x4890], R33
+   2138 thr  32.0 43120 STS.U8 [R4+0x48b0], R33
+   2038 thr  32.0 4d410 BSYNC B4
+   2029 thr  32.0 47f60 IADD3 R51, P0, R37, R84, RZ
+   1990 thr  32.0 57580 FFMA R32, R94, R32, R100
+   1984 thr  31.0 5aa80 IMAD R37, R36, 0x2, R75

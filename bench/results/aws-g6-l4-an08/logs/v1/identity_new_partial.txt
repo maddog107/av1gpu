@@ -1,0 +1,9 @@
+A=/home/ubuntu/old/build/av1gpu (cde1f74) B=/home/ubuntu/new/build/av1gpu (work)
+sr_default: inputs 100, files 100 / 100, differ 0, skipped 0, rc 0/0, digest dea4d62e01dc791f, opts [] 
+sr_turbo3_nosmall: inputs 100, files 100 / 100, differ 0, skipped 0, rc 0/0, digest 1f15e07200124806, opts [--preset turbo3 --small-preset none] 
+sr_nosmall: inputs 100, files 100 / 100, differ 0, skipped 0, rc 0/0, digest 709b5002ae1d5c9f, opts [--small-preset none] 
+sr_444: inputs 100, files 100 / 100, differ 0, skipped 0, rc 0/0, digest 618ae9e2a94b5d6a, opts [--yuv 444] 
+sr_10: inputs 100, files 100 / 100, differ 0, skipped 0, rc 0/0, digest 4b3d835c143db20f, opts [--depth 10] 
+sr_444_10: inputs 100, files 100 / 100, differ 0, skipped 0, rc 0/0, digest 7f3945669366b3d9, opts [--yuv 444 --depth 10] 
+sr_base_nosmall: inputs 100, files 100 / 100, differ 0, skipped 0, rc 0/0, digest 7089861069ab1aa3, opts [--preset base --small-preset none] 
+sr_slow_nosmall: inputs 100, files 100 / 100, differ 0, skipped 0, rc 0/0, digest 4b56b804fd305b07, opts [--preset slow --small-preset none] 

@@ -1,0 +1,15 @@
+A=/home/ubuntu/old/build/av1gpu (cde1f74) B=/home/ubuntu/new2/build/av1gpu (new2 (branch + change 2))
+pal_screen_default: inputs 40, files 40 / 40, differ 0, skipped 0, rc 0/0, digest 72aa0899d01b81d6, opts [] 
+pal_screen_palette_on: inputs 40, files 40 / 40, differ 0, skipped 0, rc 0/0, digest cce4f8f87a2dc312, opts [--palette on] 
+pal_screen_444_10: inputs 40, files 40 / 40, differ 0, skipped 0, rc 0/0, digest 7e2203f34d6e9e3f, opts [--yuv 444 --depth 10] 
+pal_screen_lossless: inputs 40, files 40 / 40, differ 0, skipped 0, rc 0/0, digest 6d397e333142869b, opts [--lossless] 
+pal_flat_png_default: inputs 24, files 24 / 24, differ 0, skipped 0, rc 0/0, digest 7e503bb07f739949, opts [] 
+pal_flat_png_palette_on: inputs 24, files 24 / 24, differ 0, skipped 0, rc 0/0, digest 4a3f2abde4d65cf5, opts [--palette on] 
+pal_flat_png_444_10: inputs 24, files 24 / 24, differ 0, skipped 0, rc 0/0, digest bab2b4e2b4a37115, opts [--yuv 444 --depth 10] 
+pal_flat_png_lossless: inputs 24, files 24 / 24, differ 0, skipped 0, rc 0/0, digest d937cd6601784585, opts [--lossless] 
+pal_flat_jpg_default: inputs 24, files 24 / 24, differ 0, skipped 0, rc 0/0, digest dd278d3d3e2a23dd, opts [] 
+pal_flat_jpg_palette_on: inputs 24, files 24 / 24, differ 0, skipped 0, rc 0/0, digest f65a9d4c86a2a611, opts [--palette on] 
+pal_flat_jpg_444_10: inputs 24, files 24 / 24, differ 0, skipped 0, rc 0/0, digest 6f17efc5ddbf2537, opts [--yuv 444 --depth 10] 
+pal_flat_jpg_lossless: inputs 24, files 0 / 0, differ 0, skipped 24, rc 0/0, digest e3b0c44298fc1c14, opts [--lossless] 
+identity_pal took 77 s
+IDENTITY_PAL_DONE

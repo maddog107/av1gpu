@@ -1,0 +1,6 @@
+void k_analysis<(int)32, (int)32, (int)9, (int)4, (int)8>(GpBatch, GpParams, unsigned int) regs  128 stack   208 spillST     4 spillLD     4 |  size, 36896 bytes smem, 888 bytes cmem[0], 32 bytes cmem[2]
+void k_analysis<(int)32, (int)32, (int)9, (int)4, (int)10>(GpBatch, GpParams, unsigned int regs  128 stack   352 spillST     0 spillLD     0 |  size, 39456 bytes smem, 888 bytes cmem[0], 32 bytes cmem[2]
+void k_analysis<(int)32, (int)16, (int)8, (int)4, (int)8>(GpBatch, GpParams, unsigned int) regs  128 stack   208 spillST     4 spillLD     4 |  size, 20256 bytes smem, 888 bytes cmem[0], 32 bytes cmem[2]
+void k_analysis<(int)32, (int)16, (int)8, (int)4, (int)10>(GpBatch, GpParams, unsigned int regs  128 stack   368 spillST     4 spillLD     4 |  size, 22816 bytes smem, 888 bytes cmem[0], 32 bytes cmem[2]
+void k_analysis<(int)16, (int)32, (int)7, (int)4, (int)8>(GpBatch, GpParams, unsigned int) regs  128 stack   192 spillST     0 spillLD     0 |  size, 20512 bytes smem, 888 bytes cmem[0], 32 bytes cmem[2]
+void k_analysis<(int)16, (int)32, (int)7, (int)4, (int)10>(GpBatch, GpParams, unsigned int regs  128 stack   352 spillST     0 spillLD     0 |  size, 23072 bytes smem, 888 bytes cmem[0], 32 bytes cmem[2]

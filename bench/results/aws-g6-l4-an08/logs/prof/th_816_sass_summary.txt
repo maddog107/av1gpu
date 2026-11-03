@@ -1,0 +1,49 @@
+7168 instructions, 2525904 samples, 5895976759 warp instructions executed
+avg threads ( 0.0,  1.5]: samples   5.8 %  instructions   5.5 %
+avg threads ( 1.5,  4.5]: samples   3.8 %  instructions   3.0 %
+avg threads ( 4.5,  8.5]: samples  10.5 %  instructions  10.5 %
+avg threads ( 8.5, 16.5]: samples   4.6 %  instructions   4.1 %
+avg threads (16.5, 31.5]: samples  22.2 %  instructions  26.2 %
+avg threads (31.5, 33.0]: samples  52.4 %  instructions  50.7 %
+local-memory instructions: samples   0.1 %
+== hottest 40
+  15771 thr  24.0 863b0 STS.U8 [R82+0x450], R37
+  15518 thr  25.0 9b150 IMAD R58, R75, 0x2, R18
+  13916 thr  25.0 9bfb0 IADD3 R49, R49, 0x20, RZ
+  13301 thr  25.0 9b190 PRMT R42, R58, 0x9910, RZ
+  12840 thr  24.0 9b700 IMAD.IADD R42, R43, 0x1, R40
+  12013 thr  32.0 922d0 ISETP.NE.AND P1, PT, R34, RZ, PT
+  11770 thr  25.0 9be50 ISETP.NE.AND P1, PT, R58, RZ, PT
+  11597 thr  25.0 9b5b0 @!P1  IABS R105, R43
+  10704 thr  25.0 9b2a0 IMAD.IADD R43, R77, 0x1, R40
+  10647 thr  32.0 9a100 I2FP.F32.U32 R45, R34
+  10471 thr  32.0 99c00 I2FP.F32.U32 R41, R36
+   9605 thr  25.0 9b210 IMAD.IADD R40, R77, 0x1, R40
+   9446 thr  32.0 99f50 FCHK P1, |R38|, R37
+   9434 thr  17.0 9be40 BSYNC B5
+   9110 thr  32.0 98090 ISETP.GT.AND P1, PT, R35, 0xe, PT
+   9088 thr   1.0 9ad20 @P2   BRA 0x7c0e3ff9acf0
+   8775 thr  32.0 9a390 ISETP.GE.U32.AND P1, PT, R42, 0x60, PT
+   8529 thr  25.0 9b7e0 IMAD.MOV.U32 R41, RZ, RZ, 0x61c0
+   8480 thr  32.0 9c010 SHF.R.S32.HI R38, RZ, 0x3, R2
+   8408 thr  32.0 92350 IMAD R2, R35, 0x4, R18
+   8261 thr  32.0 84290 ISETP.GT.U32.AND P0, PT, R7, R80, PT
+   8163 thr  10.0 9bf00 ISETP.GE.AND P1, PT, R51, 0xf, PT
+   8125 thr  12.0 9bfa0 BSYNC B5
+   8091 thr  25.0 9b720 IMAD.MOV.U32 R41, RZ, RZ, 0xa
+   7560 thr  32.0 99dc0 IMNMX R45, R37, 0x3fff, PT
+   7541 thr  32.0 98450 I2F.S16 R113, R117
+   7476 thr  32.0 9a290 IMNMX R34, R34, 0x3fff, PT
+   7210 thr  32.0 9a8b0 IMNMX R37, R36, R37, !PT
+   7207 thr  32.0 99a80 @!P5  IMAD R36, R75, R36, 0x10
+   7123 thr  32.0 9a860 IMNMX R46, R46, R45, !PT
+   7120 thr  32.0 9c0b0 FADD R46, R35, R46
+   7115 thr  32.0 9a890 IMNMX R36, R46, R36, !PT
+   7107 thr  32.0 9a8d0 IMNMX R46, R37, R38, !PT
+   7107 thr  32.0 9c040 FADD R39, R45, R46
+   7106 thr  32.0 9c070 FADD R34, R39, R34
+   7090 thr  32.0 9c090 FADD R35, R34, R35
+   7070 thr  32.0 9a4e0 FADD R44, R45, R46
+   7036 thr  32.0 9a4c0 FADD R46, R35, R36
+   7029 thr  32.0 9a450 FADD R46, R46, R45
+   7012 thr  32.0 9a4a0 FADD R35, R34, R35

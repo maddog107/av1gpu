@@ -1,0 +1,49 @@
+9552 instructions, 83988 samples, 158386109 warp instructions executed
+avg threads ( 0.0,  1.5]: samples   1.3 %  instructions   0.5 %
+avg threads ( 1.5,  4.5]: samples   8.6 %  instructions   8.4 %
+avg threads ( 4.5,  8.5]: samples   8.2 %  instructions  12.2 %
+avg threads ( 8.5, 16.5]: samples  10.4 %  instructions  12.4 %
+avg threads (16.5, 31.5]: samples  36.6 %  instructions  29.7 %
+avg threads (31.5, 33.0]: samples  34.3 %  instructions  36.8 %
+local-memory instructions: samples   8.0 %
+== hottest 40
+   1989 thr  32.0 20980 FCHK P2, |R10|, R7
+   1869 thr  32.0 20dd0 FCHK P3, |R5|, R22
+   1573 thr  18.0 23840 @!P4  IABS R29, R31
+   1171 thr  18.0 23440 LEA R23, R25, R122, 0x1
+   1095 thr  18.0 23490 PRMT R12, R23, 0x9910, RZ
+    895 thr  18.0 24250 IADD3 R20, R20, 0x1, RZ
+    781 thr  18.0 240e0 ISETP.NE.AND P1, PT, R23, RZ, PT
+    744 thr  18.0 23800 @!P2  IABS R28, R13
+    702 thr  18.0 23a00 IMAD.IADD R12, R29, 0x1, R10
+    611 thr  18.0 23ac0 IMAD R29, R3, 0x61c0, RZ
+    509 thr  18.0 23a20 IMAD.WIDE R10, R12, R31, c[0x2][0x68]
+    501 thr   9.0 241b0 FADD R28, R28, R11
+    465 thr  18.0 24280 @P1   CALL.REL.NOINC 0x7101720242a0
+    461 thr  18.0 23590 @!P3  IMAD R11, R11, 0x8, R10
+    456 thr  32.0 20940 @!P1  IMAD R5, R13, R5, 0x10
+    450 thr  18.0 24100 @!P1  BRA 0x710172024240
+    444 thr  32.0 20ab0 I2FP.F32.U32 R15, R5
+    437 thr  14.0 240d0 BSYNC B4
+    428 thr  10.0 24240 BSYNC B4
+    424 thr  32.0 211f0 FMUL R6, R6, R6
+    414 thr  32.0 20f60 I2FP.F32.U32 R13, R6
+    371 thr   3.0 23f70 FADD R28, R28, R13
+    359 thr   2.0 23e00 ISETP.NE.AND P1, PT, R27, RZ, PT
+    358 thr  32.0 210f0 IMNMX R7, R7, 0x3fff, PT
+    351 thr  32.0 20d00 FFMA R18, -R22, R7, 1
+    351 thr  18.0 23810 @!P3  IABS R30, R29
+    346 thr  18.0 23410 IMAD.WIDE R10, R20, 0x2, R4
+    337 thr  32.0 208f0 @!P1  LDG.E.U8 R5, [R8.64]
+    334 thr  32.0 20c40 IMNMX R15, R5, 0x3fff, PT
+    328 thr  31.0 17e60 PRMT R31, R37, 0x7770, RZ
+    326 thr  32.0 20ef0 BSSY B6, 0x710172021060
+    323 thr   9.0 24110 ISETP.NE.AND P1, PT, R20, RZ, PT
+    313 thr  32.0 20bb0 FSETP.GEU.AND P2, PT, R12, c[0x0][0x2ec], PT
+    299 thr  32.0 21060 FSETP.GEU.AND P3, PT, R10, c[0x0][0x2ec], PT
+    297 thr  32.0 20a40 BSSY B6, 0x710172020bb0
+    288 thr  18.0 23620 @P1   ISETP.NE.AND P4, PT, R19, 0x2, PT
+    287 thr  18.0 23420 LDG.E.U16.CONSTANT R25, [R10.64]
+    287 thr   1.0 23a70 ISETP.GE.AND P2, PT, R26, 0x3, PT
+    284 thr  31.0 18000 PRMT R17, R23, 0x7770, RZ
+    282 thr   2.0 23de0 SHF.R.S32.HI R13, RZ, 0x1f, R12

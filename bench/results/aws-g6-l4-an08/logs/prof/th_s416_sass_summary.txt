@@ -1,0 +1,49 @@
+9720 instructions, 2321542 samples, 4440824550 warp instructions executed
+avg threads ( 0.0,  1.5]: samples   0.7 %  instructions   0.4 %
+avg threads ( 1.5,  4.5]: samples   6.8 %  instructions   7.0 %
+avg threads ( 4.5,  8.5]: samples  11.0 %  instructions  13.6 %
+avg threads ( 8.5, 16.5]: samples  25.1 %  instructions  30.7 %
+avg threads (16.5, 31.5]: samples  55.7 %  instructions  48.4 %
+avg threads (31.5, 33.0]: samples   0.0 %  instructions   0.0 %
+local-memory instructions: samples   6.7 %
+== hottest 40
+  47214 thr  31.0 21460 FCHK P3, |R5|, R28
+  43591 thr  31.0 20f90 FCHK P2, |R6|, R9
+  38187 thr  16.0 24320 @!P3  IABS R38, R40
+  30704 thr  17.0 245e0 MOV R35, R41
+  29034 thr  17.0 23f00 PRMT R21, R32, 0x9910, RZ
+  28166 thr  17.0 23ec0 IMAD R32, R20, 0x2, R101
+  21835 thr  16.0 244e0 IMAD.IADD R35, R36, 0x1, R10
+  19271 thr  17.0 24d90 IADD3 R30, R30, 0x1, RZ
+  18959 thr  16.0 242e0 @!P0  IABS R37, R36
+  17954 thr  17.0 24c20 ISETP.NE.AND P0, PT, R32, RZ, PT
+  14738 thr  17.0 245a0 IMAD.WIDE.U32 R10, R11, 0x4, R54
+  13356 thr  13.0 24c10 BSYNC B4
+  13322 thr  31.0 215b0 I2FP.F32.U32 R9, R10
+  13293 thr  31.0 210e0 I2FP.F32.U32 R9, R5
+  12956 thr   9.0 24d80 BSYNC B4
+  12536 thr  31.0 21350 ULDC.64 UR8, c[0x0][0x118]
+  12085 thr  31.0 20f50 @!P1  IMAD R5, R24, R5, 0x10
+  11832 thr  16.0 24500 IMAD.WIDE R10, R35, R38, c[0x2][0x70]
+  11786 thr  16.0 24130 @!P3  IMAD R40, R40, 0x4, R39
+  11660 thr  31.0 21840 FMUL R6, R6, R6
+  11521 thr  17.0 24dc0 @P0   CALL.REL.NOINC 0x7c069de24de0
+  11459 thr  16.0 24030 @!P0  IMAD R10, R10, 0x4, R11
+  10738 thr  17.0 24c40 @!P0  BRA 0x7c069de24d80
+  10110 thr  31.0 20ec0 IADD3 R10, P2, R4, R25, RZ
+  10088 thr   8.0 24cf0 FADD R35, R35, R10
+  10083 thr  31.0 21270 IMNMX R5, R5, 0x3fff, PT
+   9973 thr  31.0 21530 BSSY B6, 0x7c069de216b0
+   9936 thr  31.0 21060 BSSY B6, 0x7c069de211d0
+   9837 thr  31.0 21740 IMNMX R7, R7, 0x3fff, PT
+   9564 thr   3.0 24a90 FADD R35, R41, R10
+   9393 thr  17.0 23e80 IMAD.WIDE R10, R30, 0x2, R4
+   9064 thr   0.0 25e90 BRA `(.L_x_0) 0x7c069de25e90
+   8916 thr  31.0 216b0 FSETP.GEU.AND P3, PT, R20, c[0x0][0x2ec], PT
+   8852 thr  31.0 211c0 BSYNC B6
+   8694 thr  31.0 211d0 FSETP.GEU.AND P2, PT, R26, c[0x0][0x2ec], PT
+   8624 thr  31.0 216a0 BSYNC B6
+   8069 thr   2.0 24910 ISETP.NE.AND P0, PT, R34, RZ, PT
+   8033 thr  16.0 24460 @!P0  BRA 0x7c069de244f0
+   8012 thr  31.0 169b0 PRMT R49, R5, 0x7770, RZ
+   7905 thr  31.0 218b0 @P2   BRA 0x7c069de20ec0

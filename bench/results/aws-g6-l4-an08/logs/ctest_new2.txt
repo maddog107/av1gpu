@@ -1,0 +1,40 @@
+Test project /home/ubuntu/new2/build
+    Start 6: crop_resize
+    Start 8: jpeg_gray_sampling
+    Start 9: jpeg_inverted_sampling
+    Start 7: gate_crop_resize
+1/9 Test #7: gate_crop_resize .................   Passed   56.10 sec
+    Start 5: batch_skip_unreadable
+2/9 Test #5: batch_skip_unreadable ............   Passed   38.88 sec
+    Start 4: gate_cfl_edge
+3/9 Test #4: gate_cfl_edge ....................   Passed   27.44 sec
+    Start 1: fuzz_dav1d_aomdec
+4/9 Test #1: fuzz_dav1d_aomdec ................   Passed    8.36 sec
+    Start 2: fuzz_lossless
+5/9 Test #2: fuzz_lossless ....................   Passed    4.60 sec
+    Start 3: avif_alpha
+6/9 Test #3: avif_alpha .......................   Passed    0.29 sec
+7/9 Test #6: crop_resize ......................   Passed  159.96 sec
+8/9 Test #8: jpeg_gray_sampling ...............   Passed  336.83 sec
+9/9 Test #9: jpeg_inverted_sampling ...........   Passed  421.78 sec
+
+100% tests passed, 0 tests failed out of 9
+
+Total Test time (real) = 421.79 sec
+ctest rc 0 (422 s)
+GPU FUZZ (run_batch_device, device arrays, non-blocking stream, 1 scratch allocations) seeds 1..400: 400 cases (131 4:4:4, 80 monochrome, 157 10-bit, 105 lossless), 493 tiles, 53959098 symbols, 3 symbol-capacity errors reported + rerun (+2 reruns over the default bound), order check ok, 0 mismatches -> PASSED
+gpu_fuzz_test rc 0
+GPU FUZZ (run_batch_device, device arrays, non-blocking stream, 4 scratch allocations) seeds 77..276: 200 cases (104 4:4:4, 31 monochrome, 122 10-bit, 62 lossless), 212 tiles, 19179629 symbols, 2 symbol-capacity errors reported + rerun (+2 reruns over the default bound), order check ok, 0 mismatches -> PASSED
+gpu_fuzz_test (444/10/ll) rc 0
+device: NVIDIA L4 (sm_89)
+1. dequant (incl. quantizer matrices) + inverse transforms: 2048 cases, 0 host/device mismatches (257 flagged non-conformant on both)
+2/3. intra prediction (incl. edge filter/upsampling, filter intra) + CFL: 1024 cases (252 CFL, 129 of them 4:4:4), 0 host/device mismatches
+4. od_ec + CDF adaptation: 128 streams, 507606 symbols, 0 host/device mismatches
+5a. dequant (incl. quantizer matrices) + inverse transforms at 10 bits: 2048 cases, 0 host/device mismatches (576 flagged non-conformant on both)
+5b. intra prediction (incl. edge filter/upsampling, filter intra) + CFL at 10 bits: 1024 cases (275 CFL, 136 of them 4:4:4), 0 host/device mismatches
+6. lossless WHT (8 bits): 200000 blocks, 0 host/device mismatches, 0 in-range residuals not reconstructed exactly, 50548 flagged out of range, 0 wrong flags
+6. lossless WHT (10 bits): 200000 blocks, 0 host/device mismatches, 0 in-range residuals not reconstructed exactly, 49923 flagged out of range, 0 wrong flags
+GPU_DSP_TEST PASSED
+gpu_dsp_test rc 0
+CTEST_DONE
+CHECKS_DONE

@@ -1,0 +1,10 @@
+BIN /home/ubuntu/new/build/av1gpu (work)
+/home/ubuntu/images/3065cbd41a1ad905_typical.jpg
+/home/ubuntu/images/6057c6daef8fc78a_typical.jpg
+/home/ubuntu/images/b2fef7eca1352b4a_small.jpg
+Version 2026.1.0.0 (build 37182542) (public-release)
+memcheck [default] rc 99, 44 s, outputs differing from the plain run: 0; ========= ERROR SUMMARY: 5 errors
+memcheck [--yuv 444 --depth 10] rc 99, 52 s, outputs differing from the plain run: 0; ========= ERROR SUMMARY: 6 errors
+synccheck [default] rc 0, 19 s, outputs differing from the plain run: 0; ========= ERROR SUMMARY: 0 errors
+synccheck [--yuv 444 --depth 10] rc 0, 20 s, outputs differing from the plain run: 0; ========= ERROR SUMMARY: 0 errors
+SANITIZER_DONE

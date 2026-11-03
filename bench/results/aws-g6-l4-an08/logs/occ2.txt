@@ -1,0 +1,25 @@
+== n2_3232
+    Duration                         us       491.46
+    Static Shared Memory Per Block       Kbyte/block           28.72
+    Block Limit Shared Mem                block            3
+    Theoretical Occupancy                     %           25
+    Achieved Occupancy                        %        22.63
+== o_3232
+    Duration                         us       620.10
+    Static Shared Memory Per Block       Kbyte/block           36.90
+    Block Limit Shared Mem                block            2
+    Theoretical Occupancy                     %        16.67
+    Achieved Occupancy                        %        16.02
+== n2_6464
+    Duration                         us       780.10
+    Static Shared Memory Per Block       Kbyte/block           17.42
+    Block Limit Shared Mem                block            5
+    Theoretical Occupancy                     %        10.42
+    Achieved Occupancy                        %         9.68
+== n2_6432
+    Duration                         us       781.09
+    Static Shared Memory Per Block       Kbyte/block           13.32
+    Block Limit Shared Mem                block            7
+    Theoretical Occupancy                     %        14.58
+    Achieved Occupancy                        %        14.12
+OCC_DONE
