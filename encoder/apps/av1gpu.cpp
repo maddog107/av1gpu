@@ -19,6 +19,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <string>
+#include <thread>
 #include <vector>
 #include <vector>
 
@@ -450,7 +451,6 @@ static int run_single(const GpConfig &cfg0, const Opts &o) {
     char big[64];
     snprintf(big, sizeof big, "larger than %.1f megapixels", decMaxMp);
     GpEncoder enc;
-    if (enc.init(cfg, err)) { fprintf(stderr, "init: %s\n", err.c_str()); return 1; }
     GpFrameIn fin, afin;   // afin: the alpha frame (W = 0: none)
     std::vector<uint8_t> icc;
     int orientation = 1;
@@ -459,6 +459,11 @@ static int run_single(const GpConfig &cfg0, const Opts &o) {
     memset(&ib, 0, sizeof ib);
     uint8_t *dplanes = nullptr, *dconv = nullptr, *dxf = nullptr;
     auto t0 = std::chrono::steady_clock::now();
+    // a JPEG is decoded in a thread while the encoder initialises: setting up nvJPEG's hardware decoder (~70 ms on an
+    // L4) overlaps the table uploads and kernel-module loads of GpEncoder::init
+    std::thread ingestT;
+    int ir = 0;
+    char eb[256] = {0};
     if (kind == GP_FILE_JPEG) {
         ingest_config ic;
         ingest_default_config(&ic);
@@ -470,14 +475,25 @@ static int run_single(const GpConfig &cfg0, const Opts &o) {
         ic.max_mp = decMaxMp;
         ic.lazy_arena = 1;   // baseline JPEGs (the hardware decoder) never touch it: 24 ms of pinning saved
         if (getenv("GP_INGEST_DECODER")) ic.decoder = atoi(getenv("GP_INGEST_DECODER"));   // 1: CPU entropy decode + GPU IDCT
-        char eb[256] = {0};
-        ictx = ingest_create(&ic, eb, sizeof eb);
+        ingestT = std::thread([&, ic]() {
+            ictx = ingest_create(&ic, eb, sizeof eb);
+            if (!ictx) return;
+            const char *paths[1] = {o.in.c_str()};
+            ingest_submit(ictx, paths, 1);
+            ingest_finish_submit(ictx);
+            ir = ingest_next_batch(ictx, &ib, -1);
+        });
+    }
+    const int initRc = enc.init(cfg, err);
+    if (ingestT.joinable()) ingestT.join();
+    if (initRc) {
+        fprintf(stderr, "init: %s\n", err.c_str());
+        if (ictx) ingest_destroy(ictx);
+        return 1;
+    }
+    if (kind == GP_FILE_JPEG) {
         if (!ictx) { fprintf(stderr, "ingest_create: %s\n", eb); return 1; }
-        const char *paths[1] = {o.in.c_str()};
-        ingest_submit(ictx, paths, 1);
-        ingest_finish_submit(ictx);
-        int r = ingest_next_batch(ictx, &ib, -1);
-        if (r != 1) {
+        if (ir != 1) {
             ingest_fallback fb;
             int nf = ingest_get_fallbacks(ictx, &fb, 1);
             fprintf(stderr, "%s: %s\n", o.in.c_str(), !nf ? "decode failed" : fb.reason == INGEST_FB_GIANT ? big : gp_fallback_reason(fb.reason));
