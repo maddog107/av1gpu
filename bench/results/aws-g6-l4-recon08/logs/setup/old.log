@@ -1,0 +1,72 @@
+[1/33] Building CXX object CMakeFiles/av1core.dir/av1core/src/avif.cpp.o
+[2/33] Building CXX object CMakeFiles/gpujpegingest.dir/ingest/src/jpeg_reader.cpp.o
+[3/33] Building CUDA object CMakeFiles/gpujpegingest.dir/ingest/src/kernels.cu.o
+[4/33] Building CUDA object CMakeFiles/av1core_gpu.dir/av1core/src/gpu_postfilter.cu.o
+[5/33] Building CUDA object CMakeFiles/av1f.dir/av1f/src/varboost.cu.o
+[6/33] Building CUDA object CMakeFiles/gpujpegingest.dir/ingest/src/pipeline.cu.o
+[7/33] Building CUDA object CMakeFiles/av1gpu_encoder.dir/encoder/src/k_misc.cu.o
+[8/33] Linking CXX static library libgpujpegingest.a
+[9/33] Building CXX object CMakeFiles/av1core.dir/av1core/src/encoder.cpp.o
+In file included from /usr/include/c++/13/algorithm:61,
+                 from /home/ubuntu/old/av1core/src/encoder.cpp:22:
+In function ‘void std::__final_insertion_sort(_RandomAccessIterator, _RandomAccessIterator, _Compare) [with _RandomAccessIterator = short unsigned int*; _Compare = __gnu_cxx::__ops::_Iter_less_iter]’,
+    inlined from ‘void std::__final_insertion_sort(_RandomAccessIterator, _RandomAccessIterator, _Compare) [with _RandomAccessIterator = short unsigned int*; _Compare = __gnu_cxx::__ops::_Iter_less_iter]’ at /usr/include/c++/13/bits/stl_algo.h:1854:5,
+    inlined from ‘void std::__sort(_RandomAccessIterator, _RandomAccessIterator, _Compare) [with _RandomAccessIterator = short unsigned int*; _Compare = __gnu_cxx::__ops::_Iter_less_iter]’ at /usr/include/c++/13/bits/stl_algo.h:1950:31,
+    inlined from ‘void std::sort(_RAIter, _RAIter) [with _RAIter = short unsigned int*]’ at /usr/include/c++/13/bits/stl_algo.h:4861:18,
+    inlined from ‘void av1g::Encoder::code_palette_colors(S&, int) [with S = av1g::TeeSink]’ at /home/ubuntu/old/av1core/src/encoder.cpp:777:14:
+/usr/include/c++/13/bits/stl_algo.h:1859:32: warning: array subscript 16 is outside array bounds of ‘uint16_t [8]’ {aka ‘short unsigned int [8]’} [-Warray-bounds=]
+ 1859 |           std::__insertion_sort(__first, __first + int(_S_threshold), __comp);
+      |           ~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/ubuntu/old/av1core/src/encoder.cpp: In member function ‘void av1g::Encoder::code_palette_colors(S&, int) [with S = av1g::TeeSink]’:
+/home/ubuntu/old/av1core/src/encoder.cpp:761:14: note: at offset 32 into object ‘got’ of size 16
+  761 |     uint16_t got[8];
+      |              ^~~
+In function ‘void std::__final_insertion_sort(_RandomAccessIterator, _RandomAccessIterator, _Compare) [with _RandomAccessIterator = short unsigned int*; _Compare = __gnu_cxx::__ops::_Iter_less_iter]’,
+    inlined from ‘void std::__final_insertion_sort(_RandomAccessIterator, _RandomAccessIterator, _Compare) [with _RandomAccessIterator = short unsigned int*; _Compare = __gnu_cxx::__ops::_Iter_less_iter]’ at /usr/include/c++/13/bits/stl_algo.h:1854:5,
+    inlined from ‘void std::__sort(_RandomAccessIterator, _RandomAccessIterator, _Compare) [with _RandomAccessIterator = short unsigned int*; _Compare = __gnu_cxx::__ops::_Iter_less_iter]’ at /usr/include/c++/13/bits/stl_algo.h:1950:31,
+    inlined from ‘void std::sort(_RAIter, _RAIter) [with _RAIter = short unsigned int*]’ at /usr/include/c++/13/bits/stl_algo.h:4861:18,
+    inlined from ‘void av1g::Encoder::code_palette_colors(S&, int) [with S = av1g::EcSink]’ at /home/ubuntu/old/av1core/src/encoder.cpp:777:14:
+/usr/include/c++/13/bits/stl_algo.h:1859:32: warning: array subscript 16 is outside array bounds of ‘uint16_t [8]’ {aka ‘short unsigned int [8]’} [-Warray-bounds=]
+ 1859 |           std::__insertion_sort(__first, __first + int(_S_threshold), __comp);
+      |           ~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/ubuntu/old/av1core/src/encoder.cpp: In member function ‘void av1g::Encoder::code_palette_colors(S&, int) [with S = av1g::EcSink]’:
+/home/ubuntu/old/av1core/src/encoder.cpp:761:14: note: at offset 32 into object ‘got’ of size 16
+  761 |     uint16_t got[8];
+      |              ^~~
+In function ‘void std::__final_insertion_sort(_RandomAccessIterator, _RandomAccessIterator, _Compare) [with _RandomAccessIterator = short unsigned int*; _Compare = __gnu_cxx::__ops::_Iter_less_iter]’,
+    inlined from ‘void std::__final_insertion_sort(_RandomAccessIterator, _RandomAccessIterator, _Compare) [with _RandomAccessIterator = short unsigned int*; _Compare = __gnu_cxx::__ops::_Iter_less_iter]’ at /usr/include/c++/13/bits/stl_algo.h:1854:5,
+    inlined from ‘void std::__sort(_RandomAccessIterator, _RandomAccessIterator, _Compare) [with _RandomAccessIterator = short unsigned int*; _Compare = __gnu_cxx::__ops::_Iter_less_iter]’ at /usr/include/c++/13/bits/stl_algo.h:1950:31,
+    inlined from ‘void std::sort(_RAIter, _RAIter) [with _RAIter = short unsigned int*]’ at /usr/include/c++/13/bits/stl_algo.h:4861:18,
+    inlined from ‘void av1g::Encoder::code_palette_colors(S&, int) [with S = av1g::DecSink]’ at /home/ubuntu/old/av1core/src/encoder.cpp:777:14:
+/usr/include/c++/13/bits/stl_algo.h:1859:32: warning: array subscript 16 is outside array bounds of ‘uint16_t [8]’ {aka ‘short unsigned int [8]’} [-Warray-bounds=]
+ 1859 |           std::__insertion_sort(__first, __first + int(_S_threshold), __comp);
+      |           ~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/ubuntu/old/av1core/src/encoder.cpp: In member function ‘void av1g::Encoder::code_palette_colors(S&, int) [with S = av1g::DecSink]’:
+/home/ubuntu/old/av1core/src/encoder.cpp:761:14: note: at offset 32 into object ‘got’ of size 16
+  761 |     uint16_t got[8];
+      |              ^~~
+[10/33] Linking CXX static library libav1core.a
+[11/33] Building CXX object CMakeFiles/av1gpu_encoder.dir/encoder/src/imageio.cpp.o
+[12/33] Building CXX object CMakeFiles/av1gpu_encoder.dir/encoder/src/entropy_gpu.cpp.o
+[13/33] Building CUDA object CMakeFiles/av1gpu_encoder.dir/encoder/src/k_pal.cu.o
+[14/33] Building CUDA object CMakeFiles/av1gpu_encoder.dir/encoder/src/entropy_dev.cu.o
+[15/33] Building CUDA object CMakeFiles/av1gpu_encoder.dir/encoder/src/k_an_c.cu.o
+[16/33] Building CUDA object CMakeFiles/av1f.dir/av1f/src/lfsearch.cu.o
+[17/33] Linking CXX static library libav1f.a
+[18/33] Building CXX object CMakeFiles/av1gpu_encoder.dir/encoder/src/pipeline.cpp.o
+[19/33] Building CXX object CMakeFiles/av1gpu.dir/encoder/apps/av1gpu.cpp.o
+[20/33] Building CXX object CMakeFiles/av1gpu_encoder.dir/encoder/src/batch.cpp.o
+[21/33] Building CUDA object CMakeFiles/av1gpu_encoder.dir/encoder/src/k_an_b.cu.o
+[22/33] Building CUDA object CMakeFiles/av1gpu_encoder.dir/encoder/src/k_an_d.cu.o
+[23/33] Building CUDA object CMakeFiles/av1gpu_encoder.dir/encoder/src/k_lossless.cu.o
+[24/33] Building CUDA object CMakeFiles/av1core_gpu.dir/av1core/src/gpu_entropy.cu.o
+[25/33] Linking CXX static library libav1core_gpu.a
+[26/33] Building CUDA object CMakeFiles/av1gpu_encoder.dir/encoder/src/k_an_a.cu.o
+[27/33] Building CUDA object CMakeFiles/av1gpu_encoder.dir/encoder/src/k_an_uv.cu.o
+[28/33] Building CUDA object CMakeFiles/av1gpu_recon.dir/encoder/src/k_recon_444_8.cu.o
+[29/33] Building CUDA object CMakeFiles/av1gpu_recon.dir/encoder/src/k_recon.cu.o
+[30/33] Building CUDA object CMakeFiles/av1gpu_recon.dir/encoder/src/k_recon_420_10.cu.o
+[31/33] Building CUDA object CMakeFiles/av1gpu_recon.dir/encoder/src/k_recon_444_10.cu.o
+[32/33] Linking CXX static library libav1gpu_encoder.a
+[33/33] Linking CXX executable av1gpu
+exit 0 after 161 s

@@ -1,0 +1,408 @@
+--- pf/k_recon_main.cuh	2026-11-02 21:55:36
++++ k_recon_c3_record.cuh	2026-11-02 22:01:42
+@@ -98,11 +98,10 @@
+     int taskC[32], taskT[32], taskP[32], taskE[32];
+     int nTask;
+     float finD, finR;               // rc_final_quant: winner's distortion / rate (tx-size search)
+-    int errFlag[2], nzFlag[2];      // cta_inverse_add, per RcGrp half
+     int eobUV[2];                   // concurrent chroma finals: eob of U / V
+     int nTxb, nCoef;
+     int finEob;
+-    int cflAvg, cflAlpha[2];
++    int cflAvg, cflAlpha[2], cflSum;
+     float cflNum[2], cflDen[2];
+     float alphaSse[2][3];
+     // per-warp best luma task (tx blocks <= 16x16): its levels are the final ones, no re-evaluation
+@@ -127,6 +126,18 @@
+         else if (bar == 2) asm volatile("bar.sync 2, 64;" ::: "memory");
+         else asm volatile("bar.sync 3, 64;" ::: "memory");
+     }
++    // sync() that also returns whether v != 0 in any thread of the group (__syncthreads_or; bar.red.or on the halves)
++    __device__ __forceinline__ bool sync_or(bool v) const {
++        if (bar == 0) return __syncthreads_or(v) != 0;
++        uint32_t r;
++        if (bar == 2)
++            asm volatile("{ .reg .pred p, q; setp.ne.u32 q, %1, 0; bar.red.or.pred p, 2, 64, q; selp.u32 %0, 1, 0, p; }"
++                         : "=r"(r) : "r"((uint32_t)v) : "memory");
++        else
++            asm volatile("{ .reg .pred p, q; setp.ne.u32 q, %1, 0; bar.red.or.pred p, 3, 64, q; selp.u32 %0, 1, 0, p; }"
++                         : "=r"(r) : "r"((uint32_t)v) : "memory");
++        return r != 0;
++    }
+ };
+ __device__ __forceinline__ RcGrp rc_cta() { return RcGrp{(int)threadIdx.x, RC_NT, 0, 0}; }
+ __device__ __forceinline__ RcGrp rc_half() { const int k = threadIdx.x >> 6; return RcGrp{(int)threadIdx.x & 63, 64, k, 2 + k}; }
+@@ -134,7 +145,9 @@
+ // exact inverse transform + reconstruction (group g), mirrors av1g_inv_txfm2d / av1g_add_residual.
+ // q may be modified (halved) when the coefficients violate the conformance ranges
+ // (= AV1G_ENC_FIX_RANGE).  Returns the number of halvings (all threads of g).  Half k uses the residual
+-// buffer S.u.inv.res + k * 2048 (halves: chroma tx blocks, <= 32x32).
++// buffer S.u.inv.res + k * 2048 (halves: chroma tx blocks, <= 32x32).  The range flags of the row and column
++// passes and the all-zero test after a halving are OR reductions of the group's barriers (sync_or).  Callers
++// end their previous phase with a barrier of g (the residual buffer is in the union).
+ template <int BD>
+ __device__ int cta_inverse_add(int W, int H, RcShared<BD> &S, int16_t *q, int txSz, int txType, int dcQ, int acQ, const uint8_t *qm,
+                                av1g_pixel_t(BD) *dst, int pitch, const RcGrp &g) {
+@@ -145,11 +158,8 @@
+     const int rowShift = AV1G_T(Transform_Row_Shift)[txSz];
+     const bool rect = (T.lw - T.lh == 1 || T.lh - T.lw == 1);
+     int16_t *res = S.u.inv.res + g.k * 2048;
+-    int &errFlag = S.errFlag[g.k], &nzFlag = S.nzFlag[g.k];
+     int fixes = 0;
+     for (;;) {
+-        if (tid == 0) { errFlag = 0; nzFlag = 0; }
+-        g.sync();
+         // W4: register-resident templated 1-D transforms (rc_inv.cuh), same arithmetic as av1g_inv_1d
+         uint32_t err = 0;
+         switch (T.lw) {
+@@ -161,9 +171,7 @@
+         default: RC_ROWS(6); break;
+ #undef RC_ROWS
+         }
+-        if (err) atomicOr(&errFlag, (int)err);
+         g.sync();
+-        err = 0;
+         switch (T.lh) {
+ #define RC_COLS(LH) for (int j = tid; j < W; j += nt) err |= rci::col<LH>(j, W, ck, res)
+         case 2: RC_COLS(2); break;
+@@ -173,16 +181,14 @@
+         default: RC_COLS(6); break;
+ #undef RC_COLS
+         }
+-        if (err) atomicOr(&errFlag, (int)err);
+-        g.sync();
+-        if (!errFlag) break;
++        if (!g.sync_or(err != 0)) break;   // no range flag in the rows or the columns of any thread
+         fixes++;
++        bool nz = false;
+         for (int idx = tid; idx < T.n; idx += nt) {
+             q[idx] = (int16_t)(q[idx] / 2);
+-            if (q[idx]) nzFlag = 1;
++            if (q[idx]) nz = true;
+         }
+-        g.sync();
+-        if (!nzFlag) return fixes;  // all zero now: no residual
++        if (!g.sync_or(nz)) return fixes;  // all zero now: no residual
+     }
+     const int fud = av1g_flip_ud(txType), flr = av1g_flip_lr(txType);
+     for (int p = tid; p < W * H; p += nt) {
+@@ -610,15 +616,18 @@
+                                 int txbIdx) {
+     const TxR T(W, H);
+     const int tid = g.t;
+-    // eob / culLevel / dc category from the final levels (first warp of g)
++    // eob / culLevel / dc category from the final levels (first warp of g).  One pass: the levels at scan positions
++    // >= eob are zero, so culLevel's sum over the first eob positions is the sum over all of them
+     __shared__ int sEob[2], sCul[2];
+     if (tid < 32) {
+         const uint16_t *scan = av1g_get_scan(txSz, txType);
+-        int last = 0;
+-        for (int c = tid; c < T.n; c += 32) if (q[scan[c]]) last = c + 1;
++        int last = 0, cul = 0;
++        for (int c = tid; c < T.n; c += 32) {
++            const int v = q[scan[c]];
++            if (v) last = c + 1;
++            cul += v < 0 ? -v : v;
++        }
+         const int eob = warp_max(last);
+-        int cul = 0;
+-        for (int c = tid; c < eob; c += 32) { const int v = q[scan[c]]; cul += v < 0 ? -v : v; }
+         cul = warp_sumi(cul);
+         if (tid == 0) { sEob[g.k] = eob; sCul[g.k] = min(cul, 63); }
+     }
+@@ -653,17 +662,18 @@
+ // record the tx block in S.qfin as the SB's next one (CTA)
+ template <int SS, int BD>
+ __device__ int rc_record_txb(int W, int H, RcShared<BD> &S, const GpBatch &B, uint32_t sb, const GpImage &I, int plane, int txSz, int txType,
+-                             int x4, int y4, int sbr4, int sbc4) {
++                             int x4, int y4, int sbr4, int sbc4, const int16_t *q = nullptr, bool sync = true) {
+     // coefficient offset: read BEFORE the barriers - thread 0 advances S.nCoef after them, and a warp
+     // reading it late wrote its levels one tx block too far, leaving stale memory in the record
+     // (racecheck 2026-10-02; the 2-encoder batch-mode V-plane decoder mismatches)
+     const uint32_t cOff = (uint32_t)S.nCoef;
+-    const int eob = rc_record_txb_at<SS, BD>(W, H, S, B, sb, I, plane, txSz, txType, x4, y4, sbr4, sbc4, S.qfin, rc_cta(), cOff, S.nTxb);
++    const int eob = rc_record_txb_at<SS, BD>(W, H, S, B, sb, I, plane, txSz, txType, x4, y4, sbr4, sbc4, q ? q : S.qfin, rc_cta(), cOff,
++                                             S.nTxb);
+     if (threadIdx.x == 0) {
+         S.nTxb++;
+         S.nCoef += TxR(W, H).n;
+     }
+-    __syncthreads();
++    if (sync) __syncthreads();   // sync = false: the caller's next reader of S.nTxb / nCoef / bdm is behind a barrier
+     return eob;
+ }
+ 
+@@ -852,52 +862,52 @@
+         evaluated = true;
+         rc_tick(B, P, 1);
+     } else if (nc > 1 || pass2 || fiOk) {
+-        // pass 1: candidates with DCT_DCT (+ the analysis winner with its tx type, + filter-intra modes)
+-        if (tid == 0) {
+-            int n = 0;
+-            for (int k = 0; k < nc; k++) { S.taskC[n] = br.cand[k]; S.taskT[n] = AV1G_DCT_DCT; S.taskP[n] = 0; n++; }
+-            if (br.tx != AV1G_DCT_DCT) { S.taskC[n] = br.cand[0]; S.taskT[n] = br.tx; S.taskP[n] = 0; n++; }
+-            if (fiOk)
+-                for (int f = 0; f < 5; f++) { S.taskC[n] = 128 + f; S.taskT[n] = AV1G_DCT_DCT; S.taskP[n] = 0; n++; }
+-            S.nTask = n;
+-        }
+-        __syncthreads();
+-        const bool skip1 = S.nTask == 1;   // nothing to compare: bestC = that candidate
+-        if (!skip1) {
++        // pass 1: candidates with DCT_DCT (+ the analysis winner with its tx type, + filter-intra modes).  Every
++        // thread knows its size: a single task (nc 1, br.tx DCT_DCT, no filter intra) is not evaluated and needs
++        // no shared list - bestC is that candidate.
++        const bool skip1 = nc + (br.tx != AV1G_DCT_DCT ? 1 : 0) + (fiOk ? 5 : 0) == 1;
++        if (skip1) {
++            bestC = br.cand[0];
++            bestT = AV1G_DCT_DCT;
++        } else {
++            if (tid == 0) {
++                int n = 0;
++                for (int k = 0; k < nc; k++) { S.taskC[n] = br.cand[k]; S.taskT[n] = AV1G_DCT_DCT; S.taskP[n] = 0; n++; }
++                if (br.tx != AV1G_DCT_DCT) { S.taskC[n] = br.cand[0]; S.taskT[n] = br.tx; S.taskP[n] = 0; n++; }
++                if (fiOk)
++                    for (int f = 0; f < 5; f++) { S.taskC[n] = 128 + f; S.taskT[n] = AV1G_DCT_DCT; S.taskP[n] = 0; n++; }
++                S.nTask = n;
++            }
++            __syncthreads();
+             runTasks(false);
+             evaluated = true;
+             float bJ = GP_INF;
+             for (int t = 0; t < S.nTask; t++)
+                 if (S.taskJ[t] < bJ) { bJ = S.taskJ[t]; bestC = S.taskC[t]; bestT = S.taskT[t]; }
++            // every thread must have read S.nTask / taskC / taskT before thread 0 rewrites them for pass 2 (a late
++            // warp that saw pass 2's list misaligned the CTA's barriers: racecheck 2026-10-02)
+             __syncthreads();
+-        } else {
+-            bestC = S.taskC[0];
+-            bestT = S.taskT[0];
+         }
+-        // every thread must have read S.nTask / taskC / taskT before thread 0 rewrites them for pass 2:
+-        // without this barrier a late warp saw pass 2's nTask, took the !skip1 branch (runTasks and its
+-        // __syncthreads) and misaligned the CTA's barriers - rare, timing-dependent corrupt records
+-        // (racecheck 2026-10-02; seen as V-plane decoder mismatches in 2-encoder batch runs)
+-        __syncthreads();
+         rc_tick(B, P, 1);  // pass 1
+         // pass 2: tx-type search for the winner with the real residual (all types if pass 1 was skipped)
+         if (pass2) {
+-            if (tid == 0) {
+-                int n = 0;
+-                for (int t = 0; t < 16; t++) {
+-                    if (!av1g_tx_type_in_set_intra(set, t)) continue;
+-                    if (!skip1 && (t == AV1G_DCT_DCT || (bestC == br.cand[0] && t == br.tx))) continue;
+-                    S.taskC[n] = bestC; S.taskT[n] = t; S.taskP[n] = 0; n++;
+-                }
+-                S.nTask = n;
++            // the list (bestC with the set's other types) and its size are known to every thread; thread 0 writes it
++            // while warp 0 prepares bestC's edges for the shared residual: one barrier for both
++            int n2 = 0;
++            for (int t = 0; t < 16; t++) {
++                if (!av1g_tx_type_in_set_intra(set, t)) continue;
++                if (!skip1 && (t == AV1G_DCT_DCT || (bestC == br.cand[0] && t == br.tx))) continue;
++                if (tid == 0) { S.taskC[n2] = bestC; S.taskT[n2] = t; S.taskP[n2] = 0; }
++                n2++;
+             }
+-            __syncthreads();
+-            if (S.nTask > 0) {
+-                if (!big && !is_fi(bestC)) {
++            if (tid == 0) S.nTask = n2;
++            const bool shr = n2 > 0 && !big && !is_fi(bestC);
++            if (shr && tid < 32) rc_prepare_edges<BD>(S, 0, bestC, false, T.lw, T.lh);
++            if (n2 > 0) {
++                __syncthreads();
++                if (shr) {
+                     // shared residual of bestC: edges by warp 0 (slot 0), residual by the CTA; energy with the
+                     // lane order of rc_residual (warp 0) so EvalIn.resEnergy is bit-identical
+-                    if (tid < 32) rc_prepare_edges<BD>(S, 0, bestC, false, T.lw, T.lh);
+-                    __syncthreads();
+                     int16_t *res = S.u.w[0].res;
+                     if (pal_cand(bestC))
+                         for (int p = tid; p < W * H; p += RC_NT)
+@@ -925,7 +935,7 @@
+                         if (S.taskJ[t] < bJ) { bJ = S.taskJ[t]; bestT = S.taskT[t]; }
+                 }
+             }
+-            __syncthreads();
++            // no barrier: runTasks ended with one, and S.task* / the warp slots are next written after further ones
+         }
+     }
+     int bestW = -1;
+@@ -946,12 +956,23 @@
+     // W1/W2: without the tx-size trial the final prediction is src - residual (the shared pass-2
+     // residual of bestC, or the final quantization's), no second prediction pass
+     const int16_t *predRes = nullptr;
+-    if (bestW >= 0) {
+-        // reuse the winner's levels
++    int16_t *qF = S.qfin;   // final levels of the depth-0 tx block
++    int eobF = 0;           // their eob without the tx-size trial (else S.finEob)
++    if (bestW >= 0 && !trySplit) {
++        // the winner's levels in place (rc_bestq: not touched until the block's chroma), eob from its record
++        qF = rc_bestq(S.u, bestW);
++        eobF = S.bestEw[bestW];
++        if (sharedResC == bestC) predRes = S.u.w[0].res;
++        else {
++            if (tid < 32) rc_prepare_edges<BD>(S, 0, bestC, false, T.lw, T.lh);
++            __syncthreads();
++        }
++        J0 = 0.f;   // only the tx-size trial uses it
++    } else if (bestW >= 0) {
++        // tx-size trial: reuse the winner's levels (S.qfin, kept for a rollback)
+         for (int i = tid; i < W * H; i += RC_NT) S.qfin[i] = rc_bestq(S.u, bestW)[i];
+         if (tid == 0) S.finEob = S.bestEw[bestW];
+-        if (!trySplit && sharedResC == bestC) predRes = S.u.w[0].res;
+-        else if (tid < 32) rc_prepare_edges<BD>(S, 0, bestC, false, T.lw, T.lh);
++        if (tid < 32) rc_prepare_edges<BD>(S, 0, bestC, false, T.lw, T.lh);
+         __syncthreads();
+         J0 = S.bestJw[bestW];
+     } else if (trySplit) {
+@@ -961,6 +982,7 @@
+         rc_final_quant<BD>(W, H, S, e, 0, bestC, false, 0, src, I.spitch[0]);
+         predRes = big ? S.bigG->res : S.u.w[0].res;
+         J0 = 0.f;   // only the tx-size trial uses it
++        eobF = S.finEob;
+     }
+     int txDepth = 0;
+     if (trySplit) {
+@@ -1084,13 +1106,16 @@
+     *outTxDepth = txDepth;
+     if (txDepth == 0) {
+         Px *dst = gp_rec<BD>(I, 0) + (size_t)y * I.rpitch[0] + x;
++        if (trySplit) eobF = S.finEob;   // depth 0 won the trial: S.qfin / S.finEob restored above
+         if (predRes) rc_write_from_res(W, H, src, I.spitch[0], predRes, dst, I.rpitch[0]);
+         else rc_write_pred<BD>(W, H, S, 0, bestC, false, 0, dst, I.rpitch[0], rc_cta());
+-        if (S.finEob > 0) {
+-            const int fixes = cta_inverse_add(W, H, S, S.qfin, txSz, bestT, e.dcQ, e.acQ, e.qm, dst, I.rpitch[0], rc_cta());
++        if (eobF > 0) {
++            const int fixes = cta_inverse_add(W, H, S, qF, txSz, bestT, e.dcQ, e.acQ, e.qm, dst, I.rpitch[0], rc_cta());
+             if (fixes && tid == 0) atomicAdd(&B.stats[3], 1u);
+         }
+-        *outEob = rc_record_txb<1, BD>(W, H, S, B, sb, I, 0, txSz, bestT, x >> 2, y >> 2, sbr4, sbc4);
++        // no trailing barrier: rc_chroma reads S.nCoef / S.nTxb, plane 0's BlockDecoded and maps only after its first
++        // barrier, and without chroma the block record's barrier comes first
++        *outEob = rc_record_txb<1, BD>(W, H, S, B, sb, I, 0, txSz, bestT, x >> 2, y >> 2, sbr4, sbc4, qF, false);
+     }
+     rc_tick(B, P, 3);  // final quant + prediction + inverse + record
+     *outMode = luma_mode(bestC);
+@@ -1123,7 +1148,16 @@
+         const int haveBL = (S.bdm[pl][sbr4 + stepY + 1] >> (sbc4 - 1 + 1)) & 1;
+         rc_edges<SS, BD>(S, I, pl, cx, cy, T.lw, T.lh, availLC, availUC, haveAR, haveBL, mi_row, mi_col, pl == 1 ? 0 : 64, 64);
+     }
++    // coefficient contexts of the first U / V tx blocks (global loads, here so their latency overlaps CfL and the screening)
++    int skipCtxU, dcCtxU, skipCtxV, dcCtxV;
++    txb_ctx<SS>(I, 1, txSz, x4, y4, bsize, tb, &skipCtxU, &dcCtxU);
++    txb_ctx<SS>(I, 2, txSz, x4, y4, bsize, tb, &skipCtxV, &dcCtxV);
++    // before the first barrier: the SATD sums and the 13 UV modes of the screening, the CfL sums
+     if (tid < 32) S.satd[tid] = 0.f;
++    if (tid < 13) S.uvc[tid] = cand_pack(tid, 0);
++    if (tid < 2) { S.cflNum[tid] = 0.f; S.cflDen[tid] = 0.f; }
++    if (tid < 6) S.alphaSse[tid / 3][tid % 3] = 0.f;
++    if (tid == 0) S.cflSum = 0;
+     const Px *srcU = gp_src<BD>(I, 1) + (size_t)cy * I.spitch[1] + cx;
+     const Px *srcV = gp_src<BD>(I, 2) + (size_t)cy * I.spitch[2] + cx;
+     const bool cflOk = P.cfl && av1g_cfl_allowed(bsize);
+@@ -1172,18 +1206,17 @@
+             sum += v;
+         }
+         sum = warp_sumi(sum);
+-        if (tid == 0) S.cflAvg = 0;
++        if ((tid & 31) == 0) atomicAdd(&S.cflSum, sum);
+         __syncthreads();
+-        if ((tid & 31) == 0) atomicAdd(&S.cflAvg, sum);
+-        __syncthreads();
+-        if (tid == 0) S.cflAvg = av1g_round2(S.cflAvg, T.lw + T.lh);
+-        if (tid < 2) { S.cflNum[tid] = 0.f; S.cflDen[tid] = 0.f; }
+-        __syncthreads();
++        // the average, and below the alpha, computed by every thread (the same integer / float expressions);
++        // S.cflAvg / S.cflAlpha are for the later phases (read after further barriers)
++        const int cflAvg = av1g_round2(S.cflSum, T.lw + T.lh);
++        if (tid == 0) S.cflAvg = cflAvg;
+         // least-squares alpha per plane: r = src - DC, l = v - avg; alpha ~ 64 * sum(r l) / sum(l^2)
+         float num[2] = {0.f, 0.f}, den = 0.f;
+         for (int p = tid; p < W * H; p += RC_NT) {
+             const int i = p >> T.lw, j = p & (W - 1);
+-            const float l = (float)(rc_cflL(S.u)[p] - S.cflAvg);
++            const float l = (float)(rc_cflL(S.u)[p] - cflAvg);
+             num[0] += l * (float)((int)srcU[i * I.spitch[1] + j] - S.dcv[1]);
+             num[1] += l * (float)((int)srcV[i * I.spitch[2] + j] - S.dcv[2]);
+             den += l * l;
+@@ -1191,23 +1224,22 @@
+         num[0] = warp_sum(num[0]); num[1] = warp_sum(num[1]); den = warp_sum(den);
+         if ((tid & 31) == 0) { atomicAdd(&S.cflNum[0], num[0]); atomicAdd(&S.cflNum[1], num[1]); atomicAdd(&S.cflDen[0], den); }
+         __syncthreads();
+-        if (tid < 2) {
++        int alpha0[2];
++        for (int pl = 0; pl < 2; pl++) {
+             const float d = S.cflDen[0];
+-            int a = d > 0.f ? (int)rintf(64.f * S.cflNum[tid] / d) : 0;
+-            S.cflAlpha[tid] = max(-16, min(16, a));
++            int a = d > 0.f ? (int)rintf(64.f * S.cflNum[pl] / d) : 0;
++            alpha0[pl] = max(-16, min(16, a));
+         }
+-        if (tid < 6) S.alphaSse[tid / 3][tid % 3] = 0.f;
+-        __syncthreads();
+         // refine alpha +-1 by pixel SSE
+         {
+             float sse[2][3] = {{0.f, 0.f, 0.f}, {0.f, 0.f, 0.f}};
+             for (int p = tid; p < W * H; p += RC_NT) {
+                 const int i = p >> T.lw, j = p & (W - 1);
+-                const int l = rc_cflL(S.u)[p] - S.cflAvg;
++                const int l = rc_cflL(S.u)[p] - cflAvg;
+                 for (int pl = 0; pl < 2; pl++) {
+                     const int s = pl == 0 ? srcU[i * I.spitch[1] + j] : srcV[i * I.spitch[2] + j];
+                     for (int k = 0; k < 3; k++) {
+-                        const int a = max(-16, min(16, S.cflAlpha[pl] + k - 1));
++                        const int a = max(-16, min(16, alpha0[pl] + k - 1));
+                         const int pr = av1g_clip1<BD>(S.dcv[pl + 1] + av1g_round2signed(a * l, 6));
+                         const float d = (float)(s - pr);
+                         sse[pl][k] += d * d;
+@@ -1225,17 +1257,15 @@
+             for (int pl = 0; pl < 2; pl++) {
+                 int bk = 1;
+                 for (int k = 0; k < 3; k++) if (S.alphaSse[pl][k] < S.alphaSse[pl][bk]) bk = k;
+-                S.cflAlpha[pl] = max(-16, min(16, S.cflAlpha[pl] + bk - 1));
++                S.cflAlpha[pl] = max(-16, min(16, alpha0[pl] + bk - 1));
+             }
+         }
+-        __syncthreads();
++        // no barrier: S.cflAlpha is read after the SATD screening's barriers
+     }
+     rc_tick(B, P, 4);  // chroma edges + CfL
+     // ---- SATD screening of the 13 UV modes (real edges), then angle deltas +-1..3 around the best
+     //      directional UV mode ----
+-    if (tid < 13) S.uvc[tid] = cand_pack(tid, 0);
+-    __syncthreads();
+-    int nuv = 13;
++    int nuv = 13;   // S.uvc[0, 13) set before the first barrier
+     for (int pass = 0; pass < 2; pass++) {
+         const int c0 = pass ? 13 : 0, c1 = pass ? 19 : 13;
+         if (pass) {
+@@ -1339,9 +1369,6 @@
+         S.nTask = n;
+     }
+     __syncthreads();
+-    int skipCtxU, dcCtxU, skipCtxV, dcCtxV;
+-    txb_ctx<SS>(I, 1, txSz, x4, y4, bsize, tb, &skipCtxU, &dcCtxU);
+-    txb_ctx<SS>(I, 2, txSz, x4, y4, bsize, tb, &skipCtxV, &dcCtxV);
+     EvalIn e;
+     e.txSz = txSz; e.plane = 1; e.dcQ = bq.dcQ[1]; e.acQ = bq.acQ[1];
+     e.rnd = P.rndC; e.zbin = P.zbinC; e.skipCtx = skipCtxU; e.dcCtx = dcCtxU; e.reduced = 0; e.C = C;
+@@ -1403,7 +1430,8 @@
+             if (J < bJ) { bJ = J; bestUv = uv; bestUvC = c; }
+         }
+     }
+-    __syncthreads();
++    // no barrier: the final only reads the tasks' results (written before the tasks' barrier) and writes buffers the
++    // selection does not read
+     rc_tick(B, P, 6);  // chroma exact RD tasks
+     const bool cfl = bestUv == AV1G_UV_CFL_PRED;
+     const int uvTxType = av1g_chroma_tx_type(txSz, bestUv, 0);
+@@ -1441,8 +1469,7 @@
+         // one word each: merged into a wider load they would also read S.nTxb, which thread 0 updates below
+         eobs[0] = *(const volatile int *)&S.eobUV[0];
+         eobs[1] = *(const volatile int *)&S.eobUV[1];
+-        if (tid == 0) { S.nTxb += 2; S.nCoef += 2 * T.n; }
+-        __syncthreads();
++        if (tid == 0) { S.nTxb += 2; S.nCoef += 2 * T.n; }   // next read after the block record's barrier
+     } else
+     for (int pl = 1; pl <= 2; pl++) {
+         EvalIn ee = e;

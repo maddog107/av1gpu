@@ -5,6 +5,15 @@
 // instead of local memory (the generic versions index int32_t T[64] / copyT[64] dynamically: ~45 % of
 // k_recon's local stores).  The integer operations, their order and the conformance checks are the same as
 // in av1core, so the residual and the error flags are bit-identical.
+//
+// 32-bit arithmetic: av1core computes the butterflies in int64, but with in-range inputs nothing here needs
+// more than 31 bits.  The working values are within r bits (r = BitDepth + 8 <= 18 for rows, 16 for columns):
+// the dequantized inputs are clamped to BitDepth + 8 bits, the column inputs are int16, H() clamps to r bits and
+// every B() / iadst4 result is range-checked.  So a product T * cos128 is below 2^(r - 1 + 12) and every sum
+// below 2^(r + 12) <= 2^30; iadst4's sums are checked at r + 12 bits.  Until the first failed check all values
+// are therefore exactly the int64 ones, the first failed check fails here too, and a transform with any failed
+// check is discarded (cta_inverse_add halves the levels and redoes it), so the residual and the flags are the
+// same.  The arithmetic wraps through uint32_t, so values after a failed check are defined (and unused).
 #pragma once
 #include <stdint.h>
 #include "av1g/dsp.h"
@@ -18,28 +27,34 @@ __host__ __device__ constexpr int brev(int numBits, int x) {
 }
 __device__ __forceinline__ int cos128(int angle) { return av1g_cos128(angle); }
 __device__ __forceinline__ int sin128(int angle) { return av1g_cos128(angle - 64); }
-__device__ __forceinline__ void chk(int64_t v, int bits, uint32_t &err, uint32_t flag) {
-    if (v < -((int64_t)1 << (bits - 1)) || v > ((int64_t)1 << (bits - 1)) - 1) err |= flag;
+// wrapping 32-bit operations (see the header: exact for the in-range values that matter)
+__device__ __forceinline__ int32_t wadd(int32_t a, int32_t b) { return (int32_t)((uint32_t)a + (uint32_t)b); }
+__device__ __forceinline__ int32_t wsub(int32_t a, int32_t b) { return (int32_t)((uint32_t)a - (uint32_t)b); }
+__device__ __forceinline__ int32_t wmul(int32_t a, int32_t b) { return (int32_t)((uint32_t)a * (uint32_t)b); }
+// av1g_round2_64(x, n) for n >= 1
+__device__ __forceinline__ int32_t rnd2(int32_t x, int n) { return wadd(x, 1 << (n - 1)) >> n; }
+__device__ __forceinline__ void chk(int32_t v, int bits, uint32_t &err, uint32_t flag) {   // bits <= 31
+    if (v < -(1 << (bits - 1)) || v > (1 << (bits - 1)) - 1) err |= flag;
 }
 template <int L>
 __device__ __forceinline__ void B(int32_t (&T)[L], int a, int b, int angle, int flip, int r, uint32_t &err) {
-    const int64_t c = cos128(angle), s = sin128(angle);
-    const int64_t x = (int64_t)T[a] * c - (int64_t)T[b] * s;
-    const int64_t y = (int64_t)T[a] * s + (int64_t)T[b] * c;
-    const int64_t xa = av1g_round2_64(x, 12), yb = av1g_round2_64(y, 12);
+    const int32_t c = cos128(angle), s = sin128(angle);
+    const int32_t x = wsub(wmul(T[a], c), wmul(T[b], s));
+    const int32_t y = wadd(wmul(T[a], s), wmul(T[b], c));
+    const int32_t xa = rnd2(x, 12), yb = rnd2(y, 12);
     chk(xa, r, err, AV1G_ERR_B_RANGE);
     chk(yb, r, err, AV1G_ERR_B_RANGE);
-    if (flip) { T[a] = (int32_t)yb; T[b] = (int32_t)xa; }
-    else      { T[a] = (int32_t)xa; T[b] = (int32_t)yb; }
+    if (flip) { T[a] = yb; T[b] = xa; }
+    else      { T[a] = xa; T[b] = yb; }
 }
 template <int L>
 __device__ __forceinline__ void H(int32_t (&T)[L], int a, int b, int flip, int r) {
     if (flip) { const int t = a; a = b; b = t; }
-    const int64_t x = T[a], y = T[b];
-    const int64_t lo = -((int64_t)1 << (r - 1)), hi = ((int64_t)1 << (r - 1)) - 1;
-    const int64_t s = x + y, d = x - y;
-    T[a] = (int32_t)(s < lo ? lo : (s > hi ? hi : s));
-    T[b] = (int32_t)(d < lo ? lo : (d > hi ? hi : d));
+    const int32_t x = T[a], y = T[b];
+    const int32_t lo = -(1 << (r - 1)), hi = (1 << (r - 1)) - 1;
+    const int32_t s = wadd(x, y), d = wsub(x, y);
+    T[a] = s < lo ? lo : (s > hi ? hi : s);
+    T[b] = d < lo ? lo : (d > hi ? hi : d);
 }
 
 template <int n>
@@ -208,42 +223,42 @@ __device__ __forceinline__ void iadst_out_perm(int32_t (&T)[1 << n]) {
 }
 
 __device__ __forceinline__ void iadst4(int32_t (&T)[4], int r, uint32_t &err) {
-    const int64_t SINPI_1_9 = 1321, SINPI_2_9 = 2482, SINPI_3_9 = 3344, SINPI_4_9 = 3803;
-    int64_t s[7], x[4];
-    s[0] = SINPI_1_9 * T[0];
-    s[1] = SINPI_2_9 * T[0];
-    s[2] = SINPI_3_9 * T[1];
-    s[3] = SINPI_4_9 * T[2];
-    s[4] = SINPI_1_9 * T[2];
-    s[5] = SINPI_2_9 * T[3];
-    s[6] = SINPI_4_9 * T[3];
-    const int64_t a7 = (int64_t)T[0] - T[2];
-    const int64_t b7 = a7 + T[3];
+    const int32_t SINPI_1_9 = 1321, SINPI_2_9 = 2482, SINPI_3_9 = 3344, SINPI_4_9 = 3803;
+    int32_t s[7], x[4];
+    s[0] = wmul(SINPI_1_9, T[0]);
+    s[1] = wmul(SINPI_2_9, T[0]);
+    s[2] = wmul(SINPI_3_9, T[1]);
+    s[3] = wmul(SINPI_4_9, T[2]);
+    s[4] = wmul(SINPI_1_9, T[2]);
+    s[5] = wmul(SINPI_2_9, T[3]);
+    s[6] = wmul(SINPI_4_9, T[3]);
+    const int32_t a7 = wsub(T[0], T[2]);
+    const int32_t b7 = wadd(a7, T[3]);
     chk(a7, r + 1, err, AV1G_ERR_ADST4_RANGE);
     chk(b7, r, err, AV1G_ERR_ADST4_RANGE);
 #pragma unroll
     for (int i = 0; i < 7; i++) chk(s[i], r + 12, err, AV1G_ERR_ADST4_RANGE);
-    s[0] = s[0] + s[3];
-    s[1] = s[1] - s[4];
+    s[0] = wadd(s[0], s[3]);
+    s[1] = wsub(s[1], s[4]);
     s[3] = s[2];
-    s[2] = SINPI_3_9 * b7;
+    s[2] = wmul(SINPI_3_9, b7);
     chk(s[0], r + 12, err, AV1G_ERR_ADST4_RANGE);
     chk(s[1], r + 12, err, AV1G_ERR_ADST4_RANGE);
     chk(s[2], r + 12, err, AV1G_ERR_ADST4_RANGE);
-    s[0] = s[0] + s[5];
-    s[1] = s[1] - s[6];
+    s[0] = wadd(s[0], s[5]);
+    s[1] = wsub(s[1], s[6]);
     chk(s[0], r + 12, err, AV1G_ERR_ADST4_RANGE);
     chk(s[1], r + 12, err, AV1G_ERR_ADST4_RANGE);
-    x[0] = s[0] + s[3];
-    x[1] = s[1] + s[3];
+    x[0] = wadd(s[0], s[3]);
+    x[1] = wadd(s[1], s[3]);
     x[2] = s[2];
-    x[3] = s[0] + s[1];
+    x[3] = wadd(s[0], s[1]);
     chk(x[3], r + 12, err, AV1G_ERR_ADST4_RANGE);
-    x[3] = x[3] - s[3];
+    x[3] = wsub(x[3], s[3]);
 #pragma unroll
     for (int i = 0; i < 4; i++) chk(x[i], r + 12, err, AV1G_ERR_ADST4_RANGE);
 #pragma unroll
-    for (int i = 0; i < 4; i++) T[i] = (int32_t)av1g_round2_64(x[i], 12);
+    for (int i = 0; i < 4; i++) T[i] = rnd2(x[i], 12);
 }
 __device__ __forceinline__ void iadst8(int32_t (&T)[8], int r, uint32_t &err) {
     iadst_in_perm<3>(T);
@@ -292,10 +307,11 @@ template <int n>
 __device__ __forceinline__ void iidentity(int32_t (&T)[1 << n]) {
 #pragma unroll
     for (int i = 0; i < (1 << n); i++) {
-        if constexpr (n == 2) T[i] = (int32_t)av1g_round2_64((int64_t)T[i] * 5793, 12);
-        else if constexpr (n == 3) T[i] = T[i] * 2;
-        else if constexpr (n == 4) T[i] = (int32_t)av1g_round2_64((int64_t)T[i] * 11586, 12);
-        else T[i] = T[i] * 4;
+        // |T| <= 2^17 (rows, 10 bits): T * 11586 < 2^31
+        if constexpr (n == 2) T[i] = rnd2(wmul(T[i], 5793), 12);
+        else if constexpr (n == 3) T[i] = wmul(T[i], 2);
+        else if constexpr (n == 4) T[i] = rnd2(wmul(T[i], 11586), 12);
+        else T[i] = wmul(T[i], 4);
     }
 }
 // av1g_inv_1d for a compile-time size (kinds that do not exist at a size are never requested)
@@ -320,12 +336,18 @@ __device__ __forceinline__ uint32_t row(int i, int th, int tw, const int16_t *q,
     constexpr int W = 1 << LW;
     int32_t Tv[W];
     int nz = 0;
+    const int dsh = den >> 1;   // den = 1, 2, 4: the division of av1g_dequant_coef (a non-negative value) is this shift
 #pragma unroll
     for (int j = 0; j < W; j++) {
         int32_t d = 0;
         if (j < 32 && i < th && j < tw) {
             const int idx = i * tw + j;
-            d = q[idx] ? av1g_dequant_coef<BD>(q[idx], av1g_qm_step(idx == 0 ? dcQ : acQ, qm, idx), den) : 0;
+            if (q[idx]) {   // av1g_dequant_coef<BD>(q[idx], step, den)
+                const int32_t dq = q[idx] * av1g_qm_step(idx == 0 ? dcQ : acQ, qm, idx);
+                int32_t a = ((dq < 0 ? -dq : dq) & 0xFFFFFF) >> dsh;
+                if (dq < 0) a = -a;
+                d = av1g_clip3(-(1 << (7 + BD)), (1 << (7 + BD)) - 1, a);
+            }
         }
         Tv[j] = d;
         nz |= d;
@@ -337,13 +359,13 @@ __device__ __forceinline__ uint32_t row(int i, int th, int tw, const int16_t *q,
     }
     if (rect) {
 #pragma unroll
-        for (int j = 0; j < W; j++) Tv[j] = (int32_t)av1g_round2_64((int64_t)Tv[j] * 2896, 12);
+        for (int j = 0; j < W; j++) Tv[j] = rnd2(wmul(Tv[j], 2896), 12);
     }
     uint32_t err = 0;
     inv_1d<LW>(Tv, rk, BD + 8, err);
 #pragma unroll
     for (int j = 0; j < W; j++)
-        res[i * W + j] = (int16_t)av1g_clip3(-(1 << 15), (1 << 15) - 1, (int32_t)av1g_round2_64(Tv[j], rowShift));
+        res[i * W + j] = (int16_t)av1g_clip3(-(1 << 15), (1 << 15) - 1, rowShift ? rnd2(Tv[j], rowShift) : Tv[j]);
     return err;
 }
 // one column of the 2-D inverse (1-D + round + range flag 0x100); returns err
@@ -357,7 +379,7 @@ __device__ __forceinline__ uint32_t col(int j, int W, int ck, int16_t *res) {
     inv_1d<LH>(Tv, ck, 16, err);
 #pragma unroll
     for (int i = 0; i < H; i++) {
-        const int32_t v = (int32_t)av1g_round2_64(Tv[i], 4);
+        const int32_t v = rnd2(Tv[i], 4);
         res[i * W + j] = (int16_t)av1g_clip3(-(1 << 15), (1 << 15) - 1, v);
         if (v < -(1 << 15) || v > (1 << 15) - 1) err |= 0x100u;
     }

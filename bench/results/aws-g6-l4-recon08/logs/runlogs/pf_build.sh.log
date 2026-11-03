@@ -1,0 +1,14 @@
+built after 87 s
+[av1gpu] stage ms: ingest wait 21.7 | gpu setup 24.5 analysis 620.2 dp 8.0 recon 2478.6 pack 9.6 postfilter 118.6 download 0.0 (gpu total 3288.5, encode wall 3290.9) | entropy wall 1053.7 (gpu 1033.4) | write 17.8 | peak dev 1137 MB
+[av1gpu] recon phases: luma setup 7.2% luma pass1 0.5% luma pass2 13.4% luma final 23.2% chroma edges+CfL 5.6% chroma SATD 9.5% chroma RD 19.0% chroma final 11.3% maps+record 1.9% lf-levels 8.2% lf-split 0.0% lf-rebuild 0.2% x12 0.0% x13 0.0% x14 0.0% x15 0.0%
+[av1gpu] recon CTA-cycles 2.32e+11 = 15.0% of 58 SMs x 4 CTAs x 2.7 GHz x recon 2479 ms
+[av1gpu] stage ms: ingest wait 23.3 | gpu setup 31.4 analysis 615.3 dp 8.3 recon 2464.7 pack 9.5 postfilter 119.1 download 0.0 (gpu total 3278.8, encode wall 3281.1) | entropy wall 1020.6 (gpu 999.5) | write 21.8 | peak dev 1129 MB
+[av1gpu] recon phases: luma setup 7.1% luma pass1 0.5% luma pass2 13.6% luma final 23.2% chroma edges+CfL 5.6% chroma SATD 9.4% chroma RD 18.9% chroma final 11.4% maps+record 2.0% lf-levels 8.1% lf-split 0.0% lf-rebuild 0.2% x12 0.0% x13 0.0% x14 0.0% x15 0.0%
+[av1gpu] recon CTA-cycles 2.33e+11 = 15.1% of 58 SMs x 4 CTAs x 2.7 GHz x recon 2465 ms
+[av1gpu] stage ms: ingest wait 48.6 | gpu setup 3.3 analysis 514.9 dp 0.4 recon 932.4 pack 0.3 postfilter 7.2 download 0.0 (gpu total 1508.5, encode wall 479.9) | entropy wall 212.0 (gpu 199.3) | write 7.4 | peak dev 1151 MB
+[av1gpu] recon phases: luma setup 6.3% luma pass1 0.8% luma pass2 21.7% luma final 16.3% chroma edges+CfL 6.8% chroma SATD 9.7% chroma RD 19.8% chroma final 9.9% maps+record 2.6% lf-levels 5.6% lf-split 0.0% lf-rebuild 0.3% x12 0.0% x13 0.0% x14 0.0% x15 0.0%
+[av1gpu] recon CTA-cycles 7.62e+09 = 1.3% of 58 SMs x 4 CTAs x 2.7 GHz x recon 932 ms
+[av1gpu] stage ms: ingest wait 47.3 | gpu setup 3.0 analysis 513.3 dp 0.4 recon 837.4 pack 0.3 postfilter 7.2 download 0.0 (gpu total 1411.0, encode wall 371.4) | entropy wall 166.1 (gpu 152.7) | write 18.1 | peak dev 1171 MB
+[av1gpu] recon phases: luma setup 6.3% luma pass1 0.8% luma pass2 21.6% luma final 16.3% chroma edges+CfL 6.9% chroma SATD 9.8% chroma RD 19.9% chroma final 9.9% maps+record 2.7% lf-levels 5.7% lf-split 0.0% lf-rebuild 0.3% x12 0.0% x13 0.0% x14 0.0% x15 0.0%
+[av1gpu] recon CTA-cycles 7.6e+09 = 1.4% of 58 SMs x 4 CTAs x 2.7 GHz x recon 837 ms
+PF_DONE

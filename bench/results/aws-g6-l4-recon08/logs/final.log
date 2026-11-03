@@ -1,0 +1,16 @@
+start 06:08:29
+build rc 0 06:08:29
+resusage done 06:11:11
+race rc 0 06:17:32
+identity rc 0 06:26:15
+identity done 06:26:15
+checks done 06:26:15
+sanitizers done 06:26:21
+78
+speed start 06:26:21
+clocks.current.sm [MHz], clocks.max.sm [MHz], power.draw [W], temperature.gpu, clocks_event_reasons.active
+2040 MHz, 2040 MHz, 34.13 W, 53, 0x0000000000000000
+pid, process_name
+clocks.current.sm [MHz], clocks.max.sm [MHz], power.draw [W], temperature.gpu, clocks_event_reasons.active
+2040 MHz, 2040 MHz, 33.95 W, 59, 0x0000000000000000
+FINAL_DONE 06:44:05

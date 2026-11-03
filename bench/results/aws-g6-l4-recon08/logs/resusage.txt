@@ -1,0 +1,49 @@
+== old k_recon.cu
+ptxas info    : Compiling entry function '_Z7k_reconILi1ELi8EEv7GpBatch8GpParamsPKj' for 'sm_89'
+ptxas info    : Function properties for _Z7k_reconILi1ELi8EEv7GpBatch8GpParamsPKj
+    3120 bytes stack frame, 148 bytes spill stores, 276 bytes spill loads
+ptxas info    : Used 128 registers, used 4 barriers, 3120 bytes cumulative stack size, 23472 bytes smem, 896 bytes cmem[0], 2816 bytes cmem[2]
+ptxas info    : Compile time = 58314.441 ms
+== old k_recon_444_8.cu
+ptxas info    : Compiling entry function '_Z7k_reconILi0ELi8EEv7GpBatch8GpParamsPKj' for 'sm_89'
+ptxas info    : Function properties for _Z7k_reconILi0ELi8EEv7GpBatch8GpParamsPKj
+    3088 bytes stack frame, 156 bytes spill stores, 308 bytes spill loads
+ptxas info    : Used 128 registers, used 4 barriers, 3088 bytes cumulative stack size, 23488 bytes smem, 896 bytes cmem[0], 2768 bytes cmem[2]
+ptxas info    : Compile time = 45664.645 ms
+== old k_recon_420_10.cu
+ptxas info    : Compiling entry function '_Z7k_reconILi1ELi10EEv7GpBatch8GpParamsPKj' for 'sm_89'
+ptxas info    : Function properties for _Z7k_reconILi1ELi10EEv7GpBatch8GpParamsPKj
+    3152 bytes stack frame, 148 bytes spill stores, 276 bytes spill loads
+ptxas info    : Used 128 registers, used 4 barriers, 3152 bytes cumulative stack size, 25712 bytes smem, 896 bytes cmem[0], 2824 bytes cmem[2]
+ptxas info    : Compile time = 59283.398 ms
+== old k_recon_444_10.cu
+ptxas info    : Compiling entry function '_Z7k_reconILi0ELi10EEv7GpBatch8GpParamsPKj' for 'sm_89'
+ptxas info    : Function properties for _Z7k_reconILi0ELi10EEv7GpBatch8GpParamsPKj
+    3104 bytes stack frame, 156 bytes spill stores, 308 bytes spill loads
+ptxas info    : Used 128 registers, used 4 barriers, 3104 bytes cumulative stack size, 25728 bytes smem, 896 bytes cmem[0], 2776 bytes cmem[2]
+ptxas info    : Compile time = 45824.074 ms
+== new k_recon.cu
+ptxas info    : Compiling entry function '_Z7k_reconILi1ELi8EEv7GpBatch8GpParamsPKj' for 'sm_89'
+ptxas info    : Function properties for _Z7k_reconILi1ELi8EEv7GpBatch8GpParamsPKj
+    3392 bytes stack frame, 160 bytes spill stores, 316 bytes spill loads
+ptxas info    : Used 128 registers, used 4 barriers, 3392 bytes cumulative stack size, 23472 bytes smem, 896 bytes cmem[0], 2080 bytes cmem[2]
+ptxas info    : Compile time = 46300.871 ms
+== new k_recon_444_8.cu
+ptxas info    : Compiling entry function '_Z7k_reconILi0ELi8EEv7GpBatch8GpParamsPKj' for 'sm_89'
+ptxas info    : Function properties for _Z7k_reconILi0ELi8EEv7GpBatch8GpParamsPKj
+    3200 bytes stack frame, 176 bytes spill stores, 328 bytes spill loads
+ptxas info    : Used 128 registers, used 4 barriers, 3200 bytes cumulative stack size, 23488 bytes smem, 896 bytes cmem[0], 2024 bytes cmem[2]
+ptxas info    : Compile time = 39329.891 ms
+== new k_recon_420_10.cu
+ptxas info    : Compiling entry function '_Z7k_reconILi1ELi10EEv7GpBatch8GpParamsPKj' for 'sm_89'
+ptxas info    : Function properties for _Z7k_reconILi1ELi10EEv7GpBatch8GpParamsPKj
+    3424 bytes stack frame, 160 bytes spill stores, 316 bytes spill loads
+ptxas info    : Used 128 registers, used 4 barriers, 3424 bytes cumulative stack size, 25712 bytes smem, 896 bytes cmem[0], 2080 bytes cmem[2]
+ptxas info    : Compile time = 48786.312 ms
+== new k_recon_444_10.cu
+ptxas info    : Compiling entry function '_Z7k_reconILi0ELi10EEv7GpBatch8GpParamsPKj' for 'sm_89'
+ptxas info    : Function properties for _Z7k_reconILi0ELi10EEv7GpBatch8GpParamsPKj
+    3232 bytes stack frame, 176 bytes spill stores, 328 bytes spill loads
+ptxas info    : Used 128 registers, used 4 barriers, 3232 bytes cumulative stack size, 25728 bytes smem, 896 bytes cmem[0], 2024 bytes cmem[2]
+ptxas info    : Compile time = 39782.383 ms
+RESUSAGE_DONE

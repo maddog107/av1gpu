@@ -1,0 +1,7 @@
+start 05:54:51 {'main': '/home/ubuntu/old/build/av1gpu', 'c1': '/home/ubuntu/bins/c1', 'c3': '/home/ubuntu/bins/c3'}
+== size_range_default : 300 files, 1434 MP (3x)
+  main: 234.28 MP/s, 49.03 img/s  rounds [237.08, 232.48]  vs main +0.00 %
+  c1: 246.07 MP/s, 51.49 img/s  rounds [248.36, 243.6]  vs main +5.03 %
+  c3: 243.50 MP/s, 50.96 img/s  rounds [243.04, 243.97]  vs main +3.94 %
+end 05:57:37
+SPD8_DONE
