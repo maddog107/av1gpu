@@ -1,0 +1,17 @@
+========= COMPUTE-SANITIZER
+========= Invalid __shared__ read of size 16 bytes
+=========     at void cub::_V_300403_SM_1200::detail::scan::DeviceScanKernel<cub::_V_300403_SM_1200::detail::scan::policy_selector_from_types<unsigned int *, unsigned int *, unsigned int, unsigned int, cuda::std::__4::plus<void>>, unsigned int *, unsigned int *, cub::_V_300403_SM_1200::ScanTileState<unsigned int, (bool)1>, cuda::std::__4::plus<void>, cub::_V_300403_SM_1200::detail::InputValue<unsigned int, unsigned int *>, unsigned int, unsigned int, (bool)0, unsigned int>(T2, T3, cub::_V_300403_SM_1200::detail::scan::tile_state_kernel_arg_t<T4, T8>, int, T5, T6, T7, int)+0x3a00
+=========     by thread (128,0,0) in block (0,0,0)
+=========     Access to 0x400 is out of bounds
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: cudaLaunchKernel [0x829d7] in cubsweep_134
+=========         Host Frame: void cub::_V_300403_SM_1200::detail::scan::DeviceScanKernel<cub::_V_300403_SM_1200::detail::scan::policy_selector_from_types<unsigned int*, unsigned int*, unsigned int, unsigned int, cuda::std::__4::plus<void> >, unsigned int*, unsigned int*, cub::_V_300403_SM_1200::ScanTileState<unsigned int, true>, cuda::std::__4::plus<void>, cub::_V_300403_SM_1200::detail::InputValue<unsigned int, unsigned int*>, unsigned int, unsigned int, false, unsigned int>(unsigned int*, unsigned int*, cub::_V_300403_SM_1200::detail::scan::tile_state_kernel_arg_t<cub::_V_300403_SM_1200::ScanTileState<unsigned int, true>, unsigned int>, int, cuda::std::__4::plus<void>, cub::_V_300403_SM_1200::detail::InputValue<unsigned int, unsigned int*>, unsigned int, int) [0xb9a0] in cubsweep_134
+=========         Host Frame: main [0xb15e] in cubsweep_134
+========= 
+========= Program hit cudaErrorLaunchFailure (error 719) due to "unspecified launch failure" on CUDA API call to cudaStreamSynchronize.
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: main [0xab40] in cubsweep_134
+========= 
+n 1: launch no error, sync unspecified launch failure
+========= Target application returned an error
+========= ERROR SUMMARY: 2 errors

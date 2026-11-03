@@ -1,0 +1,9 @@
+B13 photo: rc 99; 1 invalid shared reads, first at: =========     at void cuda::ptx::__4::cp_async_bulk_cp_mask<void>(cuda::std::__4::integral_constant<cuda::ptx::__4::dot_;  ERROR SUMMARY: 35 errors
+B13 pair: rc 99; 1 invalid shared reads, first at: =========     at void cuda::ptx::__4::cp_async_bulk_cp_mask<void>(cuda::std::__4::integral_constant<cuda::ptx::__4::dot_;  ERROR SUMMARY: 48 errors
+A13 photo: rc 99; 1 invalid shared reads, first at: =========     at void cuda::ptx::__4::cp_async_bulk_cp_mask<void>(cuda::std::__4::integral_constant<cuda::ptx::__4::dot_;  ERROR SUMMARY: 35 errors
+A13 pair: rc 99; 1 invalid shared reads, first at: =========     at void cuda::ptx::__4::cp_async_bulk_cp_mask<void>(cuda::std::__4::integral_constant<cuda::ptx::__4::dot_;  ERROR SUMMARY: 48 errors
+B12 photo: rc 0; 0 invalid shared reads, first at: ;  ERROR SUMMARY: 0 errors
+B12 pair: rc 0; 0 invalid shared reads, first at: ;  ERROR SUMMARY: 0 errors
+A12 photo: rc 0; 0 invalid shared reads, first at: ;  ERROR SUMMARY: 0 errors
+A12 pair: rc 0; 0 invalid shared reads, first at: ;  ERROR SUMMARY: 0 errors
+MC_AB_DONE

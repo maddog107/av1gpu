@@ -1,0 +1,186 @@
+start 08:35:51; GPU apps: 0
+== photo.jpg
+/home/ubuntu/bin/B13: median 358.7 ms, min 351.3, max 369.3, n 12
+/home/ubuntu/bin/A13: median 1059.4 ms, min 1046.2, max 1069.3, n 12
+/home/ubuntu/bin/A13c: median 1057.7 ms, min 1050.9, max 1067.0, n 12
+/home/ubuntu/bin/A13@GP_MAX_CONNECTIONS=1: median 543.4 ms, min 534.8, max 556.2, n 12
+== big.jpg
+/home/ubuntu/bin/B13: median 467.1 ms, min 458.5, max 474.5, n 12
+/home/ubuntu/bin/A13: median 1214.1 ms, min 1205.1, max 1220.9, n 12
+/home/ubuntu/bin/A13c: median 1213.4 ms, min 1201.5, max 1224.1, n 12
+/home/ubuntu/bin/A13@GP_MAX_CONNECTIONS=1: median 700.8 ms, min 693.0, max 709.6, n 12
+== thumb512.jpg
+/home/ubuntu/bin/B13: median 349.5 ms, min 339.9, max 354.4, n 12
+/home/ubuntu/bin/A13: median 1059.9 ms, min 1052.1, max 1069.5, n 12
+/home/ubuntu/bin/A13c: median 1059.6 ms, min 1051.1, max 1076.7, n 12
+/home/ubuntu/bin/A13@GP_MAX_CONNECTIONS=1: median 554.2 ms, min 545.9, max 565.0, n 12
+== t320.jpg
+/home/ubuntu/bin/B13: median 376.7 ms, min 369.0, max 386.4, n 12
+/home/ubuntu/bin/A13: median 1098.4 ms, min 1086.9, max 1109.2, n 12
+/home/ubuntu/bin/A13c: median 1091.9 ms, min 1079.5, max 1126.6, n 12
+/home/ubuntu/bin/A13@GP_MAX_CONNECTIONS=1: median 578.9 ms, min 572.2, max 591.8, n 12
+== pair batch (photo.jpg + thumb512.jpg)
+/home/ubuntu/bin/B13: median 575.3 ms, min 561.2, max 583.0, n 12
+/home/ubuntu/bin/A13: median 1235.3 ms, min 1222.3, max 1249.0, n 12
+/home/ubuntu/bin/A13c: median 1231.5 ms, min 1217.2, max 1247.8, n 12
+/home/ubuntu/bin/A13@GP_MAX_CONNECTIONS=1: median 722.4 ms, min 714.1, max 736.8, n 12
+single rc 0 08:39:26
+batch size_range/r0 B13: 260.3 MP/s 54.5 img/s (runs 260.8, 258.5, 260.3), wall 6.44 s
+batch size_range/r0 A13: 237.1 MP/s 49.6 img/s (runs 236.5, 237.1, 237.1), wall 7.01 s
+batch size_range/r0 A13c: 235.4 MP/s 49.3 img/s (runs 235.4, 233.1, 236.5), wall 7.05 s
+batch standard/r0 B13: 81.1 MP/s 103.0 img/s (runs 80.8, 81.1, 81.5), wall 13.56 s
+batch standard/r0 A13: 76.3 MP/s 96.9 img/s (runs 76.2, 76.3, 76.5), wall 14.38 s
+batch standard/r0 A13c: 77.1 MP/s 97.9 img/s (runs 77.1, 77.1, 77.5), wall 14.23 s
+batch thumbs/r0 B13: 68.3 MP/s 450.2 img/s (runs 68.6, 68.3, 68.0), wall 15.85 s
+batch thumbs/r0 A13: 62.7 MP/s 413.6 img/s (runs 62.7, 62.9, 62.4), wall 17.20 s
+batch thumbs/r0 A13c: 62.1 MP/s 409.5 img/s (runs 61.5, 62.1, 62.5), wall 17.36 s
+batch size_range_444_10/r0 B13: 189.6 MP/s 39.7 img/s (runs 190.2, 188.8, 189.6), wall 8.50 s
+batch size_range_444_10/r0 A13: 168.5 MP/s 35.3 img/s (runs 169.3, 167.9, 168.5), wall 9.47 s
+batch size_range_444_10/r0 A13c: 167.7 MP/s 35.1 img/s (runs 168.9, 167.7, 166.8), wall 9.52 s
+batch size_range/r1 A13c: 234.0 MP/s 49.0 img/s (runs 230.2, 234.7, 234.0), wall 7.08 s
+batch size_range/r1 A13: 234.4 MP/s 49.1 img/s (runs 235.4, 234.4, 233.8), wall 7.06 s
+batch size_range/r1 B13: 254.3 MP/s 53.2 img/s (runs 256.2, 252.4, 254.3), wall 6.58 s
+batch standard/r1 A13c: 76.1 MP/s 96.7 img/s (runs 76.1, 75.6, 76.2), wall 14.43 s
+batch standard/r1 A13: 76.5 MP/s 97.2 img/s (runs 76.6, 76.3, 76.5), wall 14.32 s
+batch standard/r1 B13: 81.2 MP/s 103.1 img/s (runs 81.3, 81.0, 81.2), wall 13.53 s
+batch thumbs/r1 A13c: 62.9 MP/s 414.8 img/s (runs 63.1, 62.9, 62.9), wall 17.15 s
+batch thumbs/r1 A13: 63.5 MP/s 418.5 img/s (runs 63.6, 63.5, 63.5), wall 17.01 s
+batch thumbs/r1 B13: 68.3 MP/s 450.1 img/s (runs 67.9, 68.3, 68.5), wall 15.85 s
+batch size_range_444_10/r1 A13c: 172.8 MP/s 36.2 img/s (runs 171.3, 175.0, 172.8), wall 9.27 s
+batch size_range_444_10/r1 A13: 171.9 MP/s 36.0 img/s (runs 171.5, 171.9, 172.7), wall 9.30 s
+batch size_range_444_10/r1 B13: 191.7 MP/s 40.1 img/s (runs 189.2, 193.0, 191.7), wall 8.42 s
+batch rc 0 08:58:14
+21:sys.path.insert(0, f"{H}/src/bench")
+24:R = f"{H}/results/docs"
+28:BIN = {"new": f"{H}/bin/B13", "old": f"{H}/bin/A13"}
+jpeg size_range/default_enc4 new: 257.8 MP/s (runs 257.1, 257.8, 262.7; wall 220.3), cores 0.27
+jpeg size_range/default_enc4 old: 235.4 MP/s (runs 236.1, 235.3, 235.4; wall 203.5), cores 0.28
+jpeg size_range/default_enc2 new: 228.2 MP/s (runs 226.0, 229.8, 228.2; wall 198.9), cores 0.25
+jpeg size_range/default_enc2 old: 213.2 MP/s (runs 213.2, 211.9, 216.0; wall 186.8), cores 0.24
+jpeg size_range/default_enc3 new: 255.4 MP/s (runs 253.3, 255.8, 255.4; wall 219.3), cores 0.28
+jpeg size_range/default_enc3 old: 237.7 MP/s (runs 237.7, 239.2, 234.2; wall 205.1), cores 0.27
+jpeg size_range/nosmall_enc4 new: 306.2 MP/s (runs 307.6, 301.9, 306.2; wall 255.8), cores 0.33
+jpeg size_range/nosmall_enc4 old: 281.3 MP/s (runs 282.2, 281.3, 278.4; wall 236.4), cores 0.31
+jpeg size_range/nosmall_enc3 new: 292.6 MP/s (runs 292.6, 295.4, 292.0; wall 245.7), cores 0.32
+jpeg size_range/nosmall_enc3 old: 270.5 MP/s (runs 270.5, 272.6, 268.6; wall 229.6), cores 0.30
+jpeg size_range/turbo3ns_enc4 new: 422.4 MP/s (runs 426.2, 419.0, 422.4; wall 331.6), cores 0.45
+jpeg size_range/turbo3ns_enc4 old: 381.4 MP/s (runs 381.4, 381.0, 382.1; wall 304.0), cores 0.42
+jpeg size_range/turbo3_enc4 new: 334.1 MP/s (runs 334.1, 334.2, 333.6; wall 274.1), cores 0.36
+jpeg size_range/turbo3_enc4 old: 296.5 MP/s (runs 295.6, 296.5, 299.3; wall 247.8), cores 0.35
+jpeg size_range/tiles211_enc3 new: 229.4 MP/s (runs 229.4, 226.8, 229.5; wall 199.6), cores 0.25
+jpeg size_range/tiles211_enc3 old: 212.7 MP/s (runs 211.9, 212.7, 213.9; wall 186.2), cores 0.25
+jpeg size_range/tiles233_enc3 new: 268.7 MP/s (runs 270.5, 262.9, 268.7; wall 228.6), cores 0.28
+jpeg size_range/tiles233_enc3 old: 241.1 MP/s (runs 239.6, 242.5, 241.1; wall 207.4), cores 0.27
+jpeg standard/default_enc4 new: 81.2 MP/s (runs 81.3, 81.2, 81.2; wall 75.5), cores 0.16
+jpeg standard/default_enc4 old: 76.2 MP/s (runs 76.2, 76.1, 76.2; wall 71.1), cores 0.17
+jpeg standard/default_enc2 new: 77.7 MP/s (runs 77.8, 77.7, 76.5; wall 72.6), cores 0.17
+jpeg standard/default_enc2 old: 72.4 MP/s (runs 71.7, 72.4, 73.3; wall 67.9), cores 0.17
+jpeg standard/default_enc3 new: 81.9 MP/s (runs 81.5, 81.9, 82.2; wall 76.3), cores 0.15
+jpeg standard/default_enc3 old: 76.6 MP/s (runs 76.8, 76.6, 76.4; wall 71.3), cores 0.17
+jpeg standard/nosmall_enc4 new: 190.9 MP/s (runs 192.0, 190.9, 190.2; wall 162.8), cores 0.34
+jpeg standard/nosmall_enc4 old: 179.5 MP/s (runs 179.3, 179.5, 179.8; wall 153.9), cores 0.34
+jpeg standard/nosmall_enc3 new: 190.8 MP/s (runs 190.8, 190.8, 189.6; wall 162.7), cores 0.34
+jpeg standard/nosmall_enc3 old: 177.6 MP/s (runs 177.6, 177.5, 178.0; wall 152.5), cores 0.36
+jpeg size_range/default_enc4 old: 238.9 MP/s (runs 238.9, 236.7, 240.8; wall 206.1), cores 0.28
+jpeg size_range/default_enc4 new: 262.2 MP/s (runs 263.0, 262.2, 259.1; wall 224.3), cores 0.28
+jpeg size_range/default_enc2 old: 214.3 MP/s (runs 211.5, 214.3, 215.0; wall 187.0), cores 0.24
+jpeg size_range/default_enc2 new: 225.2 MP/s (runs 225.2, 225.2, 224.2; wall 196.5), cores 0.24
+jpeg size_range/default_enc3 old: 227.4 MP/s (runs 227.4, 226.8, 228.9; wall 197.5), cores 0.26
+jpeg size_range/default_enc3 new: 251.5 MP/s (runs 249.1, 251.5, 251.5; wall 215.8), cores 0.28
+jpeg size_range/nosmall_enc4 old: 272.4 MP/s (runs 272.4, 275.4, 270.3; wall 230.4), cores 0.30
+jpeg size_range/nosmall_enc4 new: 294.0 MP/s (runs 293.1, 295.8, 294.0; wall 246.7), cores 0.32
+jpeg size_range/nosmall_enc3 old: 266.6 MP/s (runs 266.6, 263.7, 266.7; wall 226.7), cores 0.29
+jpeg size_range/nosmall_enc3 new: 285.0 MP/s (runs 285.0, 282.7, 287.7; wall 240.3), cores 0.31
+jpeg size_range/turbo3ns_enc4 old: 372.3 MP/s (runs 372.8, 372.1, 372.3; wall 298.6), cores 0.40
+jpeg size_range/turbo3ns_enc4 new: 414.1 MP/s (runs 420.0, 414.1, 413.9; wall 326.2), cores 0.44
+jpeg size_range/turbo3_enc4 old: 292.4 MP/s (runs 291.9, 293.6, 292.4; wall 244.4), cores 0.35
+jpeg size_range/turbo3_enc4 new: 328.5 MP/s (runs 328.5, 328.5, 326.8; wall 270.5), cores 0.35
+jpeg size_range/tiles211_enc3 old: 212.1 MP/s (runs 215.0, 212.1, 212.1; wall 185.8), cores 0.25
+jpeg size_range/tiles211_enc3 new: 233.6 MP/s (runs 234.9, 233.6, 230.6; wall 203.0), cores 0.25
+jpeg size_range/tiles233_enc3 old: 241.3 MP/s (runs 241.3, 240.3, 243.3; wall 207.2), cores 0.28
+jpeg size_range/tiles233_enc3 new: 269.2 MP/s (runs 265.2, 269.2, 270.6; wall 229.1), cores 0.29
+jpeg standard/default_enc4 old: 75.9 MP/s (runs 75.4, 76.1, 75.9; wall 70.6), cores 0.17
+jpeg standard/default_enc4 new: 79.7 MP/s (runs 80.5, 79.7, 79.7; wall 74.4), cores 0.15
+jpeg standard/default_enc2 old: 72.5 MP/s (runs 72.4, 72.7, 72.5; wall 67.9), cores 0.17
+jpeg standard/default_enc2 new: 76.9 MP/s (runs 77.2, 76.8, 76.9; wall 71.9), cores 0.17
+jpeg standard/default_enc3 old: 76.0 MP/s (runs 75.9, 76.0, 76.0; wall 71.0), cores 0.17
+jpeg standard/default_enc3 new: 80.9 MP/s (runs 80.6, 80.9, 81.0; wall 75.3), cores 0.15
+jpeg standard/nosmall_enc4 old: 178.3 MP/s (runs 178.3, 178.1, 178.7; wall 152.9), cores 0.35
+jpeg standard/nosmall_enc4 new: 191.1 MP/s (runs 191.1, 191.0, 191.4; wall 162.9), cores 0.34
+jpeg standard/nosmall_enc3 old: 179.7 MP/s (runs 179.7, 180.5, 179.6; wall 154.0), cores 0.32
+jpeg standard/nosmall_enc3 new: 191.6 MP/s (runs 189.1, 191.6, 192.1; wall 163.2), cores 0.34
+formats 444_8 new: 197.6 MP/s (runs 198.3, 197.6, 196.3; wall 174.8), cores 0.22
+formats 444_8 old: 173.2 MP/s (runs 173.2, 174.9, 172.1; wall 155.1), cores 0.21
+formats 420_10 new: 251.6 MP/s (runs 253.0, 250.9, 251.6; wall 215.7), cores 0.28
+formats 420_10 old: 231.9 MP/s (runs 231.9, 230.9, 231.9; wall 200.6), cores 0.32
+formats 444_10 new: 195.3 MP/s (runs 194.3, 195.6, 195.3; wall 173.0), cores 0.22
+formats 444_10 old: 173.0 MP/s (runs 174.1, 171.8, 173.0; wall 154.8), cores 0.25
+formats 444_10 old: 171.0 MP/s (runs 170.9, 171.0, 172.8; wall 153.3), cores 0.25
+formats 444_10 new: 192.8 MP/s (runs 192.6, 192.8, 193.6; wall 170.9), cores 0.21
+formats 420_10 old: 229.8 MP/s (runs 228.4, 232.4, 229.8; wall 199.0), cores 0.32
+formats 420_10 new: 253.6 MP/s (runs 253.6, 253.6, 255.2; wall 217.6), cores 0.27
+formats 444_8 old: 175.5 MP/s (runs 174.6, 175.5, 176.3; wall 156.8), cores 0.22
+formats 444_8 new: 198.0 MP/s (runs 198.7, 198.0, 197.8; wall 175.2), cores 0.22
+thumbs default new: 66.7 MP/s (runs 66.7, 66.1, 66.7; wall 62.9), cores 1.34
+thumbs default old: 62.8 MP/s (runs 62.8, 62.9, 62.7; wall 59.3), cores 1.29
+thumbs nosmall new: 160.9 MP/s (runs 161.0, 160.8, 160.9; wall 140.5), cores 1.36
+thumbs nosmall old: 148.3 MP/s (runs 149.3, 148.3, 148.2; wall 130.1), cores 1.40
+thumbs nosmall old: 147.8 MP/s (runs 147.5, 147.8, 148.9; wall 129.8), cores 1.40
+thumbs nosmall new: 161.9 MP/s (runs 161.1, 161.9, 162.3; wall 140.9), cores 1.40
+thumbs default old: 62.8 MP/s (runs 62.8, 62.6, 62.8; wall 59.3), cores 1.30
+thumbs default new: 68.3 MP/s (runs 68.3, 68.2, 68.3; wall 64.2), cores 1.33
+kodak default new: 59.6 MP/s (runs 59.6, 59.0, 59.7; wall 56.4), cores 3.30
+kodak default old: 55.4 MP/s (runs 55.4, 55.4, 55.4; wall 52.6), cores 3.25
+kodak nosmall new: 142.7 MP/s (runs 142.7, 142.7, 142.6; wall 126.0), cores 6.92
+kodak nosmall old: 134.2 MP/s (runs 134.6, 134.2, 133.3; wall 119.0), cores 6.49
+kodak turbo3_nosmall new: 251.9 MP/s (runs 250.8, 252.5, 251.9; wall 204.2), cores 11.80
+kodak turbo3_nosmall old: 229.5 MP/s (runs 229.5, 231.2, 228.0; wall 188.3), cores 10.73
+kodak turbo3_nosmall old: 230.3 MP/s (runs 230.3, 231.2, 229.6; wall 188.6), cores 10.75
+kodak turbo3_nosmall new: 256.0 MP/s (runs 255.1, 258.1, 256.0; wall 206.7), cores 12.00
+kodak nosmall old: 136.8 MP/s (runs 136.8, 137.7, 135.9; wall 120.9), cores 6.63
+kodak nosmall new: 144.1 MP/s (runs 144.1, 144.0, 145.0; wall 127.3), cores 7.07
+kodak default old: 55.2 MP/s (runs 55.4, 55.2, 55.1; wall 52.4), cores 3.24
+kodak default new: 59.7 MP/s (runs 60.0, 59.7, 59.4; wall 56.6), cores 3.47
+lossless cmp_1pass new: 37.2 MP/s (runs 37.2, 37.2, 37.3; wall 21.7), cores 1.35
+lossless cmp_1pass_ycgco new: 38.2 MP/s (runs 38.2, 38.2, 37.7; wall 22.0), cores 1.40
+lossless cmp_4x new: 45.1 MP/s (runs 45.9, 45.1, 45.1; wall 36.5), cores 1.50
+lossless cmp_4x_ycgco new: 43.9 MP/s (runs 43.9, 43.7, 44.4; wall 35.8), cores 1.35
+lossless cmp_1pass old: 34.2 MP/s (runs 33.3, 34.2, 34.6; wall 20.3), cores 1.34
+lossless cmp_1pass_ycgco old: 35.0 MP/s (runs 35.1, 35.0, 34.6; wall 20.7), cores 1.41
+FAILED cmp_4x old entropy: CUDA: out of memory at cudaMallocAsync(&scr.p, need, st)
+[av1gpu] out of GPU memory: lossless batches need about 1 GB of GPU memory per megapixel of GP_ENCODE_MP (now 48; this GPU has 23.7 GB); try a smaller GP_ENCODE_MP, e.g. 16
+
+lossless cmp_4x old: 43.1 MP/s (runs 44.3, 43.1, 0.0; wall 35.0), cores 1.43
+FAILED cmp_4x_ycgco old entropy: CUDA: out of memory at cudaMallocAsync(&scr.p, need, st)
+[av1gpu] out of GPU memory: lossless batches need about 1 GB of GPU memory per megapixel of GP_ENCODE_MP (now 48; this GPU has 23.7 GB); try a smaller GP_ENCODE_MP, e.g. 16
+
+lossless cmp_4x_ycgco old: 41.9 MP/s (runs 41.9, 43.3, 0.0; wall 34.4), cores 1.29
+lossless cmp_1pass old: 33.9 MP/s (runs 34.6, 33.9, 33.9; wall 20.2), cores 1.33
+lossless cmp_1pass_ycgco old: 34.7 MP/s (runs 34.4, 34.7, 34.7; wall 20.6), cores 1.40
+lossless cmp_4x old: 43.7 MP/s (runs 44.2, 43.7, 42.9; wall 35.4), cores 1.43
+FAILED cmp_4x_ycgco old entropy: CUDA: out of memory at cudaMallocAsync(&scr.p, need, st)
+[av1gpu] out of GPU memory: lossless batches need about 1 GB of GPU memory per megapixel of GP_ENCODE_MP (now 48; this GPU has 23.7 GB); try a smaller GP_ENCODE_MP, e.g. 16
+
+lossless cmp_4x_ycgco old: 42.1 MP/s (runs 44.0, 0.0, 42.1; wall 34.3), cores 1.32
+lossless cmp_1pass new: 38.7 MP/s (runs 38.7, 39.3, 37.9; wall 22.1), cores 1.41
+lossless cmp_1pass_ycgco new: 38.4 MP/s (runs 38.0, 38.4, 39.5; wall 22.2), cores 1.45
+lossless cmp_4x new: 45.4 MP/s (runs 45.4, 45.6, 44.5; wall 36.6), cores 1.52
+lossless cmp_4x_ycgco new: 44.6 MP/s (runs 44.2, 44.6, 44.9; wall 36.1), cores 1.37
+alpha default new: 36.6 MP/s (runs 36.6, 36.8, 36.6; wall 31.4), cores 2.82
+alpha q100 new: 34.9 MP/s (runs 34.9, 34.9, 34.9; wall 30.1), cores 2.54
+alpha lossless new: 35.0 MP/s (runs 34.3, 35.0, 35.2; wall 29.8), cores 1.59
+alpha no_alpha new: 44.4 MP/s (runs 44.4, 43.9, 44.7; wall 36.8), cores 3.17
+alpha default old: 34.0 MP/s (runs 34.0, 34.0, 33.7; wall 29.3), cores 2.38
+alpha q100 old: 32.3 MP/s (runs 32.3, 32.2, 32.4; wall 28.0), cores 2.24
+alpha lossless old: 32.2 MP/s (runs 32.4, 32.2, 31.6; wall 27.6), cores 1.43
+alpha no_alpha old: 40.3 MP/s (runs 40.3, 40.1, 40.3; wall 33.9), cores 2.62
+alpha default old: 33.6 MP/s (runs 33.6, 33.7, 33.5; wall 29.0), cores 2.24
+alpha q100 old: 32.2 MP/s (runs 32.2, 32.3, 32.0; wall 27.8), cores 2.24
+alpha lossless old: 32.2 MP/s (runs 32.0, 32.2, 32.9; wall 27.6), cores 1.44
+alpha no_alpha old: 40.1 MP/s (runs 39.9, 40.2, 40.1; wall 33.8), cores 2.65
+alpha default new: 37.3 MP/s (runs 37.3, 36.0, 37.7; wall 31.9), cores 2.72
+alpha q100 new: 34.9 MP/s (runs 34.7, 35.1, 34.9; wall 30.1), cores 2.44
+alpha lossless new: 34.2 MP/s (runs 34.2, 34.5, 34.0; wall 29.2), cores 1.57
+alpha no_alpha new: 44.4 MP/s (runs 44.2, 44.4, 44.6; wall 36.9), cores 3.23
+docs rc 0 10:01:08
+SPEED9_DONE 10:01:08

@@ -1,0 +1,31 @@
+BIN /home/ubuntu/bin/B13 (f9b4e1d5795311b3); Version 2026.1.0.0 (build 37182542) (public-release)
+6057c6daef8fc78a_typical.jpg (1800, 1200) 2.16 MP
+3065cbd41a1ad905_typical.jpg (1600, 1066) 1.71 MP
+b2fef7eca1352b4a_small.jpg (1024, 766) 0.78 MP
+screen PNG: screen_ai_source_verification.png
+synccheck san3 [default]: rc 0, 3 s, outputs differing from the plain run: 0 of 3;  ERROR SUMMARY: 0 errors
+synccheck san3_444_10 [--yuv 444 --depth 10]: rc 0, 21 s, outputs differing from the plain run: 0 of 3;  ERROR SUMMARY: 0 errors
+memcheck san3 [default]: rc 99, 26 s, outputs differing from the plain run: 3 of 3;  ERROR SUMMARY: 14 errors were not printed. Use --print-limit option to adjust the number of printed errors
+memcheck san3_444_10 [--yuv 444 --depth 10]: rc 99, 29 s, outputs differing from the plain run: 3 of 3;  ERROR SUMMARY: 89 errors
+memcheck pair [default]: rc 99, 14 s, outputs differing from the plain run: 2 of 2;  ERROR SUMMARY: 6 errors were not printed. Use --print-limit option to adjust the number of printed errors
+synccheck pair [default]: rc 0, 13 s, outputs differing from the plain run: 0 of 2;  ERROR SUMMARY: 0 errors
+memcheck photo [default]: rc 99, 8 s, outputs differing from the plain run: 1 of 1;  ERROR SUMMARY: 35 errors
+synccheck photo [default]: rc 0, 3 s, outputs differing from the plain run: 0 of 1;  ERROR SUMMARY: 0 errors
+racecheck photo [default]: rc 99, 123 s, outputs differing from the plain run: 0 of 1;  RACECHECK SUMMARY: 14 hazards displayed (14 errors, 0 warnings)
+memcheck thumb512 [default]: rc 99, 12 s, outputs differing from the plain run: 1 of 1;  ERROR SUMMARY: 61 errors
+synccheck thumb512 [default]: rc 0, 5 s, outputs differing from the plain run: 0 of 1;  ERROR SUMMARY: 0 errors
+racecheck pair [default]: rc 99, 182 s, outputs differing from the plain run: 0 of 2;  RACECHECK SUMMARY: 25 hazards displayed (25 errors, 0 warnings)
+racecheck thumb512 [default]: rc 99, 56 s, outputs differing from the plain run: 0 of 1;  RACECHECK SUMMARY: 11 hazards displayed (11 errors, 0 warnings)
+memcheck t320 [default]: rc 99, 27 s, outputs differing from the plain run: 1 of 1;  ERROR SUMMARY: 61 errors
+synccheck t320 [default]: rc 0, 4 s, outputs differing from the plain run: 0 of 1;  ERROR SUMMARY: 0 errors
+memcheck screen [default]: rc 99, 18 s, outputs differing from the plain run: 1 of 1;  ERROR SUMMARY: 37 errors
+synccheck screen [default]: rc 0, 4 s, outputs differing from the plain run: 0 of 1;  ERROR SUMMARY: 0 errors
+racecheck t320 [default]: rc 99, 60 s, outputs differing from the plain run: 0 of 1;  RACECHECK SUMMARY: 12 hazards displayed (12 errors, 0 warnings)
+memcheck kodim01_lossless [--lossless]: rc 99, 6 s, outputs differing from the plain run: 1 of 1;  ERROR SUMMARY: 61 errors
+synccheck kodim01_lossless [--lossless]: rc 0, 5 s, outputs differing from the plain run: 0 of 1;  ERROR SUMMARY: 0 errors
+racecheck san3 [default]: rc 99, 575 s, outputs differing from the plain run: 0 of 3;  RACECHECK SUMMARY: 26 hazards displayed (26 errors, 0 warnings)
+racecheck kodim01_lossless [--lossless]: rc 99, 260 s, outputs differing from the plain run: 0 of 1;  RACECHECK SUMMARY: 9 hazards displayed (9 errors, 0 warnings)
+racecheck screen [default]: rc 99, 338 s, outputs differing from the plain run: 0 of 1;  RACECHECK SUMMARY: 15 hazards displayed (14 errors, 1 warning)
+racecheck san3_444_10 [--yuv 444 --depth 10]: rc 99, 642 s, outputs differing from the plain run: 0 of 3;  RACECHECK SUMMARY: 25 hazards displayed (25 errors, 0 warnings)
+racecheck pairs outside k_entropy_win / vload / vstore: 0
+SANITIZER_DONE

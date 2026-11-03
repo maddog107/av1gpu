@@ -1,0 +1,12 @@
+lossless/ll_cmp_4x_paloff/new                 49.8 MP/s (wall   39.6, start-up 1.01 s)   51.77 img/s  1.66 cores n=6 rounds [48.8, 50.5] wall [39.0, 40.0] bytes 83872216
+lossless/ll_cmp_4x_paloff/old                 46.8 MP/s (wall   37.5, start-up 1.04 s)   48.66 img/s  1.54 cores n=6 rounds [46.2, 47.1] wall [37.1, 37.7] bytes 83872216
+lossless/ll_cmp_4x_ycgco_paloff/new           49.1 MP/s (wall   39.1, start-up 1.01 s)   51.00 img/s  1.51 cores n=6 rounds [48.1, 50.1] wall [38.5, 39.7] bytes 69714316
+lossless/ll_cmp_4x_ycgco_paloff/old           47.2 MP/s (wall   37.6, start-up 1.05 s)   49.02 img/s  1.47 cores n=6 rounds [47.3, 47.0] wall [37.7, 37.6] bytes 69714316
+alpha/default_paloff/new                      65.5 MP/s (wall   50.4, start-up 0.92 s)  252.21 img/s  3.96 cores n=6 rounds [67.1, 64.0] wall [51.4, 49.4] bytes 13977840
+alpha/default_paloff/old                      56.2 MP/s (wall   44.4, start-up 0.95 s)  216.36 img/s  3.33 cores n=6 rounds [56.3, 56.0] wall [44.5, 44.3] bytes 13977840
+alpha/lossless_paloff/new                     35.9 MP/s (wall   30.4, start-up 1.02 s)  138.15 img/s  1.62 cores n=6 rounds [36.0, 35.0] wall [30.5, 29.6] bytes 154479220
+alpha/lossless_paloff/old                     32.9 MP/s (wall   28.1, start-up 1.04 s)  126.73 img/s  1.45 cores n=6 rounds [33.3, 32.7] wall [28.5, 28.0] bytes 154479220
+alpha/no_alpha_paloff/new                     77.5 MP/s (wall   57.3, start-up 0.93 s)  298.63 img/s  4.64 cores n=6 rounds [77.3, 77.7] wall [56.9, 57.4] bytes 9918740
+alpha/no_alpha_paloff/old                     64.9 MP/s (wall   49.8, start-up 0.95 s)  250.11 img/s  3.84 cores n=6 rounds [64.5, 65.2] wall [49.6, 49.9] bytes 9918740
+alpha/q100_paloff/new                         55.4 MP/s (wall   43.9, start-up 0.94 s)  213.25 img/s  3.54 cores n=6 rounds [55.3, 56.0] wall [43.7, 44.6] bytes 21768560
+alpha/q100_paloff/old                         48.4 MP/s (wall   39.3, start-up 0.96 s)  186.27 img/s  3.02 cores n=6 rounds [48.3, 48.5] wall [39.3, 39.5] bytes 21768560

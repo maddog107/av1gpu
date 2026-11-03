@@ -1,0 +1,25 @@
++ cd /home/ubuntu/rel
++ for s in "" -cuda12
++ f=av1gpu-0.8.0-linux-x86_64.tar.gz
++ curl -fsSLO https://github.com/maddog107/av1gpu/releases/download/v0.8.0/av1gpu-0.8.0-linux-x86_64.tar.gz
++ curl -fsSLO https://github.com/maddog107/av1gpu/releases/download/v0.8.0/av1gpu-0.8.0-linux-x86_64.tar.gz.sha256
++ sha256sum -c av1gpu-0.8.0-linux-x86_64.tar.gz.sha256
+av1gpu-0.8.0-linux-x86_64.tar.gz: OK
++ tar -xzf av1gpu-0.8.0-linux-x86_64.tar.gz
++ for s in "" -cuda12
++ f=av1gpu-0.8.0-linux-x86_64-cuda12.tar.gz
++ curl -fsSLO https://github.com/maddog107/av1gpu/releases/download/v0.8.0/av1gpu-0.8.0-linux-x86_64-cuda12.tar.gz
++ curl -fsSLO https://github.com/maddog107/av1gpu/releases/download/v0.8.0/av1gpu-0.8.0-linux-x86_64-cuda12.tar.gz.sha256
++ sha256sum -c av1gpu-0.8.0-linux-x86_64-cuda12.tar.gz.sha256
+av1gpu-0.8.0-linux-x86_64-cuda12.tar.gz: OK
++ tar -xzf av1gpu-0.8.0-linux-x86_64-cuda12.tar.gz
++ ls -la /home/ubuntu/rel
+total 395620
+drwxrwxr-x  4 ubuntu ubuntu      4096 Nov  3 07:38 .
+drwxr-x--- 16 ubuntu ubuntu      4096 Nov  3 07:38 ..
+drwxr-xr-x  2 ubuntu ubuntu      4096 Nov  3 01:53 av1gpu-0.8.0-linux-x86_64
+drwxr-xr-x  2 ubuntu ubuntu      4096 Nov  3 01:52 av1gpu-0.8.0-linux-x86_64-cuda12
+-rw-rw-r--  1 ubuntu ubuntu 200070463 Nov  3 07:38 av1gpu-0.8.0-linux-x86_64-cuda12.tar.gz
+-rw-rw-r--  1 ubuntu ubuntu       106 Nov  3 07:38 av1gpu-0.8.0-linux-x86_64-cuda12.tar.gz.sha256
+-rw-rw-r--  1 ubuntu ubuntu 205015561 Nov  3 07:38 av1gpu-0.8.0-linux-x86_64.tar.gz
+-rw-rw-r--  1 ubuntu ubuntu        99 Nov  3 07:38 av1gpu-0.8.0-linux-x86_64.tar.gz.sha256

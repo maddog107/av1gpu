@@ -1,0 +1,9243 @@
+{
+ "description": "v0.9.0 release check, 2026-11-03: main c553ffb's Linux packages (Release run 41596172304) against the v0.8.0 release tarballs, on an NVIDIA L4 (g6.4xlarge) and an RTX PRO 4500 Blackwell (g7.4xlarge). speed: speed-v06's spd.py on the L4 (new = v0.9.0 CUDA 13.4 package, old = v0.8.0 CUDA 13.4 tarball), each set repeated to >= 1,000 MP (lossless and RGBA sets as published), a warm-up then 3 timed runs (--stats), 2 rounds with the binary order alternating, median of the 6 timed runs. batch / single: spd9.py on both GPUs with a noise binary (v0.8.0 from a second path).",
+ "date": "2026-11-03",
+ "code": {
+  "new": "c553ffb7b2f7f5518d689efe0b64dffceb139719",
+  "old": "cde1f74 (v0.8.0)"
+ },
+ "binaries": {
+  "l4": [
+   "11e9d401a0305959da39aea2a2a02b544a928c936ec769a294a326a1f72cdde4  /home/ubuntu/rel/av1gpu-dev-c553ffb-linux-x86_64-cuda12.tar.gz",
+   "c77e109eaf5f3fdb8484444f556d386c5cbe29f79e0fdde898f581089f8e5f71  /home/ubuntu/rel/av1gpu-dev-c553ffb-linux-x86_64.tar.gz",
+   "f9b4e1d5795311b381fcf1597ce1156ac3b888ff88950dfb4ac2b795b7409cc4  /home/ubuntu/bin/B13",
+   "9c87cc538606aed14119dc4f264407eca443a8ea17b6bd48afd79f4eb4cd0da5  /home/ubuntu/bin/B12"
+  ],
+  "bw": [
+   "11e9d401a0305959da39aea2a2a02b544a928c936ec769a294a326a1f72cdde4  /home/ubuntu/rel/av1gpu-dev-c553ffb-linux-x86_64-cuda12.tar.gz",
+   "c77e109eaf5f3fdb8484444f556d386c5cbe29f79e0fdde898f581089f8e5f71  /home/ubuntu/rel/av1gpu-dev-c553ffb-linux-x86_64.tar.gz",
+   "f9b4e1d5795311b381fcf1597ce1156ac3b888ff88950dfb4ac2b795b7409cc4  /home/ubuntu/bin/B13",
+   "9c87cc538606aed14119dc4f264407eca443a8ea17b6bd48afd79f4eb4cd0da5  /home/ubuntu/bin/B12"
+  ]
+ },
+ "environment": {
+  "l4": [
+   "NVIDIA L4, 595.112.07, 23034 MiB, 72.00 W, 2040 MHz, 8.9",
+   "Build cuda_13.2.r13.2/compiler.37434383_0",
+   "Version 2026.1.0.0 (build 37182542) (public-release)",
+   "pillow 13.0.0 numpy 2.5.4",
+   "1.4.1",
+   "dav1d ",
+   "Usage: aomdec <options> filename",
+   "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
+   "16",
+   "Model name:                              AMD EPYC 7R13 Processor",
+   "               total        used        free      shared  buff/cache   available",
+   "Mem:              60           1          53           0           5          59",
+   "7.0.0-1014-aws",
+   "Ubuntu 24.04.5 LTS",
+   "30d50f04ea2e7b13bc23d8e5ee3c9406dbb36e92e7b22c84c0965582c26a8af9  /home/ubuntu/rel/av1gpu-0.8.0-linux-x86_64-cuda12.tar.gz",
+   "ad98b846fa17a6c595b2d68a8dfc76906b24134008641d984d00a09a77084ed4  /home/ubuntu/rel/av1gpu-0.8.0-linux-x86_64.tar.gz",
+   "397e12161904e6be1115c86494814641d7469725334609e95829c27c16376cec  /home/ubuntu/bin/A13",
+   "3a028749631a4375c46790c141f2bb3453e30e4b5477135e9dece7f2f57524bf  /home/ubuntu/bin/A12"
+  ],
+  "bw": [
+   "NVIDIA RTX PRO 4500 Blackwell Server Edition, 595.112.07, 32623 MiB, 165.00 W, 2415 MHz, 12.0",
+   "Build cuda_13.2.r13.2/compiler.37434383_0",
+   "Version 2026.1.0.0 (build 37182542) (public-release)",
+   "pillow 13.0.0 numpy 2.5.4",
+   "1.4.1",
+   "dav1d ",
+   "Usage: aomdec <options> filename",
+   "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
+   "16",
+   "Model name:                              Intel(R) Xeon(R) 6975P-C",
+   "               total        used        free      shared  buff/cache   available",
+   "Mem:              60           1          53           0           5          58",
+   "7.0.0-1014-aws",
+   "Ubuntu 24.04.5 LTS",
+   "30d50f04ea2e7b13bc23d8e5ee3c9406dbb36e92e7b22c84c0965582c26a8af9  /home/ubuntu/rel/av1gpu-0.8.0-linux-x86_64-cuda12.tar.gz",
+   "ad98b846fa17a6c595b2d68a8dfc76906b24134008641d984d00a09a77084ed4  /home/ubuntu/rel/av1gpu-0.8.0-linux-x86_64.tar.gz",
+   "397e12161904e6be1115c86494814641d7469725334609e95829c27c16376cec  /home/ubuntu/bin/A13",
+   "3a028749631a4375c46790c141f2bb3453e30e4b5477135e9dece7f2f57524bf  /home/ubuntu/bin/A12"
+  ]
+ },
+ "speed": {
+  "jpeg/size_range/default_enc2/new": {
+   "n": 6,
+   "mp_s": 225.62349999999998,
+   "img_s": 47.217,
+   "cpu_cores": 0.2475,
+   "mp": 1433.529,
+   "images": 300,
+   "bytes": 67615929,
+   "wall_s": 7.291,
+   "mp_s_wall": 196.61627248701774,
+   "img_s_wall": 41.14662608576828,
+   "rounds_img": [
+    47.747,
+    47.132
+   ],
+   "rounds_img_wall": [
+    41.626196753156655,
+    41.11278607646978
+   ],
+   "startup_s": 0.9282999999999997,
+   "runs": [
+    226.0,
+    229.8,
+    228.2,
+    225.2,
+    225.2,
+    224.2
+   ],
+   "peak_dev_mb": 1059.6,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    228.156,
+    225.215
+   ],
+   "round_cores": [
+    0.253,
+    0.242
+   ],
+   "rounds_wall": [
+    198.90786735118635,
+    196.4545703713855
+   ],
+   "watts": 67.8,
+   "sm_util": 100.0,
+   "sm_mhz": 1815,
+   "power_samples": 31,
+   "j_per_mp": 0.3
+  },
+  "jpeg/size_range/default_enc2/old": {
+   "n": 6,
+   "mp_s": 213.7705,
+   "img_s": 44.7365,
+   "cpu_cores": 0.241,
+   "mp": 1433.529,
+   "images": 300,
+   "bytes": 67615929,
+   "wall_s": 7.67,
+   "mp_s_wall": 186.90086169419357,
+   "img_s_wall": 39.11344556563422,
+   "rounds_img": [
+    44.626,
+    44.847
+   ],
+   "rounds_img_wall": [
+    39.08794788273616,
+    39.13894324853229
+   ],
+   "startup_s": 0.9529499999999995,
+   "runs": [
+    213.2,
+    211.9,
+    216.0,
+    211.5,
+    214.3,
+    215.0
+   ],
+   "peak_dev_mb": 1153.2,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    213.242,
+    214.299
+   ],
+   "round_cores": [
+    0.243,
+    0.24
+   ],
+   "rounds_wall": [
+    186.77902280130294,
+    187.02270058708416
+   ],
+   "watts": 67.9,
+   "sm_util": 97.3,
+   "sm_mhz": 1816,
+   "power_samples": 34,
+   "j_per_mp": 0.318
+  },
+  "jpeg/size_range/default_enc3/new": {
+   "n": 6,
+   "mp_s": 252.3955,
+   "img_s": 52.819500000000005,
+   "cpu_cores": 0.2775,
+   "mp": 1433.529,
+   "images": 300,
+   "bytes": 67615929,
+   "wall_s": 6.6155,
+   "mp_s_wall": 216.69365422053443,
+   "img_s_wall": 45.34829519748838,
+   "rounds_img": [
+    53.454,
+    52.63
+   ],
+   "rounds_img_wall": [
+    45.89963280293758,
+    45.153521974714025
+   ],
+   "startup_s": 0.9327500000000004,
+   "runs": [
+    253.3,
+    255.8,
+    255.4,
+    249.1,
+    251.5,
+    251.5
+   ],
+   "peak_dev_mb": 1059.2,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    255.427,
+    251.489
+   ],
+   "round_cores": [
+    0.279,
+    0.275
+   ],
+   "rounds_wall": [
+    219.32818237454103,
+    215.76294400963275
+   ],
+   "watts": 70.4,
+   "sm_util": 100.0,
+   "sm_mhz": 1708,
+   "power_samples": 27,
+   "j_per_mp": 0.279
+  },
+  "jpeg/size_range/default_enc3/old": {
+   "n": 6,
+   "mp_s": 231.5195,
+   "img_s": 48.450500000000005,
+   "cpu_cores": 0.269,
+   "mp": 1433.529,
+   "images": 300,
+   "bytes": 67615929,
+   "wall_s": 7.148,
+   "mp_s_wall": 200.56781563568717,
+   "img_s_wall": 41.97358036754481,
+   "rounds_img": [
+    49.74,
+    47.593
+   ],
+   "rounds_img_wall": [
+    42.912315834644545,
+    41.33370074400661
+   ],
+   "startup_s": 0.9562500000000003,
+   "runs": [
+    237.7,
+    239.2,
+    234.2,
+    227.4,
+    226.8,
+    228.9
+   ],
+   "peak_dev_mb": 1175.7,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    237.681,
+    227.418
+   ],
+   "round_cores": [
+    0.273,
+    0.264
+   ],
+   "rounds_wall": [
+    205.05349735374054,
+    197.51019564618352
+   ],
+   "watts": 69.0,
+   "sm_util": 100.0,
+   "sm_mhz": 1712,
+   "power_samples": 31,
+   "j_per_mp": 0.298
+  },
+  "jpeg/size_range/default_enc4/new": {
+   "n": 6,
+   "mp_s": 260.6625,
+   "img_s": 54.549499999999995,
+   "cpu_cores": 0.276,
+   "mp": 1433.529,
+   "images": 300,
+   "bytes": 67615929,
+   "wall_s": 6.4335,
+   "mp_s_wall": 222.83184147897225,
+   "img_s_wall": 46.63285670795057,
+   "rounds_img": [
+    53.953,
+    54.879
+   ],
+   "rounds_img_wall": [
+    46.111281893636644,
+    46.933667083854814
+   ],
+   "startup_s": 0.9305500000000002,
+   "runs": [
+    257.1,
+    257.8,
+    262.7,
+    263.0,
+    262.2,
+    259.1
+   ],
+   "peak_dev_mb": 1020.7,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    257.811,
+    262.237
+   ],
+   "round_cores": [
+    0.274,
+    0.279
+   ],
+   "rounds_wall": [
+    220.33953273901014,
+    224.26924280350437
+   ],
+   "watts": 70.7,
+   "sm_util": 100.0,
+   "sm_mhz": 1700,
+   "power_samples": 26,
+   "j_per_mp": 0.271
+  },
+  "jpeg/size_range/default_enc4/old": {
+   "n": 6,
+   "mp_s": 236.3905,
+   "img_s": 49.4705,
+   "cpu_cores": 0.285,
+   "mp": 1433.529,
+   "images": 300,
+   "bytes": 67615929,
+   "wall_s": 7.025,
+   "mp_s_wall": 204.06166304640476,
+   "img_s_wall": 42.70475094254907,
+   "rounds_img": [
+    49.265,
+    49.989
+   ],
+   "rounds_img_wall": [
+    42.58943781942079,
+    43.12823461759632
+   ],
+   "startup_s": 0.9556499999999999,
+   "runs": [
+    236.1,
+    235.3,
+    235.4,
+    238.9,
+    236.7,
+    240.8
+   ],
+   "peak_dev_mb": 1148.5,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    235.408,
+    238.871
+   ],
+   "round_cores": [
+    0.285,
+    0.285
+   ],
+   "rounds_wall": [
+    203.51064735945488,
+    206.08525014376076
+   ],
+   "watts": 69.0,
+   "sm_util": 100.0,
+   "sm_mhz": 1685,
+   "power_samples": 29,
+   "j_per_mp": 0.292
+  },
+  "jpeg/size_range/nosmall_enc3/new": {
+   "n": 6,
+   "mp_s": 289.8375,
+   "img_s": 60.6555,
+   "cpu_cores": 0.31,
+   "mp": 1433.529,
+   "images": 300,
+   "bytes": 67663248,
+   "wall_s": 5.875,
+   "mp_s_wall": 244.01409846327883,
+   "img_s_wall": 51.06574721472928,
+   "rounds_img": [
+    61.233,
+    59.649
+   ],
+   "rounds_img_wall": [
+    51.41388174807198,
+    50.29337803855826
+   ],
+   "startup_s": 0.92875,
+   "runs": [
+    292.6,
+    295.4,
+    292.0,
+    285.0,
+    282.7,
+    287.7
+   ],
+   "peak_dev_mb": 1158.5,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    292.596,
+    285.031
+   ],
+   "round_cores": [
+    0.319,
+    0.308
+   ],
+   "rounds_wall": [
+    245.6776349614396,
+    240.32338642078793
+   ],
+   "watts": 70.7,
+   "sm_util": 100.0,
+   "sm_mhz": 1664,
+   "power_samples": 23,
+   "j_per_mp": 0.244
+  },
+  "jpeg/size_range/nosmall_enc3/old": {
+   "n": 6,
+   "mp_s": 267.664,
+   "img_s": 56.015,
+   "cpu_cores": 0.292,
+   "mp": 1433.529,
+   "images": 300,
+   "bytes": 67663248,
+   "wall_s": 6.306,
+   "mp_s_wall": 227.32943519894343,
+   "img_s_wall": 47.574085044448374,
+   "rounds_img": [
+    56.609,
+    55.799
+   ],
+   "rounds_img_wall": [
+    48.04612427930814,
+    47.43833017077799
+   ],
+   "startup_s": 0.9482499999999998,
+   "runs": [
+    270.5,
+    272.6,
+    268.6,
+    266.6,
+    263.7,
+    266.7
+   ],
+   "peak_dev_mb": 1235.5,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    270.503,
+    266.63
+   ],
+   "round_cores": [
+    0.298,
+    0.291
+   ],
+   "rounds_wall": [
+    229.58504163997438,
+    226.68074003795067
+   ],
+   "watts": 70.2,
+   "sm_util": 100.0,
+   "sm_mhz": 1704,
+   "power_samples": 26,
+   "j_per_mp": 0.262
+  },
+  "jpeg/size_range/nosmall_enc4/new": {
+   "n": 6,
+   "mp_s": 298.8535,
+   "img_s": 62.542500000000004,
+   "cpu_cores": 0.3225,
+   "mp": 1433.529,
+   "images": 300,
+   "bytes": 67663248,
+   "wall_s": 5.734500000000001,
+   "mp_s_wall": 250.00114197258097,
+   "img_s_wall": 52.31867830492044,
+   "rounds_img": [
+    64.083,
+    61.529
+   ],
+   "rounds_img_wall": [
+    53.52363960749331,
+    51.62622612287042
+   ],
+   "startup_s": 0.9364500000000002,
+   "runs": [
+    307.6,
+    301.9,
+    306.2,
+    293.1,
+    295.8,
+    294.0
+   ],
+   "peak_dev_mb": 1158.5,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    306.215,
+    294.011
+   ],
+   "round_cores": [
+    0.333,
+    0.321
+   ],
+   "rounds_wall": [
+    255.75896520963423,
+    246.6923076923077
+   ],
+   "watts": 70.2,
+   "sm_util": 100.0,
+   "sm_mhz": 1645,
+   "power_samples": 22,
+   "j_per_mp": 0.235
+  },
+  "jpeg/size_range/nosmall_enc4/old": {
+   "n": 6,
+   "mp_s": 276.8755,
+   "img_s": 57.943,
+   "cpu_cores": 0.3005,
+   "mp": 1433.529,
+   "images": 300,
+   "bytes": 67663248,
+   "wall_s": 6.148,
+   "mp_s_wall": 233.17323734783167,
+   "img_s_wall": 48.7970394769478,
+   "rounds_img": [
+    58.871,
+    56.997
+   ],
+   "rounds_img_wall": [
+    49.47229551451187,
+    48.223758238225365
+   ],
+   "startup_s": 0.9646000000000003,
+   "runs": [
+    282.2,
+    281.3,
+    278.4,
+    272.4,
+    275.4,
+    270.3
+   ],
+   "peak_dev_mb": 1253.1,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    281.311,
+    272.355
+   ],
+   "round_cores": [
+    0.314,
+    0.298
+   ],
+   "rounds_wall": [
+    236.39990105540898,
+    230.43385307828322
+   ],
+   "watts": 71.3,
+   "sm_util": 96.0,
+   "sm_mhz": 1661,
+   "power_samples": 25,
+   "j_per_mp": 0.258
+  },
+  "jpeg/size_range/tiles211_enc3/new": {
+   "n": 6,
+   "mp_s": 230.048,
+   "img_s": 48.143,
+   "cpu_cores": 0.2535,
+   "mp": 1433.529,
+   "images": 300,
+   "bytes": 67474998,
+   "wall_s": 7.1655,
+   "mp_s_wall": 200.06015172896053,
+   "img_s_wall": 41.86733963434864,
+   "rounds_img": [
+    47.997,
+    48.894
+   ],
+   "rounds_img_wall": [
+    41.77691129369168,
+    42.486899872539304
+   ],
+   "startup_s": 0.9266000000000005,
+   "runs": [
+    229.4,
+    226.8,
+    229.5,
+    234.9,
+    233.6,
+    230.6
+   ],
+   "peak_dev_mb": 1033.8,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    229.352,
+    233.637
+   ],
+   "round_cores": [
+    0.25,
+    0.254
+   ],
+   "rounds_wall": [
+    199.62804623311516,
+    203.02067695793798
+   ],
+   "watts": 67.9,
+   "sm_util": 100.0,
+   "sm_mhz": 1767,
+   "power_samples": 31,
+   "j_per_mp": 0.295
+  },
+  "jpeg/size_range/tiles211_enc3/old": {
+   "n": 6,
+   "mp_s": 212.39350000000002,
+   "img_s": 44.448499999999996,
+   "cpu_cores": 0.2475,
+   "mp": 1433.529,
+   "images": 300,
+   "bytes": 67474998,
+   "wall_s": 7.7075,
+   "mp_s_wall": 185.9917194740969,
+   "img_s_wall": 38.92318595733261,
+   "rounds_img": [
+    44.506,
+    44.391
+   ],
+   "rounds_img_wall": [
+    38.97116134060795,
+    38.87521057405728
+   ],
+   "startup_s": 0.9584500000000005,
+   "runs": [
+    211.9,
+    212.7,
+    213.9,
+    215.0,
+    212.1,
+    212.1
+   ],
+   "peak_dev_mb": 1129.5,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    212.669,
+    212.118
+   ],
+   "round_cores": [
+    0.248,
+    0.247
+   ],
+   "rounds_wall": [
+    186.22096648480124,
+    185.76247246339253
+   ],
+   "watts": 68.3,
+   "sm_util": 100.0,
+   "sm_mhz": 1795,
+   "power_samples": 35,
+   "j_per_mp": 0.322
+  },
+  "jpeg/size_range/tiles233_enc3/new": {
+   "n": 6,
+   "mp_s": 268.96,
+   "img_s": 56.286,
+   "cpu_cores": 0.2925,
+   "mp": 1433.529,
+   "images": 300,
+   "bytes": 67889955,
+   "wall_s": 6.2645,
+   "mp_s_wall": 228.83407370734574,
+   "img_s_wall": 47.888966398450066,
+   "rounds_img": [
+    56.226,
+    56.346
+   ],
+   "rounds_img_wall": [
+    47.83163265306122,
+    47.946300143838904
+   ],
+   "startup_s": 0.9327000000000005,
+   "runs": [
+    270.5,
+    262.9,
+    268.7,
+    265.2,
+    269.2,
+    270.6
+   ],
+   "peak_dev_mb": 1092.9,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    268.674,
+    269.246
+   ],
+   "round_cores": [
+    0.283,
+    0.294
+   ],
+   "rounds_wall": [
+    228.56010841836735,
+    229.10803899632413
+   ],
+   "watts": 71.0,
+   "sm_util": 98.5,
+   "sm_mhz": 1718,
+   "power_samples": 26,
+   "j_per_mp": 0.264
+  },
+  "jpeg/size_range/tiles233_enc3/old": {
+   "n": 6,
+   "mp_s": 241.23250000000002,
+   "img_s": 50.4835,
+   "cpu_cores": 0.275,
+   "mp": 1433.529,
+   "images": 300,
+   "bytes": 67889955,
+   "wall_s": 6.914,
+   "mp_s_wall": 207.3371810662705,
+   "img_s_wall": 43.39023090560508,
+   "rounds_img": [
+    50.461,
+    50.506
+   ],
+   "rounds_img_wall": [
+    43.40905802344089,
+    43.37140378776927
+   ],
+   "startup_s": 0.9578999999999995,
+   "runs": [
+    239.6,
+    242.5,
+    241.1,
+    241.3,
+    240.3,
+    243.3
+   ],
+   "peak_dev_mb": 1157.1,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    241.123,
+    241.342
+   ],
+   "round_cores": [
+    0.274,
+    0.278
+   ],
+   "rounds_wall": [
+    207.42714513095066,
+    207.2472170015903
+   ],
+   "watts": 70.1,
+   "sm_util": 96.6,
+   "sm_mhz": 1735,
+   "power_samples": 29,
+   "j_per_mp": 0.291
+  },
+  "jpeg/size_range/turbo3_enc4/new": {
+   "n": 6,
+   "mp_s": 331.0475,
+   "img_s": 69.28,
+   "cpu_cores": 0.3495,
+   "mp": 1433.529,
+   "images": 300,
+   "bytes": 69337887,
+   "wall_s": 5.2655,
+   "mp_s_wall": 272.26037937095623,
+   "img_s_wall": 56.97695254946839,
+   "rounds_img": [
+    69.909,
+    68.738
+   ],
+   "rounds_img_wall": [
+    57.36137667304015,
+    56.60377358490566
+   ],
+   "startup_s": 0.9355000000000002,
+   "runs": [
+    334.1,
+    334.2,
+    333.6,
+    328.5,
+    328.5,
+    326.8
+   ],
+   "peak_dev_mb": 930.2,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    334.055,
+    328.458
+   ],
+   "round_cores": [
+    0.357,
+    0.349
+   ],
+   "rounds_wall": [
+    274.09732313575523,
+    270.4771698113208
+   ],
+   "watts": 70.0,
+   "sm_util": 96.5,
+   "sm_mhz": 1640,
+   "power_samples": 20,
+   "j_per_mp": 0.212
+  },
+  "jpeg/size_range/turbo3_enc4/old": {
+   "n": 6,
+   "mp_s": 294.597,
+   "img_s": 61.6515,
+   "cpu_cores": 0.3465,
+   "mp": 1433.529,
+   "images": 300,
+   "bytes": 69337887,
+   "wall_s": 5.82,
+   "mp_s_wall": 246.31292628912323,
+   "img_s_wall": 51.5468315511838,
+   "rounds_img": [
+    62.042,
+    61.192
+   ],
+   "rounds_img_wall": [
+    51.84929139301763,
+    51.15089514066496
+   ],
+   "startup_s": 0.9583500000000003,
+   "runs": [
+    295.6,
+    296.5,
+    299.3,
+    291.9,
+    293.6,
+    292.4
+   ],
+   "peak_dev_mb": 1047.7,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    296.465,
+    292.402
+   ],
+   "round_cores": [
+    0.346,
+    0.347
+   ],
+   "rounds_wall": [
+    247.75820947113723,
+    244.42097186700767
+   ],
+   "watts": 68.6,
+   "sm_util": 97.6,
+   "sm_mhz": 1640,
+   "power_samples": 21,
+   "j_per_mp": 0.233
+  },
+  "jpeg/size_range/turbo3ns_enc4/new": {
+   "n": 6,
+   "mp_s": 419.5245,
+   "img_s": 87.7955,
+   "cpu_cores": 0.444,
+   "mp": 1433.529,
+   "images": 300,
+   "bytes": 69593271,
+   "wall_s": 4.3485,
+   "mp_s_wall": 329.6615532563811,
+   "img_s_wall": 68.98951188076023,
+   "rounds_img": [
+    88.388,
+    86.654
+   ],
+   "rounds_img_wall": [
+    69.39625260235947,
+    68.27492034592626
+   ],
+   "startup_s": 0.9331499999999999,
+   "runs": [
+    426.2,
+    419.0,
+    422.4,
+    420.0,
+    414.1,
+    413.9
+   ],
+   "peak_dev_mb": 1051.7,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    422.358,
+    414.071
+   ],
+   "round_cores": [
+    0.445,
+    0.443
+   ],
+   "rounds_wall": [
+    331.60513532269255,
+    326.24692762858444
+   ],
+   "watts": 70.2,
+   "sm_util": 100.0,
+   "sm_mhz": 1606,
+   "power_samples": 13,
+   "j_per_mp": 0.167
+  },
+  "jpeg/size_range/turbo3ns_enc4/old": {
+   "n": 6,
+   "mp_s": 376.9375,
+   "img_s": 78.883,
+   "cpu_cores": 0.40549999999999997,
+   "mp": 1433.529,
+   "images": 300,
+   "bytes": 69593271,
+   "wall_s": 4.7585,
+   "mp_s_wall": 301.27724805604794,
+   "img_s_wall": 63.04942168370111,
+   "rounds_img": [
+    79.822,
+    77.92
+   ],
+   "rounds_img_wall": [
+    63.613231552162844,
+    62.486981878775254
+   ],
+   "startup_s": 0.9534500000000001,
+   "runs": [
+    381.4,
+    381.0,
+    382.1,
+    372.8,
+    372.1,
+    372.3
+   ],
+   "peak_dev_mb": 1147.1,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    381.424,
+    372.337
+   ],
+   "round_cores": [
+    0.419,
+    0.403
+   ],
+   "rounds_wall": [
+    303.9713740458015,
+    298.589668818996
+   ],
+   "watts": 70.1,
+   "sm_util": 99.9,
+   "sm_mhz": 1642,
+   "power_samples": 16,
+   "j_per_mp": 0.186
+  },
+  "jpeg/standard/default_enc2/new": {
+   "n": 6,
+   "mp_s": 77.0525,
+   "img_s": 97.8695,
+   "cpu_cores": 0.17149999999999999,
+   "mp": 1023.493,
+   "images": 1300,
+   "bytes": 71429150,
+   "wall_s": 14.208,
+   "mp_s_wall": 72.0367091171266,
+   "img_s_wall": 91.4981556808543,
+   "rounds_img": [
+    98.726,
+    97.662
+   ],
+   "rounds_img_wall": [
+    92.26401703335699,
+    91.30495856159574
+   ],
+   "startup_s": 0.9251999999999994,
+   "runs": [
+    77.8,
+    77.7,
+    76.5,
+    77.2,
+    76.8,
+    76.9
+   ],
+   "peak_dev_mb": 1084.1,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    77.727,
+    76.889
+   ],
+   "round_cores": [
+    0.172,
+    0.171
+   ],
+   "rounds_wall": [
+    72.63967352732435,
+    71.88460457929484
+   ],
+   "watts": 71.0,
+   "sm_util": 100.0,
+   "sm_mhz": 1693,
+   "power_samples": 72,
+   "j_per_mp": 0.921
+  },
+  "jpeg/standard/default_enc2/old": {
+   "n": 6,
+   "mp_s": 72.46000000000001,
+   "img_s": 92.036,
+   "cpu_cores": 0.171,
+   "mp": 1023.493,
+   "images": 1300,
+   "bytes": 71429150,
+   "wall_s": 15.076,
+   "mp_s_wall": 67.88891537537566,
+   "img_s_wall": 86.22979345045675,
+   "rounds_img": [
+    91.959,
+    92.113
+   ],
+   "rounds_img_wall": [
+    86.18403606470433,
+    86.27555083620919
+   ],
+   "startup_s": 0.9568499999999993,
+   "runs": [
+    71.7,
+    72.4,
+    73.3,
+    72.4,
+    72.7,
+    72.5
+   ],
+   "peak_dev_mb": 1186.0,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    72.399,
+    72.521
+   ],
+   "round_cores": [
+    0.171,
+    0.171
+   ],
+   "rounds_wall": [
+    67.8528904799788,
+    67.92494027077251
+   ],
+   "watts": 70.9,
+   "sm_util": 100.0,
+   "sm_mhz": 1786,
+   "power_samples": 76,
+   "j_per_mp": 0.979
+  },
+  "jpeg/standard/default_enc3/new": {
+   "n": 6,
+   "mp_s": 81.238,
+   "img_s": 103.185,
+   "cpu_cores": 0.1545,
+   "mp": 1023.493,
+   "images": 1300,
+   "bytes": 71429150,
+   "wall_s": 13.521,
+   "mp_s_wall": 75.6970533346998,
+   "img_s_wall": 96.14737896117487,
+   "rounds_img": [
+    103.988,
+    102.793
+   ],
+   "rounds_img_wall": [
+    96.88478163660754,
+    95.65153410345081
+   ],
+   "startup_s": 0.9239500000000014,
+   "runs": [
+    81.5,
+    81.9,
+    82.2,
+    80.6,
+    80.9,
+    81.0
+   ],
+   "peak_dev_mb": 1093.2,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    81.87,
+    80.929
+   ],
+   "round_cores": [
+    0.154,
+    0.155
+   ],
+   "rounds_wall": [
+    76.27761216276645,
+    75.3066735339563
+   ],
+   "watts": 71.0,
+   "sm_util": 100.0,
+   "sm_mhz": 1712,
+   "power_samples": 68,
+   "j_per_mp": 0.874
+  },
+  "jpeg/standard/default_enc3/old": {
+   "n": 6,
+   "mp_s": 76.2295,
+   "img_s": 96.823,
+   "cpu_cores": 0.168,
+   "mp": 1023.493,
+   "images": 1300,
+   "bytes": 71429150,
+   "wall_s": 14.3895,
+   "mp_s_wall": 71.12797297083881,
+   "img_s_wall": 90.34391526086692,
+   "rounds_img": [
+    97.31,
+    96.576
+   ],
+   "rounds_img_wall": [
+    90.51664113633198,
+    90.18383628165107
+   ],
+   "startup_s": 0.9597499999999997,
+   "runs": [
+    76.8,
+    76.6,
+    76.4,
+    75.9,
+    76.0,
+    76.0
+   ],
+   "peak_dev_mb": 1186.1,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    76.612,
+    76.034
+   ],
+   "round_cores": [
+    0.169,
+    0.167
+   ],
+   "rounds_wall": [
+    71.26396045119064,
+    71.00194242108915
+   ],
+   "watts": 71.0,
+   "sm_util": 100.0,
+   "sm_mhz": 1763,
+   "power_samples": 72,
+   "j_per_mp": 0.931
+  },
+  "jpeg/standard/default_enc4/new": {
+   "n": 6,
+   "mp_s": 80.857,
+   "img_s": 102.7015,
+   "cpu_cores": 0.156,
+   "mp": 1023.493,
+   "images": 1300,
+   "bytes": 71429150,
+   "wall_s": 13.600999999999999,
+   "mp_s_wall": 75.25183225716576,
+   "img_s_wall": 95.5818769002968,
+   "rounds_img": [
+    103.163,
+    101.266
+   ],
+   "rounds_img_wall": [
+    95.95512252731031,
+    94.47674418604652
+   ],
+   "startup_s": 0.9302500000000009,
+   "runs": [
+    81.3,
+    81.2,
+    81.2,
+    80.5,
+    79.7,
+    79.7
+   ],
+   "peak_dev_mb": 1093.4,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    81.221,
+    79.727
+   ],
+   "round_cores": [
+    0.16,
+    0.154
+   ],
+   "rounds_wall": [
+    75.54568940064955,
+    74.38175872093024
+   ],
+   "watts": 70.8,
+   "sm_util": 100.0,
+   "sm_mhz": 1755,
+   "power_samples": 71,
+   "j_per_mp": 0.876
+  },
+  "jpeg/standard/default_enc4/old": {
+   "n": 6,
+   "mp_s": 76.084,
+   "img_s": 96.6385,
+   "cpu_cores": 0.172,
+   "mp": 1023.493,
+   "images": 1300,
+   "bytes": 71429150,
+   "wall_s": 14.407499999999999,
+   "mp_s_wall": 71.03890548789227,
+   "img_s_wall": 90.23078529531706,
+   "rounds_img": [
+    96.779,
+    96.353
+   ],
+   "rounds_img_wall": [
+    90.34051424600416,
+    89.69847512592285
+   ],
+   "startup_s": 0.9593499999999997,
+   "runs": [
+    76.2,
+    76.1,
+    76.2,
+    75.4,
+    76.1,
+    75.9
+   ],
+   "peak_dev_mb": 1187.1,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    76.194,
+    75.859
+   ],
+   "round_cores": [
+    0.171,
+    0.173
+   ],
+   "rounds_wall": [
+    71.12529534398888,
+    70.61981646312013
+   ],
+   "watts": 70.6,
+   "sm_util": 100.0,
+   "sm_mhz": 1765,
+   "power_samples": 73,
+   "j_per_mp": 0.928
+  },
+  "jpeg/standard/nosmall_enc3/new": {
+   "n": 6,
+   "mp_s": 190.79700000000003,
+   "img_s": 242.34199999999998,
+   "cpu_cores": 0.3405,
+   "mp": 1023.493,
+   "images": 1300,
+   "bytes": 71872515,
+   "wall_s": 6.285500000000001,
+   "mp_s_wall": 162.8341076550567,
+   "img_s_wall": 206.82539103987395,
+   "rounds_img": [
+    242.338,
+    243.301
+   ],
+   "rounds_img_wall": [
+    206.64441265299632,
+    207.2704081632653
+   ],
+   "startup_s": 0.9226999999999999,
+   "runs": [
+    190.8,
+    190.8,
+    189.6,
+    189.1,
+    191.6,
+    192.1
+   ],
+   "peak_dev_mb": 1053.6,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    190.794,
+    191.552
+   ],
+   "round_cores": [
+    0.34,
+    0.341
+   ],
+   "rounds_wall": [
+    162.69162295342554,
+    163.1844706632653
+   ],
+   "watts": 70.9,
+   "sm_util": 100.0,
+   "sm_mhz": 1758,
+   "power_samples": 26,
+   "j_per_mp": 0.372
+  },
+  "jpeg/standard/nosmall_enc3/old": {
+   "n": 6,
+   "mp_s": 178.7885,
+   "img_s": 227.0895,
+   "cpu_cores": 0.355,
+   "mp": 1023.493,
+   "images": 1300,
+   "bytes": 71872515,
+   "wall_s": 6.6865000000000006,
+   "mp_s_wall": 153.0697427516734,
+   "img_s_wall": 194.42308406327683,
+   "rounds_img": [
+    225.577,
+    228.31
+   ],
+   "rounds_img_wall": [
+    193.74068554396425,
+    195.57695200842485
+   ],
+   "startup_s": 0.9538000000000002,
+   "runs": [
+    177.6,
+    177.5,
+    178.0,
+    179.7,
+    180.5,
+    179.6
+   ],
+   "peak_dev_mb": 1148.0,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    177.597,
+    179.749
+   ],
+   "round_cores": [
+    0.357,
+    0.324
+   ],
+   "rounds_wall": [
+    152.53248882265277,
+    153.9781856476606
+   ],
+   "watts": 70.5,
+   "sm_util": 100.0,
+   "sm_mhz": 1759,
+   "power_samples": 27,
+   "j_per_mp": 0.394
+  },
+  "jpeg/standard/nosmall_enc4/new": {
+   "n": 6,
+   "mp_s": 191.0295,
+   "img_s": 242.638,
+   "cpu_cores": 0.34299999999999997,
+   "mp": 1023.493,
+   "images": 1300,
+   "bytes": 71872515,
+   "wall_s": 6.285,
+   "mp_s_wall": 162.8469742551723,
+   "img_s_wall": 206.84173368232513,
+   "rounds_img": [
+    242.457,
+    242.717
+   ],
+   "rounds_img_wall": [
+    206.74300254452925,
+    206.94046482012098
+   ],
+   "startup_s": 0.9211,
+   "runs": [
+    192.0,
+    190.9,
+    190.2,
+    191.1,
+    191.0,
+    191.4
+   ],
+   "peak_dev_mb": 1055.0,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    190.887,
+    191.092
+   ],
+   "round_cores": [
+    0.342,
+    0.344
+   ],
+   "rounds_wall": [
+    162.76924300254453,
+    162.92470550780007
+   ],
+   "watts": 69.2,
+   "sm_util": 100.0,
+   "sm_mhz": 1772,
+   "power_samples": 25,
+   "j_per_mp": 0.362
+  },
+  "jpeg/standard/nosmall_enc4/old": {
+   "n": 6,
+   "mp_s": 178.99450000000002,
+   "img_s": 227.3515,
+   "cpu_cores": 0.344,
+   "mp": 1023.493,
+   "images": 1300,
+   "bytes": 71872515,
+   "wall_s": 6.6754999999999995,
+   "mp_s_wall": 153.32133753483674,
+   "img_s_wall": 194.7426497252915,
+   "rounds_img": [
+    228.048,
+    226.495
+   ],
+   "rounds_img_wall": [
+    195.48872180451127,
+    194.1457586618877
+   ],
+   "startup_s": 0.95505,
+   "runs": [
+    179.3,
+    179.5,
+    179.8,
+    178.3,
+    178.1,
+    178.7
+   ],
+   "peak_dev_mb": 1148.2,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    179.543,
+    178.32
+   ],
+   "round_cores": [
+    0.341,
+    0.351
+   ],
+   "rounds_wall": [
+    153.9087218045113,
+    152.85140382317803
+   ],
+   "watts": 71.1,
+   "sm_util": 100.0,
+   "sm_mhz": 1771,
+   "power_samples": 27,
+   "j_per_mp": 0.397
+  },
+  "formats/420_10/new": {
+   "n": 6,
+   "mp_s": 253.281,
+   "img_s": 53.0055,
+   "cpu_cores": 0.274,
+   "mp": 1433.529,
+   "images": 300,
+   "bytes": 66785133,
+   "wall_s": 6.6,
+   "mp_s_wall": 217.20176752394786,
+   "img_s_wall": 45.45462997761773,
+   "rounds_img": [
+    52.652,
+    53.081
+   ],
+   "rounds_img_wall": [
+    45.13314277117497,
+    45.544253833308034
+   ],
+   "startup_s": 0.9365999999999999,
+   "runs": [
+    253.0,
+    250.9,
+    251.6,
+    253.6,
+    253.6,
+    255.2
+   ],
+   "peak_dev_mb": 1108.0,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    251.595,
+    253.645
+   ],
+   "round_cores": [
+    0.275,
+    0.273
+   ],
+   "rounds_wall": [
+    215.66556341206558,
+    217.6300288446941
+   ],
+   "watts": 70.3,
+   "sm_util": 100.0,
+   "sm_mhz": 1648,
+   "power_samples": 28,
+   "j_per_mp": 0.278
+  },
+  "formats/420_10/old": {
+   "n": 6,
+   "mp_s": 231.3955,
+   "img_s": 48.425,
+   "cpu_cores": 0.316,
+   "mp": 1433.529,
+   "images": 300,
+   "bytes": 66785133,
+   "wall_s": 7.162,
+   "mp_s_wall": 200.15851551815427,
+   "img_s_wall": 41.88792459409352,
+   "rounds_img": [
+    48.534,
+    48.096
+   ],
+   "rounds_img_wall": [
+    41.975654120610045,
+    41.649312786339024
+   ],
+   "startup_s": 0.9662999999999999,
+   "runs": [
+    231.9,
+    230.9,
+    231.9,
+    228.4,
+    232.4,
+    229.8
+   ],
+   "peak_dev_mb": 1334.7,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    231.914,
+    229.822
+   ],
+   "round_cores": [
+    0.316,
+    0.316
+   ],
+   "rounds_wall": [
+    200.57772491954665,
+    199.01832569762598
+   ],
+   "watts": 68.4,
+   "sm_util": 100.0,
+   "sm_mhz": 1665,
+   "power_samples": 32,
+   "j_per_mp": 0.296
+  },
+  "formats/444_10/new": {
+   "n": 6,
+   "mp_s": 193.92399999999998,
+   "img_s": 40.583,
+   "cpu_cores": 0.22,
+   "mp": 1433.529,
+   "images": 300,
+   "bytes": 69418857,
+   "wall_s": 8.332999999999998,
+   "mp_s_wall": 172.03066098465342,
+   "img_s_wall": 36.001502791639396,
+   "rounds_img": [
+    40.876,
+    40.358
+   ],
+   "rounds_img_wall": [
+    36.20127911186195,
+    35.761115746811306
+   ],
+   "startup_s": 0.9470499999999995,
+   "runs": [
+    194.3,
+    195.6,
+    195.3,
+    192.6,
+    192.8,
+    193.6
+   ],
+   "peak_dev_mb": 1840.2,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    195.323,
+    192.848
+   ],
+   "round_cores": [
+    0.22,
+    0.214
+   ],
+   "rounds_wall": [
+    172.9852781464945,
+    170.88198831803552
+   ],
+   "watts": 70.3,
+   "sm_util": 97.0,
+   "sm_mhz": 1658,
+   "power_samples": 37,
+   "j_per_mp": 0.362
+  },
+  "formats/444_10/old": {
+   "n": 6,
+   "mp_s": 172.29649999999998,
+   "img_s": 36.057,
+   "cpu_cores": 0.2485,
+   "mp": 1433.529,
+   "images": 300,
+   "bytes": 69418857,
+   "wall_s": 9.2955,
+   "mp_s_wall": 154.218974321637,
+   "img_s_wall": 32.27398420017391,
+   "rounds_img": [
+    36.212,
+    35.792
+   ],
+   "rounds_img_wall": [
+    32.40090722540231,
+    32.07526996685556
+   ],
+   "startup_s": 0.9726499999999998,
+   "runs": [
+    174.1,
+    171.8,
+    173.0,
+    170.9,
+    171.0,
+    172.8
+   ],
+   "peak_dev_mb": 2147.5,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    173.037,
+    171.031
+   ],
+   "round_cores": [
+    0.254,
+    0.247
+   ],
+   "rounds_wall": [
+    154.82546711307916,
+    153.26943226772158
+   ],
+   "watts": 69.8,
+   "sm_util": 99.4,
+   "sm_mhz": 1709,
+   "power_samples": 44,
+   "j_per_mp": 0.405
+  },
+  "formats/444_8/new": {
+   "n": 6,
+   "mp_s": 197.8875,
+   "img_s": 41.413,
+   "cpu_cores": 0.222,
+   "mp": 1433.529,
+   "images": 300,
+   "bytes": 70820718,
+   "wall_s": 8.184000000000001,
+   "mp_s_wall": 175.16239264455393,
+   "img_s_wall": 36.656892042899855,
+   "rounds_img": [
+    41.361,
+    41.44
+   ],
+   "rounds_img_wall": [
+    36.58536585365854,
+    36.66137113528046
+   ],
+   "startup_s": 0.9419000000000004,
+   "runs": [
+    198.3,
+    197.6,
+    196.3,
+    198.7,
+    198.0,
+    197.8
+   ],
+   "peak_dev_mb": 1596.6,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    197.639,
+    198.016
+   ],
+   "round_cores": [
+    0.22,
+    0.224
+   ],
+   "rounds_wall": [
+    174.82060975609758,
+    175.1837956739582
+   ],
+   "watts": 70.8,
+   "sm_util": 100.0,
+   "sm_mhz": 1681,
+   "power_samples": 36,
+   "j_per_mp": 0.358
+  },
+  "formats/444_8/old": {
+   "n": 6,
+   "mp_s": 174.7295,
+   "img_s": 36.566500000000005,
+   "cpu_cores": 0.216,
+   "mp": 1433.529,
+   "images": 300,
+   "bytes": 70820718,
+   "wall_s": 9.177,
+   "mp_s_wall": 156.20942784263136,
+   "img_s_wall": 32.69053388720382,
+   "rounds_img": [
+    36.256,
+    36.719
+   ],
+   "rounds_img_wall": [
+    32.45348334054522,
+    32.82275711159737
+   ],
+   "startup_s": 0.9657499999999999,
+   "runs": [
+    173.2,
+    174.9,
+    172.1,
+    174.6,
+    175.5,
+    176.3
+   ],
+   "peak_dev_mb": 1782.1,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    173.247,
+    175.457
+   ],
+   "round_cores": [
+    0.215,
+    0.217
+   ],
+   "rounds_wall": [
+    155.0766983989615,
+    156.84124726477023
+   ],
+   "watts": 71.3,
+   "sm_util": 100.0,
+   "sm_mhz": 1638,
+   "power_samples": 41,
+   "j_per_mp": 0.408
+  },
+  "lossless/cmp_1pass/new": {
+   "n": 6,
+   "mp_s": 37.564,
+   "img_s": 39.0405,
+   "cpu_cores": 1.369,
+   "mp": 49.071,
+   "images": 51,
+   "bytes": 20242424,
+   "wall_s": 2.25,
+   "mp_s_wall": 21.809682288249945,
+   "img_s_wall": 22.667029339136093,
+   "rounds_img": [
+    38.662,
+    40.232
+   ],
+   "rounds_img_wall": [
+    22.546419098143236,
+    23.014440433212993
+   ],
+   "startup_s": 0.9438000000000002,
+   "runs": [
+    37.2,
+    37.2,
+    37.3,
+    38.7,
+    39.3,
+    37.9
+   ],
+   "peak_dev_mb": 2299.8,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    37.2,
+    38.71
+   ],
+   "round_cores": [
+    1.348,
+    1.41
+   ],
+   "rounds_wall": [
+    21.69363395225464,
+    22.143953068592054
+   ],
+   "watts": 63.5,
+   "sm_util": 100.0,
+   "sm_mhz": 1748,
+   "power_samples": 2,
+   "j_per_mp": 1.69
+  },
+  "lossless/cmp_1pass/old": {
+   "n": 6,
+   "mp_s": 34.062,
+   "img_s": 35.401,
+   "cpu_cores": 1.338,
+   "mp": 49.071,
+   "images": 51,
+   "bytes": 20242424,
+   "wall_s": 2.423,
+   "mp_s_wall": 20.25218053373191,
+   "img_s_wall": 21.04830158790991,
+   "rounds_img": [
+    35.526,
+    35.276
+   ],
+   "rounds_img_wall": [
+    21.06567534076828,
+    21.030927835051546
+   ],
+   "startup_s": 0.9759999999999999,
+   "runs": [
+    33.3,
+    34.2,
+    34.6,
+    34.6,
+    33.9,
+    33.9
+   ],
+   "peak_dev_mb": 3105.2,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    34.182,
+    33.942
+   ],
+   "round_cores": [
+    1.343,
+    1.333
+   ],
+   "rounds_wall": [
+    20.26889714993804,
+    20.235463917525774
+   ],
+   "watts": 63.3,
+   "sm_util": 99.7,
+   "sm_mhz": 1715,
+   "power_samples": 3,
+   "j_per_mp": 1.859
+  },
+  "lossless/cmp_1pass_ycgco/new": {
+   "n": 6,
+   "mp_s": 38.201499999999996,
+   "img_s": 39.704,
+   "cpu_cores": 1.4325,
+   "mp": 49.071,
+   "images": 51,
+   "bytes": 16919524,
+   "wall_s": 2.2225,
+   "mp_s_wall": 22.07944153701323,
+   "img_s_wall": 22.94739292836247,
+   "rounds_img": [
+    39.694,
+    39.948
+   ],
+   "rounds_img_wall": [
+    22.85970416853429,
+    23.11876699909338
+   ],
+   "startup_s": 0.9312499999999998,
+   "runs": [
+    38.2,
+    38.2,
+    37.7,
+    38.0,
+    38.4,
+    39.5
+   ],
+   "peak_dev_mb": 2514.9,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    38.192,
+    38.437
+   ],
+   "round_cores": [
+    1.396,
+    1.447
+   ],
+   "rounds_wall": [
+    21.995069475571494,
+    22.244333635539437
+   ],
+   "watts": 62.0,
+   "sm_util": 100.0,
+   "sm_mhz": 1695,
+   "power_samples": 1,
+   "j_per_mp": 1.623
+  },
+  "lossless/cmp_1pass_ycgco/old": {
+   "n": 6,
+   "mp_s": 34.683,
+   "img_s": 36.046499999999995,
+   "cpu_cores": 1.403,
+   "mp": 49.071,
+   "images": 51,
+   "bytes": 16919524,
+   "wall_s": 2.3845,
+   "mp_s_wall": 20.579165199571285,
+   "img_s_wall": 21.38814014750332,
+   "rounds_img": [
+    36.334,
+    36.034
+   ],
+   "rounds_img_wall": [
+    21.537162162162165,
+    21.374685666387258
+   ],
+   "startup_s": 0.9676999999999999,
+   "runs": [
+    35.1,
+    35.0,
+    34.6,
+    34.4,
+    34.7,
+    34.7
+   ],
+   "peak_dev_mb": 3240.0,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    34.96,
+    34.671
+   ],
+   "round_cores": [
+    1.409,
+    1.397
+   ],
+   "rounds_wall": [
+    20.722550675675677,
+    20.566219614417435
+   ],
+   "watts": 60.5,
+   "sm_util": 96.0,
+   "sm_mhz": 1792,
+   "power_samples": 2,
+   "j_per_mp": 1.744
+  },
+  "lossless/cmp_4x/new": {
+   "n": 6,
+   "mp_s": 45.265,
+   "img_s": 47.0445,
+   "cpu_cores": 1.5099999999999998,
+   "mp": 196.283,
+   "images": 204,
+   "bytes": 80969696,
+   "wall_s": 5.365500000000001,
+   "mp_s_wall": 36.58246319023945,
+   "img_s_wall": 38.02072767793874,
+   "rounds_img": [
+    46.871,
+    47.218
+   ],
+   "rounds_img_wall": [
+    37.98175386334016,
+    38.059701492537314
+   ],
+   "startup_s": 1.0194500000000004,
+   "runs": [
+    45.9,
+    45.1,
+    45.1,
+    45.4,
+    45.6,
+    44.5
+   ],
+   "peak_dev_mb": 3146.6,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    45.098,
+    45.432
+   ],
+   "round_cores": [
+    1.503,
+    1.517
+   ],
+   "rounds_wall": [
+    36.54496369391174,
+    36.619962686567156
+   ],
+   "watts": 69.3,
+   "sm_util": 100.0,
+   "sm_mhz": 1542,
+   "power_samples": 20,
+   "j_per_mp": 1.531
+  },
+  "lossless/cmp_4x/old": {
+   "n": 5,
+   "mp_s": 43.671,
+   "img_s": 45.388,
+   "cpu_cores": 1.433,
+   "mp": 196.283,
+   "images": 204,
+   "bytes": 80969696,
+   "wall_s": 5.547,
+   "mp_s_wall": 35.38543356769425,
+   "img_s_wall": 36.77663601946998,
+   "rounds_img": [
+    45.983,
+    44.977999999999994
+   ],
+   "rounds_img_wall": [
+    37.17201166180758,
+    36.51520622725765
+   ],
+   "startup_s": 1.0521000000000003,
+   "runs": [
+    44.3,
+    43.1,
+    44.2,
+    43.7,
+    42.9
+   ],
+   "peak_dev_mb": 3170.6,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    44.243,
+    43.2765
+   ],
+   "round_cores": [
+    1.46,
+    1.4295
+   ],
+   "rounds_wall": [
+    35.76585276967929,
+    35.133893254435364
+   ],
+   "watts": 71.4,
+   "sm_util": 100.0,
+   "sm_mhz": 1586,
+   "power_samples": 17,
+   "j_per_mp": 1.635
+  },
+  "lossless/cmp_4x_ycgco/new": {
+   "n": 6,
+   "mp_s": 44.2745,
+   "img_s": 46.015,
+   "cpu_cores": 1.37,
+   "mp": 196.283,
+   "images": 204,
+   "bytes": 67678096,
+   "wall_s": 5.4605,
+   "mp_s_wall": 35.9463038574108,
+   "img_s_wall": 37.359557307111686,
+   "rounds_img": [
+    45.665,
+    46.352
+   ],
+   "rounds_img_wall": [
+    37.199124726477024,
+    37.48621830209482
+   ],
+   "startup_s": 1.0339500000000004,
+   "runs": [
+    43.9,
+    43.7,
+    44.4,
+    44.2,
+    44.6,
+    44.9
+   ],
+   "peak_dev_mb": 3281.1,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    43.937,
+    44.599
+   ],
+   "round_cores": [
+    1.353,
+    1.371
+   ],
+   "rounds_wall": [
+    35.791940189642595,
+    36.06817346563763
+   ],
+   "watts": 70.5,
+   "sm_util": 100.0,
+   "sm_mhz": 1642,
+   "power_samples": 21,
+   "j_per_mp": 1.593
+  },
+  "lossless/cmp_4x_ycgco/old": {
+   "n": 4,
+   "mp_s": 42.6875,
+   "img_s": 44.366,
+   "cpu_cores": 1.3375,
+   "mp": 196.283,
+   "images": 204,
+   "bytes": 67678096,
+   "wall_s": 5.647,
+   "mp_s_wall": 34.76370371834003,
+   "img_s_wall": 36.13046243710035,
+   "rounds_img": [
+    45.002,
+    43.73
+   ],
+   "rounds_img_wall": [
+    36.55913978494624,
+    35.620743844945
+   ],
+   "startup_s": 1.0429,
+   "runs": [
+    41.9,
+    43.3,
+    44.0,
+    42.1
+   ],
+   "peak_dev_mb": 3284.1,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    43.299,
+    42.076
+   ],
+   "round_cores": [
+    1.359,
+    1.316
+   ],
+   "rounds_wall": [
+    35.176164874551965,
+    34.27326698096734
+   ],
+   "watts": 69.2,
+   "sm_util": 99.9,
+   "sm_mhz": 1661,
+   "power_samples": 15,
+   "j_per_mp": 1.621
+  },
+  "alpha/default/new": {
+   "n": 6,
+   "mp_s": 36.731,
+   "img_s": 141.496,
+   "cpu_cores": 2.745,
+   "mp": 202.482,
+   "images": 780,
+   "bytes": 13708280,
+   "wall_s": 6.435499999999999,
+   "mp_s_wall": 31.463640738841814,
+   "img_s_wall": 121.20405653982387,
+   "rounds_img": [
+    141.168,
+    143.636
+   ],
+   "rounds_img_wall": [
+    120.79913272417532,
+    122.77664095702818
+   ],
+   "startup_s": 0.9297999999999997,
+   "runs": [
+    36.6,
+    36.8,
+    36.6,
+    37.3,
+    36.0,
+    37.7
+   ],
+   "peak_dev_mb": 738.7,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    36.646,
+    37.287
+   ],
+   "round_cores": [
+    2.82,
+    2.716
+   ],
+   "rounds_wall": [
+    31.358525631098033,
+    31.871871556744846
+   ],
+   "watts": 63.5,
+   "sm_util": 100.0,
+   "sm_mhz": 1977,
+   "power_samples": 27,
+   "j_per_mp": 1.728
+  },
+  "alpha/default/old": {
+   "n": 6,
+   "mp_s": 33.700500000000005,
+   "img_s": 129.8205,
+   "cpu_cores": 2.308,
+   "mp": 202.482,
+   "images": 780,
+   "bytes": 13708280,
+   "wall_s": 6.9605,
+   "mp_s_wall": 29.090185344009797,
+   "img_s_wall": 112.0610452698395,
+   "rounds_img": [
+    130.856,
+    129.613
+   ],
+   "rounds_img_wall": [
+    112.70047680970957,
+    111.87607573149741
+   ],
+   "startup_s": 0.9563999999999999,
+   "runs": [
+    34.0,
+    34.0,
+    33.7,
+    33.6,
+    33.7,
+    33.5
+   ],
+   "peak_dev_mb": 812.9,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    33.969,
+    33.647
+   ],
+   "round_cores": [
+    2.377,
+    2.239
+   ],
+   "rounds_wall": [
+    29.256176853055916,
+    29.042168674698793
+   ],
+   "watts": 61.4,
+   "sm_util": 100.0,
+   "sm_mhz": 1952,
+   "power_samples": 30,
+   "j_per_mp": 1.823
+  },
+  "alpha/lossless/new": {
+   "n": 6,
+   "mp_s": 34.4315,
+   "img_s": 132.637,
+   "cpu_cores": 1.5745,
+   "mp": 202.482,
+   "images": 780,
+   "bytes": 149781160,
+   "wall_s": 6.9030000000000005,
+   "mp_s_wall": 29.332710373457147,
+   "img_s_wall": 112.9952987983948,
+   "rounds_img": [
+    134.831,
+    131.638
+   ],
+   "rounds_img_wall": [
+    114.68901632112924,
+    112.2948459545062
+   ],
+   "startup_s": 1.0169000000000001,
+   "runs": [
+    34.3,
+    35.0,
+    35.2,
+    34.2,
+    34.5,
+    34.0
+   ],
+   "peak_dev_mb": 3071.4,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    35.001,
+    34.172
+   ],
+   "round_cores": [
+    1.588,
+    1.567
+   ],
+   "rounds_wall": [
+    29.772386413762682,
+    29.150878203282467
+   ],
+   "watts": 70.0,
+   "sm_util": 96.3,
+   "sm_mhz": 1623,
+   "power_samples": 28,
+   "j_per_mp": 2.033
+  },
+  "alpha/lossless/old": {
+   "n": 6,
+   "mp_s": 32.2155,
+   "img_s": 124.102,
+   "cpu_cores": 1.4340000000000002,
+   "mp": 202.482,
+   "images": 780,
+   "bytes": 149781160,
+   "wall_s": 7.337,
+   "mp_s_wall": 27.597445158822403,
+   "img_s_wall": 106.31072008317517,
+   "rounds_img": [
+    124.165,
+    124.039
+   ],
+   "rounds_img_wall": [
+    106.47010647010647,
+    106.15133369624388
+   ],
+   "startup_s": 1.0454000000000003,
+   "runs": [
+    32.4,
+    32.2,
+    31.6,
+    32.0,
+    32.2,
+    32.9
+   ],
+   "peak_dev_mb": 3059.3,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    32.232,
+    32.199
+   ],
+   "round_cores": [
+    1.43,
+    1.437
+   ],
+   "rounds_wall": [
+    27.63882063882064,
+    27.55606967882417
+   ],
+   "watts": 68.5,
+   "sm_util": 98.7,
+   "sm_mhz": 1656,
+   "power_samples": 33,
+   "j_per_mp": 2.126
+  },
+  "alpha/no_alpha/new": {
+   "n": 6,
+   "mp_s": 44.388999999999996,
+   "img_s": 170.99450000000002,
+   "cpu_cores": 3.188,
+   "mp": 202.482,
+   "images": 780,
+   "bytes": 9756440,
+   "wall_s": 5.4985,
+   "mp_s_wall": 36.82497692458976,
+   "img_s_wall": 141.85696506938896,
+   "rounds_img": [
+    171.048,
+    170.941
+   ],
+   "rounds_img_wall": [
+    141.74086861711794,
+    141.97306152166
+   ],
+   "startup_s": 0.9310500000000004,
+   "runs": [
+    44.4,
+    43.9,
+    44.7,
+    44.2,
+    44.4,
+    44.6
+   ],
+   "peak_dev_mb": 733.6,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    44.403,
+    44.375
+   ],
+   "round_cores": [
+    3.168,
+    3.232
+   ],
+   "rounds_wall": [
+    36.794839178629836,
+    36.85511467054969
+   ],
+   "watts": 63.0,
+   "sm_util": 98.4,
+   "sm_mhz": 1983,
+   "power_samples": 21,
+   "j_per_mp": 1.418
+  },
+  "alpha/no_alpha/old": {
+   "n": 6,
+   "mp_s": 40.1535,
+   "img_s": 154.68,
+   "cpu_cores": 2.628,
+   "mp": 202.482,
+   "images": 780,
+   "bytes": 9756440,
+   "wall_s": 5.989000000000001,
+   "mp_s_wall": 33.80902932279159,
+   "img_s_wall": 130.23894900177515,
+   "rounds_img": [
+    155.258,
+    154.542
+   ],
+   "rounds_img_wall": [
+    130.5439330543933,
+    130.06503251625813
+   ],
+   "startup_s": 0.9489500000000004,
+   "runs": [
+    40.3,
+    40.1,
+    40.3,
+    39.9,
+    40.2,
+    40.1
+   ],
+   "peak_dev_mb": 789.4,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    40.304,
+    40.118
+   ],
+   "round_cores": [
+    2.615,
+    2.647
+   ],
+   "rounds_wall": [
+    33.88820083682008,
+    33.763881940970485
+   ],
+   "watts": 63.0,
+   "sm_util": 91.3,
+   "sm_mhz": 1988,
+   "power_samples": 23,
+   "j_per_mp": 1.569
+  },
+  "alpha/q100/new": {
+   "n": 6,
+   "mp_s": 34.9195,
+   "img_s": 134.51749999999998,
+   "cpu_cores": 2.4595000000000002,
+   "mp": 202.482,
+   "images": 780,
+   "bytes": 21447480,
+   "wall_s": 6.734500000000001,
+   "mp_s_wall": 30.066382759002515,
+   "img_s_wall": 115.82154735740443,
+   "rounds_img": [
+    134.438,
+    134.597
+   ],
+   "rounds_img_wall": [
+    115.7613535173642,
+    115.88174119744465
+   ],
+   "startup_s": 0.9359999999999999,
+   "runs": [
+    34.9,
+    34.9,
+    34.9,
+    34.7,
+    35.1,
+    34.9
+   ],
+   "peak_dev_mb": 923.0,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    34.899,
+    34.94
+   ],
+   "round_cores": [
+    2.536,
+    2.439
+   ],
+   "rounds_wall": [
+    30.050756901157612,
+    30.08200861684742
+   ],
+   "watts": 64.5,
+   "sm_util": 100.0,
+   "sm_mhz": 1847,
+   "power_samples": 28,
+   "j_per_mp": 1.847
+  },
+  "alpha/q100/old": {
+   "n": 6,
+   "mp_s": 32.278999999999996,
+   "img_s": 124.345,
+   "cpu_cores": 2.2405,
+   "mp": 202.482,
+   "images": 780,
+   "bytes": 21447480,
+   "wall_s": 7.243,
+   "mp_s_wall": 27.955543816051865,
+   "img_s_wall": 107.69018567833415,
+   "rounds_img": [
+    124.482,
+    124.222
+   ],
+   "rounds_img_wall": [
+    107.76457584968223,
+    107.02524698133918
+   ],
+   "startup_s": 0.9664000000000006,
+   "runs": [
+    32.3,
+    32.2,
+    32.4,
+    32.2,
+    32.3,
+    32.0
+   ],
+   "peak_dev_mb": 930.4,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    32.315,
+    32.247
+   ],
+   "round_cores": [
+    2.238,
+    2.243
+   ],
+   "rounds_wall": [
+    27.97485493230174,
+    27.782930845225028
+   ],
+   "watts": 63.7,
+   "sm_util": 100.0,
+   "sm_mhz": 1867,
+   "power_samples": 32,
+   "j_per_mp": 1.974
+  },
+  "thumbs/default/new": {
+   "n": 6,
+   "mp_s": 67.457,
+   "img_s": 444.727,
+   "cpu_cores": 1.3325,
+   "mp": 1019.305,
+   "images": 6720,
+   "bytes": 98193456,
+   "wall_s": 16.037,
+   "mp_s_wall": 63.56664018399233,
+   "img_s_wall": 419.07753031372204,
+   "rounds_img": [
+    439.588,
+    450.101
+   ],
+   "rounds_img_wall": [
+    414.5844900980937,
+    423.57390482193506
+   ],
+   "startup_s": 0.9249999999999989,
+   "runs": [
+    66.7,
+    66.1,
+    66.7,
+    68.3,
+    68.2,
+    68.3
+   ],
+   "peak_dev_mb": 880.7,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    66.678,
+    68.272
+   ],
+   "round_cores": [
+    1.337,
+    1.328
+   ],
+   "rounds_wall": [
+    62.88512554753532,
+    64.24866057358966
+   ],
+   "watts": 71.0,
+   "sm_util": 100.0,
+   "sm_mhz": 1742,
+   "power_samples": 81,
+   "j_per_mp": 1.053
+  },
+  "thumbs/default/old": {
+   "n": 6,
+   "mp_s": 62.77,
+   "img_s": 413.82550000000003,
+   "cpu_cores": 1.295,
+   "mp": 1019.305,
+   "images": 6720,
+   "bytes": 98193456,
+   "wall_s": 17.1835,
+   "mp_s_wall": 59.318823741797715,
+   "img_s_wall": 391.0728344753343,
+   "rounds_img": [
+    413.826,
+    413.825
+   ],
+   "rounds_img_wall": [
+    391.0386965376782,
+    391.1069724129904
+   ],
+   "startup_s": 0.9519499999999983,
+   "runs": [
+    62.8,
+    62.9,
+    62.7,
+    62.8,
+    62.6,
+    62.8
+   ],
+   "peak_dev_mb": 950.7,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    62.77,
+    62.77
+   ],
+   "round_cores": [
+    1.293,
+    1.297
+   ],
+   "rounds_wall": [
+    59.313645621181266,
+    59.32400186241416
+   ],
+   "watts": 70.8,
+   "sm_util": 100.0,
+   "sm_mhz": 1778,
+   "power_samples": 92,
+   "j_per_mp": 1.129
+  },
+  "thumbs/nosmall/new": {
+   "n": 6,
+   "mp_s": 161.0435,
+   "img_s": 1061.717,
+   "cpu_cores": 1.38,
+   "mp": 1019.305,
+   "images": 6720,
+   "bytes": 98543448,
+   "wall_s": 7.253,
+   "mp_s_wall": 140.53566446793138,
+   "img_s_wall": 926.5133254761814,
+   "rounds_img": [
+    1060.869,
+    1067.214
+   ],
+   "rounds_img_wall": [
+    926.0024803637867,
+    928.9466408625933
+   ],
+   "startup_s": 0.9243999999999999,
+   "runs": [
+    161.0,
+    160.8,
+    160.9,
+    161.1,
+    161.9,
+    162.3
+   ],
+   "peak_dev_mb": 850.1,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    160.915,
+    161.877
+   ],
+   "round_cores": [
+    1.356,
+    1.398
+   ],
+   "rounds_wall": [
+    140.45817831059665,
+    140.90475532209012
+   ],
+   "watts": 69.8,
+   "sm_util": 99.5,
+   "sm_mhz": 1843,
+   "power_samples": 31,
+   "j_per_mp": 0.433
+  },
+  "thumbs/nosmall/old": {
+   "n": 6,
+   "mp_s": 148.2505,
+   "img_s": 977.373,
+   "cpu_cores": 1.395,
+   "mp": 1019.305,
+   "images": 6720,
+   "bytes": 98543448,
+   "wall_s": 7.8355,
+   "mp_s_wall": 130.08806127887163,
+   "img_s_wall": 857.6351256925232,
+   "rounds_img": [
+    977.496,
+    974.625
+   ],
+   "rounds_img_wall": [
+    857.6898532227186,
+    855.6149732620321
+   ],
+   "startup_s": 0.9593000000000007,
+   "runs": [
+    149.3,
+    148.3,
+    148.2,
+    147.5,
+    147.8,
+    148.9
+   ],
+   "peak_dev_mb": 920.9,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    148.269,
+    147.833
+   ],
+   "round_cores": [
+    1.395,
+    1.395
+   ],
+   "rounds_wall": [
+    130.09636247606892,
+    129.78163992869875
+   ],
+   "watts": 71.5,
+   "sm_util": 100.0,
+   "sm_mhz": 1768,
+   "power_samples": 35,
+   "j_per_mp": 0.482
+  },
+  "kodak/default/new": {
+   "n": 6,
+   "mp_s": 59.623999999999995,
+   "img_s": 151.63150000000002,
+   "cpu_cores": 3.3625,
+   "mp": 1000.342,
+   "images": 2544,
+   "bytes": 96711008,
+   "wall_s": 17.707500000000003,
+   "mp_s_wall": 56.49263536541145,
+   "img_s_wall": 143.6681298691915,
+   "rounds_img": [
+    151.448,
+    151.815
+   ],
+   "rounds_img_wall": [
+    143.50180505415162,
+    143.83445468423136
+   ],
+   "startup_s": 0.92835,
+   "runs": [
+    59.6,
+    59.0,
+    59.7,
+    60.0,
+    59.7,
+    59.4
+   ],
+   "peak_dev_mb": 872.9,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    59.552,
+    59.696
+   ],
+   "round_cores": [
+    3.297,
+    3.466
+   ],
+   "rounds_wall": [
+    56.42723375451263,
+    56.55803697631028
+   ],
+   "watts": 71.4,
+   "sm_util": 100.0,
+   "sm_mhz": 1723,
+   "power_samples": 93,
+   "j_per_mp": 1.198
+  },
+  "kodak/default/old": {
+   "n": 6,
+   "mp_s": 55.385999999999996,
+   "img_s": 140.853,
+   "cpu_cores": 3.248,
+   "mp": 1000.342,
+   "images": 2544,
+   "bytes": 96711008,
+   "wall_s": 19.016,
+   "mp_s_wall": 52.60529431200108,
+   "img_s_wall": 133.7821152463165,
+   "rounds_img": [
+    140.968,
+    140.378
+   ],
+   "rounds_img_wall": [
+    133.85246764179732,
+    133.3822681277198
+   ],
+   "startup_s": 0.9563500000000005,
+   "runs": [
+    55.4,
+    55.4,
+    55.4,
+    55.4,
+    55.2,
+    55.1
+   ],
+   "peak_dev_mb": 941.4,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    55.431,
+    55.199
+   ],
+   "round_cores": [
+    3.253,
+    3.243
+   ],
+   "rounds_wall": [
+    52.63295801325897,
+    52.44806794945735
+   ],
+   "watts": 71.1,
+   "sm_util": 100.0,
+   "sm_mhz": 1760,
+   "power_samples": 102,
+   "j_per_mp": 1.284
+  },
+  "kodak/nosmall/new": {
+   "n": 6,
+   "mp_s": 143.37150000000003,
+   "img_s": 364.613,
+   "cpu_cores": 6.975,
+   "mp": 1000.342,
+   "images": 2544,
+   "bytes": 97289450,
+   "wall_s": 7.906000000000001,
+   "mp_s_wall": 126.53105837042372,
+   "img_s_wall": 321.7849620373412,
+   "rounds_img": [
+    362.977,
+    366.521
+   ],
+   "rounds_img_wall": [
+    320.4837490551776,
+    323.82892057026476
+   ],
+   "startup_s": 0.9282499999999998,
+   "runs": [
+    142.7,
+    142.7,
+    142.6,
+    144.1,
+    144.0,
+    145.0
+   ],
+   "peak_dev_mb": 837.2,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    142.728,
+    144.122
+   ],
+   "round_cores": [
+    6.924,
+    7.068
+   ],
+   "rounds_wall": [
+    126.01940035273368,
+    127.33477596741344
+   ],
+   "watts": 70.7,
+   "sm_util": 97.2,
+   "sm_mhz": 1778,
+   "power_samples": 36,
+   "j_per_mp": 0.493
+  },
+  "kodak/nosmall/old": {
+   "n": 6,
+   "mp_s": 135.24450000000002,
+   "img_s": 343.94449999999995,
+   "cpu_cores": 6.573499999999999,
+   "mp": 1000.342,
+   "images": 2544,
+   "bytes": 97289450,
+   "wall_s": 8.352,
+   "mp_s_wall": 119.77592390865306,
+   "img_s_wall": 304.6057752484784,
+   "rounds_img": [
+    341.326,
+    347.78
+   ],
+   "rounds_img_wall": [
+    302.7490182077829,
+    307.54352030947774
+   ],
+   "startup_s": 0.9502999999999999,
+   "runs": [
+    134.6,
+    134.2,
+    133.3,
+    136.8,
+    137.7,
+    135.9
+   ],
+   "peak_dev_mb": 906.1,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    134.215,
+    136.753
+   ],
+   "round_cores": [
+    6.49,
+    6.63
+   ],
+   "rounds_wall": [
+    119.0458169701297,
+    120.93109284332688
+   ],
+   "watts": 71.0,
+   "sm_util": 100.0,
+   "sm_mhz": 1777,
+   "power_samples": 37,
+   "j_per_mp": 0.525
+  },
+  "kodak/turbo3_nosmall/new": {
+   "n": 6,
+   "mp_s": 253.793,
+   "img_s": 645.429,
+   "cpu_cores": 11.9285,
+   "mp": 1000.342,
+   "images": 2544,
+   "bytes": 100368114,
+   "wall_s": 4.873,
+   "mp_s_wall": 205.28638993319544,
+   "img_s_wall": 522.0700280404594,
+   "rounds_img": [
+    640.597,
+    650.995
+   ],
+   "rounds_img_wall": [
+    519.2896509491733,
+    525.7284562926224
+   ],
+   "startup_s": 0.9309000000000001,
+   "runs": [
+    250.8,
+    252.5,
+    251.9,
+    255.1,
+    258.1,
+    256.0
+   ],
+   "peak_dev_mb": 755.7,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    251.893,
+    255.982
+   ],
+   "round_cores": [
+    11.8,
+    12.0
+   ],
+   "rounds_wall": [
+    204.1931006327822,
+    206.72494317007644
+   ],
+   "watts": 67.9,
+   "sm_util": 100.0,
+   "sm_mhz": 1772,
+   "power_samples": 18,
+   "j_per_mp": 0.267
+  },
+  "kodak/turbo3_nosmall/old": {
+   "n": 6,
+   "mp_s": 229.9495,
+   "img_s": 584.7925,
+   "cpu_cores": 10.736,
+   "mp": 1000.342,
+   "images": 2544,
+   "bytes": 100368114,
+   "wall_s": 5.307,
+   "mp_s_wall": 188.4948449354847,
+   "img_s_wall": 479.3669420217017,
+   "rounds_img": [
+    583.525,
+    585.765
+   ],
+   "rounds_img_wall": [
+    478.8255223037832,
+    479.5475966069746
+   ],
+   "startup_s": 0.9549499999999997,
+   "runs": [
+    229.5,
+    231.2,
+    228.0,
+    230.3,
+    231.2,
+    229.6
+   ],
+   "peak_dev_mb": 824.9,
+   "workers": [
+    16,
+    16
+   ],
+   "bytes_same": true,
+   "rounds": [
+    229.451,
+    230.332
+   ],
+   "round_cores": [
+    10.735,
+    10.749
+   ],
+   "rounds_wall": [
+    188.28194993412384,
+    188.56588124410933
+   ],
+   "watts": 70.0,
+   "sm_util": 100.0,
+   "sm_mhz": 1766,
+   "power_samples": 20,
+   "j_per_mp": 0.304
+  }
+ },
+ "batch": {
+  "l4": {
+   "size_range": {
+    "B13": {
+     "n": 6,
+     "mp_s": 257.3365,
+     "img_s": 53.854,
+     "mp_s_wall": 220.68149186229977,
+     "cores": 0.2785,
+     "mp": 1433.529,
+     "images": 300,
+     "bytes_same": true,
+     "bytes": 67615929,
+     "rounds": [
+      260.338,
+      254.335
+     ],
+     "rounds_img": [
+      54.482,
+      53.226
+     ],
+     "runs": [
+      260.8,
+      258.5,
+      260.3,
+      256.2,
+      252.4,
+      254.3
+     ]
+    },
+    "A13": {
+     "n": 6,
+     "mp_s": 235.9325,
+     "img_s": 49.3745,
+     "mp_s_wall": 203.64091515328633,
+     "cores": 0.271,
+     "mp": 1433.529,
+     "images": 300,
+     "bytes_same": true,
+     "bytes": 67615929,
+     "rounds": [
+      237.12,
+      234.399
+     ],
+     "rounds_img": [
+      49.623,
+      49.054
+     ],
+     "runs": [
+      236.5,
+      237.1,
+      237.1,
+      235.4,
+      234.4,
+      233.8
+     ]
+    },
+    "A13c": {
+     "n": 6,
+     "mp_s": 234.3835,
+     "img_s": 49.05,
+     "mp_s_wall": 202.80543428072207,
+     "cores": 0.274,
+     "mp": 1433.529,
+     "images": 300,
+     "bytes_same": true,
+     "bytes": 67615929,
+     "rounds": [
+      235.404,
+      234.031
+     ],
+     "rounds_img": [
+      49.264,
+      48.976
+     ],
+     "runs": [
+      235.4,
+      233.1,
+      236.5,
+      230.2,
+      234.7,
+      234.0
+     ]
+    },
+    "change": 0.09072086295868509,
+    "change_img": 0.09072496936677843,
+    "same_bytes": true,
+    "noise": -0.006565437148336906
+   },
+   "standard": {
+    "B13": {
+     "n": 6,
+     "mp_s": 81.128,
+     "img_s": 103.0455,
+     "mp_s_wall": 75.5485641242712,
+     "cores": 0.1545,
+     "mp": 1023.493,
+     "images": 1300,
+     "bytes_same": true,
+     "bytes": 71429150,
+     "rounds": [
+      81.079,
+      81.177
+     ],
+     "rounds_img": [
+      102.983,
+      103.108
+     ],
+     "runs": [
+      80.8,
+      81.1,
+      81.5,
+      81.3,
+      81.0,
+      81.2
+     ]
+    },
+    "A13": {
+     "n": 6,
+     "mp_s": 76.398,
+     "img_s": 97.0375,
+     "mp_s_wall": 71.29391220479066,
+     "cores": 0.17149999999999999,
+     "mp": 1023.493,
+     "images": 1300,
+     "bytes_same": true,
+     "bytes": 71429150,
+     "rounds": [
+      76.295,
+      76.541
+     ],
+     "rounds_img": [
+      96.907,
+      97.219
+     ],
+     "runs": [
+      76.2,
+      76.3,
+      76.5,
+      76.6,
+      76.3,
+      76.5
+     ]
+    },
+    "A13c": {
+     "n": 6,
+     "mp_s": 76.632,
+     "img_s": 97.33500000000001,
+     "mp_s_wall": 71.4804851748556,
+     "cores": 0.17,
+     "mp": 1023.493,
+     "images": 1300,
+     "bytes_same": true,
+     "bytes": 71429150,
+     "rounds": [
+      77.068,
+      76.095
+     ],
+     "rounds_img": [
+      97.888,
+      96.653
+     ],
+     "runs": [
+      77.1,
+      77.1,
+      77.5,
+      76.1,
+      75.6,
+      76.2
+     ]
+    },
+    "change": 0.06191261551349525,
+    "change_img": 0.06191420842457829,
+    "same_bytes": true,
+    "noise": 0.0030629074059531636
+   },
+   "thumbs": {
+    "B13": {
+     "n": 6,
+     "mp_s": 68.27600000000001,
+     "img_s": 450.125,
+     "mp_s_wall": 64.31352366212532,
+     "cores": 1.323,
+     "mp": 1019.305,
+     "images": 6720,
+     "bytes_same": true,
+     "bytes": 98193456,
+     "rounds": [
+      68.287,
+      68.265
+     ],
+     "rounds_img": [
+      450.196,
+      450.054
+     ],
+     "runs": [
+      68.6,
+      68.3,
+      68.0,
+      67.9,
+      68.3,
+      68.5
+     ]
+    },
+    "A13": {
+     "n": 6,
+     "mp_s": 63.163,
+     "img_s": 416.4175,
+     "mp_s_wall": 59.62738817267662,
+     "cores": 1.2965,
+     "mp": 1019.305,
+     "images": 6720,
+     "bytes_same": true,
+     "bytes": 98193456,
+     "rounds": [
+      62.729,
+      63.486
+     ],
+     "rounds_img": [
+      413.557,
+      418.544
+     ],
+     "runs": [
+      62.7,
+      62.9,
+      62.4,
+      63.6,
+      63.5,
+      63.5
+     ]
+    },
+    "A13c": {
+     "n": 6,
+     "mp_s": 62.691,
+     "img_s": 413.304,
+     "mp_s_wall": 59.20390292859901,
+     "cores": 1.2890000000000001,
+     "mp": 1019.305,
+     "images": 6720,
+     "bytes_same": true,
+     "bytes": 98193456,
+     "rounds": [
+      62.107,
+      62.922
+     ],
+     "rounds_img": [
+      409.457,
+      414.828
+     ],
+     "runs": [
+      61.5,
+      62.1,
+      62.5,
+      63.1,
+      62.9,
+      62.9
+     ]
+    },
+    "change": 0.08094928993239736,
+    "change_img": 0.08094640595075853,
+    "same_bytes": true,
+    "noise": -0.007472729287715807
+   },
+   "size_range_444_10": {
+    "B13": {
+     "n": 6,
+     "mp_s": 189.9185,
+     "img_s": 39.745,
+     "mp_s_wall": 168.91896498851327,
+     "cores": 0.2135,
+     "mp": 1433.529,
+     "images": 300,
+     "bytes_same": true,
+     "bytes": 69418857,
+     "rounds": [
+      189.614,
+      191.744
+     ],
+     "rounds_img": [
+      39.681,
+      40.127
+     ],
+     "runs": [
+      190.2,
+      188.8,
+      189.6,
+      189.2,
+      193.0,
+      191.7
+     ]
+    },
+    "A13": {
+     "n": 6,
+     "mp_s": 170.4135,
+     "img_s": 35.6635,
+     "mp_s_wall": 152.63228304091405,
+     "cores": 0.231,
+     "mp": 1433.529,
+     "images": 300,
+     "bytes_same": true,
+     "bytes": 69418857,
+     "rounds": [
+      168.469,
+      171.877
+     ],
+     "rounds_img": [
+      35.256,
+      35.969
+     ],
+     "runs": [
+      169.3,
+      167.9,
+      168.5,
+      171.5,
+      171.9,
+      172.7
+     ]
+    },
+    "A13c": {
+     "n": 6,
+     "mp_s": 170.102,
+     "img_s": 35.5975,
+     "mp_s_wall": 152.50971986603855,
+     "cores": 0.233,
+     "mp": 1433.529,
+     "images": 300,
+     "bytes_same": true,
+     "bytes": 69418857,
+     "rounds": [
+      167.681,
+      172.817
+     ],
+     "rounds_img": [
+      35.091,
+      36.166
+     ],
+     "runs": [
+      168.9,
+      167.7,
+      166.8,
+      171.3,
+      175.0,
+      172.8
+     ]
+    },
+    "change": 0.1144568945535418,
+    "change_img": 0.11444474042087838,
+    "same_bytes": true,
+    "noise": -0.0018279068266304765
+   }
+  },
+  "bw": {
+   "size_range": {
+    "B13": {
+     "n": 6,
+     "mp_s": 434.35900000000004,
+     "img_s": 90.9,
+     "mp_s_wall": 336.47211463834185,
+     "cores": 0.2845,
+     "mp": 1433.529,
+     "images": 300,
+     "bytes_same": true,
+     "bytes": 67615929,
+     "rounds": [
+      437.07,
+      420.911
+     ],
+     "rounds_img": [
+      91.467,
+      88.086
+     ],
+     "runs": [
+      441.1,
+      437.1,
+      431.6,
+      420.9,
+      439.9,
+      419.0
+     ]
+    },
+    "A13": {
+     "n": 6,
+     "mp_s": 406.39149999999995,
+     "img_s": 85.04750000000001,
+     "mp_s_wall": 318.62450455147257,
+     "cores": 0.2925,
+     "mp": 1433.529,
+     "images": 300,
+     "bytes_same": true,
+     "bytes": 67615929,
+     "rounds": [
+      411.205,
+      401.578
+     ],
+     "rounds_img": [
+      86.055,
+      84.04
+     ],
+     "runs": [
+      412.4,
+      397.7,
+      411.2,
+      412.5,
+      401.6,
+      398.2
+     ]
+    },
+    "A13c": {
+     "n": 6,
+     "mp_s": 408.52,
+     "img_s": 85.4925,
+     "mp_s_wall": 319.5205656535286,
+     "cores": 0.2955,
+     "mp": 1433.529,
+     "images": 300,
+     "bytes_same": true,
+     "bytes": 67615929,
+     "rounds": [
+      416.221,
+      408.357
+     ],
+     "rounds_img": [
+      87.104,
+      85.458
+     ],
+     "runs": [
+      400.9,
+      416.2,
+      418.0,
+      408.7,
+      403.0,
+      408.4
+     ]
+    },
+    "change": 0.06881910669883617,
+    "change_img": 0.06881448602251683,
+    "same_bytes": true,
+    "noise": 0.005237560332831848
+   },
+   "standard": {
+    "B13": {
+     "n": 6,
+     "mp_s": 148.2785,
+     "img_s": 188.3375,
+     "mp_s_wall": 130.0581999023721,
+     "cores": 0.118,
+     "mp": 1023.493,
+     "images": 1300,
+     "bytes_same": true,
+     "bytes": 71429150,
+     "rounds": [
+      148.708,
+      147.564
+     ],
+     "rounds_img": [
+      188.882,
+      187.43
+     ],
+     "runs": [
+      148.6,
+      148.7,
+      149.3,
+      147.6,
+      148.0,
+      147.2
+     ]
+    },
+    "A13": {
+     "n": 6,
+     "mp_s": 141.388,
+     "img_s": 179.5855,
+     "mp_s_wall": 124.68721555450084,
+     "cores": 0.139,
+     "mp": 1023.493,
+     "images": 1300,
+     "bytes_same": true,
+     "bytes": 71429150,
+     "rounds": [
+      141.786,
+      141.122
+     ],
+     "rounds_img": [
+      180.091,
+      179.248
+     ],
+     "runs": [
+      142.0,
+      141.8,
+      138.9,
+      141.1,
+      141.7,
+      141.1
+     ]
+    },
+    "A13c": {
+     "n": 6,
+     "mp_s": 141.5355,
+     "img_s": 179.773,
+     "mp_s_wall": 124.71735865464532,
+     "cores": 0.14150000000000001,
+     "mp": 1023.493,
+     "images": 1300,
+     "bytes_same": true,
+     "bytes": 71429150,
+     "rounds": [
+      141.537,
+      141.124
+     ],
+     "rounds_img": [
+      179.775,
+      179.25
+     ],
+     "runs": [
+      141.5,
+      141.7,
+      141.5,
+      141.1,
+      141.1,
+      142.2
+     ]
+    },
+    "change": 0.04873468752652288,
+    "change_img": 0.04873444682337946,
+    "same_bytes": true,
+    "noise": 0.0010432285625372462
+   },
+   "thumbs": {
+    "B13": {
+     "n": 6,
+     "mp_s": 126.0005,
+     "img_s": 830.6875,
+     "mp_s_wall": 112.7313626732689,
+     "cores": 1.245,
+     "mp": 1019.305,
+     "images": 6720,
+     "bytes_same": true,
+     "bytes": 98193456,
+     "rounds": [
+      126.435,
+      125.445
+     ],
+     "rounds_img": [
+      833.554,
+      827.025
+     ],
+     "runs": [
+      126.7,
+      126.4,
+      126.4,
+      125.6,
+      125.4,
+      125.4
+     ]
+    },
+    "A13": {
+     "n": 6,
+     "mp_s": 117.641,
+     "img_s": 775.5730000000001,
+     "mp_s_wall": 105.83034862139698,
+     "cores": 1.2415,
+     "mp": 1019.305,
+     "images": 6720,
+     "bytes_same": true,
+     "bytes": 98193456,
+     "rounds": [
+      118.063,
+      117.525
+     ],
+     "rounds_img": [
+      778.358,
+      774.812
+     ],
+     "runs": [
+      118.1,
+      118.1,
+      117.7,
+      117.6,
+      117.5,
+      117.4
+     ]
+    },
+    "A13c": {
+     "n": 6,
+     "mp_s": 117.52850000000001,
+     "img_s": 774.8335,
+     "mp_s_wall": 105.72058318117408,
+     "cores": 1.2565,
+     "mp": 1019.305,
+     "images": 6720,
+     "bytes_same": true,
+     "bytes": 98193456,
+     "rounds": [
+      117.438,
+      117.584
+     ],
+     "rounds_img": [
+      774.235,
+      775.2
+     ],
+     "runs": [
+      117.2,
+      117.4,
+      118.3,
+      117.5,
+      117.6,
+      117.7
+     ]
+    },
+    "change": 0.07105940955959222,
+    "change_img": 0.07106294314010397,
+    "same_bytes": true,
+    "noise": -0.0009562992494113187
+   },
+   "size_range_444_10": {
+    "B13": {
+     "n": 6,
+     "mp_s": 324.5585,
+     "img_s": 67.9215,
+     "mp_s_wall": 266.9762756070368,
+     "cores": 0.2205,
+     "mp": 1433.529,
+     "images": 300,
+     "bytes_same": true,
+     "bytes": 69418857,
+     "rounds": [
+      327.105,
+      321.859
+     ],
+     "rounds_img": [
+      68.454,
+      67.357
+     ],
+     "runs": [
+      327.1,
+      327.2,
+      323.8,
+      321.6,
+      321.9,
+      325.3
+     ]
+    },
+    "A13": {
+     "n": 6,
+     "mp_s": 292.599,
+     "img_s": 61.233000000000004,
+     "mp_s_wall": 244.07052159371364,
+     "cores": 0.2565,
+     "mp": 1433.529,
+     "images": 300,
+     "bytes_same": true,
+     "bytes": 69418857,
+     "rounds": [
+      295.494,
+      291.281
+     ],
+     "rounds_img": [
+      61.839,
+      60.957
+     ],
+     "runs": [
+      295.5,
+      290.2,
+      297.4,
+      290.8,
+      293.9,
+      291.3
+     ]
+    },
+    "A13c": {
+     "n": 6,
+     "mp_s": 292.596,
+     "img_s": 61.2325,
+     "mp_s_wall": 244.0884828727999,
+     "cores": 0.2535,
+     "mp": 1433.529,
+     "images": 300,
+     "bytes_same": true,
+     "bytes": 69418857,
+     "rounds": [
+      288.889,
+      292.987
+     ],
+     "rounds_img": [
+      60.457,
+      61.314
+     ],
+     "runs": [
+      285.8,
+      288.9,
+      295.2,
+      292.2,
+      295.2,
+      293.0
+     ]
+    },
+    "change": 0.10922627896882764,
+    "change_img": 0.10923031698593877,
+    "same_bytes": true,
+    "noise": -1.025294003054178e-05
+   }
+  }
+ },
+ "single": {
+  "l4": {
+   "photo.jpg": {
+    "B13": {
+     "median": 358.6852434998491,
+     "min": 351.30927000000156,
+     "max": 369.2963690000397,
+     "n": 12
+    },
+    "A13": {
+     "median": 1059.3979630000376,
+     "min": 1046.2341389998073,
+     "max": 1069.2730390001088,
+     "n": 12
+    },
+    "A13c": {
+     "median": 1057.7200969999012,
+     "min": 1050.909319999846,
+     "max": 1066.9900299999426,
+     "n": 12
+    },
+    "A13+1q": {
+     "median": 543.4387160000824,
+     "min": 534.8458640000899,
+     "max": 556.2327040001946,
+     "n": 12
+    }
+   },
+   "big.jpg": {
+    "B13": {
+     "median": 467.08525750023,
+     "min": 458.46065900013855,
+     "max": 474.54389599988644,
+     "n": 12
+    },
+    "A13": {
+     "median": 1214.063814499923,
+     "min": 1205.0878000000012,
+     "max": 1220.9158910000042,
+     "n": 12
+    },
+    "A13c": {
+     "median": 1213.3966779997536,
+     "min": 1201.4615089997278,
+     "max": 1224.114923000343,
+     "n": 12
+    },
+    "A13+1q": {
+     "median": 700.8208780000587,
+     "min": 692.9587260001426,
+     "max": 709.6355669996228,
+     "n": 12
+    }
+   },
+   "thumb512.jpg": {
+    "B13": {
+     "median": 349.4672205001734,
+     "min": 339.85426500021276,
+     "max": 354.35936299973037,
+     "n": 12
+    },
+    "A13": {
+     "median": 1059.9221904999467,
+     "min": 1052.0569780001097,
+     "max": 1069.4608279995919,
+     "n": 12
+    },
+    "A13c": {
+     "median": 1059.5508325000083,
+     "min": 1051.0522889999265,
+     "max": 1076.6599960002168,
+     "n": 12
+    },
+    "A13+1q": {
+     "median": 554.2002294998838,
+     "min": 545.9267050000562,
+     "max": 565.0348119997943,
+     "n": 12
+    }
+   },
+   "t320.jpg": {
+    "B13": {
+     "median": 376.69944949993805,
+     "min": 369.03899599974466,
+     "max": 386.39791000014156,
+     "n": 12
+    },
+    "A13": {
+     "median": 1098.3583780000572,
+     "min": 1086.8534169999293,
+     "max": 1109.1706920001343,
+     "n": 12
+    },
+    "A13c": {
+     "median": 1091.9396575002338,
+     "min": 1079.4571890000952,
+     "max": 1126.5683970000282,
+     "n": 12
+    },
+    "A13+1q": {
+     "median": 578.8993099997697,
+     "min": 572.2473890000401,
+     "max": 591.8256170002678,
+     "n": 12
+    }
+   },
+   "pair batch (photo.jpg + thumb512.jpg)": {
+    "B13": {
+     "median": 575.2539135000916,
+     "min": 561.209341999529,
+     "max": 582.9819350001344,
+     "n": 12
+    },
+    "A13": {
+     "median": 1235.3281569999126,
+     "min": 1222.3456820001957,
+     "max": 1249.0009389998704,
+     "n": 12
+    },
+    "A13c": {
+     "median": 1231.475208500342,
+     "min": 1217.1891440002582,
+     "max": 1247.752040999785,
+     "n": 12
+    },
+    "A13+1q": {
+     "median": 722.381612999925,
+     "min": 714.1344440001376,
+     "max": 736.7992890003734,
+     "n": 12
+    }
+   }
+  },
+  "bw": {
+   "photo.jpg": {
+    "B13": {
+     "median": 506.3242980004361,
+     "min": 498.3590350002487,
+     "max": 520.4679319995194,
+     "n": 12
+    },
+    "A13": {
+     "median": 1026.6600510003627,
+     "min": 1019.465539000521,
+     "max": 1038.2510350000302,
+     "n": 12
+    },
+    "A13c": {
+     "median": 1032.63383850026,
+     "min": 1015.6577949992425,
+     "max": 1087.7787370000078,
+     "n": 12
+    },
+    "A13+1q": {
+     "median": 629.3285419997119,
+     "min": 621.199348999653,
+     "max": 640.6991430003472,
+     "n": 12
+    }
+   },
+   "big.jpg": {
+    "B13": {
+     "median": 577.8355770003145,
+     "min": 566.2597119999191,
+     "max": 587.7700470000491,
+     "n": 12
+    },
+    "A13": {
+     "median": 1139.378456999566,
+     "min": 1130.8003060003102,
+     "max": 1150.1751199994033,
+     "n": 12
+    },
+    "A13c": {
+     "median": 1143.1893150001997,
+     "min": 1134.9811480004064,
+     "max": 1161.449356999583,
+     "n": 12
+    },
+    "A13+1q": {
+     "median": 745.8279749998837,
+     "min": 734.2181389994948,
+     "max": 759.5191860000341,
+     "n": 12
+    }
+   },
+   "thumb512.jpg": {
+    "B13": {
+     "median": 498.0026115003966,
+     "min": 489.2580059995453,
+     "max": 510.40903300054197,
+     "n": 12
+    },
+    "A13": {
+     "median": 1035.5526099992858,
+     "min": 1024.857688999873,
+     "max": 1044.2623690005348,
+     "n": 12
+    },
+    "A13c": {
+     "median": 1037.577794000299,
+     "min": 1028.2479950001289,
+     "max": 1044.6259860000282,
+     "n": 12
+    },
+    "A13+1q": {
+     "median": 643.4187425002165,
+     "min": 631.2955619996501,
+     "max": 647.3407680005039,
+     "n": 12
+    }
+   },
+   "t320.jpg": {
+    "B13": {
+     "median": 523.2339290000709,
+     "min": 508.58887499998673,
+     "max": 534.4132119998903,
+     "n": 12
+    },
+    "A13": {
+     "median": 1058.459482499984,
+     "min": 1050.0251909998042,
+     "max": 1067.9922079998505,
+     "n": 12
+    },
+    "A13c": {
+     "median": 1060.822774999906,
+     "min": 1052.8622669999095,
+     "max": 1068.3419839997441,
+     "n": 12
+    },
+    "A13+1q": {
+     "median": 660.1586414999474,
+     "min": 650.7088649996149,
+     "max": 671.7872059998626,
+     "n": 12
+    }
+   },
+   "pair batch (photo.jpg + thumb512.jpg)": {
+    "B13": {
+     "median": 677.0998089996283,
+     "min": 663.2116089995179,
+     "max": 691.3144519994603,
+     "n": 12
+    },
+    "A13": {
+     "median": 1190.0268799995501,
+     "min": 1175.4613800003426,
+     "max": 1203.6437689994273,
+     "n": 12
+    },
+    "A13c": {
+     "median": 1185.865946999911,
+     "min": 1177.170052999827,
+     "max": 1199.4511660004719,
+     "n": 12
+    },
+    "A13+1q": {
+     "median": 788.6937170001147,
+     "min": 775.5664989999786,
+     "max": 800.7764089998091,
+     "n": 12
+    }
+   }
+  }
+ },
+ "identity": {
+  "l4/A13_B13": {
+   "runs": 103,
+   "ok": 103,
+   "fa": 5679,
+   "fb": 5679,
+   "differ": 0,
+   "runs_list": [
+    {
+     "name": "sr_default",
+     "opts": "",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_turbo3_nosmall",
+     "opts": "--preset turbo3 --small-preset none",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_nosmall",
+     "opts": "--small-preset none",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_444",
+     "opts": "--yuv 444",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_10",
+     "opts": "--depth 10",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_base_nosmall",
+     "opts": "--preset base --small-preset none",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_slow_nosmall",
+     "opts": "--preset slow --small-preset none",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_fast_nosmall",
+     "opts": "--preset fast --small-preset none",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_q30",
+     "opts": "--quality 30",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_q90",
+     "opts": "--quality 90",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_q95",
+     "opts": "--quality 95",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_tune_none",
+     "opts": "--tune none",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_tiles_2_1_1",
+     "opts": "--tiles 2,1,1",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_default_enc1",
+     "opts": "",
+     "env": "GP_ENCODERS=1",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_default_enc6",
+     "opts": "",
+     "env": "GP_ENCODERS=6",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_slow",
+     "opts": "--preset slow",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_444_q90",
+     "opts": "--yuv 444 --quality 90",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_444_q95",
+     "opts": "--yuv 444 --quality 95",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_444_slow",
+     "opts": "--yuv 444 --preset slow",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_444_10_q95",
+     "opts": "--yuv 444 --depth 10 --quality 95",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_10_q95",
+     "opts": "--depth 10 --quality 95",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "mono_default",
+     "opts": "",
+     "env": "",
+     "inputs": 47,
+     "files": 47,
+     "identical": 47,
+     "ok": true
+    },
+    {
+     "name": "mono_q90",
+     "opts": "--quality 90",
+     "env": "",
+     "inputs": 47,
+     "files": 47,
+     "identical": 47,
+     "ok": true
+    },
+    {
+     "name": "mono_q95",
+     "opts": "--quality 95",
+     "env": "",
+     "inputs": 47,
+     "files": 47,
+     "identical": 47,
+     "ok": true
+    },
+    {
+     "name": "mono_slow",
+     "opts": "--preset slow",
+     "env": "",
+     "inputs": 47,
+     "files": 47,
+     "identical": 47,
+     "ok": true
+    },
+    {
+     "name": "mono_nosmall",
+     "opts": "--small-preset none",
+     "env": "",
+     "inputs": 47,
+     "files": 47,
+     "identical": 47,
+     "ok": true
+    },
+    {
+     "name": "mono_10",
+     "opts": "--depth 10",
+     "env": "",
+     "inputs": 47,
+     "files": 47,
+     "identical": 47,
+     "ok": true
+    },
+    {
+     "name": "mono_tune_none",
+     "opts": "--tune none",
+     "env": "",
+     "inputs": 47,
+     "files": 47,
+     "identical": 47,
+     "ok": true
+    },
+    {
+     "name": "std_q95",
+     "opts": "--quality 95",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "std_slow",
+     "opts": "--preset slow",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "thumbs_q95",
+     "opts": "--quality 95",
+     "env": "",
+     "inputs": 280,
+     "files": 280,
+     "identical": 280,
+     "ok": true
+    },
+    {
+     "name": "thumbs_slow",
+     "opts": "--preset slow",
+     "env": "",
+     "inputs": 280,
+     "files": 280,
+     "identical": 280,
+     "ok": true
+    },
+    {
+     "name": "kodak_q95",
+     "opts": "--quality 95",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "kodak_444_q90",
+     "opts": "--yuv 444 --quality 90",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "rgba_q95",
+     "opts": "--quality 95",
+     "env": "",
+     "inputs": 39,
+     "files": 39,
+     "identical": 39,
+     "ok": true
+    },
+    {
+     "name": "odd_q95",
+     "opts": "--quality 95",
+     "env": "",
+     "inputs": 30,
+     "files": 30,
+     "identical": 30,
+     "ok": true
+    },
+    {
+     "name": "odd_slow",
+     "opts": "--preset slow",
+     "env": "",
+     "inputs": 30,
+     "files": 30,
+     "identical": 30,
+     "ok": true
+    },
+    {
+     "name": "std_default",
+     "opts": "",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "std_nosmall",
+     "opts": "--small-preset none",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "thumbs_default",
+     "opts": "",
+     "env": "",
+     "inputs": 280,
+     "files": 280,
+     "identical": 280,
+     "ok": true
+    },
+    {
+     "name": "thumbs_nosmall",
+     "opts": "--small-preset none",
+     "env": "",
+     "inputs": 280,
+     "files": 280,
+     "identical": 280,
+     "ok": true
+    },
+    {
+     "name": "kodak_default",
+     "opts": "",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "kodak_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "kodak_lossless_ycgco",
+     "opts": "--lossless --ycgco-re",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "rgba_default",
+     "opts": "",
+     "env": "",
+     "inputs": 39,
+     "files": 39,
+     "identical": 39,
+     "ok": true
+    },
+    {
+     "name": "rgba_aq100",
+     "opts": "--alpha-quality 100",
+     "env": "",
+     "inputs": 39,
+     "files": 39,
+     "identical": 39,
+     "ok": true
+    },
+    {
+     "name": "rgba_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 39,
+     "files": 39,
+     "identical": 39,
+     "ok": true
+    },
+    {
+     "name": "rgba_no_alpha",
+     "opts": "--no-alpha",
+     "env": "",
+     "inputs": 39,
+     "files": 39,
+     "identical": 39,
+     "ok": true
+    },
+    {
+     "name": "gray_default",
+     "opts": "",
+     "env": "",
+     "inputs": 9,
+     "files": 9,
+     "identical": 9,
+     "ok": true
+    },
+    {
+     "name": "gray_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 9,
+     "files": 8,
+     "identical": 8,
+     "ok": true
+    },
+    {
+     "name": "odd_default",
+     "opts": "",
+     "env": "",
+     "inputs": 30,
+     "files": 30,
+     "identical": 30,
+     "ok": true
+    },
+    {
+     "name": "odd_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 30,
+     "files": 30,
+     "identical": 30,
+     "ok": true
+    },
+    {
+     "name": "odd_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 30,
+     "files": 10,
+     "identical": 10,
+     "ok": true
+    },
+    {
+     "name": "misc_default",
+     "opts": "",
+     "env": "",
+     "inputs": 13,
+     "files": 13,
+     "identical": 13,
+     "ok": true
+    },
+    {
+     "name": "png16_10_default",
+     "opts": "--depth 10",
+     "env": "",
+     "inputs": 8,
+     "files": 8,
+     "identical": 8,
+     "ok": true
+    },
+    {
+     "name": "png16_10_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 8,
+     "files": 8,
+     "identical": 8,
+     "ok": true
+    },
+    {
+     "name": "llgraphics_lossless",
+     "opts": "--lossless --ycgco-re",
+     "env": "",
+     "inputs": 27,
+     "files": 27,
+     "identical": 27,
+     "ok": true
+    },
+    {
+     "name": "webp_default",
+     "opts": "",
+     "env": "",
+     "inputs": 7,
+     "files": 7,
+     "identical": 7,
+     "ok": true
+    },
+    {
+     "name": "webp_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 7,
+     "files": 7,
+     "identical": 7,
+     "ok": true
+    },
+    {
+     "name": "mixed_list",
+     "opts": "",
+     "env": "",
+     "inputs": 33,
+     "files": 33,
+     "identical": 33,
+     "ok": true
+    },
+    {
+     "name": "mixed_list_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 33,
+     "files": 33,
+     "identical": 33,
+     "ok": true
+    },
+    {
+     "name": "lljpeg_set",
+     "opts": "",
+     "env": "",
+     "inputs": 25,
+     "files": 25,
+     "identical": 25,
+     "ok": true
+    },
+    {
+     "name": "pal_screen_default",
+     "opts": "",
+     "env": "",
+     "inputs": 40,
+     "files": 40,
+     "identical": 40,
+     "ok": true
+    },
+    {
+     "name": "pal_screen_palette_on",
+     "opts": "--palette on",
+     "env": "",
+     "inputs": 40,
+     "files": 40,
+     "identical": 40,
+     "ok": true
+    },
+    {
+     "name": "pal_screen_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 40,
+     "files": 40,
+     "identical": 40,
+     "ok": true
+    },
+    {
+     "name": "pal_screen_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 40,
+     "files": 40,
+     "identical": 40,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_png_default",
+     "opts": "",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_png_palette_on",
+     "opts": "--palette on",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_png_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_png_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_jpg_default",
+     "opts": "",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_jpg_palette_on",
+     "opts": "--palette on",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_jpg_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_jpg_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 24,
+     "files": 0,
+     "identical": 0,
+     "ok": true
+    },
+    {
+     "name": "short_mixed_00",
+     "opts": "",
+     "env": "",
+     "inputs": 8,
+     "files": 8,
+     "identical": 8,
+     "ok": true
+    },
+    {
+     "name": "short_mixed_00_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 8,
+     "files": 8,
+     "identical": 8,
+     "ok": true
+    },
+    {
+     "name": "short_mixed_01",
+     "opts": "",
+     "env": "",
+     "inputs": 8,
+     "files": 8,
+     "identical": 8,
+     "ok": true
+    },
+    {
+     "name": "short_mixed_01_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 8,
+     "files": 8,
+     "identical": 8,
+     "ok": true
+    },
+    {
+     "name": "short_mixed_02",
+     "opts": "",
+     "env": "",
+     "inputs": 8,
+     "files": 8,
+     "identical": 8,
+     "ok": true
+    },
+    {
+     "name": "short_mixed_02_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 8,
+     "files": 8,
+     "identical": 8,
+     "ok": true
+    },
+    {
+     "name": "short_mixed_03",
+     "opts": "",
+     "env": "",
+     "inputs": 8,
+     "files": 8,
+     "identical": 8,
+     "ok": true
+    },
+    {
+     "name": "short_mixed_03_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 8,
+     "files": 8,
+     "identical": 8,
+     "ok": true
+    },
+    {
+     "name": "short_mixed_04",
+     "opts": "",
+     "env": "",
+     "inputs": 1,
+     "files": 1,
+     "identical": 1,
+     "ok": true
+    },
+    {
+     "name": "short_mixed_04_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 1,
+     "files": 1,
+     "identical": 1,
+     "ok": true
+    },
+    {
+     "name": "short_pair",
+     "opts": "",
+     "env": "",
+     "inputs": 2,
+     "files": 2,
+     "identical": 2,
+     "ok": true
+    },
+    {
+     "name": "short_pair_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 2,
+     "files": 2,
+     "identical": 2,
+     "ok": true
+    },
+    {
+     "name": "short_pair_slow",
+     "opts": "--preset slow",
+     "env": "",
+     "inputs": 2,
+     "files": 2,
+     "identical": 2,
+     "ok": true
+    },
+    {
+     "name": "short_pair_q90",
+     "opts": "--quality 90",
+     "env": "",
+     "inputs": 2,
+     "files": 2,
+     "identical": 2,
+     "ok": true
+    },
+    {
+     "name": "single10_default",
+     "opts": "",
+     "env": "",
+     "inputs": 10,
+     "files": 10,
+     "identical": 10,
+     "ok": true
+    },
+    {
+     "name": "single10_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 10,
+     "files": 10,
+     "identical": 10,
+     "ok": true
+    },
+    {
+     "name": "single10_slow",
+     "opts": "--preset slow",
+     "env": "",
+     "inputs": 10,
+     "files": 10,
+     "identical": 10,
+     "ok": true
+    },
+    {
+     "name": "single_all_default",
+     "opts": "",
+     "env": "",
+     "inputs": 103,
+     "files": 103,
+     "identical": 103,
+     "ok": true
+    },
+    {
+     "name": "single_all_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 53,
+     "files": 52,
+     "identical": 52,
+     "ok": true
+    },
+    {
+     "name": "single_all_palette_on",
+     "opts": "--palette on",
+     "env": "",
+     "inputs": 103,
+     "files": 103,
+     "identical": 103,
+     "ok": true
+    },
+    {
+     "name": "single_all_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 103,
+     "files": 103,
+     "identical": 103,
+     "ok": true
+    },
+    {
+     "name": "single_all_slow",
+     "opts": "--preset slow",
+     "env": "",
+     "inputs": 103,
+     "files": 103,
+     "identical": 103,
+     "ok": true
+    },
+    {
+     "name": "single_all_q90",
+     "opts": "--quality 90",
+     "env": "",
+     "inputs": 103,
+     "files": 103,
+     "identical": 103,
+     "ok": true
+    },
+    {
+     "name": "single_st_default",
+     "opts": "",
+     "env": "",
+     "inputs": 4,
+     "files": 4,
+     "identical": 4,
+     "ok": true
+    },
+    {
+     "name": "single_st_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 4,
+     "files": 4,
+     "identical": 4,
+     "ok": true
+    },
+    {
+     "name": "err_missing",
+     "opts": "",
+     "env": "",
+     "inputs": 1,
+     "files": 0,
+     "identical": 0,
+     "ok": true
+    },
+    {
+     "name": "err_jpeg_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 1,
+     "files": 0,
+     "identical": 0,
+     "ok": true
+    },
+    {
+     "name": "err_crop",
+     "opts": "--crop 999x999+2000+2000",
+     "env": "",
+     "inputs": 1,
+     "files": 0,
+     "identical": 0,
+     "ok": true
+    }
+   ]
+  },
+  "l4/A12_B12": {
+   "runs": 27,
+   "ok": 27,
+   "fa": 1220,
+   "fb": 1220,
+   "differ": 0,
+   "runs_list": [
+    {
+     "name": "sr_default",
+     "opts": "",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "std_default",
+     "opts": "",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "thumbs_default",
+     "opts": "",
+     "env": "",
+     "inputs": 280,
+     "files": 280,
+     "identical": 280,
+     "ok": true
+    },
+    {
+     "name": "kodak_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "rgba_default",
+     "opts": "",
+     "env": "",
+     "inputs": 39,
+     "files": 39,
+     "identical": 39,
+     "ok": true
+    },
+    {
+     "name": "rgba_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 39,
+     "files": 39,
+     "identical": 39,
+     "ok": true
+    },
+    {
+     "name": "llgraphics_lossless",
+     "opts": "--lossless --ycgco-re",
+     "env": "",
+     "inputs": 27,
+     "files": 27,
+     "identical": 27,
+     "ok": true
+    },
+    {
+     "name": "pal_screen_default",
+     "opts": "",
+     "env": "",
+     "inputs": 40,
+     "files": 40,
+     "identical": 40,
+     "ok": true
+    },
+    {
+     "name": "pal_screen_palette_on",
+     "opts": "--palette on",
+     "env": "",
+     "inputs": 40,
+     "files": 40,
+     "identical": 40,
+     "ok": true
+    },
+    {
+     "name": "pal_screen_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 40,
+     "files": 40,
+     "identical": 40,
+     "ok": true
+    },
+    {
+     "name": "pal_screen_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 40,
+     "files": 40,
+     "identical": 40,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_png_default",
+     "opts": "",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_png_palette_on",
+     "opts": "--palette on",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_png_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_png_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_jpg_default",
+     "opts": "",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_jpg_palette_on",
+     "opts": "--palette on",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_jpg_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_jpg_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 24,
+     "files": 0,
+     "identical": 0,
+     "ok": true
+    },
+    {
+     "name": "short_pair",
+     "opts": "",
+     "env": "",
+     "inputs": 2,
+     "files": 2,
+     "identical": 2,
+     "ok": true
+    },
+    {
+     "name": "short_pair_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 2,
+     "files": 2,
+     "identical": 2,
+     "ok": true
+    },
+    {
+     "name": "single10_default",
+     "opts": "",
+     "env": "",
+     "inputs": 10,
+     "files": 10,
+     "identical": 10,
+     "ok": true
+    },
+    {
+     "name": "single10_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 10,
+     "files": 10,
+     "identical": 10,
+     "ok": true
+    },
+    {
+     "name": "single_all_default",
+     "opts": "",
+     "env": "",
+     "inputs": 103,
+     "files": 103,
+     "identical": 103,
+     "ok": true
+    },
+    {
+     "name": "single_all_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 53,
+     "files": 52,
+     "identical": 52,
+     "ok": true
+    },
+    {
+     "name": "single_st_default",
+     "opts": "",
+     "env": "",
+     "inputs": 4,
+     "files": 4,
+     "identical": 4,
+     "ok": true
+    }
+   ]
+  },
+  "l4/B13_B12": {
+   "runs": 27,
+   "ok": 27,
+   "fa": 1220,
+   "fb": 1220,
+   "differ": 0,
+   "runs_list": [
+    {
+     "name": "sr_default",
+     "opts": "",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "std_default",
+     "opts": "",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "thumbs_default",
+     "opts": "",
+     "env": "",
+     "inputs": 280,
+     "files": 280,
+     "identical": 280,
+     "ok": true
+    },
+    {
+     "name": "kodak_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "rgba_default",
+     "opts": "",
+     "env": "",
+     "inputs": 39,
+     "files": 39,
+     "identical": 39,
+     "ok": true
+    },
+    {
+     "name": "rgba_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 39,
+     "files": 39,
+     "identical": 39,
+     "ok": true
+    },
+    {
+     "name": "llgraphics_lossless",
+     "opts": "--lossless --ycgco-re",
+     "env": "",
+     "inputs": 27,
+     "files": 27,
+     "identical": 27,
+     "ok": true
+    },
+    {
+     "name": "pal_screen_default",
+     "opts": "",
+     "env": "",
+     "inputs": 40,
+     "files": 40,
+     "identical": 40,
+     "ok": true
+    },
+    {
+     "name": "pal_screen_palette_on",
+     "opts": "--palette on",
+     "env": "",
+     "inputs": 40,
+     "files": 40,
+     "identical": 40,
+     "ok": true
+    },
+    {
+     "name": "pal_screen_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 40,
+     "files": 40,
+     "identical": 40,
+     "ok": true
+    },
+    {
+     "name": "pal_screen_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 40,
+     "files": 40,
+     "identical": 40,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_png_default",
+     "opts": "",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_png_palette_on",
+     "opts": "--palette on",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_png_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_png_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_jpg_default",
+     "opts": "",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_jpg_palette_on",
+     "opts": "--palette on",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_jpg_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_jpg_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 24,
+     "files": 0,
+     "identical": 0,
+     "ok": true
+    },
+    {
+     "name": "short_pair",
+     "opts": "",
+     "env": "",
+     "inputs": 2,
+     "files": 2,
+     "identical": 2,
+     "ok": true
+    },
+    {
+     "name": "short_pair_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 2,
+     "files": 2,
+     "identical": 2,
+     "ok": true
+    },
+    {
+     "name": "single10_default",
+     "opts": "",
+     "env": "",
+     "inputs": 10,
+     "files": 10,
+     "identical": 10,
+     "ok": true
+    },
+    {
+     "name": "single10_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 10,
+     "files": 10,
+     "identical": 10,
+     "ok": true
+    },
+    {
+     "name": "single_all_default",
+     "opts": "",
+     "env": "",
+     "inputs": 103,
+     "files": 103,
+     "identical": 103,
+     "ok": true
+    },
+    {
+     "name": "single_all_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 53,
+     "files": 52,
+     "identical": 52,
+     "ok": true
+    },
+    {
+     "name": "single_st_default",
+     "opts": "",
+     "env": "",
+     "inputs": 4,
+     "files": 4,
+     "identical": 4,
+     "ok": true
+    }
+   ]
+  },
+  "l4/B13l4_B13bw": {
+   "runs": 103,
+   "ok": 103,
+   "fa": 5679,
+   "fb": 5679,
+   "differ": 0,
+   "runs_list": [
+    {
+     "name": "sr_default",
+     "opts": "",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_turbo3_nosmall",
+     "opts": "--preset turbo3 --small-preset none",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_nosmall",
+     "opts": "--small-preset none",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_444",
+     "opts": "--yuv 444",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_10",
+     "opts": "--depth 10",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_base_nosmall",
+     "opts": "--preset base --small-preset none",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_slow_nosmall",
+     "opts": "--preset slow --small-preset none",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_fast_nosmall",
+     "opts": "--preset fast --small-preset none",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_q30",
+     "opts": "--quality 30",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_q90",
+     "opts": "--quality 90",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_q95",
+     "opts": "--quality 95",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_tune_none",
+     "opts": "--tune none",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_tiles_2_1_1",
+     "opts": "--tiles 2,1,1",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_default_enc1",
+     "opts": "",
+     "env": "GP_ENCODERS=1",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_default_enc6",
+     "opts": "",
+     "env": "GP_ENCODERS=6",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_slow",
+     "opts": "--preset slow",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_444_q90",
+     "opts": "--yuv 444 --quality 90",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_444_q95",
+     "opts": "--yuv 444 --quality 95",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_444_slow",
+     "opts": "--yuv 444 --preset slow",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_444_10_q95",
+     "opts": "--yuv 444 --depth 10 --quality 95",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_10_q95",
+     "opts": "--depth 10 --quality 95",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "mono_default",
+     "opts": "",
+     "env": "",
+     "inputs": 47,
+     "files": 47,
+     "identical": 47,
+     "ok": true
+    },
+    {
+     "name": "mono_q90",
+     "opts": "--quality 90",
+     "env": "",
+     "inputs": 47,
+     "files": 47,
+     "identical": 47,
+     "ok": true
+    },
+    {
+     "name": "mono_q95",
+     "opts": "--quality 95",
+     "env": "",
+     "inputs": 47,
+     "files": 47,
+     "identical": 47,
+     "ok": true
+    },
+    {
+     "name": "mono_slow",
+     "opts": "--preset slow",
+     "env": "",
+     "inputs": 47,
+     "files": 47,
+     "identical": 47,
+     "ok": true
+    },
+    {
+     "name": "mono_nosmall",
+     "opts": "--small-preset none",
+     "env": "",
+     "inputs": 47,
+     "files": 47,
+     "identical": 47,
+     "ok": true
+    },
+    {
+     "name": "mono_10",
+     "opts": "--depth 10",
+     "env": "",
+     "inputs": 47,
+     "files": 47,
+     "identical": 47,
+     "ok": true
+    },
+    {
+     "name": "mono_tune_none",
+     "opts": "--tune none",
+     "env": "",
+     "inputs": 47,
+     "files": 47,
+     "identical": 47,
+     "ok": true
+    },
+    {
+     "name": "std_q95",
+     "opts": "--quality 95",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "std_slow",
+     "opts": "--preset slow",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "thumbs_q95",
+     "opts": "--quality 95",
+     "env": "",
+     "inputs": 280,
+     "files": 280,
+     "identical": 280,
+     "ok": true
+    },
+    {
+     "name": "thumbs_slow",
+     "opts": "--preset slow",
+     "env": "",
+     "inputs": 280,
+     "files": 280,
+     "identical": 280,
+     "ok": true
+    },
+    {
+     "name": "kodak_q95",
+     "opts": "--quality 95",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "kodak_444_q90",
+     "opts": "--yuv 444 --quality 90",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "rgba_q95",
+     "opts": "--quality 95",
+     "env": "",
+     "inputs": 39,
+     "files": 39,
+     "identical": 39,
+     "ok": true
+    },
+    {
+     "name": "odd_q95",
+     "opts": "--quality 95",
+     "env": "",
+     "inputs": 30,
+     "files": 30,
+     "identical": 30,
+     "ok": true
+    },
+    {
+     "name": "odd_slow",
+     "opts": "--preset slow",
+     "env": "",
+     "inputs": 30,
+     "files": 30,
+     "identical": 30,
+     "ok": true
+    },
+    {
+     "name": "std_default",
+     "opts": "",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "std_nosmall",
+     "opts": "--small-preset none",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "thumbs_default",
+     "opts": "",
+     "env": "",
+     "inputs": 280,
+     "files": 280,
+     "identical": 280,
+     "ok": true
+    },
+    {
+     "name": "thumbs_nosmall",
+     "opts": "--small-preset none",
+     "env": "",
+     "inputs": 280,
+     "files": 280,
+     "identical": 280,
+     "ok": true
+    },
+    {
+     "name": "kodak_default",
+     "opts": "",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "kodak_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "kodak_lossless_ycgco",
+     "opts": "--lossless --ycgco-re",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "rgba_default",
+     "opts": "",
+     "env": "",
+     "inputs": 39,
+     "files": 39,
+     "identical": 39,
+     "ok": true
+    },
+    {
+     "name": "rgba_aq100",
+     "opts": "--alpha-quality 100",
+     "env": "",
+     "inputs": 39,
+     "files": 39,
+     "identical": 39,
+     "ok": true
+    },
+    {
+     "name": "rgba_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 39,
+     "files": 39,
+     "identical": 39,
+     "ok": true
+    },
+    {
+     "name": "rgba_no_alpha",
+     "opts": "--no-alpha",
+     "env": "",
+     "inputs": 39,
+     "files": 39,
+     "identical": 39,
+     "ok": true
+    },
+    {
+     "name": "gray_default",
+     "opts": "",
+     "env": "",
+     "inputs": 9,
+     "files": 9,
+     "identical": 9,
+     "ok": true
+    },
+    {
+     "name": "gray_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 9,
+     "files": 8,
+     "identical": 8,
+     "ok": true
+    },
+    {
+     "name": "odd_default",
+     "opts": "",
+     "env": "",
+     "inputs": 30,
+     "files": 30,
+     "identical": 30,
+     "ok": true
+    },
+    {
+     "name": "odd_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 30,
+     "files": 30,
+     "identical": 30,
+     "ok": true
+    },
+    {
+     "name": "odd_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 30,
+     "files": 10,
+     "identical": 10,
+     "ok": true
+    },
+    {
+     "name": "misc_default",
+     "opts": "",
+     "env": "",
+     "inputs": 13,
+     "files": 13,
+     "identical": 13,
+     "ok": true
+    },
+    {
+     "name": "png16_10_default",
+     "opts": "--depth 10",
+     "env": "",
+     "inputs": 8,
+     "files": 8,
+     "identical": 8,
+     "ok": true
+    },
+    {
+     "name": "png16_10_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 8,
+     "files": 8,
+     "identical": 8,
+     "ok": true
+    },
+    {
+     "name": "llgraphics_lossless",
+     "opts": "--lossless --ycgco-re",
+     "env": "",
+     "inputs": 27,
+     "files": 27,
+     "identical": 27,
+     "ok": true
+    },
+    {
+     "name": "webp_default",
+     "opts": "",
+     "env": "",
+     "inputs": 7,
+     "files": 7,
+     "identical": 7,
+     "ok": true
+    },
+    {
+     "name": "webp_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 7,
+     "files": 7,
+     "identical": 7,
+     "ok": true
+    },
+    {
+     "name": "mixed_list",
+     "opts": "",
+     "env": "",
+     "inputs": 33,
+     "files": 33,
+     "identical": 33,
+     "ok": true
+    },
+    {
+     "name": "mixed_list_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 33,
+     "files": 33,
+     "identical": 33,
+     "ok": true
+    },
+    {
+     "name": "lljpeg_set",
+     "opts": "",
+     "env": "",
+     "inputs": 25,
+     "files": 25,
+     "identical": 25,
+     "ok": true
+    },
+    {
+     "name": "pal_screen_default",
+     "opts": "",
+     "env": "",
+     "inputs": 40,
+     "files": 40,
+     "identical": 40,
+     "ok": true
+    },
+    {
+     "name": "pal_screen_palette_on",
+     "opts": "--palette on",
+     "env": "",
+     "inputs": 40,
+     "files": 40,
+     "identical": 40,
+     "ok": true
+    },
+    {
+     "name": "pal_screen_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 40,
+     "files": 40,
+     "identical": 40,
+     "ok": true
+    },
+    {
+     "name": "pal_screen_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 40,
+     "files": 40,
+     "identical": 40,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_png_default",
+     "opts": "",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_png_palette_on",
+     "opts": "--palette on",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_png_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_png_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_jpg_default",
+     "opts": "",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_jpg_palette_on",
+     "opts": "--palette on",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_jpg_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_jpg_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 24,
+     "files": 0,
+     "identical": 0,
+     "ok": true
+    },
+    {
+     "name": "short_mixed_00",
+     "opts": "",
+     "env": "",
+     "inputs": 8,
+     "files": 8,
+     "identical": 8,
+     "ok": true
+    },
+    {
+     "name": "short_mixed_00_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 8,
+     "files": 8,
+     "identical": 8,
+     "ok": true
+    },
+    {
+     "name": "short_mixed_01",
+     "opts": "",
+     "env": "",
+     "inputs": 8,
+     "files": 8,
+     "identical": 8,
+     "ok": true
+    },
+    {
+     "name": "short_mixed_01_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 8,
+     "files": 8,
+     "identical": 8,
+     "ok": true
+    },
+    {
+     "name": "short_mixed_02",
+     "opts": "",
+     "env": "",
+     "inputs": 8,
+     "files": 8,
+     "identical": 8,
+     "ok": true
+    },
+    {
+     "name": "short_mixed_02_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 8,
+     "files": 8,
+     "identical": 8,
+     "ok": true
+    },
+    {
+     "name": "short_mixed_03",
+     "opts": "",
+     "env": "",
+     "inputs": 8,
+     "files": 8,
+     "identical": 8,
+     "ok": true
+    },
+    {
+     "name": "short_mixed_03_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 8,
+     "files": 8,
+     "identical": 8,
+     "ok": true
+    },
+    {
+     "name": "short_mixed_04",
+     "opts": "",
+     "env": "",
+     "inputs": 1,
+     "files": 1,
+     "identical": 1,
+     "ok": true
+    },
+    {
+     "name": "short_mixed_04_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 1,
+     "files": 1,
+     "identical": 1,
+     "ok": true
+    },
+    {
+     "name": "short_pair",
+     "opts": "",
+     "env": "",
+     "inputs": 2,
+     "files": 2,
+     "identical": 2,
+     "ok": true
+    },
+    {
+     "name": "short_pair_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 2,
+     "files": 2,
+     "identical": 2,
+     "ok": true
+    },
+    {
+     "name": "short_pair_slow",
+     "opts": "--preset slow",
+     "env": "",
+     "inputs": 2,
+     "files": 2,
+     "identical": 2,
+     "ok": true
+    },
+    {
+     "name": "short_pair_q90",
+     "opts": "--quality 90",
+     "env": "",
+     "inputs": 2,
+     "files": 2,
+     "identical": 2,
+     "ok": true
+    },
+    {
+     "name": "single10_default",
+     "opts": "",
+     "env": "",
+     "inputs": 10,
+     "files": 10,
+     "identical": 10,
+     "ok": true
+    },
+    {
+     "name": "single10_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 10,
+     "files": 10,
+     "identical": 10,
+     "ok": true
+    },
+    {
+     "name": "single10_slow",
+     "opts": "--preset slow",
+     "env": "",
+     "inputs": 10,
+     "files": 10,
+     "identical": 10,
+     "ok": true
+    },
+    {
+     "name": "single_all_default",
+     "opts": "",
+     "env": "",
+     "inputs": 103,
+     "files": 103,
+     "identical": 103,
+     "ok": true
+    },
+    {
+     "name": "single_all_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 53,
+     "files": 52,
+     "identical": 52,
+     "ok": true
+    },
+    {
+     "name": "single_all_palette_on",
+     "opts": "--palette on",
+     "env": "",
+     "inputs": 103,
+     "files": 103,
+     "identical": 103,
+     "ok": true
+    },
+    {
+     "name": "single_all_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 103,
+     "files": 103,
+     "identical": 103,
+     "ok": true
+    },
+    {
+     "name": "single_all_slow",
+     "opts": "--preset slow",
+     "env": "",
+     "inputs": 103,
+     "files": 103,
+     "identical": 103,
+     "ok": true
+    },
+    {
+     "name": "single_all_q90",
+     "opts": "--quality 90",
+     "env": "",
+     "inputs": 103,
+     "files": 103,
+     "identical": 103,
+     "ok": true
+    },
+    {
+     "name": "single_st_default",
+     "opts": "",
+     "env": "",
+     "inputs": 4,
+     "files": 4,
+     "identical": 4,
+     "ok": true
+    },
+    {
+     "name": "single_st_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 4,
+     "files": 4,
+     "identical": 4,
+     "ok": true
+    },
+    {
+     "name": "err_missing",
+     "opts": "",
+     "env": "",
+     "inputs": 1,
+     "files": 0,
+     "identical": 0,
+     "ok": true
+    },
+    {
+     "name": "err_jpeg_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 1,
+     "files": 0,
+     "identical": 0,
+     "ok": true
+    },
+    {
+     "name": "err_crop",
+     "opts": "--crop 999x999+2000+2000",
+     "env": "",
+     "inputs": 1,
+     "files": 0,
+     "identical": 0,
+     "ok": true
+    }
+   ]
+  },
+  "l4/A13l4_A13bw": {
+   "runs": 103,
+   "ok": 103,
+   "fa": 5679,
+   "fb": 5679,
+   "differ": 0,
+   "runs_list": [
+    {
+     "name": "sr_default",
+     "opts": "",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_turbo3_nosmall",
+     "opts": "--preset turbo3 --small-preset none",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_nosmall",
+     "opts": "--small-preset none",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_444",
+     "opts": "--yuv 444",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_10",
+     "opts": "--depth 10",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_base_nosmall",
+     "opts": "--preset base --small-preset none",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_slow_nosmall",
+     "opts": "--preset slow --small-preset none",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_fast_nosmall",
+     "opts": "--preset fast --small-preset none",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_q30",
+     "opts": "--quality 30",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_q90",
+     "opts": "--quality 90",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_q95",
+     "opts": "--quality 95",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_tune_none",
+     "opts": "--tune none",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_tiles_2_1_1",
+     "opts": "--tiles 2,1,1",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_default_enc1",
+     "opts": "",
+     "env": "GP_ENCODERS=1",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_default_enc6",
+     "opts": "",
+     "env": "GP_ENCODERS=6",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_slow",
+     "opts": "--preset slow",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_444_q90",
+     "opts": "--yuv 444 --quality 90",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_444_q95",
+     "opts": "--yuv 444 --quality 95",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_444_slow",
+     "opts": "--yuv 444 --preset slow",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_444_10_q95",
+     "opts": "--yuv 444 --depth 10 --quality 95",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_10_q95",
+     "opts": "--depth 10 --quality 95",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "mono_default",
+     "opts": "",
+     "env": "",
+     "inputs": 47,
+     "files": 47,
+     "identical": 47,
+     "ok": true
+    },
+    {
+     "name": "mono_q90",
+     "opts": "--quality 90",
+     "env": "",
+     "inputs": 47,
+     "files": 47,
+     "identical": 47,
+     "ok": true
+    },
+    {
+     "name": "mono_q95",
+     "opts": "--quality 95",
+     "env": "",
+     "inputs": 47,
+     "files": 47,
+     "identical": 47,
+     "ok": true
+    },
+    {
+     "name": "mono_slow",
+     "opts": "--preset slow",
+     "env": "",
+     "inputs": 47,
+     "files": 47,
+     "identical": 47,
+     "ok": true
+    },
+    {
+     "name": "mono_nosmall",
+     "opts": "--small-preset none",
+     "env": "",
+     "inputs": 47,
+     "files": 47,
+     "identical": 47,
+     "ok": true
+    },
+    {
+     "name": "mono_10",
+     "opts": "--depth 10",
+     "env": "",
+     "inputs": 47,
+     "files": 47,
+     "identical": 47,
+     "ok": true
+    },
+    {
+     "name": "mono_tune_none",
+     "opts": "--tune none",
+     "env": "",
+     "inputs": 47,
+     "files": 47,
+     "identical": 47,
+     "ok": true
+    },
+    {
+     "name": "std_q95",
+     "opts": "--quality 95",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "std_slow",
+     "opts": "--preset slow",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "thumbs_q95",
+     "opts": "--quality 95",
+     "env": "",
+     "inputs": 280,
+     "files": 280,
+     "identical": 280,
+     "ok": true
+    },
+    {
+     "name": "thumbs_slow",
+     "opts": "--preset slow",
+     "env": "",
+     "inputs": 280,
+     "files": 280,
+     "identical": 280,
+     "ok": true
+    },
+    {
+     "name": "kodak_q95",
+     "opts": "--quality 95",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "kodak_444_q90",
+     "opts": "--yuv 444 --quality 90",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "rgba_q95",
+     "opts": "--quality 95",
+     "env": "",
+     "inputs": 39,
+     "files": 39,
+     "identical": 39,
+     "ok": true
+    },
+    {
+     "name": "odd_q95",
+     "opts": "--quality 95",
+     "env": "",
+     "inputs": 30,
+     "files": 30,
+     "identical": 30,
+     "ok": true
+    },
+    {
+     "name": "odd_slow",
+     "opts": "--preset slow",
+     "env": "",
+     "inputs": 30,
+     "files": 30,
+     "identical": 30,
+     "ok": true
+    },
+    {
+     "name": "std_default",
+     "opts": "",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "std_nosmall",
+     "opts": "--small-preset none",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "thumbs_default",
+     "opts": "",
+     "env": "",
+     "inputs": 280,
+     "files": 280,
+     "identical": 280,
+     "ok": true
+    },
+    {
+     "name": "thumbs_nosmall",
+     "opts": "--small-preset none",
+     "env": "",
+     "inputs": 280,
+     "files": 280,
+     "identical": 280,
+     "ok": true
+    },
+    {
+     "name": "kodak_default",
+     "opts": "",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "kodak_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "kodak_lossless_ycgco",
+     "opts": "--lossless --ycgco-re",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "rgba_default",
+     "opts": "",
+     "env": "",
+     "inputs": 39,
+     "files": 39,
+     "identical": 39,
+     "ok": true
+    },
+    {
+     "name": "rgba_aq100",
+     "opts": "--alpha-quality 100",
+     "env": "",
+     "inputs": 39,
+     "files": 39,
+     "identical": 39,
+     "ok": true
+    },
+    {
+     "name": "rgba_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 39,
+     "files": 39,
+     "identical": 39,
+     "ok": true
+    },
+    {
+     "name": "rgba_no_alpha",
+     "opts": "--no-alpha",
+     "env": "",
+     "inputs": 39,
+     "files": 39,
+     "identical": 39,
+     "ok": true
+    },
+    {
+     "name": "gray_default",
+     "opts": "",
+     "env": "",
+     "inputs": 9,
+     "files": 9,
+     "identical": 9,
+     "ok": true
+    },
+    {
+     "name": "gray_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 9,
+     "files": 8,
+     "identical": 8,
+     "ok": true
+    },
+    {
+     "name": "odd_default",
+     "opts": "",
+     "env": "",
+     "inputs": 30,
+     "files": 30,
+     "identical": 30,
+     "ok": true
+    },
+    {
+     "name": "odd_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 30,
+     "files": 30,
+     "identical": 30,
+     "ok": true
+    },
+    {
+     "name": "odd_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 30,
+     "files": 10,
+     "identical": 10,
+     "ok": true
+    },
+    {
+     "name": "misc_default",
+     "opts": "",
+     "env": "",
+     "inputs": 13,
+     "files": 13,
+     "identical": 13,
+     "ok": true
+    },
+    {
+     "name": "png16_10_default",
+     "opts": "--depth 10",
+     "env": "",
+     "inputs": 8,
+     "files": 8,
+     "identical": 8,
+     "ok": true
+    },
+    {
+     "name": "png16_10_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 8,
+     "files": 8,
+     "identical": 8,
+     "ok": true
+    },
+    {
+     "name": "llgraphics_lossless",
+     "opts": "--lossless --ycgco-re",
+     "env": "",
+     "inputs": 27,
+     "files": 27,
+     "identical": 27,
+     "ok": true
+    },
+    {
+     "name": "webp_default",
+     "opts": "",
+     "env": "",
+     "inputs": 7,
+     "files": 7,
+     "identical": 7,
+     "ok": true
+    },
+    {
+     "name": "webp_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 7,
+     "files": 7,
+     "identical": 7,
+     "ok": true
+    },
+    {
+     "name": "mixed_list",
+     "opts": "",
+     "env": "",
+     "inputs": 33,
+     "files": 33,
+     "identical": 33,
+     "ok": true
+    },
+    {
+     "name": "mixed_list_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 33,
+     "files": 33,
+     "identical": 33,
+     "ok": true
+    },
+    {
+     "name": "lljpeg_set",
+     "opts": "",
+     "env": "",
+     "inputs": 25,
+     "files": 25,
+     "identical": 25,
+     "ok": true
+    },
+    {
+     "name": "pal_screen_default",
+     "opts": "",
+     "env": "",
+     "inputs": 40,
+     "files": 40,
+     "identical": 40,
+     "ok": true
+    },
+    {
+     "name": "pal_screen_palette_on",
+     "opts": "--palette on",
+     "env": "",
+     "inputs": 40,
+     "files": 40,
+     "identical": 40,
+     "ok": true
+    },
+    {
+     "name": "pal_screen_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 40,
+     "files": 40,
+     "identical": 40,
+     "ok": true
+    },
+    {
+     "name": "pal_screen_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 40,
+     "files": 40,
+     "identical": 40,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_png_default",
+     "opts": "",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_png_palette_on",
+     "opts": "--palette on",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_png_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_png_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_jpg_default",
+     "opts": "",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_jpg_palette_on",
+     "opts": "--palette on",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_jpg_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_jpg_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 24,
+     "files": 0,
+     "identical": 0,
+     "ok": true
+    },
+    {
+     "name": "short_mixed_00",
+     "opts": "",
+     "env": "",
+     "inputs": 8,
+     "files": 8,
+     "identical": 8,
+     "ok": true
+    },
+    {
+     "name": "short_mixed_00_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 8,
+     "files": 8,
+     "identical": 8,
+     "ok": true
+    },
+    {
+     "name": "short_mixed_01",
+     "opts": "",
+     "env": "",
+     "inputs": 8,
+     "files": 8,
+     "identical": 8,
+     "ok": true
+    },
+    {
+     "name": "short_mixed_01_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 8,
+     "files": 8,
+     "identical": 8,
+     "ok": true
+    },
+    {
+     "name": "short_mixed_02",
+     "opts": "",
+     "env": "",
+     "inputs": 8,
+     "files": 8,
+     "identical": 8,
+     "ok": true
+    },
+    {
+     "name": "short_mixed_02_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 8,
+     "files": 8,
+     "identical": 8,
+     "ok": true
+    },
+    {
+     "name": "short_mixed_03",
+     "opts": "",
+     "env": "",
+     "inputs": 8,
+     "files": 8,
+     "identical": 8,
+     "ok": true
+    },
+    {
+     "name": "short_mixed_03_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 8,
+     "files": 8,
+     "identical": 8,
+     "ok": true
+    },
+    {
+     "name": "short_mixed_04",
+     "opts": "",
+     "env": "",
+     "inputs": 1,
+     "files": 1,
+     "identical": 1,
+     "ok": true
+    },
+    {
+     "name": "short_mixed_04_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 1,
+     "files": 1,
+     "identical": 1,
+     "ok": true
+    },
+    {
+     "name": "short_pair",
+     "opts": "",
+     "env": "",
+     "inputs": 2,
+     "files": 2,
+     "identical": 2,
+     "ok": true
+    },
+    {
+     "name": "short_pair_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 2,
+     "files": 2,
+     "identical": 2,
+     "ok": true
+    },
+    {
+     "name": "short_pair_slow",
+     "opts": "--preset slow",
+     "env": "",
+     "inputs": 2,
+     "files": 2,
+     "identical": 2,
+     "ok": true
+    },
+    {
+     "name": "short_pair_q90",
+     "opts": "--quality 90",
+     "env": "",
+     "inputs": 2,
+     "files": 2,
+     "identical": 2,
+     "ok": true
+    },
+    {
+     "name": "single10_default",
+     "opts": "",
+     "env": "",
+     "inputs": 10,
+     "files": 10,
+     "identical": 10,
+     "ok": true
+    },
+    {
+     "name": "single10_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 10,
+     "files": 10,
+     "identical": 10,
+     "ok": true
+    },
+    {
+     "name": "single10_slow",
+     "opts": "--preset slow",
+     "env": "",
+     "inputs": 10,
+     "files": 10,
+     "identical": 10,
+     "ok": true
+    },
+    {
+     "name": "single_all_default",
+     "opts": "",
+     "env": "",
+     "inputs": 103,
+     "files": 103,
+     "identical": 103,
+     "ok": true
+    },
+    {
+     "name": "single_all_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 53,
+     "files": 52,
+     "identical": 52,
+     "ok": true
+    },
+    {
+     "name": "single_all_palette_on",
+     "opts": "--palette on",
+     "env": "",
+     "inputs": 103,
+     "files": 103,
+     "identical": 103,
+     "ok": true
+    },
+    {
+     "name": "single_all_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 103,
+     "files": 103,
+     "identical": 103,
+     "ok": true
+    },
+    {
+     "name": "single_all_slow",
+     "opts": "--preset slow",
+     "env": "",
+     "inputs": 103,
+     "files": 103,
+     "identical": 103,
+     "ok": true
+    },
+    {
+     "name": "single_all_q90",
+     "opts": "--quality 90",
+     "env": "",
+     "inputs": 103,
+     "files": 103,
+     "identical": 103,
+     "ok": true
+    },
+    {
+     "name": "single_st_default",
+     "opts": "",
+     "env": "",
+     "inputs": 4,
+     "files": 4,
+     "identical": 4,
+     "ok": true
+    },
+    {
+     "name": "single_st_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 4,
+     "files": 4,
+     "identical": 4,
+     "ok": true
+    },
+    {
+     "name": "err_missing",
+     "opts": "",
+     "env": "",
+     "inputs": 1,
+     "files": 0,
+     "identical": 0,
+     "ok": true
+    },
+    {
+     "name": "err_jpeg_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 1,
+     "files": 0,
+     "identical": 0,
+     "ok": true
+    },
+    {
+     "name": "err_crop",
+     "opts": "--crop 999x999+2000+2000",
+     "env": "",
+     "inputs": 1,
+     "files": 0,
+     "identical": 0,
+     "ok": true
+    }
+   ]
+  },
+  "l4/A13_A12": {
+   "runs": 27,
+   "ok": 27,
+   "fa": 1220,
+   "fb": 1220,
+   "differ": 0,
+   "runs_list": [
+    {
+     "name": "sr_default",
+     "opts": "",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "std_default",
+     "opts": "",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "thumbs_default",
+     "opts": "",
+     "env": "",
+     "inputs": 280,
+     "files": 280,
+     "identical": 280,
+     "ok": true
+    },
+    {
+     "name": "kodak_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "rgba_default",
+     "opts": "",
+     "env": "",
+     "inputs": 39,
+     "files": 39,
+     "identical": 39,
+     "ok": true
+    },
+    {
+     "name": "rgba_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 39,
+     "files": 39,
+     "identical": 39,
+     "ok": true
+    },
+    {
+     "name": "llgraphics_lossless",
+     "opts": "--lossless --ycgco-re",
+     "env": "",
+     "inputs": 27,
+     "files": 27,
+     "identical": 27,
+     "ok": true
+    },
+    {
+     "name": "pal_screen_default",
+     "opts": "",
+     "env": "",
+     "inputs": 40,
+     "files": 40,
+     "identical": 40,
+     "ok": true
+    },
+    {
+     "name": "pal_screen_palette_on",
+     "opts": "--palette on",
+     "env": "",
+     "inputs": 40,
+     "files": 40,
+     "identical": 40,
+     "ok": true
+    },
+    {
+     "name": "pal_screen_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 40,
+     "files": 40,
+     "identical": 40,
+     "ok": true
+    },
+    {
+     "name": "pal_screen_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 40,
+     "files": 40,
+     "identical": 40,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_png_default",
+     "opts": "",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_png_palette_on",
+     "opts": "--palette on",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_png_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_png_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_jpg_default",
+     "opts": "",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_jpg_palette_on",
+     "opts": "--palette on",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_jpg_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_jpg_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 24,
+     "files": 0,
+     "identical": 0,
+     "ok": true
+    },
+    {
+     "name": "short_pair",
+     "opts": "",
+     "env": "",
+     "inputs": 2,
+     "files": 2,
+     "identical": 2,
+     "ok": true
+    },
+    {
+     "name": "short_pair_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 2,
+     "files": 2,
+     "identical": 2,
+     "ok": true
+    },
+    {
+     "name": "single10_default",
+     "opts": "",
+     "env": "",
+     "inputs": 10,
+     "files": 10,
+     "identical": 10,
+     "ok": true
+    },
+    {
+     "name": "single10_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 10,
+     "files": 10,
+     "identical": 10,
+     "ok": true
+    },
+    {
+     "name": "single_all_default",
+     "opts": "",
+     "env": "",
+     "inputs": 103,
+     "files": 103,
+     "identical": 103,
+     "ok": true
+    },
+    {
+     "name": "single_all_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 53,
+     "files": 52,
+     "identical": 52,
+     "ok": true
+    },
+    {
+     "name": "single_st_default",
+     "opts": "",
+     "env": "",
+     "inputs": 4,
+     "files": 4,
+     "identical": 4,
+     "ok": true
+    }
+   ]
+  },
+  "bw/A13_B13": {
+   "runs": 103,
+   "ok": 103,
+   "fa": 5679,
+   "fb": 5679,
+   "differ": 0,
+   "runs_list": [
+    {
+     "name": "sr_default",
+     "opts": "",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_turbo3_nosmall",
+     "opts": "--preset turbo3 --small-preset none",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_nosmall",
+     "opts": "--small-preset none",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_444",
+     "opts": "--yuv 444",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_10",
+     "opts": "--depth 10",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_base_nosmall",
+     "opts": "--preset base --small-preset none",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_slow_nosmall",
+     "opts": "--preset slow --small-preset none",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_fast_nosmall",
+     "opts": "--preset fast --small-preset none",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_q30",
+     "opts": "--quality 30",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_q90",
+     "opts": "--quality 90",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_q95",
+     "opts": "--quality 95",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_tune_none",
+     "opts": "--tune none",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_tiles_2_1_1",
+     "opts": "--tiles 2,1,1",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_default_enc1",
+     "opts": "",
+     "env": "GP_ENCODERS=1",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_default_enc6",
+     "opts": "",
+     "env": "GP_ENCODERS=6",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_slow",
+     "opts": "--preset slow",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_444_q90",
+     "opts": "--yuv 444 --quality 90",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_444_q95",
+     "opts": "--yuv 444 --quality 95",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_444_slow",
+     "opts": "--yuv 444 --preset slow",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_444_10_q95",
+     "opts": "--yuv 444 --depth 10 --quality 95",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_10_q95",
+     "opts": "--depth 10 --quality 95",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "mono_default",
+     "opts": "",
+     "env": "",
+     "inputs": 47,
+     "files": 47,
+     "identical": 47,
+     "ok": true
+    },
+    {
+     "name": "mono_q90",
+     "opts": "--quality 90",
+     "env": "",
+     "inputs": 47,
+     "files": 47,
+     "identical": 47,
+     "ok": true
+    },
+    {
+     "name": "mono_q95",
+     "opts": "--quality 95",
+     "env": "",
+     "inputs": 47,
+     "files": 47,
+     "identical": 47,
+     "ok": true
+    },
+    {
+     "name": "mono_slow",
+     "opts": "--preset slow",
+     "env": "",
+     "inputs": 47,
+     "files": 47,
+     "identical": 47,
+     "ok": true
+    },
+    {
+     "name": "mono_nosmall",
+     "opts": "--small-preset none",
+     "env": "",
+     "inputs": 47,
+     "files": 47,
+     "identical": 47,
+     "ok": true
+    },
+    {
+     "name": "mono_10",
+     "opts": "--depth 10",
+     "env": "",
+     "inputs": 47,
+     "files": 47,
+     "identical": 47,
+     "ok": true
+    },
+    {
+     "name": "mono_tune_none",
+     "opts": "--tune none",
+     "env": "",
+     "inputs": 47,
+     "files": 47,
+     "identical": 47,
+     "ok": true
+    },
+    {
+     "name": "std_q95",
+     "opts": "--quality 95",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "std_slow",
+     "opts": "--preset slow",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "thumbs_q95",
+     "opts": "--quality 95",
+     "env": "",
+     "inputs": 280,
+     "files": 280,
+     "identical": 280,
+     "ok": true
+    },
+    {
+     "name": "thumbs_slow",
+     "opts": "--preset slow",
+     "env": "",
+     "inputs": 280,
+     "files": 280,
+     "identical": 280,
+     "ok": true
+    },
+    {
+     "name": "kodak_q95",
+     "opts": "--quality 95",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "kodak_444_q90",
+     "opts": "--yuv 444 --quality 90",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "rgba_q95",
+     "opts": "--quality 95",
+     "env": "",
+     "inputs": 39,
+     "files": 39,
+     "identical": 39,
+     "ok": true
+    },
+    {
+     "name": "odd_q95",
+     "opts": "--quality 95",
+     "env": "",
+     "inputs": 30,
+     "files": 30,
+     "identical": 30,
+     "ok": true
+    },
+    {
+     "name": "odd_slow",
+     "opts": "--preset slow",
+     "env": "",
+     "inputs": 30,
+     "files": 30,
+     "identical": 30,
+     "ok": true
+    },
+    {
+     "name": "std_default",
+     "opts": "",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "std_nosmall",
+     "opts": "--small-preset none",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "thumbs_default",
+     "opts": "",
+     "env": "",
+     "inputs": 280,
+     "files": 280,
+     "identical": 280,
+     "ok": true
+    },
+    {
+     "name": "thumbs_nosmall",
+     "opts": "--small-preset none",
+     "env": "",
+     "inputs": 280,
+     "files": 280,
+     "identical": 280,
+     "ok": true
+    },
+    {
+     "name": "kodak_default",
+     "opts": "",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "kodak_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "kodak_lossless_ycgco",
+     "opts": "--lossless --ycgco-re",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "rgba_default",
+     "opts": "",
+     "env": "",
+     "inputs": 39,
+     "files": 39,
+     "identical": 39,
+     "ok": true
+    },
+    {
+     "name": "rgba_aq100",
+     "opts": "--alpha-quality 100",
+     "env": "",
+     "inputs": 39,
+     "files": 39,
+     "identical": 39,
+     "ok": true
+    },
+    {
+     "name": "rgba_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 39,
+     "files": 39,
+     "identical": 39,
+     "ok": true
+    },
+    {
+     "name": "rgba_no_alpha",
+     "opts": "--no-alpha",
+     "env": "",
+     "inputs": 39,
+     "files": 39,
+     "identical": 39,
+     "ok": true
+    },
+    {
+     "name": "gray_default",
+     "opts": "",
+     "env": "",
+     "inputs": 9,
+     "files": 9,
+     "identical": 9,
+     "ok": true
+    },
+    {
+     "name": "gray_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 9,
+     "files": 8,
+     "identical": 8,
+     "ok": true
+    },
+    {
+     "name": "odd_default",
+     "opts": "",
+     "env": "",
+     "inputs": 30,
+     "files": 30,
+     "identical": 30,
+     "ok": true
+    },
+    {
+     "name": "odd_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 30,
+     "files": 30,
+     "identical": 30,
+     "ok": true
+    },
+    {
+     "name": "odd_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 30,
+     "files": 10,
+     "identical": 10,
+     "ok": true
+    },
+    {
+     "name": "misc_default",
+     "opts": "",
+     "env": "",
+     "inputs": 13,
+     "files": 13,
+     "identical": 13,
+     "ok": true
+    },
+    {
+     "name": "png16_10_default",
+     "opts": "--depth 10",
+     "env": "",
+     "inputs": 8,
+     "files": 8,
+     "identical": 8,
+     "ok": true
+    },
+    {
+     "name": "png16_10_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 8,
+     "files": 8,
+     "identical": 8,
+     "ok": true
+    },
+    {
+     "name": "llgraphics_lossless",
+     "opts": "--lossless --ycgco-re",
+     "env": "",
+     "inputs": 27,
+     "files": 27,
+     "identical": 27,
+     "ok": true
+    },
+    {
+     "name": "webp_default",
+     "opts": "",
+     "env": "",
+     "inputs": 7,
+     "files": 7,
+     "identical": 7,
+     "ok": true
+    },
+    {
+     "name": "webp_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 7,
+     "files": 7,
+     "identical": 7,
+     "ok": true
+    },
+    {
+     "name": "mixed_list",
+     "opts": "",
+     "env": "",
+     "inputs": 33,
+     "files": 33,
+     "identical": 33,
+     "ok": true
+    },
+    {
+     "name": "mixed_list_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 33,
+     "files": 33,
+     "identical": 33,
+     "ok": true
+    },
+    {
+     "name": "lljpeg_set",
+     "opts": "",
+     "env": "",
+     "inputs": 25,
+     "files": 25,
+     "identical": 25,
+     "ok": true
+    },
+    {
+     "name": "pal_screen_default",
+     "opts": "",
+     "env": "",
+     "inputs": 40,
+     "files": 40,
+     "identical": 40,
+     "ok": true
+    },
+    {
+     "name": "pal_screen_palette_on",
+     "opts": "--palette on",
+     "env": "",
+     "inputs": 40,
+     "files": 40,
+     "identical": 40,
+     "ok": true
+    },
+    {
+     "name": "pal_screen_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 40,
+     "files": 40,
+     "identical": 40,
+     "ok": true
+    },
+    {
+     "name": "pal_screen_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 40,
+     "files": 40,
+     "identical": 40,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_png_default",
+     "opts": "",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_png_palette_on",
+     "opts": "--palette on",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_png_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_png_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_jpg_default",
+     "opts": "",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_jpg_palette_on",
+     "opts": "--palette on",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_jpg_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_jpg_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 24,
+     "files": 0,
+     "identical": 0,
+     "ok": true
+    },
+    {
+     "name": "short_mixed_00",
+     "opts": "",
+     "env": "",
+     "inputs": 8,
+     "files": 8,
+     "identical": 8,
+     "ok": true
+    },
+    {
+     "name": "short_mixed_00_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 8,
+     "files": 8,
+     "identical": 8,
+     "ok": true
+    },
+    {
+     "name": "short_mixed_01",
+     "opts": "",
+     "env": "",
+     "inputs": 8,
+     "files": 8,
+     "identical": 8,
+     "ok": true
+    },
+    {
+     "name": "short_mixed_01_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 8,
+     "files": 8,
+     "identical": 8,
+     "ok": true
+    },
+    {
+     "name": "short_mixed_02",
+     "opts": "",
+     "env": "",
+     "inputs": 8,
+     "files": 8,
+     "identical": 8,
+     "ok": true
+    },
+    {
+     "name": "short_mixed_02_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 8,
+     "files": 8,
+     "identical": 8,
+     "ok": true
+    },
+    {
+     "name": "short_mixed_03",
+     "opts": "",
+     "env": "",
+     "inputs": 8,
+     "files": 8,
+     "identical": 8,
+     "ok": true
+    },
+    {
+     "name": "short_mixed_03_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 8,
+     "files": 8,
+     "identical": 8,
+     "ok": true
+    },
+    {
+     "name": "short_mixed_04",
+     "opts": "",
+     "env": "",
+     "inputs": 1,
+     "files": 1,
+     "identical": 1,
+     "ok": true
+    },
+    {
+     "name": "short_mixed_04_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 1,
+     "files": 1,
+     "identical": 1,
+     "ok": true
+    },
+    {
+     "name": "short_pair",
+     "opts": "",
+     "env": "",
+     "inputs": 2,
+     "files": 2,
+     "identical": 2,
+     "ok": true
+    },
+    {
+     "name": "short_pair_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 2,
+     "files": 2,
+     "identical": 2,
+     "ok": true
+    },
+    {
+     "name": "short_pair_slow",
+     "opts": "--preset slow",
+     "env": "",
+     "inputs": 2,
+     "files": 2,
+     "identical": 2,
+     "ok": true
+    },
+    {
+     "name": "short_pair_q90",
+     "opts": "--quality 90",
+     "env": "",
+     "inputs": 2,
+     "files": 2,
+     "identical": 2,
+     "ok": true
+    },
+    {
+     "name": "single10_default",
+     "opts": "",
+     "env": "",
+     "inputs": 10,
+     "files": 10,
+     "identical": 10,
+     "ok": true
+    },
+    {
+     "name": "single10_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 10,
+     "files": 10,
+     "identical": 10,
+     "ok": true
+    },
+    {
+     "name": "single10_slow",
+     "opts": "--preset slow",
+     "env": "",
+     "inputs": 10,
+     "files": 10,
+     "identical": 10,
+     "ok": true
+    },
+    {
+     "name": "single_all_default",
+     "opts": "",
+     "env": "",
+     "inputs": 103,
+     "files": 103,
+     "identical": 103,
+     "ok": true
+    },
+    {
+     "name": "single_all_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 53,
+     "files": 52,
+     "identical": 52,
+     "ok": true
+    },
+    {
+     "name": "single_all_palette_on",
+     "opts": "--palette on",
+     "env": "",
+     "inputs": 103,
+     "files": 103,
+     "identical": 103,
+     "ok": true
+    },
+    {
+     "name": "single_all_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 103,
+     "files": 103,
+     "identical": 103,
+     "ok": true
+    },
+    {
+     "name": "single_all_slow",
+     "opts": "--preset slow",
+     "env": "",
+     "inputs": 103,
+     "files": 103,
+     "identical": 103,
+     "ok": true
+    },
+    {
+     "name": "single_all_q90",
+     "opts": "--quality 90",
+     "env": "",
+     "inputs": 103,
+     "files": 103,
+     "identical": 103,
+     "ok": true
+    },
+    {
+     "name": "single_st_default",
+     "opts": "",
+     "env": "",
+     "inputs": 4,
+     "files": 4,
+     "identical": 4,
+     "ok": true
+    },
+    {
+     "name": "single_st_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 4,
+     "files": 4,
+     "identical": 4,
+     "ok": true
+    },
+    {
+     "name": "err_missing",
+     "opts": "",
+     "env": "",
+     "inputs": 1,
+     "files": 0,
+     "identical": 0,
+     "ok": true
+    },
+    {
+     "name": "err_jpeg_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 1,
+     "files": 0,
+     "identical": 0,
+     "ok": true
+    },
+    {
+     "name": "err_crop",
+     "opts": "--crop 999x999+2000+2000",
+     "env": "",
+     "inputs": 1,
+     "files": 0,
+     "identical": 0,
+     "ok": true
+    }
+   ]
+  },
+  "bw/A12_B12": {
+   "runs": 27,
+   "ok": 27,
+   "fa": 1220,
+   "fb": 1220,
+   "differ": 0,
+   "runs_list": [
+    {
+     "name": "sr_default",
+     "opts": "",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "std_default",
+     "opts": "",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "thumbs_default",
+     "opts": "",
+     "env": "",
+     "inputs": 280,
+     "files": 280,
+     "identical": 280,
+     "ok": true
+    },
+    {
+     "name": "kodak_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "rgba_default",
+     "opts": "",
+     "env": "",
+     "inputs": 39,
+     "files": 39,
+     "identical": 39,
+     "ok": true
+    },
+    {
+     "name": "rgba_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 39,
+     "files": 39,
+     "identical": 39,
+     "ok": true
+    },
+    {
+     "name": "llgraphics_lossless",
+     "opts": "--lossless --ycgco-re",
+     "env": "",
+     "inputs": 27,
+     "files": 27,
+     "identical": 27,
+     "ok": true
+    },
+    {
+     "name": "pal_screen_default",
+     "opts": "",
+     "env": "",
+     "inputs": 40,
+     "files": 40,
+     "identical": 40,
+     "ok": true
+    },
+    {
+     "name": "pal_screen_palette_on",
+     "opts": "--palette on",
+     "env": "",
+     "inputs": 40,
+     "files": 40,
+     "identical": 40,
+     "ok": true
+    },
+    {
+     "name": "pal_screen_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 40,
+     "files": 40,
+     "identical": 40,
+     "ok": true
+    },
+    {
+     "name": "pal_screen_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 40,
+     "files": 40,
+     "identical": 40,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_png_default",
+     "opts": "",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_png_palette_on",
+     "opts": "--palette on",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_png_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_png_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_jpg_default",
+     "opts": "",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_jpg_palette_on",
+     "opts": "--palette on",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_jpg_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_jpg_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 24,
+     "files": 0,
+     "identical": 0,
+     "ok": true
+    },
+    {
+     "name": "short_pair",
+     "opts": "",
+     "env": "",
+     "inputs": 2,
+     "files": 2,
+     "identical": 2,
+     "ok": true
+    },
+    {
+     "name": "short_pair_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 2,
+     "files": 2,
+     "identical": 2,
+     "ok": true
+    },
+    {
+     "name": "single10_default",
+     "opts": "",
+     "env": "",
+     "inputs": 10,
+     "files": 10,
+     "identical": 10,
+     "ok": true
+    },
+    {
+     "name": "single10_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 10,
+     "files": 10,
+     "identical": 10,
+     "ok": true
+    },
+    {
+     "name": "single_all_default",
+     "opts": "",
+     "env": "",
+     "inputs": 103,
+     "files": 103,
+     "identical": 103,
+     "ok": true
+    },
+    {
+     "name": "single_all_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 53,
+     "files": 52,
+     "identical": 52,
+     "ok": true
+    },
+    {
+     "name": "single_st_default",
+     "opts": "",
+     "env": "",
+     "inputs": 4,
+     "files": 4,
+     "identical": 4,
+     "ok": true
+    }
+   ]
+  },
+  "bw/B13_B12": {
+   "runs": 27,
+   "ok": 27,
+   "fa": 1220,
+   "fb": 1220,
+   "differ": 0,
+   "runs_list": [
+    {
+     "name": "sr_default",
+     "opts": "",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "sr_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "std_default",
+     "opts": "",
+     "env": "",
+     "inputs": 100,
+     "files": 100,
+     "identical": 100,
+     "ok": true
+    },
+    {
+     "name": "thumbs_default",
+     "opts": "",
+     "env": "",
+     "inputs": 280,
+     "files": 280,
+     "identical": 280,
+     "ok": true
+    },
+    {
+     "name": "kodak_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "rgba_default",
+     "opts": "",
+     "env": "",
+     "inputs": 39,
+     "files": 39,
+     "identical": 39,
+     "ok": true
+    },
+    {
+     "name": "rgba_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 39,
+     "files": 39,
+     "identical": 39,
+     "ok": true
+    },
+    {
+     "name": "llgraphics_lossless",
+     "opts": "--lossless --ycgco-re",
+     "env": "",
+     "inputs": 27,
+     "files": 27,
+     "identical": 27,
+     "ok": true
+    },
+    {
+     "name": "pal_screen_default",
+     "opts": "",
+     "env": "",
+     "inputs": 40,
+     "files": 40,
+     "identical": 40,
+     "ok": true
+    },
+    {
+     "name": "pal_screen_palette_on",
+     "opts": "--palette on",
+     "env": "",
+     "inputs": 40,
+     "files": 40,
+     "identical": 40,
+     "ok": true
+    },
+    {
+     "name": "pal_screen_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 40,
+     "files": 40,
+     "identical": 40,
+     "ok": true
+    },
+    {
+     "name": "pal_screen_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 40,
+     "files": 40,
+     "identical": 40,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_png_default",
+     "opts": "",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_png_palette_on",
+     "opts": "--palette on",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_png_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_png_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_jpg_default",
+     "opts": "",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_jpg_palette_on",
+     "opts": "--palette on",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_jpg_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 24,
+     "files": 24,
+     "identical": 24,
+     "ok": true
+    },
+    {
+     "name": "pal_flat_jpg_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 24,
+     "files": 0,
+     "identical": 0,
+     "ok": true
+    },
+    {
+     "name": "short_pair",
+     "opts": "",
+     "env": "",
+     "inputs": 2,
+     "files": 2,
+     "identical": 2,
+     "ok": true
+    },
+    {
+     "name": "short_pair_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 2,
+     "files": 2,
+     "identical": 2,
+     "ok": true
+    },
+    {
+     "name": "single10_default",
+     "opts": "",
+     "env": "",
+     "inputs": 10,
+     "files": 10,
+     "identical": 10,
+     "ok": true
+    },
+    {
+     "name": "single10_444_10",
+     "opts": "--yuv 444 --depth 10",
+     "env": "",
+     "inputs": 10,
+     "files": 10,
+     "identical": 10,
+     "ok": true
+    },
+    {
+     "name": "single_all_default",
+     "opts": "",
+     "env": "",
+     "inputs": 103,
+     "files": 103,
+     "identical": 103,
+     "ok": true
+    },
+    {
+     "name": "single_all_lossless",
+     "opts": "--lossless",
+     "env": "",
+     "inputs": 53,
+     "files": 52,
+     "identical": 52,
+     "ok": true
+    },
+    {
+     "name": "single_st_default",
+     "opts": "",
+     "env": "",
+     "inputs": 4,
+     "files": 4,
+     "identical": 4,
+     "ok": true
+    }
+   ]
+  }
+ },
+ "gate": {
+  "l4": [
+   "== photos30_q60_120_200: --images /home/ubuntu/gs/photos30 --q 60,120,200",
+   "[gate] q60: 30/30 identical in dav1d and aomdec (420 30; 15305396 bytes), 0 not encoded (unsupported input), rc=0 PASS",
+   "[gate] q120: 30/30 identical in dav1d and aomdec (420 30; 6912233 bytes), 0 not encoded (unsupported input), rc=0 PASS",
+   "[gate] q200: 30/30 identical in dav1d and aomdec (420 30; 1506769 bytes), 0 not encoded (unsupported input), rc=0 PASS",
+   "== photos30_444_10_q120: --images /home/ubuntu/gs/photos30 --q 120 --expect-format 444 --expect-depth 10 -- --yuv 444 --depth 10",
+   "[gate] q120: 30/30 identical in dav1d and aomdec (444 10-bit 30; 7031153 bytes), 0 not encoded (unsupported input), rc=0 PASS",
+   "== thumbs28_q60_120: --images /home/ubuntu/gs/thumbs28 --q 60,120",
+   "[gate] q60: 28/28 identical in dav1d and aomdec (420 28; 656250 bytes), 0 not encoded (unsupported input), rc=0 PASS",
+   "[gate] q120: 28/28 identical in dav1d and aomdec (420 28; 365619 bytes), 0 not encoded (unsupported input), rc=0 PASS",
+   "== rgba: --images /home/ubuntu/data/rgba/set --expect-alpha",
+   "[gate] q120: 39/39 identical in dav1d and aomdec (420 39; 670122 bytes); alpha items 35/35 identical (alpha qindex 120), 0 not encoded (unsupported input), rc=0 PASS",
+   "== odd_q120: --images /home/ubuntu/sets/odd",
+   "[gate] q120: 30/30 identical in dav1d and aomdec (420 30; 39025 bytes), 0 not encoded (unsupported input), rc=0 PASS",
+   "== mono_q26_120: --images /home/ubuntu/sets/mono --q 26,120",
+   "[gate] q26: 47/47 identical in dav1d and aomdec (420 5, mono 42; 29495597 bytes), 0 not encoded (unsupported input), rc=0 PASS",
+   "[gate] q120: 47/47 identical in dav1d and aomdec (420 5, mono 42; 8435721 bytes), 0 not encoded (unsupported input), rc=0 PASS",
+   "== kodak_lossless: --images /home/ubuntu/ll/kodak --lossless",
+   "[gate] lossless: 24/24 identical in dav1d and aomdec (444 24; 13370817 bytes), 0 not encoded (unsupported input), rc=0 PASS",
+   "== pal_screen: --images /home/ubuntu/pal/sets/screen",
+   "[gate] q120: 40/40 identical in dav1d and aomdec (420 40; 2686557 bytes), 0 not encoded (unsupported input), rc=0 PASS",
+   "== pal_screen_on: --images /home/ubuntu/pal/sets/screen -- --palette on",
+   "[gate] q120: 40/40 identical in dav1d and aomdec (420 40; 2685543 bytes), 0 not encoded (unsupported input), rc=0 PASS",
+   "== pal_screen_444_10: --images /home/ubuntu/pal/sets/screen --q 120 --expect-format 444 --expect-depth 10 -- --yuv 444 --depth 10",
+   "[gate] q120: 40/40 identical in dav1d and aomdec (444 10-bit 40; 2855655 bytes), 0 not encoded (unsupported input), rc=0 PASS",
+   "== pal_flat_png: --images /home/ubuntu/pal/sets/flat_png",
+   "[gate] q120: 24/24 identical in dav1d and aomdec (420 24; 2371079 bytes), 0 not encoded (unsupported input), rc=0 PASS",
+   "== pal_flat_png_on: --images /home/ubuntu/pal/sets/flat_png -- --palette on",
+   "[gate] q120: 24/24 identical in dav1d and aomdec (420 24; 2318726 bytes), 0 not encoded (unsupported input), rc=0 PASS",
+   "== pal_flat_png_444_10: --images /home/ubuntu/pal/sets/flat_png --q 120 --expect-format 444 --expect-depth 10 -- --yuv 444 --depth 10",
+   "[gate] q120: 24/24 identical in dav1d and aomdec (444 10-bit 24; 2457931 bytes), 0 not encoded (unsupported input), rc=0 PASS",
+   "== pal_flat_jpg: --images /home/ubuntu/pal/sets/flat_jpg",
+   "[gate] q120: 24/24 identical in dav1d and aomdec (420 24; 2611900 bytes), 0 not encoded (unsupported input), rc=0 PASS",
+   "== pal_flat_jpg_on: --images /home/ubuntu/pal/sets/flat_jpg -- --palette on",
+   "[gate] q120: 24/24 identical in dav1d and aomdec (420 24; 2465642 bytes), 0 not encoded (unsupported input), rc=0 PASS",
+   "== pal_flat_jpg_444_10: --images /home/ubuntu/pal/sets/flat_jpg --q 120 --expect-format 444 --expect-depth 10 -- --yuv 444 --depth 10",
+   "[gate] q120: 24/24 identical in dav1d and aomdec (444 10-bit 24; 2661629 bytes), 0 not encoded (unsupported input), rc=0 PASS",
+   "== pal_screen_lossless: --images /home/ubuntu/pal/sets/screen --lossless",
+   "[gate] lossless: 40/40 identical in dav1d and aomdec (444 40; 20466294 bytes), 0 not encoded (unsupported input), rc=0 PASS",
+   "== pal_flat_png_lossless: --images /home/ubuntu/pal/sets/flat_png --lossless",
+   "[gate] lossless: 24/24 identical in dav1d and aomdec (444 24; 27712246 bytes), 0 not encoded (unsupported input), rc=0 PASS"
+  ],
+  "bw": [
+   "== photos30_q60_120_200: --images /home/ubuntu/gs/photos30 --q 60,120,200",
+   "[gate] q60: 30/30 identical in dav1d and aomdec (420 30; 15305396 bytes), 0 not encoded (unsupported input), rc=0 PASS",
+   "[gate] q120: 30/30 identical in dav1d and aomdec (420 30; 6912233 bytes), 0 not encoded (unsupported input), rc=0 PASS",
+   "[gate] q200: 30/30 identical in dav1d and aomdec (420 30; 1506769 bytes), 0 not encoded (unsupported input), rc=0 PASS",
+   "== photos30_444_10_q120: --images /home/ubuntu/gs/photos30 --q 120 --expect-format 444 --expect-depth 10 -- --yuv 444 --depth 10",
+   "[gate] q120: 30/30 identical in dav1d and aomdec (444 10-bit 30; 7031153 bytes), 0 not encoded (unsupported input), rc=0 PASS",
+   "== thumbs28_q60_120: --images /home/ubuntu/gs/thumbs28 --q 60,120",
+   "[gate] q60: 28/28 identical in dav1d and aomdec (420 28; 656250 bytes), 0 not encoded (unsupported input), rc=0 PASS",
+   "[gate] q120: 28/28 identical in dav1d and aomdec (420 28; 365619 bytes), 0 not encoded (unsupported input), rc=0 PASS",
+   "== rgba: --images /home/ubuntu/data/rgba/set --expect-alpha",
+   "[gate] q120: 39/39 identical in dav1d and aomdec (420 39; 670122 bytes); alpha items 35/35 identical (alpha qindex 120), 0 not encoded (unsupported input), rc=0 PASS",
+   "== odd_q120: --images /home/ubuntu/sets/odd",
+   "[gate] q120: 30/30 identical in dav1d and aomdec (420 30; 39025 bytes), 0 not encoded (unsupported input), rc=0 PASS",
+   "== mono_q26_120: --images /home/ubuntu/sets/mono --q 26,120",
+   "[gate] q26: 47/47 identical in dav1d and aomdec (420 5, mono 42; 29495597 bytes), 0 not encoded (unsupported input), rc=0 PASS",
+   "[gate] q120: 47/47 identical in dav1d and aomdec (420 5, mono 42; 8435721 bytes), 0 not encoded (unsupported input), rc=0 PASS",
+   "== kodak_lossless: --images /home/ubuntu/ll/kodak --lossless",
+   "[gate] lossless: 24/24 identical in dav1d and aomdec (444 24; 13370817 bytes), 0 not encoded (unsupported input), rc=0 PASS",
+   "== pal_screen: --images /home/ubuntu/pal/sets/screen",
+   "[gate] q120: 40/40 identical in dav1d and aomdec (420 40; 2686557 bytes), 0 not encoded (unsupported input), rc=0 PASS",
+   "== pal_screen_on: --images /home/ubuntu/pal/sets/screen -- --palette on",
+   "[gate] q120: 40/40 identical in dav1d and aomdec (420 40; 2685543 bytes), 0 not encoded (unsupported input), rc=0 PASS",
+   "== pal_screen_444_10: --images /home/ubuntu/pal/sets/screen --q 120 --expect-format 444 --expect-depth 10 -- --yuv 444 --depth 10",
+   "[gate] q120: 40/40 identical in dav1d and aomdec (444 10-bit 40; 2855655 bytes), 0 not encoded (unsupported input), rc=0 PASS",
+   "== pal_flat_png: --images /home/ubuntu/pal/sets/flat_png",
+   "[gate] q120: 24/24 identical in dav1d and aomdec (420 24; 2371079 bytes), 0 not encoded (unsupported input), rc=0 PASS",
+   "== pal_flat_png_on: --images /home/ubuntu/pal/sets/flat_png -- --palette on",
+   "[gate] q120: 24/24 identical in dav1d and aomdec (420 24; 2318726 bytes), 0 not encoded (unsupported input), rc=0 PASS",
+   "== pal_flat_png_444_10: --images /home/ubuntu/pal/sets/flat_png --q 120 --expect-format 444 --expect-depth 10 -- --yuv 444 --depth 10",
+   "[gate] q120: 24/24 identical in dav1d and aomdec (444 10-bit 24; 2457931 bytes), 0 not encoded (unsupported input), rc=0 PASS",
+   "== pal_flat_jpg: --images /home/ubuntu/pal/sets/flat_jpg",
+   "[gate] q120: 24/24 identical in dav1d and aomdec (420 24; 2611900 bytes), 0 not encoded (unsupported input), rc=0 PASS",
+   "== pal_flat_jpg_on: --images /home/ubuntu/pal/sets/flat_jpg -- --palette on",
+   "[gate] q120: 24/24 identical in dav1d and aomdec (420 24; 2465642 bytes), 0 not encoded (unsupported input), rc=0 PASS",
+   "== pal_flat_jpg_444_10: --images /home/ubuntu/pal/sets/flat_jpg --q 120 --expect-format 444 --expect-depth 10 -- --yuv 444 --depth 10",
+   "[gate] q120: 24/24 identical in dav1d and aomdec (444 10-bit 24; 2661629 bytes), 0 not encoded (unsupported input), rc=0 PASS",
+   "== pal_screen_lossless: --images /home/ubuntu/pal/sets/screen --lossless",
+   "[gate] lossless: 40/40 identical in dav1d and aomdec (444 40; 20466294 bytes), 0 not encoded (unsupported input), rc=0 PASS",
+   "== pal_flat_png_lossless: --images /home/ubuntu/pal/sets/flat_png --lossless",
+   "[gate] lossless: 24/24 identical in dav1d and aomdec (444 24; 27712246 bytes), 0 not encoded (unsupported input), rc=0 PASS"
+  ]
+ }
+}

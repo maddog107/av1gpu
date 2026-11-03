@@ -1,0 +1,66 @@
+# kernels (cuobjdump --dump-resource-usage): arch | cubin | kernel | v0.8.0 REG/STACK/SHARED/LOCAL | v0.9.0
+sm_120 | k_recon | void k_recon<1, 8> | 128/1792/24496/0 | 128/1632/24496/0
+sm_120 | k_recon_420_10 | void k_recon<1, 10> | 128/1904/26736/0 | 128/1792/26736/0
+sm_120 | k_recon_444_10 | void k_recon<0, 10> | 128/2096/26736/0 | 128/1792/26736/0
+sm_120 | k_recon_444_8 | void k_recon<0, 8> | 128/1952/24496/0 | 128/1664/24496/0
+sm_89 | k_recon | void k_recon<1, 8> | 128/3104/23472/0 | 128/3312/23472/0
+sm_89 | k_recon_420_10 | void k_recon<1, 10> | 128/3120/25712/0 | 128/3328/25712/0
+sm_89 | k_recon_444_10 | void k_recon<0, 10> | 128/3072/25728/0 | 128/3136/25728/0
+sm_89 | k_recon_444_8 | void k_recon<0, 8> | 128/3056/23488/0 | 128/3136/23488/0
+# functions (nvdisasm): arch | cubin | function | v0.8.0 STL / LDL / instructions | v0.9.0 STL / LDL / instructions
+sm_120 | k_recon | void rc_pal_prepare<8> | 60 / 136 / 2256 | 60 / 135 / 2257
+sm_120 | k_recon | int cta_inverse_add<8> | 177 / 263 / 19044 | 41 / 79 / 14698
+sm_120 | k_recon | void rc_luma<8> | 5493 / 16587 / 498853 | 5328 / 13794 / 492253
+sm_120 | k_recon | void rc_chroma<1, 8> | 271 / 767 / 22876 | 293 / 806 / 22718
+sm_120 | k_recon | _INTERNAL_3129f895_10_k_recon_cu_592302ad::pal_kmeans | 298 / 395 / 6805 | 298 / 395 / 6805
+sm_120 | k_recon | void k_recon<1, 8> | 39 / 34 / 1099 | 50 / 34 / 1113
+sm_120 | k_recon_420_10 | void rc_pal_prepare<10> | 60 / 135 / 2276 | 60 / 134 / 2276
+sm_120 | k_recon_420_10 | int cta_inverse_add<10> | 207 / 288 / 17802 | 41 / 79 / 13438
+sm_120 | k_recon_420_10 | void rc_luma<10> | 6242 / 17733 / 505548 | 5966 / 14562 / 497528
+sm_120 | k_recon_420_10 | void rc_chroma<1, 10> | 295 / 872 / 23207 | 313 / 815 / 22863
+sm_120 | k_recon_420_10 | _INTERNAL_14466617_17_k_recon_420_10_cu_dc6ca3b3::pal_kmeans | 298 / 395 / 6882 | 298 / 395 / 6936
+sm_120 | k_recon_420_10 | void k_recon<1, 10> | 40 / 34 / 1098 | 39 / 34 / 1103
+sm_120 | k_recon_444_10 | void rc_pal_prepare<10> | 60 / 135 / 2272 | 60 / 134 / 2276
+sm_120 | k_recon_444_10 | int cta_inverse_add<10> | 204 / 284 / 17990 | 57 / 80 / 13564
+sm_120 | k_recon_444_10 | void rc_luma<10> | 6133 / 17628 / 505768 | 5955 / 14546 / 498184
+sm_120 | k_recon_444_10 | void rc_chroma<0, 10> | 318 / 936 / 23929 | 335 / 813 / 23332
+sm_120 | k_recon_444_10 | _INTERNAL_26664b83_17_k_recon_444_10_cu_64bc4d2c::pal_kmeans | 298 / 395 / 6936 | 298 / 395 / 6935
+sm_120 | k_recon_444_10 | void k_recon<0, 10> | 39 / 34 / 1057 | 39 / 34 / 1063
+sm_120 | k_recon_444_8 | void rc_pal_prepare<8> | 60 / 136 / 2254 | 60 / 135 / 2258
+sm_120 | k_recon_444_8 | int cta_inverse_add<8> | 160 / 247 / 19154 | 59 / 82 / 14858
+sm_120 | k_recon_444_8 | void rc_luma<8> | 5728 / 16713 / 499645 | 5498 / 13845 / 493475
+sm_120 | k_recon_444_8 | void rc_chroma<0, 8> | 287 / 921 / 23706 | 304 / 783 / 23167
+sm_120 | k_recon_444_8 | _INTERNAL_6aa21a8a_16_k_recon_444_8_cu_a105a0f0::pal_kmeans | 298 / 395 / 6805 | 298 / 395 / 6802
+sm_120 | k_recon_444_8 | void k_recon<0, 8> | 39 / 34 / 1056 | 39 / 34 / 1059
+sm_89 | k_recon | void rc_final_quant<8> | 0 / 26 / 4168 | -
+sm_89 | k_recon | void rc_pal_prepare<8> | 61 / 187 / 2000 | 61 / 188 / 2007
+sm_89 | k_recon | int cta_inverse_add<8> | 341 / 492 / 34745 | 87 / 250 / 18483
+sm_89 | k_recon | void rc_final_quant_rd<8> | - | 38 / 90 / 6890
+sm_89 | k_recon | void rc_luma<8> | 1020 / 2554 / 63499 | 1019 / 2981 / 60266
+sm_89 | k_recon | void rc_chroma<1, 8> | 475 / 1003 / 56887 | 280 / 743 / 40806
+sm_89 | k_recon | _INTERNAL_3129f895_10_k_recon_cu_592302ad::pal_kmeans | 20 / 43 / 799 | 20 / 43 / 790
+sm_89 | k_recon | void k_recon<1, 8> | 144 / 99 / 1598 | 147 / 109 / 1610
+sm_89 | k_recon_420_10 | void rc_final_quant<10> | 0 / 26 / 4179 | -
+sm_89 | k_recon_420_10 | void rc_pal_prepare<10> | 61 / 187 / 2045 | 61 / 188 / 2047
+sm_89 | k_recon_420_10 | int cta_inverse_add<10> | 341 / 492 / 34756 | 87 / 250 / 18480
+sm_89 | k_recon_420_10 | void rc_final_quant_rd<10> | - | 43 / 95 / 6920
+sm_89 | k_recon_420_10 | void rc_luma<10> | 1029 / 2533 / 63778 | 1032 / 2964 / 60553
+sm_89 | k_recon_420_10 | void rc_chroma<1, 10> | 473 / 987 / 56898 | 279 / 728 / 40861
+sm_89 | k_recon_420_10 | _INTERNAL_14466617_17_k_recon_420_10_cu_dc6ca3b3::pal_kmeans | 20 / 43 / 799 | 20 / 43 / 792
+sm_89 | k_recon_420_10 | void k_recon<1, 10> | 144 / 99 / 1607 | 147 / 109 / 1619
+sm_89 | k_recon_444_10 | void rc_final_quant<10> | 0 / 26 / 4181 | -
+sm_89 | k_recon_444_10 | void rc_pal_prepare<10> | 61 / 187 / 2047 | 61 / 189 / 2034
+sm_89 | k_recon_444_10 | int cta_inverse_add<10> | 345 / 511 / 34908 | 107 / 249 / 18493
+sm_89 | k_recon_444_10 | void rc_final_quant_rd<10> | - | 38 / 90 / 6910
+sm_89 | k_recon_444_10 | void rc_luma<10> | 1013 / 2514 / 63739 | 1007 / 2945 / 60528
+sm_89 | k_recon_444_10 | void rc_chroma<0, 10> | 156 / 722 / 25323 | 162 / 556 / 25164
+sm_89 | k_recon_444_10 | _INTERNAL_26664b83_17_k_recon_444_10_cu_64bc4d2c::pal_kmeans | 20 / 43 / 800 | 20 / 43 / 792
+sm_89 | k_recon_444_10 | void k_recon<0, 10> | 144 / 105 / 1535 | 149 / 110 / 1538
+sm_89 | k_recon_444_8 | void rc_final_quant<8> | 0 / 26 / 4171 | -
+sm_89 | k_recon_444_8 | void rc_pal_prepare<8> | 61 / 187 / 2009 | 61 / 189 / 2013
+sm_89 | k_recon_444_8 | int cta_inverse_add<8> | 343 / 510 / 34882 | 107 / 249 / 18500
+sm_89 | k_recon_444_8 | void rc_final_quant_rd<8> | - | 36 / 88 / 6878
+sm_89 | k_recon_444_8 | void rc_luma<8> | 1001 / 2532 / 63451 | 998 / 2965 / 60217
+sm_89 | k_recon_444_8 | void rc_chroma<0, 8> | 158 / 749 / 25244 | 161 / 557 / 25032
+sm_89 | k_recon_444_8 | _INTERNAL_6aa21a8a_16_k_recon_444_8_cu_a105a0f0::pal_kmeans | 20 / 43 / 799 | 20 / 43 / 798
+sm_89 | k_recon_444_8 | void k_recon<0, 8> | 144 / 105 / 1526 | 149 / 110 / 1532

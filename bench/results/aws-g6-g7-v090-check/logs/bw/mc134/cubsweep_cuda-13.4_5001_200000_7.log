@@ -1,0 +1,3 @@
+========= COMPUTE-SANITIZER
+CUB 3.4.3: n 5001..200000 step 7, 27858 scans, no error (temp up to 511 B)
+========= ERROR SUMMARY: 0 errors

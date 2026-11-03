@@ -1,0 +1,40 @@
+========= COMPUTE-SANITIZER
+[av1gpu] 2 images (2.7 MP) in 11308.9 ms: 0.18 img/s, 0.23 MP/s; 1 batches; out 0.05 MB (0.146 bpp); CPU 667 ms = 0.06 cores; skipped (unsupported): 0; WebP/PNG via CPU decode: 0; write failures 0
+[av1gpu] stage ms: ingest wait 0.0 | gpu setup 170.1 analysis 1886.2 dp 38.0 recon 5193.9 pack 6.4 postfilter 183.4 download 0.0 (gpu total 7683.2, encode wall 7692.9) | entropy wall 4128.9 (gpu 1579.7) | write 0.3 | peak dev 40 MB
+========= Leaked 262144 bytes at 0x7b1e29640000
+=========     Saved host backtrace up to driver entry point at allocation time
+=========         Host Frame: cudaMalloc [0x1a2196] in B13
+=========         Host Frame: GpEncoder::init(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&) [0x665a8] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) [0xa1b92] in B13
+=========         Host Frame: main [0x3fb88] in B13
+========= 
+========= Leaked 262144 bytes at 0x7b1e29680000
+=========     Saved host backtrace up to driver entry point at allocation time
+=========         Host Frame: cudaMalloc [0x1a2196] in B13
+=========         Host Frame: GpEncoder::init(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&) [0x665a8] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) [0xa1b92] in B13
+=========         Host Frame: main [0x3fb88] in B13
+========= 
+========= Leaked 262144 bytes at 0x7b1e296c0000
+=========     Saved host backtrace up to driver entry point at allocation time
+=========         Host Frame: cudaMalloc [0x1a2196] in B13
+=========         Host Frame: GpEncoder::init(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&) [0x665a8] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) [0xa1f8f] in B13
+=========         Host Frame: main [0x3fb88] in B13
+========= 
+========= Leaked 262144 bytes at 0x7b1e29700000
+=========     Saved host backtrace up to driver entry point at allocation time
+=========         Host Frame: cudaMalloc [0x1a2196] in B13
+=========         Host Frame: GpEncoder::init(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&) [0x665a8] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) [0xa1f8f] in B13
+=========         Host Frame: main [0x3fb88] in B13
+========= 
+========= Leaked 262144 bytes at 0x7b1e29740000
+=========     Saved host backtrace up to driver entry point at allocation time
+=========         Host Frame: cudaMalloc [0x1a2196] in B13
+=========         Host Frame: GpEncoder::init(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&) [0x665a8] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) [0xa1f8f] in B13
+=========         Host Frame: main [0x3fb88] in B13
+========= 
+========= LEAK SUMMARY: 1310720 bytes leaked in 5 allocations
+========= ERROR SUMMARY: 5 errors

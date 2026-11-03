@@ -1,0 +1,243 @@
+========= COMPUTE-SANITIZER
+========= Invalid __shared__ read of size 16 bytes
+=========     at void cuda::ptx::__4::cp_async_bulk_cp_mask<void>(cuda::std::__4::integral_constant<cuda::ptx::__4::dot_space, (cuda::ptx::__4::dot_space)0>, cuda::std::__4::integral_constant<cuda::ptx::__4::dot_space, (cuda::ptx::__4::dot_space)2>, void *, const void *, const unsigned int &, const unsigned short &)+0x3a00 in cp_async_bulk.h:205
+=========     by thread (128,0,0) in block (2,0,0)
+=========     Access to 0xe90 is out of bounds
+=========         Device Frame: void cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::warpspeed::squadStoreBulkSync<unsigned int>(cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::warpspeed::Squad, cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::warpspeed::CpAsyncOobInfo<T1>, const cuda::std::byte *)+0x39a0 in load_store.cuh:305
+=========         Device Frame: auto void cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::kernelBody<cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::policy_selector_from_types<unsigned int *, unsigned int *, unsigned int, unsigned int, cuda::std::__4::plus<void>>, unsigned int, unsigned int, unsigned int, cuda::std::__4::plus<void>, unsigned int, (bool)0>(cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::warpspeed::Squad, cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::warpspeed::SpecialRegisters, const cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::scanKernelParams<T2, T3, T4> &, T5, T6, cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::ScanResources<T1, T2, T3, T4> &)::[lambda(T1, T2 &, T3 &, T4 &) (instance 1)]::operator ()<cuda::std::__4::integral_constant<bool, (bool)1>, cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::warpspeed::SmemPhase<unsigned int [132]>, cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::warpspeed::SmemPhase<unsigned int>, cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::warpspeed::SmemPhase<cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::ScanResources<cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::policy_selector_from_types<unsigned int *, unsigned int *, unsigned int, unsigned int, cuda::std::__4::plus<void>>, unsigned int, unsigned int, unsigned int>::InOutT>>(T1, T2 &, T3 &, T4 &) const+0x36d0 in kernel_scan_warpspeed.cuh:726
+=========         Device Frame: void cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::kernelBody<cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::policy_selector_from_types<unsigned int *, unsigned int *, unsigned int, unsigned int, cuda::std::__4::plus<void>>, unsigned int, unsigned int, unsigned int, cuda::std::__4::plus<void>, unsigned int, (bool)0>(cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::warpspeed::Squad, cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::warpspeed::SpecialRegisters, const cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::scanKernelParams<T2, T3, T4> &, T5, T6, cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::ScanResources<T1, T2, T3, T4> &)+0x2290 in kernel_scan_warpspeed.cuh:773
+=========         Device Frame: void cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::device_scan_warpspeed_body<cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::policy_selector_from_types<unsigned int *, unsigned int *, unsigned int, unsigned int, cuda::std::__4::plus<void>>, (bool)0, unsigned int, unsigned int, unsigned int, unsigned int, cuda::std::__4::plus<void>, cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::InputValue<unsigned int, unsigned int *>>(cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::scanKernelParams<T4, T5, T6>, T7, const T8 &)::[lambda(cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::warpspeed::Squad) (instance 1)]::operator ()(cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::warpspeed::Squad) const+0x2270 in kernel_scan_warpspeed.cuh:836
+=========         Device Frame: void cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::warpspeed::squadDispatch<(int)1, void cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::device_scan_warpspeed_body<cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::policy_selector_from_types<unsigned int *, unsigned int *, unsigned int, unsigned int, cuda::std::__4::plus<void>>, (bool)0, unsigned int, unsigned int, unsigned int, unsigned int, cuda::std::__4::plus<void>, cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::InputValue<unsigned int, unsigned int *>>(cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::scanKernelParams<T4, T5, T6>, T7, const T8 &)::[lambda(cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::warpspeed::Squad) (instance 1)]>(cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::warpspeed::SpecialRegisters, const cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::warpspeed::SquadDesc (&)[T1], T2, int)+0x2260 in squad.cuh:114
+=========         Device Frame: void cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::warpspeed::squadDispatch<(int)2, void cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::device_scan_warpspeed_body<cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::policy_selector_from_types<unsigned int *, unsigned int *, unsigned int, unsigned int, cuda::std::__4::plus<void>>, (bool)0, unsigned int, unsigned int, unsigned int, unsigned int, cuda::std::__4::plus<void>, cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::InputValue<unsigned int, unsigned int *>>(cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::scanKernelParams<T4, T5, T6>, T7, const T8 &)::[lambda(cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::warpspeed::Squad) (instance 1)]>(cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::warpspeed::SpecialRegisters, const cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::warpspeed::SquadDesc (&)[T1], T2, int)+0x2260 in squad.cuh:145
+=========         Device Frame: void cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::warpspeed::squadDispatch<(int)2, void cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::device_scan_warpspeed_body<cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::policy_selector_from_types<unsigned int *, unsigned int *, unsigned int, unsigned int, cuda::std::__4::plus<void>>, (bool)0, unsigned int, unsigned int, unsigned int, unsigned int, cuda::std::__4::plus<void>, cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::InputValue<unsigned int, unsigned int *>>(cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::scanKernelParams<T4, T5, T6>, T7, const T8 &)::[lambda(cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::warpspeed::Squad) (instance 1)]>(cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::warpspeed::SpecialRegisters, const cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::warpspeed::SquadDesc (&)[T1], T2, int)+0xa60 in squad.cuh:135
+=========         Device Frame: void cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::warpspeed::squadDispatch<(int)5, void cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::device_scan_warpspeed_body<cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::policy_selector_from_types<unsigned int *, unsigned int *, unsigned int, unsigned int, cuda::std::__4::plus<void>>, (bool)0, unsigned int, unsigned int, unsigned int, unsigned int, cuda::std::__4::plus<void>, cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::InputValue<unsigned int, unsigned int *>>(cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::scanKernelParams<T4, T5, T6>, T7, const T8 &)::[lambda(cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::warpspeed::Squad) (instance 1)]>(cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::warpspeed::SpecialRegisters, const cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::warpspeed::SquadDesc (&)[T1], T2, int)+0xa40 in squad.cuh:135
+=========         Device Frame: void cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::device_scan_warpspeed_body<cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::policy_selector_from_types<unsigned int *, unsigned int *, unsigned int, unsigned int, cuda::std::__4::plus<void>>, (bool)0, unsigned int, unsigned int, unsigned int, unsigned int, cuda::std::__4::plus<void>, cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::InputValue<unsigned int, unsigned int *>>(cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::scanKernelParams<T4, T5, T6>, T7, const T8 &)+0x9f0 in kernel_scan_warpspeed.cuh:835
+=========         Device Frame: void cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::DeviceScanKernel<cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::policy_selector_from_types<unsigned int *, unsigned int *, unsigned int, unsigned int, cuda::std::__4::plus<void>>, unsigned int *, unsigned int *, cub::_V_300403_SM_750_800_860_890_900_1000_1200::ScanTileState<unsigned int, (bool)1>, cuda::std::__4::plus<void>, cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::InputValue<unsigned int, unsigned int *>, unsigned int, unsigned int, (bool)0, unsigned int>(T2, T3, cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::tile_state_kernel_arg_t<T4, T8>, int, T5, T6, T7, int)+0x10 in kernel_scan.cuh:203
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: cudaLaunchKernel_ptsz [0x19f8df] in B13
+=========         Host Frame: void cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::DeviceScanKernel<cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::policy_selector_from_types<unsigned int*, unsigned int*, unsigned int, unsigned int, cuda::std::__4::plus<void> >, unsigned int*, unsigned int*, cub::_V_300403_SM_750_800_860_890_900_1000_1200::ScanTileState<unsigned int, true>, cuda::std::__4::plus<void>, cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::InputValue<unsigned int, unsigned int*>, unsigned int, unsigned int, false, unsigned int>(unsigned int*, unsigned int*, cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::tile_state_kernel_arg_t<cub::_V_300403_SM_750_800_860_890_900_1000_1200::ScanTileState<unsigned int, true>, unsigned int>, int, cuda::std::__4::plus<void>, cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::InputValue<unsigned int, unsigned int*>, unsigned int, int) [0xeb801] in B13
+=========         Host Frame: cudaError cub::_V_300403_SM_750_800_860_890_900_1000_1200::DeviceScan::ExclusiveSum<unsigned int*, unsigned int*, int>(void*, unsigned long&, unsigned int*, unsigned int*, int, CUstream_st*) [0x10f192] in B13
+=========         Host Frame: av1g_gpu::run_batch_device(av1g_gpu::DevBatch const&, CUstream_st*, void*, unsigned long, av1g_gpu::DevResult&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, av1g_gpu::DevEvents const*) [0xfc439] in B13
+=========         Host Frame: av1g_gpu::run_batch(std::vector<av1g_decision_record const*, std::allocator<av1g_decision_record const*> > const&, bool, av1g_gpu::BatchResult&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&) [0x100464] in B13
+=========         Host Frame: gp_entropy_gpu(std::vector<GpFrameOut*, std::allocator<GpFrameOut*> >&, std::vector<std::vector<unsigned char, std::allocator<unsigned char> > const*, std::allocator<std::vector<unsigned char, std::allocator<unsigned char> > const*> > const&, std::vector<std::vector<unsigned char, std::allocator<unsigned char> >, std::allocator<std::vector<unsigned char, std::allocator<unsigned char> > > >&, std::vector<std::vector<unsigned char, std::allocator<unsigned char> >, std::allocator<std::vector<unsigned char, std::allocator<unsigned char> > > >&, double*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, std::vector<GpFrameOut*, std::allocator<GpFrameOut*> > const*, std::vector<std::vector<unsigned char, std::allocator<unsigned char> >, std::allocator<std::vector<unsigned char, std::allocator<unsigned char> > > >*) [0x8ca59] in B13
+=========         Host Frame: main [0x42f0b] in B13
+========= 
+========= Program hit cudaErrorLaunchFailure (error 719) due to "unspecified launch failure" on CUDA API call to cudaLaunchKernel_ptsz.
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: av1g_gpu::run_batch_device(av1g_gpu::DevBatch const&, CUstream_st*, void*, unsigned long, av1g_gpu::DevResult&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, av1g_gpu::DevEvents const*) [0xfde8f] in B13
+=========         Host Frame: av1g_gpu::run_batch(std::vector<av1g_decision_record const*, std::allocator<av1g_decision_record const*> > const&, bool, av1g_gpu::BatchResult&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&) [0x100464] in B13
+=========         Host Frame: gp_entropy_gpu(std::vector<GpFrameOut*, std::allocator<GpFrameOut*> >&, std::vector<std::vector<unsigned char, std::allocator<unsigned char> > const*, std::allocator<std::vector<unsigned char, std::allocator<unsigned char> > const*> > const&, std::vector<std::vector<unsigned char, std::allocator<unsigned char> >, std::allocator<std::vector<unsigned char, std::allocator<unsigned char> > > >&, std::vector<std::vector<unsigned char, std::allocator<unsigned char> >, std::allocator<std::vector<unsigned char, std::allocator<unsigned char> > > >&, double*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, std::vector<GpFrameOut*, std::allocator<GpFrameOut*> > const*, std::vector<std::vector<unsigned char, std::allocator<unsigned char> >, std::allocator<std::vector<unsigned char, std::allocator<unsigned char> > > >*) [0x8ca59] in B13
+=========         Host Frame: main [0x42f0b] in B13
+========= 
+========= CUDA API Error: Sticky error detected
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: av1g_gpu::run_batch_device(av1g_gpu::DevBatch const&, CUstream_st*, void*, unsigned long, av1g_gpu::DevResult&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, av1g_gpu::DevEvents const*) [0xfd1d5] in B13
+=========         Host Frame: av1g_gpu::run_batch(std::vector<av1g_decision_record const*, std::allocator<av1g_decision_record const*> > const&, bool, av1g_gpu::BatchResult&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&) [0x100464] in B13
+=========         Host Frame: gp_entropy_gpu(std::vector<GpFrameOut*, std::allocator<GpFrameOut*> >&, std::vector<std::vector<unsigned char, std::allocator<unsigned char> > const*, std::allocator<std::vector<unsigned char, std::allocator<unsigned char> > const*> > const&, std::vector<std::vector<unsigned char, std::allocator<unsigned char> >, std::allocator<std::vector<unsigned char, std::allocator<unsigned char> > > >&, std::vector<std::vector<unsigned char, std::allocator<unsigned char> >, std::allocator<std::vector<unsigned char, std::allocator<unsigned char> > > >&, double*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, std::vector<GpFrameOut*, std::allocator<GpFrameOut*> > const*, std::vector<std::vector<unsigned char, std::allocator<unsigned char> >, std::allocator<std::vector<unsigned char, std::allocator<unsigned char> > > >*) [0x8ca59] in B13
+=========         Host Frame: main [0x42f0b] in B13
+========= 
+========= Program hit cudaErrorLaunchFailure (error 719) due to "unspecified launch failure" on CUDA API call to cudaLaunchKernel_ptsz.
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: av1g_gpu::run_batch_device(av1g_gpu::DevBatch const&, CUstream_st*, void*, unsigned long, av1g_gpu::DevResult&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, av1g_gpu::DevEvents const*) [0xfd1d5] in B13
+=========         Host Frame: av1g_gpu::run_batch(std::vector<av1g_decision_record const*, std::allocator<av1g_decision_record const*> > const&, bool, av1g_gpu::BatchResult&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&) [0x100464] in B13
+=========         Host Frame: gp_entropy_gpu(std::vector<GpFrameOut*, std::allocator<GpFrameOut*> >&, std::vector<std::vector<unsigned char, std::allocator<unsigned char> > const*, std::allocator<std::vector<unsigned char, std::allocator<unsigned char> > const*> > const&, std::vector<std::vector<unsigned char, std::allocator<unsigned char> >, std::allocator<std::vector<unsigned char, std::allocator<unsigned char> > > >&, std::vector<std::vector<unsigned char, std::allocator<unsigned char> >, std::allocator<std::vector<unsigned char, std::allocator<unsigned char> > > >&, double*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, std::vector<GpFrameOut*, std::allocator<GpFrameOut*> > const*, std::vector<std::vector<unsigned char, std::allocator<unsigned char> >, std::allocator<std::vector<unsigned char, std::allocator<unsigned char> > > >*) [0x8ca59] in B13
+=========         Host Frame: main [0x42f0b] in B13
+========= 
+========= CUDA API Error: Sticky error detected
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: av1g_gpu::run_batch_device(av1g_gpu::DevBatch const&, CUstream_st*, void*, unsigned long, av1g_gpu::DevResult&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, av1g_gpu::DevEvents const*) [0xfd2b7] in B13
+=========         Host Frame: av1g_gpu::run_batch(std::vector<av1g_decision_record const*, std::allocator<av1g_decision_record const*> > const&, bool, av1g_gpu::BatchResult&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&) [0x100464] in B13
+=========         Host Frame: gp_entropy_gpu(std::vector<GpFrameOut*, std::allocator<GpFrameOut*> >&, std::vector<std::vector<unsigned char, std::allocator<unsigned char> > const*, std::allocator<std::vector<unsigned char, std::allocator<unsigned char> > const*> > const&, std::vector<std::vector<unsigned char, std::allocator<unsigned char> >, std::allocator<std::vector<unsigned char, std::allocator<unsigned char> > > >&, std::vector<std::vector<unsigned char, std::allocator<unsigned char> >, std::allocator<std::vector<unsigned char, std::allocator<unsigned char> > > >&, double*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, std::vector<GpFrameOut*, std::allocator<GpFrameOut*> > const*, std::vector<std::vector<unsigned char, std::allocator<unsigned char> >, std::allocator<std::vector<unsigned char, std::allocator<unsigned char> > > >*) [0x8ca59] in B13
+=========         Host Frame: main [0x42f0b] in B13
+========= 
+========= Program hit cudaErrorLaunchFailure (error 719) due to "unspecified launch failure" on CUDA API call to cudaLaunchKernel_ptsz.
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: av1g_gpu::run_batch_device(av1g_gpu::DevBatch const&, CUstream_st*, void*, unsigned long, av1g_gpu::DevResult&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, av1g_gpu::DevEvents const*) [0xfd2b7] in B13
+=========         Host Frame: av1g_gpu::run_batch(std::vector<av1g_decision_record const*, std::allocator<av1g_decision_record const*> > const&, bool, av1g_gpu::BatchResult&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&) [0x100464] in B13
+=========         Host Frame: gp_entropy_gpu(std::vector<GpFrameOut*, std::allocator<GpFrameOut*> >&, std::vector<std::vector<unsigned char, std::allocator<unsigned char> > const*, std::allocator<std::vector<unsigned char, std::allocator<unsigned char> > const*> > const&, std::vector<std::vector<unsigned char, std::allocator<unsigned char> >, std::allocator<std::vector<unsigned char, std::allocator<unsigned char> > > >&, std::vector<std::vector<unsigned char, std::allocator<unsigned char> >, std::allocator<std::vector<unsigned char, std::allocator<unsigned char> > > >&, double*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, std::vector<GpFrameOut*, std::allocator<GpFrameOut*> > const*, std::vector<std::vector<unsigned char, std::allocator<unsigned char> >, std::allocator<std::vector<unsigned char, std::allocator<unsigned char> > > >*) [0x8ca59] in B13
+=========         Host Frame: main [0x42f0b] in B13
+========= 
+========= CUDA API Error: Sticky error detected
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: cudaEventRecord_ptsz [0x19da3a] in B13
+=========         Host Frame: av1g_gpu::run_batch_device(av1g_gpu::DevBatch const&, CUstream_st*, void*, unsigned long, av1g_gpu::DevResult&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, av1g_gpu::DevEvents const*) [0xfc640] in B13
+=========         Host Frame: av1g_gpu::run_batch(std::vector<av1g_decision_record const*, std::allocator<av1g_decision_record const*> > const&, bool, av1g_gpu::BatchResult&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&) [0x100464] in B13
+=========         Host Frame: gp_entropy_gpu(std::vector<GpFrameOut*, std::allocator<GpFrameOut*> >&, std::vector<std::vector<unsigned char, std::allocator<unsigned char> > const*, std::allocator<std::vector<unsigned char, std::allocator<unsigned char> > const*> > const&, std::vector<std::vector<unsigned char, std::allocator<unsigned char> >, std::allocator<std::vector<unsigned char, std::allocator<unsigned char> > > >&, std::vector<std::vector<unsigned char, std::allocator<unsigned char> >, std::allocator<std::vector<unsigned char, std::allocator<unsigned char> > > >&, double*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, std::vector<GpFrameOut*, std::allocator<GpFrameOut*> > const*, std::vector<std::vector<unsigned char, std::allocator<unsigned char> >, std::allocator<std::vector<unsigned char, std::allocator<unsigned char> > > >*) [0x8ca59] in B13
+=========         Host Frame: main [0x42f0b] in B13
+========= 
+========= Program hit cudaErrorLaunchFailure (error 719) due to "unspecified launch failure" on CUDA API call to cudaEventRecord_ptsz.
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: av1g_gpu::run_batch_device(av1g_gpu::DevBatch const&, CUstream_st*, void*, unsigned long, av1g_gpu::DevResult&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, av1g_gpu::DevEvents const*) [0xfc640] in B13
+=========         Host Frame: av1g_gpu::run_batch(std::vector<av1g_decision_record const*, std::allocator<av1g_decision_record const*> > const&, bool, av1g_gpu::BatchResult&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&) [0x100464] in B13
+=========         Host Frame: gp_entropy_gpu(std::vector<GpFrameOut*, std::allocator<GpFrameOut*> >&, std::vector<std::vector<unsigned char, std::allocator<unsigned char> > const*, std::allocator<std::vector<unsigned char, std::allocator<unsigned char> > const*> > const&, std::vector<std::vector<unsigned char, std::allocator<unsigned char> >, std::allocator<std::vector<unsigned char, std::allocator<unsigned char> > > >&, std::vector<std::vector<unsigned char, std::allocator<unsigned char> >, std::allocator<std::vector<unsigned char, std::allocator<unsigned char> > > >&, double*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, std::vector<GpFrameOut*, std::allocator<GpFrameOut*> > const*, std::vector<std::vector<unsigned char, std::allocator<unsigned char> >, std::allocator<std::vector<unsigned char, std::allocator<unsigned char> > > >*) [0x8ca59] in B13
+=========         Host Frame: main [0x42f0b] in B13
+========= 
+========= CUDA API Error: Sticky error detected
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: av1g_gpu::run_batch_device(av1g_gpu::DevBatch const&, CUstream_st*, void*, unsigned long, av1g_gpu::DevResult&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, av1g_gpu::DevEvents const*) [0xfc706] in B13
+=========         Host Frame: av1g_gpu::run_batch(std::vector<av1g_decision_record const*, std::allocator<av1g_decision_record const*> > const&, bool, av1g_gpu::BatchResult&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&) [0x100464] in B13
+=========         Host Frame: gp_entropy_gpu(std::vector<GpFrameOut*, std::allocator<GpFrameOut*> >&, std::vector<std::vector<unsigned char, std::allocator<unsigned char> > const*, std::allocator<std::vector<unsigned char, std::allocator<unsigned char> > const*> > const&, std::vector<std::vector<unsigned char, std::allocator<unsigned char> >, std::allocator<std::vector<unsigned char, std::allocator<unsigned char> > > >&, std::vector<std::vector<unsigned char, std::allocator<unsigned char> >, std::allocator<std::vector<unsigned char, std::allocator<unsigned char> > > >&, double*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, std::vector<GpFrameOut*, std::allocator<GpFrameOut*> > const*, std::vector<std::vector<unsigned char, std::allocator<unsigned char> >, std::allocator<std::vector<unsigned char, std::allocator<unsigned char> > > >*) [0x8ca59] in B13
+=========         Host Frame: main [0x42f0b] in B13
+========= 
+========= Program hit cudaErrorLaunchFailure (error 719) due to "unspecified launch failure" on CUDA API call to cudaLaunchKernel_ptsz.
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: av1g_gpu::run_batch_device(av1g_gpu::DevBatch const&, CUstream_st*, void*, unsigned long, av1g_gpu::DevResult&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, av1g_gpu::DevEvents const*) [0xfc706] in B13
+=========         Host Frame: av1g_gpu::run_batch(std::vector<av1g_decision_record const*, std::allocator<av1g_decision_record const*> > const&, bool, av1g_gpu::BatchResult&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&) [0x100464] in B13
+=========         Host Frame: gp_entropy_gpu(std::vector<GpFrameOut*, std::allocator<GpFrameOut*> >&, std::vector<std::vector<unsigned char, std::allocator<unsigned char> > const*, std::allocator<std::vector<unsigned char, std::allocator<unsigned char> > const*> > const&, std::vector<std::vector<unsigned char, std::allocator<unsigned char> >, std::allocator<std::vector<unsigned char, std::allocator<unsigned char> > > >&, std::vector<std::vector<unsigned char, std::allocator<unsigned char> >, std::allocator<std::vector<unsigned char, std::allocator<unsigned char> > > >&, double*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, std::vector<GpFrameOut*, std::allocator<GpFrameOut*> > const*, std::vector<std::vector<unsigned char, std::allocator<unsigned char> >, std::allocator<std::vector<unsigned char, std::allocator<unsigned char> > > >*) [0x8ca59] in B13
+=========         Host Frame: main [0x42f0b] in B13
+========= 
+========= Program hit cudaErrorLaunchFailure (error 719) due to "unspecified launch failure" on CUDA API call to cudaGetLastError.
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: cudaError cub::_V_300403_SM_750_800_860_890_900_1000_1200::DeviceScan::ExclusiveSum<unsigned long*, unsigned long*, int>(void*, unsigned long&, unsigned long*, unsigned long*, int, CUstream_st*) [0x10b50e] in B13
+=========         Host Frame: av1g_gpu::run_batch_device(av1g_gpu::DevBatch const&, CUstream_st*, void*, unsigned long, av1g_gpu::DevResult&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, av1g_gpu::DevEvents const*) [0xfc747] in B13
+=========         Host Frame: av1g_gpu::run_batch(std::vector<av1g_decision_record const*, std::allocator<av1g_decision_record const*> > const&, bool, av1g_gpu::BatchResult&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&) [0x100464] in B13
+=========         Host Frame: gp_entropy_gpu(std::vector<GpFrameOut*, std::allocator<GpFrameOut*> >&, std::vector<std::vector<unsigned char, std::allocator<unsigned char> > const*, std::allocator<std::vector<unsigned char, std::allocator<unsigned char> > const*> > const&, std::vector<std::vector<unsigned char, std::allocator<unsigned char> >, std::allocator<std::vector<unsigned char, std::allocator<unsigned char> > > >&, std::vector<std::vector<unsigned char, std::allocator<unsigned char> >, std::allocator<std::vector<unsigned char, std::allocator<unsigned char> > > >&, double*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, std::vector<GpFrameOut*, std::allocator<GpFrameOut*> > const*, std::vector<std::vector<unsigned char, std::allocator<unsigned char> >, std::allocator<std::vector<unsigned char, std::allocator<unsigned char> > > >*) [0x8ca59] in B13
+=========         Host Frame: main [0x42f0b] in B13
+========= 
+entropy: CUDA: invalid device ordinal at cub::DeviceScan::ExclusiveSum(dCub, cubBytes, dCapArr, dCapOff, (int)(nTiles + 1), s)
+========= CUDA API Error: Sticky error detected
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: cudaEventDestroy [0x19e265] in B13
+=========         Host Frame: GpEncoder::~GpEncoder() [0x663ac] in B13
+=========         Host Frame: main [0x40156] in B13
+========= 
+========= Program hit cudaErrorLaunchFailure (error 719) due to "unspecified launch failure" on CUDA API call to cudaEventDestroy.
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: GpEncoder::~GpEncoder() [0x663ac] in B13
+=========         Host Frame: main [0x40156] in B13
+========= 
+========= CUDA API Error: Sticky error detected
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: cudaEventDestroy [0x19e265] in B13
+=========         Host Frame: GpEncoder::~GpEncoder() [0x663ac] in B13
+=========         Host Frame: main [0x40156] in B13
+========= 
+========= Program hit cudaErrorLaunchFailure (error 719) due to "unspecified launch failure" on CUDA API call to cudaEventDestroy.
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: GpEncoder::~GpEncoder() [0x663ac] in B13
+=========         Host Frame: main [0x40156] in B13
+========= 
+========= CUDA API Error: Sticky error detected
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: cudaEventDestroy [0x19e265] in B13
+=========         Host Frame: GpEncoder::~GpEncoder() [0x663ac] in B13
+=========         Host Frame: main [0x40156] in B13
+========= 
+========= Program hit cudaErrorLaunchFailure (error 719) due to "unspecified launch failure" on CUDA API call to cudaEventDestroy.
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: GpEncoder::~GpEncoder() [0x663ac] in B13
+=========         Host Frame: main [0x40156] in B13
+========= 
+========= CUDA API Error: Sticky error detected
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: cudaEventDestroy [0x19e265] in B13
+=========         Host Frame: GpEncoder::~GpEncoder() [0x663ac] in B13
+=========         Host Frame: main [0x40156] in B13
+========= 
+========= Program hit cudaErrorLaunchFailure (error 719) due to "unspecified launch failure" on CUDA API call to cudaEventDestroy.
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: GpEncoder::~GpEncoder() [0x663ac] in B13
+=========         Host Frame: main [0x40156] in B13
+========= 
+========= CUDA API Error: Sticky error detected
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: cudaEventDestroy [0x19e265] in B13
+=========         Host Frame: GpEncoder::~GpEncoder() [0x663ac] in B13
+=========         Host Frame: main [0x40156] in B13
+========= 
+========= Program hit cudaErrorLaunchFailure (error 719) due to "unspecified launch failure" on CUDA API call to cudaEventDestroy.
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: GpEncoder::~GpEncoder() [0x663ac] in B13
+=========         Host Frame: main [0x40156] in B13
+========= 
+========= CUDA API Error: Sticky error detected
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: cudaEventDestroy [0x19e265] in B13
+=========         Host Frame: GpEncoder::~GpEncoder() [0x663ac] in B13
+=========         Host Frame: main [0x40156] in B13
+========= 
+========= Program hit cudaErrorLaunchFailure (error 719) due to "unspecified launch failure" on CUDA API call to cudaEventDestroy.
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: GpEncoder::~GpEncoder() [0x663ac] in B13
+=========         Host Frame: main [0x40156] in B13
+========= 
+========= CUDA API Error: Sticky error detected
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: cudaEventDestroy [0x19e265] in B13
+=========         Host Frame: GpEncoder::~GpEncoder() [0x663ac] in B13
+=========         Host Frame: main [0x40156] in B13
+========= 
+========= Program hit cudaErrorLaunchFailure (error 719) due to "unspecified launch failure" on CUDA API call to cudaEventDestroy.
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: GpEncoder::~GpEncoder() [0x663ac] in B13
+=========         Host Frame: main [0x40156] in B13
+========= 
+========= CUDA API Error: Sticky error detected
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: cudaEventDestroy [0x19e265] in B13
+=========         Host Frame: GpEncoder::~GpEncoder() [0x663ac] in B13
+=========         Host Frame: main [0x40156] in B13
+========= 
+========= Program hit cudaErrorLaunchFailure (error 719) due to "unspecified launch failure" on CUDA API call to cudaEventDestroy.
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: GpEncoder::~GpEncoder() [0x663ac] in B13
+=========         Host Frame: main [0x40156] in B13
+========= 
+========= CUDA API Error: Sticky error detected
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: cudaEventDestroy [0x19e265] in B13
+=========         Host Frame: GpEncoder::~GpEncoder() [0x663ac] in B13
+=========         Host Frame: main [0x40156] in B13
+========= 
+========= Program hit cudaErrorLaunchFailure (error 719) due to "unspecified launch failure" on CUDA API call to cudaEventDestroy.
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: GpEncoder::~GpEncoder() [0x663ac] in B13
+=========         Host Frame: main [0x40156] in B13
+========= 
+========= CUDA API Error: Sticky error detected
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: cudaEventDestroy [0x19e265] in B13
+=========         Host Frame: GpEncoder::~GpEncoder() [0x663c6] in B13
+=========         Host Frame: main [0x40156] in B13
+========= 
+========= Program hit cudaErrorLaunchFailure (error 719) due to "unspecified launch failure" on CUDA API call to cudaEventDestroy.
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: GpEncoder::~GpEncoder() [0x663c6] in B13
+=========         Host Frame: main [0x40156] in B13
+========= 
+========= CUDA API Error: Sticky error detected
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: cudaEventDestroy [0x19e265] in B13
+=========         Host Frame: GpEncoder::~GpEncoder() [0x663d7] in B13
+=========         Host Frame: main [0x40156] in B13
+========= 
+========= Program hit cudaErrorLaunchFailure (error 719) due to "unspecified launch failure" on CUDA API call to cudaEventDestroy.
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: GpEncoder::~GpEncoder() [0x663d7] in B13
+=========         Host Frame: main [0x40156] in B13
+========= 
+========= CUDA API Error: Sticky error detected
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: cudaStreamDestroy [0x19b45f] in B13
+=========         Host Frame: GpEncoder::~GpEncoder() [0x663e8] in B13
+=========         Host Frame: main [0x40156] in B13
+========= 
+========= Program hit cudaErrorLaunchFailure (error 719) due to "unspecified launch failure" on CUDA API call to cudaStreamDestroy.
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: GpEncoder::~GpEncoder() [0x663e8] in B13
+=========         Host Frame: main [0x40156] in B13
+========= 
+========= CUDA API Error: Sticky error detected
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: cudaFree [0x1a2a72] in B13
+=========         Host Frame: GpEncoder::~GpEncoder() [0x663f9] in B13
+=========         Host Frame: main [0x40156] in B13
+========= 
+========= Program hit cudaErrorLaunchFailure (error 719) due to "unspecified launch failure" on CUDA API call to cudaFree.
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: GpEncoder::~GpEncoder() [0x663f9] in B13
+=========         Host Frame: main [0x40156] in B13
+========= 
+========= Target application returned an error
+========= LEAK SUMMARY: 0 bytes leaked in 0 allocations
+========= ERROR SUMMARY: 37 errors

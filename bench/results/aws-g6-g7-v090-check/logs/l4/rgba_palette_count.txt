@@ -1,0 +1,1 @@
+rgba: 15 of 39 outputs differ between --palette auto and off; bytes auto 685414 off 698892
