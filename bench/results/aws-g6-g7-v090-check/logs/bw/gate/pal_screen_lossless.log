@@ -1,0 +1,1 @@
+[gate] lossless: 40/40 identical in dav1d and aomdec (444 40; 20466294 bytes), 0 not encoded (unsupported input), rc=0 PASS

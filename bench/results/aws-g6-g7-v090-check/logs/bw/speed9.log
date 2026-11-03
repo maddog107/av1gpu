@@ -1,0 +1,53 @@
+start 08:40:54; GPU apps: 0
+== photo.jpg
+/home/ubuntu/bin/B13: median 506.3 ms, min 498.4, max 520.5, n 12
+/home/ubuntu/bin/A13: median 1026.7 ms, min 1019.5, max 1038.3, n 12
+/home/ubuntu/bin/A13c: median 1032.6 ms, min 1015.7, max 1087.8, n 12
+/home/ubuntu/bin/A13@GP_MAX_CONNECTIONS=1: median 629.3 ms, min 621.2, max 640.7, n 12
+== big.jpg
+/home/ubuntu/bin/B13: median 577.8 ms, min 566.3, max 587.8, n 12
+/home/ubuntu/bin/A13: median 1139.4 ms, min 1130.8, max 1150.2, n 12
+/home/ubuntu/bin/A13c: median 1143.2 ms, min 1135.0, max 1161.4, n 12
+/home/ubuntu/bin/A13@GP_MAX_CONNECTIONS=1: median 745.8 ms, min 734.2, max 759.5, n 12
+== thumb512.jpg
+/home/ubuntu/bin/B13: median 498.0 ms, min 489.3, max 510.4, n 12
+/home/ubuntu/bin/A13: median 1035.6 ms, min 1024.9, max 1044.3, n 12
+/home/ubuntu/bin/A13c: median 1037.6 ms, min 1028.2, max 1044.6, n 12
+/home/ubuntu/bin/A13@GP_MAX_CONNECTIONS=1: median 643.4 ms, min 631.3, max 647.3, n 12
+== t320.jpg
+/home/ubuntu/bin/B13: median 523.2 ms, min 508.6, max 534.4, n 12
+/home/ubuntu/bin/A13: median 1058.5 ms, min 1050.0, max 1068.0, n 12
+/home/ubuntu/bin/A13c: median 1060.8 ms, min 1052.9, max 1068.3, n 12
+/home/ubuntu/bin/A13@GP_MAX_CONNECTIONS=1: median 660.2 ms, min 650.7, max 671.8, n 12
+== pair batch (photo.jpg + thumb512.jpg)
+/home/ubuntu/bin/B13: median 677.1 ms, min 663.2, max 691.3, n 12
+/home/ubuntu/bin/A13: median 1190.0 ms, min 1175.5, max 1203.6, n 12
+/home/ubuntu/bin/A13c: median 1185.9 ms, min 1177.2, max 1199.5, n 12
+/home/ubuntu/bin/A13@GP_MAX_CONNECTIONS=1: median 788.7 ms, min 775.6, max 800.8, n 12
+single rc 0 08:44:37
+batch size_range/r0 B13: 437.1 MP/s 91.5 img/s (runs 441.1, 437.1, 431.6), wall 4.25 s
+batch size_range/r0 A13: 411.2 MP/s 86.1 img/s (runs 412.4, 397.7, 411.2), wall 4.46 s
+batch size_range/r0 A13c: 416.2 MP/s 87.1 img/s (runs 400.9, 416.2, 418.0), wall 4.43 s
+batch standard/r0 B13: 148.7 MP/s 188.9 img/s (runs 148.6, 148.7, 149.3), wall 7.83 s
+batch standard/r0 A13: 141.8 MP/s 180.1 img/s (runs 142.0, 141.8, 138.9), wall 8.20 s
+batch standard/r0 A13c: 141.5 MP/s 179.8 img/s (runs 141.5, 141.7, 141.5), wall 8.21 s
+batch thumbs/r0 B13: 126.4 MP/s 833.6 img/s (runs 126.7, 126.4, 126.4), wall 9.01 s
+batch thumbs/r0 A13: 118.1 MP/s 778.4 img/s (runs 118.1, 118.1, 117.7), wall 9.61 s
+batch thumbs/r0 A13c: 117.4 MP/s 774.2 img/s (runs 117.2, 117.4, 118.3), wall 9.64 s
+batch size_range_444_10/r0 B13: 327.1 MP/s 68.5 img/s (runs 327.1, 327.2, 323.8), wall 5.35 s
+batch size_range_444_10/r0 A13: 295.5 MP/s 61.8 img/s (runs 295.5, 290.2, 297.4), wall 5.83 s
+batch size_range_444_10/r0 A13c: 288.9 MP/s 60.5 img/s (runs 285.8, 288.9, 295.2), wall 5.95 s
+batch size_range/r1 A13c: 408.4 MP/s 85.5 img/s (runs 408.7, 403.0, 408.4), wall 4.49 s
+batch size_range/r1 A13: 401.6 MP/s 84.0 img/s (runs 412.5, 401.6, 398.2), wall 4.54 s
+batch size_range/r1 B13: 420.9 MP/s 88.1 img/s (runs 420.9, 439.9, 419.0), wall 4.36 s
+batch standard/r1 A13c: 141.1 MP/s 179.2 img/s (runs 141.1, 141.1, 142.2), wall 8.22 s
+batch standard/r1 A13: 141.1 MP/s 179.2 img/s (runs 141.1, 141.7, 141.1), wall 8.22 s
+batch standard/r1 B13: 147.6 MP/s 187.4 img/s (runs 147.6, 148.0, 147.2), wall 7.88 s
+batch thumbs/r1 A13c: 117.6 MP/s 775.2 img/s (runs 117.5, 117.6, 117.7), wall 9.64 s
+batch thumbs/r1 A13: 117.5 MP/s 774.8 img/s (runs 117.6, 117.5, 117.4), wall 9.65 s
+batch thumbs/r1 B13: 125.4 MP/s 827.0 img/s (runs 125.6, 125.4, 125.4), wall 9.08 s
+batch size_range_444_10/r1 A13c: 293.0 MP/s 61.3 img/s (runs 292.2, 295.2, 293.0), wall 5.87 s
+batch size_range_444_10/r1 A13: 291.3 MP/s 61.0 img/s (runs 290.8, 293.9, 291.3), wall 5.89 s
+batch size_range_444_10/r1 B13: 321.9 MP/s 67.4 img/s (runs 321.6, 321.9, 325.3), wall 5.41 s
+batch rc 0 08:55:43
+SPEED9_DONE 08:55:43

@@ -1,0 +1,4 @@
+11e9d401a0305959da39aea2a2a02b544a928c936ec769a294a326a1f72cdde4  /home/ubuntu/rel/av1gpu-dev-c553ffb-linux-x86_64-cuda12.tar.gz
+c77e109eaf5f3fdb8484444f556d386c5cbe29f79e0fdde898f581089f8e5f71  /home/ubuntu/rel/av1gpu-dev-c553ffb-linux-x86_64.tar.gz
+f9b4e1d5795311b381fcf1597ce1156ac3b888ff88950dfb4ac2b795b7409cc4  /home/ubuntu/bin/B13
+9c87cc538606aed14119dc4f264407eca443a8ea17b6bd48afd79f4eb4cd0da5  /home/ubuntu/bin/B12

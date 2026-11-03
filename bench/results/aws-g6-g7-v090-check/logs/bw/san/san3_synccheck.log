@@ -1,0 +1,4 @@
+========= COMPUTE-SANITIZER
+[av1gpu] 3 images (4.6 MP) in 1609.2 ms: 1.86 img/s, 2.89 MP/s; 1 batches; out 0.16 MB (0.268 bpp); CPU 125 ms = 0.08 cores; skipped (unsupported): 0; WebP/PNG via CPU decode: 0; write failures 0
+[av1gpu] stage ms: ingest wait 0.0 | gpu setup 0.6 analysis 20.6 dp 0.3 recon 1384.2 pack 0.3 postfilter 10.1 download 0.0 (gpu total 1424.6, encode wall 1425.0) | entropy wall 835.2 (gpu 768.5) | write 0.4 | peak dev 67 MB
+========= ERROR SUMMARY: 0 errors

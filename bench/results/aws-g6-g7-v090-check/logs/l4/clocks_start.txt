@@ -1,0 +1,2 @@
+clocks.current.sm [MHz], clocks.max.sm [MHz], power.draw [W], power.limit [W], enforced.power.limit [W], clocks_event_reasons.active, temperature.gpu
+2040 MHz, 2040 MHz, 29.92 W, 72.00 W, 72.00 W, 0x0000000000000001, 61

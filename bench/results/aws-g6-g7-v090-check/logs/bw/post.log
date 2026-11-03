@@ -1,0 +1,67 @@
+start 08:22:12
+av1gpu-dev-c553ffb-linux-x86_64.tar.gz: OK
+av1gpu-dev-c553ffb-linux-x86_64-cuda12.tar.gz: OK
+11e9d401a0305959da39aea2a2a02b544a928c936ec769a294a326a1f72cdde4  /home/ubuntu/rel/av1gpu-dev-c553ffb-linux-x86_64-cuda12.tar.gz
+c77e109eaf5f3fdb8484444f556d386c5cbe29f79e0fdde898f581089f8e5f71  /home/ubuntu/rel/av1gpu-dev-c553ffb-linux-x86_64.tar.gz
+f9b4e1d5795311b381fcf1597ce1156ac3b888ff88950dfb4ac2b795b7409cc4  /home/ubuntu/bin/B13
+9c87cc538606aed14119dc4f264407eca443a8ea17b6bd48afd79f4eb4cd0da5  /home/ubuntu/bin/B12
+/home/ubuntu/rel/av1gpu-dev-c553ffb-linux-x86_64:
+total 517332
+drwxr-xr-x 2 ubuntu ubuntu      4096 Nov  3 08:15 .
+drwxrwxr-x 6 ubuntu ubuntu      4096 Nov  3 08:22 ..
+-rw-r--r-- 1 ubuntu ubuntu      1326 Nov  3 08:15 LICENSE
+-rw-r--r-- 1 ubuntu ubuntu      3312 Nov  3 08:15 THIRD_PARTY_NOTICES.md
+-rwxr-xr-x 1 ubuntu ubuntu 529731376 Nov  3 08:15 av1gpu
+
+/home/ubuntu/rel/av1gpu-dev-c553ffb-linux-x86_64-cuda12:
+total 543460
+drwxr-xr-x 2 ubuntu ubuntu      4096 Nov  3 08:14 .
+drwxrwxr-x 6 ubuntu ubuntu      4096 Nov  3 08:22 ..
+-rw-r--r-- 1 ubuntu ubuntu      1326 Nov  3 08:14 LICENSE
+-rw-r--r-- 1 ubuntu ubuntu      3312 Nov  3 08:14 THIRD_PARTY_NOTICES.md
+-rwxr-xr-x 1 ubuntu ubuntu 556482944 Nov  3 08:14 av1gpu
+resusage rc 0 08:24:35
+TOTAL A13_B13: 103/103 runs identical; files 5679 / 5679, differing or missing 0
+tail: option used in invalid context -- 1
+identity done 08:39:51
+gate done 08:40:54
+      1 rc 0 (1 s)
+      3 rc 0 (2 s)
+      6 rc 0 (3 s)
+      5 rc 0 (4 s)
+      2 rc 0 (5 s)
+      1 rc 0 (8 s)
+speed done 08:55:43
+sanitizers done 09:06:55
+BIN /home/ubuntu/bin/B13 (f9b4e1d5795311b3); Version 2026.1.0.0 (build 37182542) (public-release)
+6057c6daef8fc78a_typical.jpg (1800, 1200) 2.16 MP
+3065cbd41a1ad905_typical.jpg (1600, 1066) 1.71 MP
+b2fef7eca1352b4a_small.jpg (1024, 766) 0.78 MP
+screen PNG: screen_ai_source_verification.png
+synccheck san3 [default]: rc 0, 3 s, outputs differing from the plain run: 0 of 3;  ERROR SUMMARY: 0 errors
+synccheck san3_444_10 [--yuv 444 --depth 10]: rc 0, 21 s, outputs differing from the plain run: 0 of 3;  ERROR SUMMARY: 0 errors
+memcheck san3 [default]: rc 99, 26 s, outputs differing from the plain run: 3 of 3;  ERROR SUMMARY: 14 errors were not printed. Use --print-limit option to adjust the number of printed errors
+memcheck san3_444_10 [--yuv 444 --depth 10]: rc 99, 29 s, outputs differing from the plain run: 3 of 3;  ERROR SUMMARY: 89 errors
+memcheck pair [default]: rc 99, 14 s, outputs differing from the plain run: 2 of 2;  ERROR SUMMARY: 6 errors were not printed. Use --print-limit option to adjust the number of printed errors
+synccheck pair [default]: rc 0, 13 s, outputs differing from the plain run: 0 of 2;  ERROR SUMMARY: 0 errors
+memcheck photo [default]: rc 99, 8 s, outputs differing from the plain run: 1 of 1;  ERROR SUMMARY: 35 errors
+synccheck photo [default]: rc 0, 3 s, outputs differing from the plain run: 0 of 1;  ERROR SUMMARY: 0 errors
+racecheck photo [default]: rc 99, 123 s, outputs differing from the plain run: 0 of 1;  RACECHECK SUMMARY: 14 hazards displayed (14 errors, 0 warnings)
+memcheck thumb512 [default]: rc 99, 12 s, outputs differing from the plain run: 1 of 1;  ERROR SUMMARY: 61 errors
+synccheck thumb512 [default]: rc 0, 5 s, outputs differing from the plain run: 0 of 1;  ERROR SUMMARY: 0 errors
+racecheck pair [default]: rc 99, 182 s, outputs differing from the plain run: 0 of 2;  RACECHECK SUMMARY: 25 hazards displayed (25 errors, 0 warnings)
+racecheck thumb512 [default]: rc 99, 56 s, outputs differing from the plain run: 0 of 1;  RACECHECK SUMMARY: 11 hazards displayed (11 errors, 0 warnings)
+memcheck t320 [default]: rc 99, 27 s, outputs differing from the plain run: 1 of 1;  ERROR SUMMARY: 61 errors
+synccheck t320 [default]: rc 0, 4 s, outputs differing from the plain run: 0 of 1;  ERROR SUMMARY: 0 errors
+memcheck screen [default]: rc 99, 18 s, outputs differing from the plain run: 1 of 1;  ERROR SUMMARY: 37 errors
+synccheck screen [default]: rc 0, 4 s, outputs differing from the plain run: 0 of 1;  ERROR SUMMARY: 0 errors
+racecheck t320 [default]: rc 99, 60 s, outputs differing from the plain run: 0 of 1;  RACECHECK SUMMARY: 12 hazards displayed (12 errors, 0 warnings)
+memcheck kodim01_lossless [--lossless]: rc 99, 6 s, outputs differing from the plain run: 1 of 1;  ERROR SUMMARY: 61 errors
+synccheck kodim01_lossless [--lossless]: rc 0, 5 s, outputs differing from the plain run: 0 of 1;  ERROR SUMMARY: 0 errors
+racecheck san3 [default]: rc 99, 575 s, outputs differing from the plain run: 0 of 3;  RACECHECK SUMMARY: 26 hazards displayed (26 errors, 0 warnings)
+racecheck kodim01_lossless [--lossless]: rc 99, 260 s, outputs differing from the plain run: 0 of 1;  RACECHECK SUMMARY: 9 hazards displayed (9 errors, 0 warnings)
+racecheck screen [default]: rc 99, 338 s, outputs differing from the plain run: 0 of 1;  RACECHECK SUMMARY: 15 hazards displayed (14 errors, 1 warning)
+racecheck san3_444_10 [--yuv 444 --depth 10]: rc 99, 642 s, outputs differing from the plain run: 0 of 3;  RACECHECK SUMMARY: 25 hazards displayed (25 errors, 0 warnings)
+racecheck pairs outside k_entropy_win / vload / vstore: 0
+SANITIZER_DONE
+POST_DONE 09:06:55

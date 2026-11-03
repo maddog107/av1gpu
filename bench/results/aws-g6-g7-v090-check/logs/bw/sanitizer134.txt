@@ -1,0 +1,10 @@
+BIN B13 (f9b4e1d5795311b3); Version 2026.3.0.0 (build 38855100) (public-release)
+memcheck san3 [default]: rc 99, 16 s, outputs differing from the plain run: 0 of 3;  ERROR SUMMARY: 5 errors
+memcheck san3_444_10 [--yuv 444 --depth 10]: rc 99, 21 s, outputs differing from the plain run: 0 of 3;  ERROR SUMMARY: 6 errors
+memcheck pair [default]: rc 99, 6 s, outputs differing from the plain run: 0 of 2;  ERROR SUMMARY: 5 errors
+memcheck photo [default]: rc 0, 3 s, outputs differing from the plain run: 0 of 1;  ERROR SUMMARY: 0 errors
+memcheck thumb512 [default]: rc 0, 4 s, outputs differing from the plain run: 0 of 1;  ERROR SUMMARY: 0 errors
+memcheck t320 [default]: rc 0, 4 s, outputs differing from the plain run: 0 of 1;  ERROR SUMMARY: 0 errors
+memcheck screen [default]: rc 0, 5 s, outputs differing from the plain run: 0 of 1;  ERROR SUMMARY: 0 errors
+memcheck kodim01_lossless [--lossless]: rc 0, 4 s, outputs differing from the plain run: 0 of 1;  ERROR SUMMARY: 0 errors
+SANITIZER134_DONE

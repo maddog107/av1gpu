@@ -1,0 +1,61 @@
+BIN /home/ubuntu/bin/B13 (f9b4e1d5795311b3); dav1d ; v12
+V12
+== photos30_q60_120_200: --images /home/ubuntu/gs/photos30 --q 60,120,200
+rc 0 (9 s)
+[gate] q60: 30/30 identical in dav1d and aomdec (420 30; 15305396 bytes), 0 not encoded (unsupported input), rc=0 PASS
+[gate] q120: 30/30 identical in dav1d and aomdec (420 30; 6912233 bytes), 0 not encoded (unsupported input), rc=0 PASS
+[gate] q200: 30/30 identical in dav1d and aomdec (420 30; 1506769 bytes), 0 not encoded (unsupported input), rc=0 PASS
+== photos30_444_10_q120: --images /home/ubuntu/gs/photos30 --q 120 --expect-format 444 --expect-depth 10 -- --yuv 444 --depth 10
+rc 0 (6 s)
+[gate] q120: 30/30 identical in dav1d and aomdec (444 10-bit 30; 7031153 bytes), 0 not encoded (unsupported input), rc=0 PASS
+== thumbs28_q60_120: --images /home/ubuntu/gs/thumbs28 --q 60,120
+rc 0 (3 s)
+[gate] q60: 28/28 identical in dav1d and aomdec (420 28; 656250 bytes), 0 not encoded (unsupported input), rc=0 PASS
+[gate] q120: 28/28 identical in dav1d and aomdec (420 28; 365619 bytes), 0 not encoded (unsupported input), rc=0 PASS
+== rgba: --images /home/ubuntu/data/rgba/set --expect-alpha
+rc 0 (2 s)
+[gate] q120: 39/39 identical in dav1d and aomdec (420 39; 670122 bytes); alpha items 35/35 identical (alpha qindex 120), 0 not encoded (unsupported input), rc=0 PASS
+== odd_q120: --images /home/ubuntu/sets/odd
+rc 0 (1 s)
+[gate] q120: 30/30 identical in dav1d and aomdec (420 30; 39025 bytes), 0 not encoded (unsupported input), rc=0 PASS
+== mono_q26_120: --images /home/ubuntu/sets/mono --q 26,120
+rc 0 (7 s)
+[gate] q26: 47/47 identical in dav1d and aomdec (420 5, mono 42; 29495597 bytes), 0 not encoded (unsupported input), rc=0 PASS
+[gate] q120: 47/47 identical in dav1d and aomdec (420 5, mono 42; 8435721 bytes), 0 not encoded (unsupported input), rc=0 PASS
+== kodak_lossless: --images /home/ubuntu/ll/kodak --lossless
+rc 0 (2 s)
+[gate] lossless: 24/24 identical in dav1d and aomdec (444 24; 13370817 bytes), 0 not encoded (unsupported input), rc=0 PASS
+== pal_screen: --images /home/ubuntu/pal/sets/screen
+rc 0 (4 s)
+[gate] q120: 40/40 identical in dav1d and aomdec (420 40; 2686557 bytes), 0 not encoded (unsupported input), rc=0 PASS
+== pal_screen_on: --images /home/ubuntu/pal/sets/screen -- --palette on
+rc 0 (4 s)
+[gate] q120: 40/40 identical in dav1d and aomdec (420 40; 2685543 bytes), 0 not encoded (unsupported input), rc=0 PASS
+== pal_screen_444_10: --images /home/ubuntu/pal/sets/screen --q 120 --expect-format 444 --expect-depth 10 -- --yuv 444 --depth 10
+rc 0 (4 s)
+[gate] q120: 40/40 identical in dav1d and aomdec (444 10-bit 40; 2855655 bytes), 0 not encoded (unsupported input), rc=0 PASS
+== pal_flat_png: --images /home/ubuntu/pal/sets/flat_png
+rc 0 (4 s)
+[gate] q120: 24/24 identical in dav1d and aomdec (420 24; 2371079 bytes), 0 not encoded (unsupported input), rc=0 PASS
+== pal_flat_png_on: --images /home/ubuntu/pal/sets/flat_png -- --palette on
+rc 0 (5 s)
+[gate] q120: 24/24 identical in dav1d and aomdec (420 24; 2318726 bytes), 0 not encoded (unsupported input), rc=0 PASS
+== pal_flat_png_444_10: --images /home/ubuntu/pal/sets/flat_png --q 120 --expect-format 444 --expect-depth 10 -- --yuv 444 --depth 10
+rc 0 (6 s)
+[gate] q120: 24/24 identical in dav1d and aomdec (444 10-bit 24; 2457931 bytes), 0 not encoded (unsupported input), rc=0 PASS
+== pal_flat_jpg: --images /home/ubuntu/pal/sets/flat_jpg
+rc 0 (2 s)
+[gate] q120: 24/24 identical in dav1d and aomdec (420 24; 2611900 bytes), 0 not encoded (unsupported input), rc=0 PASS
+== pal_flat_jpg_on: --images /home/ubuntu/pal/sets/flat_jpg -- --palette on
+rc 0 (6 s)
+[gate] q120: 24/24 identical in dav1d and aomdec (420 24; 2465642 bytes), 0 not encoded (unsupported input), rc=0 PASS
+== pal_flat_jpg_444_10: --images /home/ubuntu/pal/sets/flat_jpg --q 120 --expect-format 444 --expect-depth 10 -- --yuv 444 --depth 10
+rc 0 (4 s)
+[gate] q120: 24/24 identical in dav1d and aomdec (444 10-bit 24; 2661629 bytes), 0 not encoded (unsupported input), rc=0 PASS
+== pal_screen_lossless: --images /home/ubuntu/pal/sets/screen --lossless
+rc 0 (4 s)
+[gate] lossless: 40/40 identical in dav1d and aomdec (444 40; 20466294 bytes), 0 not encoded (unsupported input), rc=0 PASS
+== pal_flat_png_lossless: --images /home/ubuntu/pal/sets/flat_png --lossless
+rc 0 (6 s)
+[gate] lossless: 24/24 identical in dav1d and aomdec (444 24; 27712246 bytes), 0 not encoded (unsupported input), rc=0 PASS
+GATE_DONE

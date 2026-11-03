@@ -1,0 +1,951 @@
+========= COMPUTE-SANITIZER
+========= Invalid __shared__ read of size 16 bytes
+=========     at void cuda::ptx::__4::cp_async_bulk_cp_mask<void>(cuda::std::__4::integral_constant<cuda::ptx::__4::dot_space, (cuda::ptx::__4::dot_space)0>, cuda::std::__4::integral_constant<cuda::ptx::__4::dot_space, (cuda::ptx::__4::dot_space)2>, void *, const void *, const unsigned int &, const unsigned short &)+0x3a00 in cp_async_bulk.h:205
+=========     by thread (128,0,0) in block (0,0,0)
+=========     Access to 0x10610 is out of bounds
+=========         Device Frame: void cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::warpspeed::squadStoreBulkSync<unsigned int>(cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::warpspeed::Squad, cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::warpspeed::CpAsyncOobInfo<T1>, const cuda::std::byte *)+0x39a0 in load_store.cuh:305
+=========         Device Frame: auto void cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::kernelBody<cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::policy_selector_from_types<unsigned int *, unsigned int *, unsigned int, unsigned int, cuda::std::__4::plus<void>>, unsigned int, unsigned int, unsigned int, cuda::std::__4::plus<void>, unsigned int, (bool)0>(cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::warpspeed::Squad, cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::warpspeed::SpecialRegisters, const cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::scanKernelParams<T2, T3, T4> &, T5, T6, cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::ScanResources<T1, T2, T3, T4> &)::[lambda(T1, T2 &, T3 &, T4 &) (instance 1)]::operator ()<cuda::std::__4::integral_constant<bool, (bool)1>, cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::warpspeed::SmemPhase<unsigned int [132]>, cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::warpspeed::SmemPhase<unsigned int>, cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::warpspeed::SmemPhase<cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::ScanResources<cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::policy_selector_from_types<unsigned int *, unsigned int *, unsigned int, unsigned int, cuda::std::__4::plus<void>>, unsigned int, unsigned int, unsigned int>::InOutT>>(T1, T2 &, T3 &, T4 &) const+0x36d0 in kernel_scan_warpspeed.cuh:726
+=========         Device Frame: void cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::kernelBody<cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::policy_selector_from_types<unsigned int *, unsigned int *, unsigned int, unsigned int, cuda::std::__4::plus<void>>, unsigned int, unsigned int, unsigned int, cuda::std::__4::plus<void>, unsigned int, (bool)0>(cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::warpspeed::Squad, cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::warpspeed::SpecialRegisters, const cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::scanKernelParams<T2, T3, T4> &, T5, T6, cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::ScanResources<T1, T2, T3, T4> &)+0x2290 in kernel_scan_warpspeed.cuh:773
+=========         Device Frame: void cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::device_scan_warpspeed_body<cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::policy_selector_from_types<unsigned int *, unsigned int *, unsigned int, unsigned int, cuda::std::__4::plus<void>>, (bool)0, unsigned int, unsigned int, unsigned int, unsigned int, cuda::std::__4::plus<void>, cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::InputValue<unsigned int, unsigned int *>>(cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::scanKernelParams<T4, T5, T6>, T7, const T8 &)::[lambda(cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::warpspeed::Squad) (instance 1)]::operator ()(cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::warpspeed::Squad) const+0x2270 in kernel_scan_warpspeed.cuh:836
+=========         Device Frame: void cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::warpspeed::squadDispatch<(int)1, void cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::device_scan_warpspeed_body<cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::policy_selector_from_types<unsigned int *, unsigned int *, unsigned int, unsigned int, cuda::std::__4::plus<void>>, (bool)0, unsigned int, unsigned int, unsigned int, unsigned int, cuda::std::__4::plus<void>, cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::InputValue<unsigned int, unsigned int *>>(cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::scanKernelParams<T4, T5, T6>, T7, const T8 &)::[lambda(cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::warpspeed::Squad) (instance 1)]>(cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::warpspeed::SpecialRegisters, const cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::warpspeed::SquadDesc (&)[T1], T2, int)+0x2260 in squad.cuh:114
+=========         Device Frame: void cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::warpspeed::squadDispatch<(int)2, void cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::device_scan_warpspeed_body<cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::policy_selector_from_types<unsigned int *, unsigned int *, unsigned int, unsigned int, cuda::std::__4::plus<void>>, (bool)0, unsigned int, unsigned int, unsigned int, unsigned int, cuda::std::__4::plus<void>, cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::InputValue<unsigned int, unsigned int *>>(cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::scanKernelParams<T4, T5, T6>, T7, const T8 &)::[lambda(cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::warpspeed::Squad) (instance 1)]>(cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::warpspeed::SpecialRegisters, const cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::warpspeed::SquadDesc (&)[T1], T2, int)+0x2260 in squad.cuh:145
+=========         Device Frame: void cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::warpspeed::squadDispatch<(int)2, void cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::device_scan_warpspeed_body<cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::policy_selector_from_types<unsigned int *, unsigned int *, unsigned int, unsigned int, cuda::std::__4::plus<void>>, (bool)0, unsigned int, unsigned int, unsigned int, unsigned int, cuda::std::__4::plus<void>, cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::InputValue<unsigned int, unsigned int *>>(cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::scanKernelParams<T4, T5, T6>, T7, const T8 &)::[lambda(cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::warpspeed::Squad) (instance 1)]>(cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::warpspeed::SpecialRegisters, const cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::warpspeed::SquadDesc (&)[T1], T2, int)+0xa60 in squad.cuh:135
+=========         Device Frame: void cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::warpspeed::squadDispatch<(int)5, void cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::device_scan_warpspeed_body<cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::policy_selector_from_types<unsigned int *, unsigned int *, unsigned int, unsigned int, cuda::std::__4::plus<void>>, (bool)0, unsigned int, unsigned int, unsigned int, unsigned int, cuda::std::__4::plus<void>, cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::InputValue<unsigned int, unsigned int *>>(cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::scanKernelParams<T4, T5, T6>, T7, const T8 &)::[lambda(cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::warpspeed::Squad) (instance 1)]>(cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::warpspeed::SpecialRegisters, const cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::warpspeed::SquadDesc (&)[T1], T2, int)+0xa40 in squad.cuh:135
+=========         Device Frame: void cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::device_scan_warpspeed_body<cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::policy_selector_from_types<unsigned int *, unsigned int *, unsigned int, unsigned int, cuda::std::__4::plus<void>>, (bool)0, unsigned int, unsigned int, unsigned int, unsigned int, cuda::std::__4::plus<void>, cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::InputValue<unsigned int, unsigned int *>>(cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::scanKernelParams<T4, T5, T6>, T7, const T8 &)+0x9f0 in kernel_scan_warpspeed.cuh:835
+=========         Device Frame: void cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::DeviceScanKernel<cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::policy_selector_from_types<unsigned int *, unsigned int *, unsigned int, unsigned int, cuda::std::__4::plus<void>>, unsigned int *, unsigned int *, cub::_V_300403_SM_750_800_860_890_900_1000_1200::ScanTileState<unsigned int, (bool)1>, cuda::std::__4::plus<void>, cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::InputValue<unsigned int, unsigned int *>, unsigned int, unsigned int, (bool)0, unsigned int>(T2, T3, cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::tile_state_kernel_arg_t<T4, T8>, int, T5, T6, T7, int)+0x10 in kernel_scan.cuh:203
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: cudaLaunchKernel_ptsz [0x19f8df] in B13
+=========         Host Frame: void cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::DeviceScanKernel<cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::policy_selector_from_types<unsigned int*, unsigned int*, unsigned int, unsigned int, cuda::std::__4::plus<void> >, unsigned int*, unsigned int*, cub::_V_300403_SM_750_800_860_890_900_1000_1200::ScanTileState<unsigned int, true>, cuda::std::__4::plus<void>, cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::InputValue<unsigned int, unsigned int*>, unsigned int, unsigned int, false, unsigned int>(unsigned int*, unsigned int*, cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::scan::tile_state_kernel_arg_t<cub::_V_300403_SM_750_800_860_890_900_1000_1200::ScanTileState<unsigned int, true>, unsigned int>, int, cuda::std::__4::plus<void>, cub::_V_300403_SM_750_800_860_890_900_1000_1200::detail::InputValue<unsigned int, unsigned int*>, unsigned int, int) [0xeb801] in B13
+=========         Host Frame: cudaError cub::_V_300403_SM_750_800_860_890_900_1000_1200::DeviceScan::ExclusiveSum<unsigned int*, unsigned int*, int>(void*, unsigned long&, unsigned int*, unsigned int*, int, CUstream_st*) [0x10f192] in B13
+=========         Host Frame: av1g_gpu::run_batch_device(av1g_gpu::DevBatch const&, CUstream_st*, void*, unsigned long, av1g_gpu::DevResult&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, av1g_gpu::DevEvents const*) [0xfc439] in B13
+=========         Host Frame: gp_entropy_dev(GpDevRecords const&, CUstream_st*, GpEntScratch&, std::vector<std::vector<std::vector<unsigned char, std::allocator<unsigned char> >, std::allocator<std::vector<unsigned char, std::allocator<unsigned char> > > >, std::allocator<std::vector<std::vector<unsigned char, std::allocator<unsigned char> >, std::allocator<std::vector<unsigned char, std::allocator<unsigned char> > > > > >&, double*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&) [0x8ddbb] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda()#5}::operator()() const [0x9da15] in B13
+=========         Host Frame:  [0xecdb3] in libstdc++.so.6
+=========         Host Frame:  [0x9cb83] in libc.so.6
+=========         Host Frame:  [0x129ecb] in libc.so.6
+========= 
+========= Program hit cudaErrorLaunchFailure (error 719) due to "unspecified launch failure" on CUDA API call to cudaStreamSynchronize.
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: gp_entropy_dev(GpDevRecords const&, CUstream_st*, GpEntScratch&, std::vector<std::vector<std::vector<unsigned char, std::allocator<unsigned char> >, std::allocator<std::vector<unsigned char, std::allocator<unsigned char> > > >, std::allocator<std::vector<std::vector<unsigned char, std::allocator<unsigned char> >, std::allocator<std::vector<unsigned char, std::allocator<unsigned char> > > > > >&, double*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&) [0x8e11c] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda()#5}::operator()() const [0x9da15] in B13
+=========         Host Frame:  [0xecdb3] in libstdc++.so.6
+=========         Host Frame:  [0x9cb83] in libc.so.6
+=========         Host Frame:  [0x129ecb] in libc.so.6
+========= 
+entropy: pinned download failed
+========= CUDA API Error: cuMemFreeAsync
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: cudaFreeAsync [0x15cdaf] in B13
+=========         Host Frame: gp_dev_records_free(GpDevRecords&, CUstream_st*) [0x1ce947] in B13
+=========         Host Frame:  [0x8da08] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda()#5}::operator()() const [0x9dac6] in B13
+=========         Host Frame:  [0xecdb3] in libstdc++.so.6
+=========         Host Frame:  [0x9cb83] in libc.so.6
+=========         Host Frame:  [0x129ecb] in libc.so.6
+========= 
+========= Program hit cudaErrorLaunchFailure (error 719) due to "unspecified launch failure" on CUDA API call to gp_dev_records_free(GpDevRecords&, CUstream_st*).
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame:  [0x8da08] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda()#5}::operator()() const [0x9dac6] in B13
+=========         Host Frame:  [0xecdb3] in libstdc++.so.6
+=========         Host Frame:  [0x9cb83] in libc.so.6
+=========         Host Frame:  [0x129ecb] in libc.so.6
+========= 
+========= CUDA API Error: cuMemFreeAsync
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: cudaLaunchKernel [0x1caa27] in B13
+=========         Host Frame: gp_launch_recon(GpBatch const&, GpParams const&, unsigned int const*, unsigned int, unsigned int, CUstream_st*, int) [0xa5028] in B13
+=========         Host Frame: GpEncoder::encode(std::vector<GpFrameIn, std::allocator<GpFrameIn> > const&, std::vector<GpFrameOut, std::allocator<GpFrameOut> >&, GpTimes&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, CUstream_st*, GpDevRecords*) [0x7bcaa] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda(GpEncoder*, GpEncoder*, CUstream_st*)#9}::operator()(GpEncoder*, GpEncoder*, CUstream_st*) const [0x9a339] in B13
+=========         Host Frame: std::thread::_State_impl<std::thread::_Invoker<std::tuple<run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda()#11}> > >::_M_run() [0x9d855] in B13
+=========         Host Frame:  [0xecdb3] in libstdc++.so.6
+=========         Host Frame:  [0x9cb83] in libc.so.6
+=========         Host Frame:  [0x129ecb] in libc.so.6
+========= 
+========= Program hit cudaErrorLaunchFailure (error 719) due to "unspecified launch failure" on CUDA API call to cudaLaunchKernel.
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: gp_launch_recon(GpBatch const&, GpParams const&, unsigned int const*, unsigned int, unsigned int, CUstream_st*, int) [0xa5028] in B13
+=========         Host Frame: GpEncoder::encode(std::vector<GpFrameIn, std::allocator<GpFrameIn> > const&, std::vector<GpFrameOut, std::allocator<GpFrameOut> >&, GpTimes&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, CUstream_st*, GpDevRecords*) [0x7bcaa] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda(GpEncoder*, GpEncoder*, CUstream_st*)#9}::operator()(GpEncoder*, GpEncoder*, CUstream_st*) const [0x9a339] in B13
+=========         Host Frame: std::thread::_State_impl<std::thread::_Invoker<std::tuple<run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda()#11}> > >::_M_run() [0x9d855] in B13
+=========         Host Frame:  [0xecdb3] in libstdc++.so.6
+=========         Host Frame:  [0x9cb83] in libc.so.6
+=========         Host Frame:  [0x129ecb] in libc.so.6
+========= 
+========= CUDA API Error: cuMemFreeAsync
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: cudaLaunchKernel [0x1caa27] in B13
+=========         Host Frame: gp_launch_recon(GpBatch const&, GpParams const&, unsigned int const*, unsigned int, unsigned int, CUstream_st*, int) [0xa5028] in B13
+=========         Host Frame: GpEncoder::encode(std::vector<GpFrameIn, std::allocator<GpFrameIn> > const&, std::vector<GpFrameOut, std::allocator<GpFrameOut> >&, GpTimes&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, CUstream_st*, GpDevRecords*) [0x7bcaa] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda(GpEncoder*, GpEncoder*, CUstream_st*)#9}::operator()(GpEncoder*, GpEncoder*, CUstream_st*) const [0x9a339] in B13
+=========         Host Frame: std::thread::_State_impl<std::thread::_Invoker<std::tuple<run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda()#11}> > >::_M_run() [0x9d855] in B13
+=========         Host Frame:  [0xecdb3] in libstdc++.so.6
+=========         Host Frame:  [0x9cb83] in libc.so.6
+=========         Host Frame:  [0x129ecb] in libc.so.6
+========= 
+========= Program hit cudaErrorLaunchFailure (error 719) due to "unspecified launch failure" on CUDA API call to cudaLaunchKernel.
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: gp_launch_recon(GpBatch const&, GpParams const&, unsigned int const*, unsigned int, unsigned int, CUstream_st*, int) [0xa5028] in B13
+=========         Host Frame: GpEncoder::encode(std::vector<GpFrameIn, std::allocator<GpFrameIn> > const&, std::vector<GpFrameOut, std::allocator<GpFrameOut> >&, GpTimes&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, CUstream_st*, GpDevRecords*) [0x7bcaa] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda(GpEncoder*, GpEncoder*, CUstream_st*)#9}::operator()(GpEncoder*, GpEncoder*, CUstream_st*) const [0x9a339] in B13
+=========         Host Frame: std::thread::_State_impl<std::thread::_Invoker<std::tuple<run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda()#11}> > >::_M_run() [0x9d855] in B13
+=========         Host Frame:  [0xecdb3] in libstdc++.so.6
+=========         Host Frame:  [0x9cb83] in libc.so.6
+=========         Host Frame:  [0x129ecb] in libc.so.6
+========= 
+========= CUDA API Error: cuMemFreeAsync
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: cudaLaunchKernel [0x1caa27] in B13
+=========         Host Frame: gp_launch_recon(GpBatch const&, GpParams const&, unsigned int const*, unsigned int, unsigned int, CUstream_st*, int) [0xa5028] in B13
+=========         Host Frame: GpEncoder::encode(std::vector<GpFrameIn, std::allocator<GpFrameIn> > const&, std::vector<GpFrameOut, std::allocator<GpFrameOut> >&, GpTimes&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, CUstream_st*, GpDevRecords*) [0x7bcaa] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda(GpEncoder*, GpEncoder*, CUstream_st*)#9}::operator()(GpEncoder*, GpEncoder*, CUstream_st*) const [0x9a339] in B13
+=========         Host Frame: std::thread::_State_impl<std::thread::_Invoker<std::tuple<run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda()#11}> > >::_M_run() [0x9d855] in B13
+=========         Host Frame:  [0xecdb3] in libstdc++.so.6
+=========         Host Frame:  [0x9cb83] in libc.so.6
+=========         Host Frame:  [0x129ecb] in libc.so.6
+========= 
+========= Program hit cudaErrorLaunchFailure (error 719) due to "unspecified launch failure" on CUDA API call to cudaLaunchKernel.
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: gp_launch_recon(GpBatch const&, GpParams const&, unsigned int const*, unsigned int, unsigned int, CUstream_st*, int) [0xa5028] in B13
+=========         Host Frame: GpEncoder::encode(std::vector<GpFrameIn, std::allocator<GpFrameIn> > const&, std::vector<GpFrameOut, std::allocator<GpFrameOut> >&, GpTimes&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, CUstream_st*, GpDevRecords*) [0x7bcaa] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda(GpEncoder*, GpEncoder*, CUstream_st*)#9}::operator()(GpEncoder*, GpEncoder*, CUstream_st*) const [0x9a339] in B13
+=========         Host Frame: std::thread::_State_impl<std::thread::_Invoker<std::tuple<run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda()#11}> > >::_M_run() [0x9d855] in B13
+=========         Host Frame:  [0xecdb3] in libstdc++.so.6
+=========         Host Frame:  [0x9cb83] in libc.so.6
+=========         Host Frame:  [0x129ecb] in libc.so.6
+========= 
+========= CUDA API Error: cuMemFreeAsync
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: cudaLaunchKernel [0x1caa27] in B13
+=========         Host Frame: gp_launch_recon(GpBatch const&, GpParams const&, unsigned int const*, unsigned int, unsigned int, CUstream_st*, int) [0xa5028] in B13
+=========         Host Frame: GpEncoder::encode(std::vector<GpFrameIn, std::allocator<GpFrameIn> > const&, std::vector<GpFrameOut, std::allocator<GpFrameOut> >&, GpTimes&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, CUstream_st*, GpDevRecords*) [0x7bcaa] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda(GpEncoder*, GpEncoder*, CUstream_st*)#9}::operator()(GpEncoder*, GpEncoder*, CUstream_st*) const [0x9a339] in B13
+=========         Host Frame: std::thread::_State_impl<std::thread::_Invoker<std::tuple<run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda()#11}> > >::_M_run() [0x9d855] in B13
+=========         Host Frame:  [0xecdb3] in libstdc++.so.6
+=========         Host Frame:  [0x9cb83] in libc.so.6
+=========         Host Frame:  [0x129ecb] in libc.so.6
+========= 
+========= Program hit cudaErrorLaunchFailure (error 719) due to "unspecified launch failure" on CUDA API call to cudaLaunchKernel.
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: gp_launch_recon(GpBatch const&, GpParams const&, unsigned int const*, unsigned int, unsigned int, CUstream_st*, int) [0xa5028] in B13
+=========         Host Frame: GpEncoder::encode(std::vector<GpFrameIn, std::allocator<GpFrameIn> > const&, std::vector<GpFrameOut, std::allocator<GpFrameOut> >&, GpTimes&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, CUstream_st*, GpDevRecords*) [0x7bcaa] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda(GpEncoder*, GpEncoder*, CUstream_st*)#9}::operator()(GpEncoder*, GpEncoder*, CUstream_st*) const [0x9a339] in B13
+=========         Host Frame: std::thread::_State_impl<std::thread::_Invoker<std::tuple<run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda()#11}> > >::_M_run() [0x9d855] in B13
+=========         Host Frame:  [0xecdb3] in libstdc++.so.6
+=========         Host Frame:  [0x9cb83] in libc.so.6
+=========         Host Frame:  [0x129ecb] in libc.so.6
+========= 
+========= CUDA API Error: cuMemFreeAsync
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: cudaLaunchKernel [0x1caa27] in B13
+=========         Host Frame: gp_launch_recon(GpBatch const&, GpParams const&, unsigned int const*, unsigned int, unsigned int, CUstream_st*, int) [0xa5028] in B13
+=========         Host Frame: GpEncoder::encode(std::vector<GpFrameIn, std::allocator<GpFrameIn> > const&, std::vector<GpFrameOut, std::allocator<GpFrameOut> >&, GpTimes&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, CUstream_st*, GpDevRecords*) [0x7bcaa] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda(GpEncoder*, GpEncoder*, CUstream_st*)#9}::operator()(GpEncoder*, GpEncoder*, CUstream_st*) const [0x9a339] in B13
+=========         Host Frame: std::thread::_State_impl<std::thread::_Invoker<std::tuple<run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda()#11}> > >::_M_run() [0x9d855] in B13
+=========         Host Frame:  [0xecdb3] in libstdc++.so.6
+=========         Host Frame:  [0x9cb83] in libc.so.6
+=========         Host Frame:  [0x129ecb] in libc.so.6
+========= 
+========= Program hit cudaErrorLaunchFailure (error 719) due to "unspecified launch failure" on CUDA API call to cudaLaunchKernel.
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: gp_launch_recon(GpBatch const&, GpParams const&, unsigned int const*, unsigned int, unsigned int, CUstream_st*, int) [0xa5028] in B13
+=========         Host Frame: GpEncoder::encode(std::vector<GpFrameIn, std::allocator<GpFrameIn> > const&, std::vector<GpFrameOut, std::allocator<GpFrameOut> >&, GpTimes&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, CUstream_st*, GpDevRecords*) [0x7bcaa] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda(GpEncoder*, GpEncoder*, CUstream_st*)#9}::operator()(GpEncoder*, GpEncoder*, CUstream_st*) const [0x9a339] in B13
+=========         Host Frame: std::thread::_State_impl<std::thread::_Invoker<std::tuple<run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda()#11}> > >::_M_run() [0x9d855] in B13
+=========         Host Frame:  [0xecdb3] in libstdc++.so.6
+=========         Host Frame:  [0x9cb83] in libc.so.6
+=========         Host Frame:  [0x129ecb] in libc.so.6
+========= 
+========= CUDA API Error: cuMemFreeAsync
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: cudaEventRecord [0x1c9b27] in B13
+=========         Host Frame: GpEncoder::encode(std::vector<GpFrameIn, std::allocator<GpFrameIn> > const&, std::vector<GpFrameOut, std::allocator<GpFrameOut> >&, GpTimes&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, CUstream_st*, GpDevRecords*) [0x7bcde] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda(GpEncoder*, GpEncoder*, CUstream_st*)#9}::operator()(GpEncoder*, GpEncoder*, CUstream_st*) const [0x9a339] in B13
+=========         Host Frame: std::thread::_State_impl<std::thread::_Invoker<std::tuple<run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda()#11}> > >::_M_run() [0x9d855] in B13
+=========         Host Frame:  [0xecdb3] in libstdc++.so.6
+=========         Host Frame:  [0x9cb83] in libc.so.6
+=========         Host Frame:  [0x129ecb] in libc.so.6
+========= 
+========= Program hit cudaErrorLaunchFailure (error 719) due to "unspecified launch failure" on CUDA API call to cudaEventRecord.
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: GpEncoder::encode(std::vector<GpFrameIn, std::allocator<GpFrameIn> > const&, std::vector<GpFrameOut, std::allocator<GpFrameOut> >&, GpTimes&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, CUstream_st*, GpDevRecords*) [0x7bcde] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda(GpEncoder*, GpEncoder*, CUstream_st*)#9}::operator()(GpEncoder*, GpEncoder*, CUstream_st*) const [0x9a339] in B13
+=========         Host Frame: std::thread::_State_impl<std::thread::_Invoker<std::tuple<run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda()#11}> > >::_M_run() [0x9d855] in B13
+=========         Host Frame:  [0xecdb3] in libstdc++.so.6
+=========         Host Frame:  [0x9cb83] in libc.so.6
+=========         Host Frame:  [0x129ecb] in libc.so.6
+========= 
+encode: CUDA: unspecified launch failure at cudaEventRecord(evx_[1], hiSt_) (/__w/av1gpu/av1gpu/encoder/src/pipeline.cpp:562)
+========= CUDA API Error: cuMemFreeAsync
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: cudaFreeAsync [0x15cdaf] in B13
+=========         Host Frame: gp_dev_records_free(GpDevRecords&, CUstream_st*) [0x1ce947] in B13
+=========         Host Frame: gp_ent_scratch_free(GpEntScratch&, CUstream_st*) [0x8da34] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda()#5}::operator()() const [0x9eb83] in B13
+=========         Host Frame:  [0xecdb3] in libstdc++.so.6
+=========         Host Frame:  [0x9cb83] in libc.so.6
+=========         Host Frame:  [0x129ecb] in libc.so.6
+========= 
+========= Program hit cudaErrorLaunchFailure (error 719) due to "unspecified launch failure" on CUDA API call to gp_dev_records_free(GpDevRecords&, CUstream_st*).
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: gp_ent_scratch_free(GpEntScratch&, CUstream_st*) [0x8da34] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda()#5}::operator()() const [0x9eb83] in B13
+=========         Host Frame:  [0xecdb3] in libstdc++.so.6
+=========         Host Frame:  [0x9cb83] in libc.so.6
+=========         Host Frame:  [0x129ecb] in libc.so.6
+========= 
+========= CUDA API Error: cuMemFreeAsync
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: cudaStreamSynchronize [0x1ca71f] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda()#5}::operator()() const [0x9eb8f] in B13
+=========         Host Frame:  [0xecdb3] in libstdc++.so.6
+=========         Host Frame:  [0x9cb83] in libc.so.6
+=========         Host Frame:  [0x129ecb] in libc.so.6
+========= 
+========= Program hit cudaErrorLaunchFailure (error 719) due to "unspecified launch failure" on CUDA API call to cudaStreamSynchronize.
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda()#5}::operator()() const [0x9eb8f] in B13
+=========         Host Frame:  [0xecdb3] in libstdc++.so.6
+=========         Host Frame:  [0x9cb83] in libc.so.6
+=========         Host Frame:  [0x129ecb] in libc.so.6
+========= 
+========= CUDA API Error: cuMemFreeAsync
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: cudaStreamDestroy [0x19b45f] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda()#5}::operator()() const [0x9eb9b] in B13
+=========         Host Frame:  [0xecdb3] in libstdc++.so.6
+=========         Host Frame:  [0x9cb83] in libc.so.6
+=========         Host Frame:  [0x129ecb] in libc.so.6
+========= 
+========= Program hit cudaErrorLaunchFailure (error 719) due to "unspecified launch failure" on CUDA API call to cudaStreamDestroy.
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda()#5}::operator()() const [0x9eb9b] in B13
+=========         Host Frame:  [0xecdb3] in libstdc++.so.6
+=========         Host Frame:  [0x9cb83] in libc.so.6
+=========         Host Frame:  [0x129ecb] in libc.so.6
+========= 
+========= CUDA API Error: cuMemFreeAsync
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: cudaStreamSynchronize [0x1ca71f] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda()#5}::operator()() const [0x9eb8f] in B13
+=========         Host Frame:  [0xecdb3] in libstdc++.so.6
+=========         Host Frame:  [0x9cb83] in libc.so.6
+=========         Host Frame:  [0x129ecb] in libc.so.6
+========= 
+========= Program hit cudaErrorLaunchFailure (error 719) due to "unspecified launch failure" on CUDA API call to cudaStreamSynchronize.
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda()#5}::operator()() const [0x9eb8f] in B13
+=========         Host Frame:  [0xecdb3] in libstdc++.so.6
+=========         Host Frame:  [0x9cb83] in libc.so.6
+=========         Host Frame:  [0x129ecb] in libc.so.6
+========= 
+========= CUDA API Error: cuMemFreeAsync
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: cudaStreamDestroy [0x19b45f] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda()#5}::operator()() const [0x9eb9b] in B13
+=========         Host Frame:  [0xecdb3] in libstdc++.so.6
+=========         Host Frame:  [0x9cb83] in libc.so.6
+=========         Host Frame:  [0x129ecb] in libc.so.6
+========= 
+========= Program hit cudaErrorLaunchFailure (error 719) due to "unspecified launch failure" on CUDA API call to cudaStreamDestroy.
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda()#5}::operator()() const [0x9eb9b] in B13
+=========         Host Frame:  [0xecdb3] in libstdc++.so.6
+=========         Host Frame:  [0x9cb83] in libc.so.6
+=========         Host Frame:  [0x129ecb] in libc.so.6
+========= 
+========= CUDA API Error: cuMemFreeAsync
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: cudaStreamSynchronize [0x1ca71f] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda()#5}::operator()() const [0x9eb8f] in B13
+=========         Host Frame:  [0xecdb3] in libstdc++.so.6
+=========         Host Frame:  [0x9cb83] in libc.so.6
+=========         Host Frame:  [0x129ecb] in libc.so.6
+========= 
+========= Program hit cudaErrorLaunchFailure (error 719) due to "unspecified launch failure" on CUDA API call to cudaStreamSynchronize.
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda()#5}::operator()() const [0x9eb8f] in B13
+=========         Host Frame:  [0xecdb3] in libstdc++.so.6
+=========         Host Frame:  [0x9cb83] in libc.so.6
+=========         Host Frame:  [0x129ecb] in libc.so.6
+========= 
+========= CUDA API Error: cuMemFreeAsync
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: cudaStreamDestroy [0x19b45f] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda()#5}::operator()() const [0x9eb9b] in B13
+=========         Host Frame:  [0xecdb3] in libstdc++.so.6
+=========         Host Frame:  [0x9cb83] in libc.so.6
+=========         Host Frame:  [0x129ecb] in libc.so.6
+========= 
+========= Program hit cudaErrorLaunchFailure (error 719) due to "unspecified launch failure" on CUDA API call to cudaStreamDestroy.
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda()#5}::operator()() const [0x9eb9b] in B13
+=========         Host Frame:  [0xecdb3] in libstdc++.so.6
+=========         Host Frame:  [0x9cb83] in libc.so.6
+=========         Host Frame:  [0x129ecb] in libc.so.6
+========= 
+========= CUDA API Error: cuMemFreeAsync
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: cudaEventDestroy [0x19e265] in B13
+=========         Host Frame: GpEncoder::~GpEncoder() [0x663ac] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) [0xa1c35] in B13
+=========         Host Frame: main [0x3fb88] in B13
+========= 
+========= Program hit cudaErrorLaunchFailure (error 719) due to "unspecified launch failure" on CUDA API call to cudaEventDestroy.
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: GpEncoder::~GpEncoder() [0x663ac] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) [0xa1c35] in B13
+=========         Host Frame: main [0x3fb88] in B13
+========= 
+========= CUDA API Error: cuMemFreeAsync
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: cudaEventDestroy [0x19e265] in B13
+=========         Host Frame: GpEncoder::~GpEncoder() [0x663ac] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) [0xa1c35] in B13
+=========         Host Frame: main [0x3fb88] in B13
+========= 
+========= Program hit cudaErrorLaunchFailure (error 719) due to "unspecified launch failure" on CUDA API call to cudaEventDestroy.
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: GpEncoder::~GpEncoder() [0x663ac] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) [0xa1c35] in B13
+=========         Host Frame: main [0x3fb88] in B13
+========= 
+========= CUDA API Error: cuMemFreeAsync
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: cudaEventDestroy [0x19e265] in B13
+=========         Host Frame: GpEncoder::~GpEncoder() [0x663ac] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) [0xa1c35] in B13
+=========         Host Frame: main [0x3fb88] in B13
+========= 
+========= Program hit cudaErrorLaunchFailure (error 719) due to "unspecified launch failure" on CUDA API call to cudaEventDestroy.
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: GpEncoder::~GpEncoder() [0x663ac] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) [0xa1c35] in B13
+=========         Host Frame: main [0x3fb88] in B13
+========= 
+========= CUDA API Error: cuMemFreeAsync
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: cudaEventDestroy [0x19e265] in B13
+=========         Host Frame: GpEncoder::~GpEncoder() [0x663ac] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) [0xa1c35] in B13
+=========         Host Frame: main [0x3fb88] in B13
+========= 
+========= Program hit cudaErrorLaunchFailure (error 719) due to "unspecified launch failure" on CUDA API call to cudaEventDestroy.
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: GpEncoder::~GpEncoder() [0x663ac] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) [0xa1c35] in B13
+=========         Host Frame: main [0x3fb88] in B13
+========= 
+========= CUDA API Error: cuMemFreeAsync
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: cudaEventDestroy [0x19e265] in B13
+=========         Host Frame: GpEncoder::~GpEncoder() [0x663ac] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) [0xa1c35] in B13
+=========         Host Frame: main [0x3fb88] in B13
+========= 
+========= Program hit cudaErrorLaunchFailure (error 719) due to "unspecified launch failure" on CUDA API call to cudaEventDestroy.
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: GpEncoder::~GpEncoder() [0x663ac] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) [0xa1c35] in B13
+=========         Host Frame: main [0x3fb88] in B13
+========= 
+========= CUDA API Error: cuMemFreeAsync
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: cudaEventDestroy [0x19e265] in B13
+=========         Host Frame: GpEncoder::~GpEncoder() [0x663ac] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) [0xa1c35] in B13
+=========         Host Frame: main [0x3fb88] in B13
+========= 
+========= Program hit cudaErrorLaunchFailure (error 719) due to "unspecified launch failure" on CUDA API call to cudaEventDestroy.
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: GpEncoder::~GpEncoder() [0x663ac] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) [0xa1c35] in B13
+=========         Host Frame: main [0x3fb88] in B13
+========= 
+========= CUDA API Error: cuMemFreeAsync
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: cudaEventDestroy [0x19e265] in B13
+=========         Host Frame: GpEncoder::~GpEncoder() [0x663ac] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) [0xa1c35] in B13
+=========         Host Frame: main [0x3fb88] in B13
+========= 
+========= Program hit cudaErrorLaunchFailure (error 719) due to "unspecified launch failure" on CUDA API call to cudaEventDestroy.
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: GpEncoder::~GpEncoder() [0x663ac] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) [0xa1c35] in B13
+=========         Host Frame: main [0x3fb88] in B13
+========= 
+========= CUDA API Error: cuMemFreeAsync
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: cudaEventDestroy [0x19e265] in B13
+=========         Host Frame: GpEncoder::~GpEncoder() [0x663ac] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) [0xa1c35] in B13
+=========         Host Frame: main [0x3fb88] in B13
+========= 
+========= Program hit cudaErrorLaunchFailure (error 719) due to "unspecified launch failure" on CUDA API call to cudaEventDestroy.
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: GpEncoder::~GpEncoder() [0x663ac] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) [0xa1c35] in B13
+=========         Host Frame: main [0x3fb88] in B13
+========= 
+========= CUDA API Error: cuMemFreeAsync
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: cudaEventDestroy [0x19e265] in B13
+=========         Host Frame: GpEncoder::~GpEncoder() [0x663ac] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) [0xa1c35] in B13
+=========         Host Frame: main [0x3fb88] in B13
+========= 
+========= Program hit cudaErrorLaunchFailure (error 719) due to "unspecified launch failure" on CUDA API call to cudaEventDestroy.
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: GpEncoder::~GpEncoder() [0x663ac] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) [0xa1c35] in B13
+=========         Host Frame: main [0x3fb88] in B13
+========= 
+========= CUDA API Error: cuMemFreeAsync
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: cudaEventDestroy [0x19e265] in B13
+=========         Host Frame: GpEncoder::~GpEncoder() [0x663c6] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) [0xa1c35] in B13
+=========         Host Frame: main [0x3fb88] in B13
+========= 
+========= Program hit cudaErrorLaunchFailure (error 719) due to "unspecified launch failure" on CUDA API call to cudaEventDestroy.
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: GpEncoder::~GpEncoder() [0x663c6] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) [0xa1c35] in B13
+=========         Host Frame: main [0x3fb88] in B13
+========= 
+========= CUDA API Error: cuMemFreeAsync
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: cudaEventDestroy [0x19e265] in B13
+=========         Host Frame: GpEncoder::~GpEncoder() [0x663d7] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) [0xa1c35] in B13
+=========         Host Frame: main [0x3fb88] in B13
+========= 
+========= Program hit cudaErrorLaunchFailure (error 719) due to "unspecified launch failure" on CUDA API call to cudaEventDestroy.
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: GpEncoder::~GpEncoder() [0x663d7] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) [0xa1c35] in B13
+=========         Host Frame: main [0x3fb88] in B13
+========= 
+========= CUDA API Error: cuMemFreeAsync
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: cudaStreamDestroy [0x19b45f] in B13
+=========         Host Frame: GpEncoder::~GpEncoder() [0x663e8] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) [0xa1c35] in B13
+=========         Host Frame: main [0x3fb88] in B13
+========= 
+========= Program hit cudaErrorLaunchFailure (error 719) due to "unspecified launch failure" on CUDA API call to cudaStreamDestroy.
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: GpEncoder::~GpEncoder() [0x663e8] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) [0xa1c35] in B13
+=========         Host Frame: main [0x3fb88] in B13
+========= 
+========= CUDA API Error: cuMemFreeAsync
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: cudaFree [0x1a2a72] in B13
+=========         Host Frame: GpEncoder::~GpEncoder() [0x663f9] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) [0xa1c35] in B13
+=========         Host Frame: main [0x3fb88] in B13
+========= 
+========= Program hit cudaErrorLaunchFailure (error 719) due to "unspecified launch failure" on CUDA API call to cudaFree.
+=========     Saved host backtrace up to driver entry point at error
+=========         Host Frame: GpEncoder::~GpEncoder() [0x663f9] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) [0xa1c35] in B13
+=========         Host Frame: main [0x3fb88] in B13
+========= 
+========= Leaked 163840 bytes at 0x205400000
+=========     Saved host backtrace up to driver entry point at allocation time
+=========         Host Frame:  [0x49b048] in libcuda.so.1
+=========         Host Frame:  [0x2c68b] in libnvcuvid.so.1
+=========         Host Frame:  [0x4dfeb] in libnvcuvid.so.1
+=========         Host Frame:  [0x498f7] in libnvcuvid.so.1
+=========         Host Frame:  [0x63243] in libnvcuvid.so.1
+=========         Host Frame:  [0x62d6c] in libnvcuvid.so.1
+=========         Host Frame: libnvjpeg_static_7a0454790f1d39c1e26a57d3463d010da24c6305 [0x222ef0] in B13
+=========         Host Frame: libnvjpeg_static_083c5112387af4da0d8cc3737bac640c2afbe5ef [0x2235fb] in B13
+=========         Host Frame: nvjpegJpegStateCreate [0x1e1433] in B13
+=========         Host Frame: ingest_create [0x141e51] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) [0xa0b08] in B13
+=========         Host Frame: main [0x3fb88] in B13
+========= 
+========= Leaked 163840 bytes at 0x205428000
+=========     Saved host backtrace up to driver entry point at allocation time
+=========         Host Frame:  [0x49b048] in libcuda.so.1
+=========         Host Frame:  [0x2c68b] in libnvcuvid.so.1
+=========         Host Frame:  [0x4dfeb] in libnvcuvid.so.1
+=========         Host Frame:  [0x498f7] in libnvcuvid.so.1
+=========         Host Frame:  [0x63243] in libnvcuvid.so.1
+=========         Host Frame:  [0x62d6c] in libnvcuvid.so.1
+=========         Host Frame: libnvjpeg_static_453ac1e5ff85ee240b91732f745f9e4acab3461d [0x2333a2] in B13
+=========         Host Frame: libnvjpeg_static_575d6534c138d99b16b88074b7f35073fb1190b4 [0x234633] in B13
+=========         Host Frame: nvjpegJpegStateCreate [0x1e1446] in B13
+=========         Host Frame: ingest_create [0x141e51] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) [0xa0b08] in B13
+=========         Host Frame: main [0x3fb88] in B13
+========= 
+========= Leaked 36864000 bytes at 0x205600000
+=========     Saved host backtrace up to driver entry point at allocation time
+=========         Host Frame:  [0x49b048] in libcuda.so.1
+=========         Host Frame:  [0x2c68b] in libnvcuvid.so.1
+=========         Host Frame:  [0x2783a] in libnvcuvid.so.1
+=========         Host Frame:  [0x29d73] in libnvcuvid.so.1
+=========         Host Frame:  [0x638fd] in libnvcuvid.so.1
+=========         Host Frame: libnvjpeg_static_7a74fd126f1648b1ade399e7fe226e8c7073a44e [0x2360da] in B13
+=========         Host Frame: libnvjpeg_static_31dfaa6b3e05ec67858a33f3263680fdb76ed0ea [0x2240e1] in B13
+=========         Host Frame: nvjpegDecodeBatchedPreAllocate [0x1e1eff] in B13
+=========         Host Frame: ingest_create [0x141ff7] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) [0xa0b08] in B13
+=========         Host Frame: main [0x3fb88] in B13
+========= 
+========= Leaked 36864000 bytes at 0x207a00000
+=========     Saved host backtrace up to driver entry point at allocation time
+=========         Host Frame:  [0x49b048] in libcuda.so.1
+=========         Host Frame:  [0x2c68b] in libnvcuvid.so.1
+=========         Host Frame:  [0x2783a] in libnvcuvid.so.1
+=========         Host Frame:  [0x29d73] in libnvcuvid.so.1
+=========         Host Frame:  [0x638fd] in libnvcuvid.so.1
+=========         Host Frame: libnvjpeg_static_7a74fd126f1648b1ade399e7fe226e8c7073a44e [0x2360da] in B13
+=========         Host Frame: libnvjpeg_static_31dfaa6b3e05ec67858a33f3263680fdb76ed0ea [0x2240e1] in B13
+=========         Host Frame: nvjpegDecodeBatchedPreAllocate [0x1e1eff] in B13
+=========         Host Frame: ingest_create [0x141ff7] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) [0xa0b08] in B13
+=========         Host Frame: main [0x3fb88] in B13
+========= 
+========= Leaked 36864000 bytes at 0x209e00000
+=========     Saved host backtrace up to driver entry point at allocation time
+=========         Host Frame:  [0x49b048] in libcuda.so.1
+=========         Host Frame:  [0x2c68b] in libnvcuvid.so.1
+=========         Host Frame:  [0x2783a] in libnvcuvid.so.1
+=========         Host Frame:  [0x29d73] in libnvcuvid.so.1
+=========         Host Frame:  [0x638fd] in libnvcuvid.so.1
+=========         Host Frame: libnvjpeg_static_7a74fd126f1648b1ade399e7fe226e8c7073a44e [0x2360da] in B13
+=========         Host Frame: libnvjpeg_static_31dfaa6b3e05ec67858a33f3263680fdb76ed0ea [0x2240e1] in B13
+=========         Host Frame: nvjpegDecodeBatchedPreAllocate [0x1e1eff] in B13
+=========         Host Frame: ingest_create [0x141ff7] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) [0xa0b08] in B13
+=========         Host Frame: main [0x3fb88] in B13
+========= 
+========= Leaked 36864000 bytes at 0x20c200000
+=========     Saved host backtrace up to driver entry point at allocation time
+=========         Host Frame:  [0x49b048] in libcuda.so.1
+=========         Host Frame:  [0x2c68b] in libnvcuvid.so.1
+=========         Host Frame:  [0x2783a] in libnvcuvid.so.1
+=========         Host Frame:  [0x29d73] in libnvcuvid.so.1
+=========         Host Frame:  [0x638fd] in libnvcuvid.so.1
+=========         Host Frame: libnvjpeg_static_7a74fd126f1648b1ade399e7fe226e8c7073a44e [0x2360da] in B13
+=========         Host Frame: libnvjpeg_static_31dfaa6b3e05ec67858a33f3263680fdb76ed0ea [0x2240fa] in B13
+=========         Host Frame: nvjpegDecodeBatchedPreAllocate [0x1e1eff] in B13
+=========         Host Frame: ingest_create [0x141ff7] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) [0xa0b08] in B13
+=========         Host Frame: main [0x3fb88] in B13
+========= 
+========= Leaked 36864000 bytes at 0x20e600000
+=========     Saved host backtrace up to driver entry point at allocation time
+=========         Host Frame:  [0x49b048] in libcuda.so.1
+=========         Host Frame:  [0x2c68b] in libnvcuvid.so.1
+=========         Host Frame:  [0x2783a] in libnvcuvid.so.1
+=========         Host Frame:  [0x29d73] in libnvcuvid.so.1
+=========         Host Frame:  [0x638fd] in libnvcuvid.so.1
+=========         Host Frame: libnvjpeg_static_7a74fd126f1648b1ade399e7fe226e8c7073a44e [0x2360da] in B13
+=========         Host Frame: libnvjpeg_static_31dfaa6b3e05ec67858a33f3263680fdb76ed0ea [0x2240fa] in B13
+=========         Host Frame: nvjpegDecodeBatchedPreAllocate [0x1e1eff] in B13
+=========         Host Frame: ingest_create [0x141ff7] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) [0xa0b08] in B13
+=========         Host Frame: main [0x3fb88] in B13
+========= 
+========= Leaked 36864000 bytes at 0x210a00000
+=========     Saved host backtrace up to driver entry point at allocation time
+=========         Host Frame:  [0x49b048] in libcuda.so.1
+=========         Host Frame:  [0x2c68b] in libnvcuvid.so.1
+=========         Host Frame:  [0x2783a] in libnvcuvid.so.1
+=========         Host Frame:  [0x29d73] in libnvcuvid.so.1
+=========         Host Frame:  [0x638fd] in libnvcuvid.so.1
+=========         Host Frame: libnvjpeg_static_7a74fd126f1648b1ade399e7fe226e8c7073a44e [0x2360da] in B13
+=========         Host Frame: libnvjpeg_static_31dfaa6b3e05ec67858a33f3263680fdb76ed0ea [0x2240fa] in B13
+=========         Host Frame: nvjpegDecodeBatchedPreAllocate [0x1e1eff] in B13
+=========         Host Frame: ingest_create [0x141ff7] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) [0xa0b08] in B13
+=========         Host Frame: main [0x3fb88] in B13
+========= 
+========= Leaked 36864000 bytes at 0x212e00000
+=========     Saved host backtrace up to driver entry point at allocation time
+=========         Host Frame:  [0x49b048] in libcuda.so.1
+=========         Host Frame:  [0x2c68b] in libnvcuvid.so.1
+=========         Host Frame:  [0x2783a] in libnvcuvid.so.1
+=========         Host Frame:  [0x29d73] in libnvcuvid.so.1
+=========         Host Frame:  [0x638fd] in libnvcuvid.so.1
+=========         Host Frame: libnvjpeg_static_7a74fd126f1648b1ade399e7fe226e8c7073a44e [0x2360da] in B13
+=========         Host Frame: libnvjpeg_static_31dfaa6b3e05ec67858a33f3263680fdb76ed0ea [0x224113] in B13
+=========         Host Frame: nvjpegDecodeBatchedPreAllocate [0x1e1eff] in B13
+=========         Host Frame: ingest_create [0x141ff7] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) [0xa0b08] in B13
+=========         Host Frame: main [0x3fb88] in B13
+========= 
+========= Leaked 36864000 bytes at 0x215200000
+=========     Saved host backtrace up to driver entry point at allocation time
+=========         Host Frame:  [0x49b048] in libcuda.so.1
+=========         Host Frame:  [0x2c68b] in libnvcuvid.so.1
+=========         Host Frame:  [0x2783a] in libnvcuvid.so.1
+=========         Host Frame:  [0x29d73] in libnvcuvid.so.1
+=========         Host Frame:  [0x638fd] in libnvcuvid.so.1
+=========         Host Frame: libnvjpeg_static_7a74fd126f1648b1ade399e7fe226e8c7073a44e [0x2360da] in B13
+=========         Host Frame: libnvjpeg_static_31dfaa6b3e05ec67858a33f3263680fdb76ed0ea [0x224113] in B13
+=========         Host Frame: nvjpegDecodeBatchedPreAllocate [0x1e1eff] in B13
+=========         Host Frame: ingest_create [0x141ff7] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) [0xa0b08] in B13
+=========         Host Frame: main [0x3fb88] in B13
+========= 
+========= Leaked 36864000 bytes at 0x217600000
+=========     Saved host backtrace up to driver entry point at allocation time
+=========         Host Frame:  [0x49b048] in libcuda.so.1
+=========         Host Frame:  [0x2c68b] in libnvcuvid.so.1
+=========         Host Frame:  [0x2783a] in libnvcuvid.so.1
+=========         Host Frame:  [0x29d73] in libnvcuvid.so.1
+=========         Host Frame:  [0x638fd] in libnvcuvid.so.1
+=========         Host Frame: libnvjpeg_static_7a74fd126f1648b1ade399e7fe226e8c7073a44e [0x2360da] in B13
+=========         Host Frame: libnvjpeg_static_31dfaa6b3e05ec67858a33f3263680fdb76ed0ea [0x224113] in B13
+=========         Host Frame: nvjpegDecodeBatchedPreAllocate [0x1e1eff] in B13
+=========         Host Frame: ingest_create [0x141ff7] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) [0xa0b08] in B13
+=========         Host Frame: main [0x3fb88] in B13
+========= 
+========= Leaked 36864000 bytes at 0x219a00000
+=========     Saved host backtrace up to driver entry point at allocation time
+=========         Host Frame:  [0x49b048] in libcuda.so.1
+=========         Host Frame:  [0x2c68b] in libnvcuvid.so.1
+=========         Host Frame:  [0x2783a] in libnvcuvid.so.1
+=========         Host Frame:  [0x29d73] in libnvcuvid.so.1
+=========         Host Frame:  [0x638fd] in libnvcuvid.so.1
+=========         Host Frame: libnvjpeg_static_7a74fd126f1648b1ade399e7fe226e8c7073a44e [0x2360da] in B13
+=========         Host Frame: libnvjpeg_static_31dfaa6b3e05ec67858a33f3263680fdb76ed0ea [0x224130] in B13
+=========         Host Frame: nvjpegDecodeBatchedPreAllocate [0x1e1eff] in B13
+=========         Host Frame: ingest_create [0x141ff7] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) [0xa0b08] in B13
+=========         Host Frame: main [0x3fb88] in B13
+========= 
+========= Leaked 36864000 bytes at 0x21be00000
+=========     Saved host backtrace up to driver entry point at allocation time
+=========         Host Frame:  [0x49b048] in libcuda.so.1
+=========         Host Frame:  [0x2c68b] in libnvcuvid.so.1
+=========         Host Frame:  [0x2783a] in libnvcuvid.so.1
+=========         Host Frame:  [0x29d73] in libnvcuvid.so.1
+=========         Host Frame:  [0x638fd] in libnvcuvid.so.1
+=========         Host Frame: libnvjpeg_static_7a74fd126f1648b1ade399e7fe226e8c7073a44e [0x2360da] in B13
+=========         Host Frame: libnvjpeg_static_31dfaa6b3e05ec67858a33f3263680fdb76ed0ea [0x224130] in B13
+=========         Host Frame: nvjpegDecodeBatchedPreAllocate [0x1e1eff] in B13
+=========         Host Frame: ingest_create [0x141ff7] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) [0xa0b08] in B13
+=========         Host Frame: main [0x3fb88] in B13
+========= 
+========= Leaked 36864000 bytes at 0x21e200000
+=========     Saved host backtrace up to driver entry point at allocation time
+=========         Host Frame:  [0x49b048] in libcuda.so.1
+=========         Host Frame:  [0x2c68b] in libnvcuvid.so.1
+=========         Host Frame:  [0x2783a] in libnvcuvid.so.1
+=========         Host Frame:  [0x29d73] in libnvcuvid.so.1
+=========         Host Frame:  [0x638fd] in libnvcuvid.so.1
+=========         Host Frame: libnvjpeg_static_7a74fd126f1648b1ade399e7fe226e8c7073a44e [0x2360da] in B13
+=========         Host Frame: libnvjpeg_static_31dfaa6b3e05ec67858a33f3263680fdb76ed0ea [0x224130] in B13
+=========         Host Frame: nvjpegDecodeBatchedPreAllocate [0x1e1eff] in B13
+=========         Host Frame: ingest_create [0x141ff7] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) [0xa0b08] in B13
+=========         Host Frame: main [0x3fb88] in B13
+========= 
+========= Leaked 108003328 bytes at 0x220600000
+=========     Saved host backtrace up to driver entry point at allocation time
+=========         Host Frame:  [0x49b048] in libcuda.so.1
+=========         Host Frame:  [0x2c68b] in libnvcuvid.so.1
+=========         Host Frame:  [0x2783a] in libnvcuvid.so.1
+=========         Host Frame:  [0x29d73] in libnvcuvid.so.1
+=========         Host Frame:  [0x63b19] in libnvcuvid.so.1
+=========         Host Frame: libnvjpeg_static_544940ca5f5e23cefb92b7525a212e37ddb301eb [0x235a34] in B13
+=========         Host Frame: libnvjpeg_static_31dfaa6b3e05ec67858a33f3263680fdb76ed0ea [0x224207] in B13
+=========         Host Frame: nvjpegDecodeBatchedPreAllocate [0x1e1eff] in B13
+=========         Host Frame: ingest_create [0x141ff7] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) [0xa0b08] in B13
+=========         Host Frame: main [0x3fb88] in B13
+========= 
+========= Leaked 108003328 bytes at 0x226e00000
+=========     Saved host backtrace up to driver entry point at allocation time
+=========         Host Frame:  [0x49b048] in libcuda.so.1
+=========         Host Frame:  [0x2c68b] in libnvcuvid.so.1
+=========         Host Frame:  [0x2783a] in libnvcuvid.so.1
+=========         Host Frame:  [0x29d73] in libnvcuvid.so.1
+=========         Host Frame:  [0x63b19] in libnvcuvid.so.1
+=========         Host Frame: libnvjpeg_static_544940ca5f5e23cefb92b7525a212e37ddb301eb [0x235a34] in B13
+=========         Host Frame: libnvjpeg_static_31dfaa6b3e05ec67858a33f3263680fdb76ed0ea [0x22421d] in B13
+=========         Host Frame: nvjpegDecodeBatchedPreAllocate [0x1e1eff] in B13
+=========         Host Frame: ingest_create [0x141ff7] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) [0xa0b08] in B13
+=========         Host Frame: main [0x3fb88] in B13
+========= 
+========= Leaked 108003328 bytes at 0x22d600000
+=========     Saved host backtrace up to driver entry point at allocation time
+=========         Host Frame:  [0x49b048] in libcuda.so.1
+=========         Host Frame:  [0x2c68b] in libnvcuvid.so.1
+=========         Host Frame:  [0x2783a] in libnvcuvid.so.1
+=========         Host Frame:  [0x29d73] in libnvcuvid.so.1
+=========         Host Frame:  [0x63b19] in libnvcuvid.so.1
+=========         Host Frame: libnvjpeg_static_544940ca5f5e23cefb92b7525a212e37ddb301eb [0x235a34] in B13
+=========         Host Frame: libnvjpeg_static_31dfaa6b3e05ec67858a33f3263680fdb76ed0ea [0x224233] in B13
+=========         Host Frame: nvjpegDecodeBatchedPreAllocate [0x1e1eff] in B13
+=========         Host Frame: ingest_create [0x141ff7] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) [0xa0b08] in B13
+=========         Host Frame: main [0x3fb88] in B13
+========= 
+========= Leaked 108003328 bytes at 0x233e00000
+=========     Saved host backtrace up to driver entry point at allocation time
+=========         Host Frame:  [0x49b048] in libcuda.so.1
+=========         Host Frame:  [0x2c68b] in libnvcuvid.so.1
+=========         Host Frame:  [0x2783a] in libnvcuvid.so.1
+=========         Host Frame:  [0x29d73] in libnvcuvid.so.1
+=========         Host Frame:  [0x63b19] in libnvcuvid.so.1
+=========         Host Frame: libnvjpeg_static_544940ca5f5e23cefb92b7525a212e37ddb301eb [0x235a34] in B13
+=========         Host Frame: libnvjpeg_static_31dfaa6b3e05ec67858a33f3263680fdb76ed0ea [0x224249] in B13
+=========         Host Frame: nvjpegDecodeBatchedPreAllocate [0x1e1eff] in B13
+=========         Host Frame: ingest_create [0x141ff7] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) [0xa0b08] in B13
+=========         Host Frame: main [0x3fb88] in B13
+========= 
+========= Leaked 4194304 bytes at 0x715314800000
+=========     Saved host backtrace up to driver entry point at allocation time
+=========         Host Frame: cudaHostAlloc [0x1a3219] in B13
+=========         Host Frame: gp_entropy_dev(GpDevRecords const&, CUstream_st*, GpEntScratch&, std::vector<std::vector<std::vector<unsigned char, std::allocator<unsigned char> >, std::allocator<std::vector<unsigned char, std::allocator<unsigned char> > > >, std::allocator<std::vector<std::vector<unsigned char, std::allocator<unsigned char> >, std::allocator<std::vector<unsigned char, std::allocator<unsigned char> > > > > >&, double*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&) [0x8dfdb] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda()#5}::operator()() const [0x9da15] in B13
+=========         Host Frame:  [0xecdb3] in libstdc++.so.6
+=========         Host Frame:  [0x9cb83] in libc.so.6
+=========         Host Frame:  [0x129ecb] in libc.so.6
+========= 
+========= Leaked 268435456 bytes at 0x715364000000
+=========     Saved host backtrace up to driver entry point at allocation time
+=========         Host Frame: cudaHostRegister [0x1a342c] in B13
+=========         Host Frame: ingest_create [0x141d76] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) [0xa0b08] in B13
+=========         Host Frame: main [0x3fb88] in B13
+========= 
+========= Leaked 262144 bytes at 0x7153a6800000
+=========     Saved host backtrace up to driver entry point at allocation time
+=========         Host Frame: cudaMalloc [0x1a2196] in B13
+=========         Host Frame: GpEncoder::init(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&) [0x665a8] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) [0xa075d] in B13
+=========         Host Frame: main [0x3fb88] in B13
+========= 
+========= Leaked 262144 bytes at 0x7153a6840000
+=========     Saved host backtrace up to driver entry point at allocation time
+=========         Host Frame: cudaMalloc [0x1a2196] in B13
+=========         Host Frame: GpEncoder::init(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&) [0x665a8] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) [0xa1b92] in B13
+=========         Host Frame: main [0x3fb88] in B13
+========= 
+========= Leaked 262144 bytes at 0x7153a6880000
+=========     Saved host backtrace up to driver entry point at allocation time
+=========         Host Frame: cudaMalloc [0x1a2196] in B13
+=========         Host Frame: GpEncoder::init(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&) [0x665a8] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) [0xa1b92] in B13
+=========         Host Frame: main [0x3fb88] in B13
+========= 
+========= Leaked 262144 bytes at 0x7153a68c0000
+=========     Saved host backtrace up to driver entry point at allocation time
+=========         Host Frame: cudaMalloc [0x1a2196] in B13
+=========         Host Frame: GpEncoder::init(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&) [0x665a8] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) [0xa1f8f] in B13
+=========         Host Frame: main [0x3fb88] in B13
+========= 
+========= Leaked 262144 bytes at 0x7153a6900000
+=========     Saved host backtrace up to driver entry point at allocation time
+=========         Host Frame: cudaMalloc [0x1a2196] in B13
+=========         Host Frame: GpEncoder::init(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&) [0x665a8] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) [0xa1f8f] in B13
+=========         Host Frame: main [0x3fb88] in B13
+========= 
+========= Leaked 262144 bytes at 0x7153a6940000
+=========     Saved host backtrace up to driver entry point at allocation time
+=========         Host Frame: cudaMalloc [0x1a2196] in B13
+=========         Host Frame: GpEncoder::init(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&) [0x665a8] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) [0xa1f8f] in B13
+=========         Host Frame: main [0x3fb88] in B13
+========= 
+========= Leaked 4194304 bytes at 0x7153a6a00000
+=========     Saved host backtrace up to driver entry point at allocation time
+=========         Host Frame: cudaHostAlloc [0x1a3219] in B13
+=========         Host Frame: GpPinnedStage::stage(void*, void const*, unsigned long, CUstream_st*) [0x842e4] in B13
+=========         Host Frame: GpEncoder::encode(std::vector<GpFrameIn, std::allocator<GpFrameIn> > const&, std::vector<GpFrameOut, std::allocator<GpFrameOut> >&, GpTimes&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, CUstream_st*, GpDevRecords*) [0x7832d] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda(GpEncoder*, GpEncoder*, CUstream_st*)#9}::operator()(GpEncoder*, GpEncoder*, CUstream_st*) const [0x9c87e] in B13
+=========         Host Frame: std::thread::_State_impl<std::thread::_Invoker<std::tuple<run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda()#11}> > >::_M_run() [0x9d855] in B13
+=========         Host Frame:  [0xecdb3] in libstdc++.so.6
+=========         Host Frame:  [0x9cb83] in libc.so.6
+=========         Host Frame:  [0x129ecb] in libc.so.6
+========= 
+========= Leaked 130023424 bytes at 0x7153ec000000
+=========     Saved host backtrace up to driver entry point at allocation time
+=========         Host Frame: cudaMalloc [0x1a2196] in B13
+=========         Host Frame: ingest_create [0x1420b3] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) [0xa0b08] in B13
+=========         Host Frame: main [0x3fb88] in B13
+========= 
+========= Leaked 80 bytes at 0x12b4000000
+=========     Saved host backtrace up to driver entry point at allocation time
+=========         Host Frame: cudaMallocAsync [0x1ce6f7] in B13
+=========         Host Frame: GpEncoder::encode(std::vector<GpFrameIn, std::allocator<GpFrameIn> > const&, std::vector<GpFrameOut, std::allocator<GpFrameOut> >&, GpTimes&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, CUstream_st*, GpDevRecords*) [0x73533] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda(GpEncoder*, GpEncoder*, CUstream_st*)#9}::operator()(GpEncoder*, GpEncoder*, CUstream_st*) const [0x9a339] in B13
+=========         Host Frame: std::thread::_State_impl<std::thread::_Invoker<std::tuple<run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda()#11}> > >::_M_run() [0x9d855] in B13
+=========         Host Frame:  [0xecdb3] in libstdc++.so.6
+=========         Host Frame:  [0x9cb83] in libc.so.6
+=========         Host Frame:  [0x129ecb] in libc.so.6
+========= 
+========= Leaked 4 bytes at 0x12b4000200
+=========     Saved host backtrace up to driver entry point at allocation time
+=========         Host Frame: cudaMallocAsync [0x1ce6f7] in B13
+=========         Host Frame: cudaError (anonymous namespace)::Alloc::get<unsigned int>(unsigned int*&, unsigned long) [0x6a9b1] in B13
+=========         Host Frame: GpEncoder::encode(std::vector<GpFrameIn, std::allocator<GpFrameIn> > const&, std::vector<GpFrameOut, std::allocator<GpFrameOut> >&, GpTimes&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, CUstream_st*, GpDevRecords*) [0x774d3] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda(GpEncoder*, GpEncoder*, CUstream_st*)#9}::operator()(GpEncoder*, GpEncoder*, CUstream_st*) const [0x9a339] in B13
+=========         Host Frame: std::thread::_State_impl<std::thread::_Invoker<std::tuple<run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda()#11}> > >::_M_run() [0x9d855] in B13
+=========         Host Frame:  [0xecdb3] in libstdc++.so.6
+=========         Host Frame:  [0x9cb83] in libc.so.6
+=========         Host Frame:  [0x129ecb] in libc.so.6
+========= 
+========= Leaked 1179648 bytes at 0x12b4000400
+=========     Saved host backtrace up to driver entry point at allocation time
+=========         Host Frame: cudaMallocAsync [0x1ce6f7] in B13
+=========         Host Frame: dispatch(ingest_ctx*, std::unique_ptr<ingest::Batch, std::default_delete<ingest::Batch> >) [0x1451bc] in B13
+=========         Host Frame: batcher_main(ingest_ctx*) [0x14a8d5] in B13
+=========         Host Frame:  [0xecdb3] in libstdc++.so.6
+=========         Host Frame:  [0x9cb83] in libc.so.6
+=========         Host Frame:  [0x129ecb] in libc.so.6
+========= 
+========= Leaked 976 bytes at 0x12b4120400
+=========     Saved host backtrace up to driver entry point at allocation time
+=========         Host Frame: cudaMallocAsync [0x1ce6f7] in B13
+=========         Host Frame: cudaError (anonymous namespace)::Alloc::get<unsigned char>(unsigned char*&, unsigned long) [0x6a1ef] in B13
+=========         Host Frame: GpEncoder::encode(std::vector<GpFrameIn, std::allocator<GpFrameIn> > const&, std::vector<GpFrameOut, std::allocator<GpFrameOut> >&, GpTimes&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, CUstream_st*, GpDevRecords*) [0x748a8] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda(GpEncoder*, GpEncoder*, CUstream_st*)#9}::operator()(GpEncoder*, GpEncoder*, CUstream_st*) const [0x9a339] in B13
+=========         Host Frame: std::thread::_State_impl<std::thread::_Invoker<std::tuple<run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda()#11}> > >::_M_run() [0x9d855] in B13
+=========         Host Frame:  [0xecdb3] in libstdc++.so.6
+=========         Host Frame:  [0x9cb83] in libc.so.6
+=========         Host Frame:  [0x129ecb] in libc.so.6
+========= 
+========= Leaked 264 bytes at 0x12b4120800
+=========     Saved host backtrace up to driver entry point at allocation time
+=========         Host Frame: cudaMallocAsync [0x1ce6f7] in B13
+=========         Host Frame: GpEncoder::encode(std::vector<GpFrameIn, std::allocator<GpFrameIn> > const&, std::vector<GpFrameOut, std::allocator<GpFrameOut> >&, GpTimes&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, CUstream_st*, GpDevRecords*) [0x7516b] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda(GpEncoder*, GpEncoder*, CUstream_st*)#9}::operator()(GpEncoder*, GpEncoder*, CUstream_st*) const [0x9a339] in B13
+=========         Host Frame: std::thread::_State_impl<std::thread::_Invoker<std::tuple<run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda()#11}> > >::_M_run() [0x9d855] in B13
+=========         Host Frame:  [0xecdb3] in libstdc++.so.6
+=========         Host Frame:  [0x9cb83] in libc.so.6
+=========         Host Frame:  [0x129ecb] in libc.so.6
+========= 
+========= Leaked 48 bytes at 0x12b4120a00
+=========     Saved host backtrace up to driver entry point at allocation time
+=========         Host Frame: cudaMallocAsync [0x1ce6f7] in B13
+=========         Host Frame: cudaError (anonymous namespace)::Alloc::get<unsigned long long>(unsigned long long*&, unsigned long) [0x6a691] in B13
+=========         Host Frame: GpEncoder::encode(std::vector<GpFrameIn, std::allocator<GpFrameIn> > const&, std::vector<GpFrameOut, std::allocator<GpFrameOut> >&, GpTimes&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, CUstream_st*, GpDevRecords*) [0x774b0] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda(GpEncoder*, GpEncoder*, CUstream_st*)#9}::operator()(GpEncoder*, GpEncoder*, CUstream_st*) const [0x9a339] in B13
+=========         Host Frame: std::thread::_State_impl<std::thread::_Invoker<std::tuple<run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda()#11}> > >::_M_run() [0x9d855] in B13
+=========         Host Frame:  [0xecdb3] in libstdc++.so.6
+=========         Host Frame:  [0x9cb83] in libc.so.6
+=========         Host Frame:  [0x129ecb] in libc.so.6
+========= 
+========= Leaked 5996544 bytes at 0x12b4120c00
+=========     Saved host backtrace up to driver entry point at allocation time
+=========         Host Frame: cudaMallocAsync [0x1ce6f7] in B13
+=========         Host Frame: dispatch(ingest_ctx*, std::unique_ptr<ingest::Batch, std::default_delete<ingest::Batch> >) [0x1451bc] in B13
+=========         Host Frame: batcher_main(ingest_ctx*) [0x14a8d5] in B13
+=========         Host Frame:  [0xecdb3] in libstdc++.so.6
+=========         Host Frame:  [0x9cb83] in libc.so.6
+=========         Host Frame:  [0x129ecb] in libc.so.6
+========= 
+========= Leaked 5996544 bytes at 0x12b46d8c00
+=========     Saved host backtrace up to driver entry point at allocation time
+=========         Host Frame: cudaMallocAsync [0x1ce6f7] in B13
+=========         Host Frame: GpEncoder::encode(std::vector<GpFrameIn, std::allocator<GpFrameIn> > const&, std::vector<GpFrameOut, std::allocator<GpFrameOut> >&, GpTimes&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, CUstream_st*, GpDevRecords*) [0x7017d] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda(GpEncoder*, GpEncoder*, CUstream_st*)#9}::operator()(GpEncoder*, GpEncoder*, CUstream_st*) const [0x9a339] in B13
+=========         Host Frame: std::thread::_State_impl<std::thread::_Invoker<std::tuple<run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda()#11}> > >::_M_run() [0x9d855] in B13
+=========         Host Frame:  [0xecdb3] in libstdc++.so.6
+=========         Host Frame:  [0x9cb83] in libc.so.6
+=========         Host Frame:  [0x129ecb] in libc.so.6
+========= 
+========= Leaked 1211000 bytes at 0x12b4c90c00
+=========     Saved host backtrace up to driver entry point at allocation time
+=========         Host Frame: cudaMallocAsync [0x1ce6f7] in B13
+=========         Host Frame: GpEncoder::encode(std::vector<GpFrameIn, std::allocator<GpFrameIn> > const&, std::vector<GpFrameOut, std::allocator<GpFrameOut> >&, GpTimes&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, CUstream_st*, GpDevRecords*) [0x7099a] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda(GpEncoder*, GpEncoder*, CUstream_st*)#9}::operator()(GpEncoder*, GpEncoder*, CUstream_st*) const [0x9a339] in B13
+=========         Host Frame: std::thread::_State_impl<std::thread::_Invoker<std::tuple<run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda()#11}> > >::_M_run() [0x9d855] in B13
+=========         Host Frame:  [0xecdb3] in libstdc++.so.6
+=========         Host Frame:  [0x9cb83] in libc.so.6
+=========         Host Frame:  [0x129ecb] in libc.so.6
+========= 
+========= Leaked 726600 bytes at 0x12b4db8800
+=========     Saved host backtrace up to driver entry point at allocation time
+=========         Host Frame: cudaMallocAsync [0x1ce6f7] in B13
+=========         Host Frame: GpEncoder::encode(std::vector<GpFrameIn, std::allocator<GpFrameIn> > const&, std::vector<GpFrameOut, std::allocator<GpFrameOut> >&, GpTimes&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, CUstream_st*, GpDevRecords*) [0x70ecf] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda(GpEncoder*, GpEncoder*, CUstream_st*)#9}::operator()(GpEncoder*, GpEncoder*, CUstream_st*) const [0x9a339] in B13
+=========         Host Frame: std::thread::_State_impl<std::thread::_Invoker<std::tuple<run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda()#11}> > >::_M_run() [0x9d855] in B13
+=========         Host Frame:  [0xecdb3] in libstdc++.so.6
+=========         Host Frame:  [0x9cb83] in libc.so.6
+=========         Host Frame:  [0x129ecb] in libc.so.6
+========= 
+========= Leaked 999424 bytes at 0x12b4e6a000
+=========     Saved host backtrace up to driver entry point at allocation time
+=========         Host Frame: cudaMallocAsync [0x1ce6f7] in B13
+=========         Host Frame: GpEncoder::encode(std::vector<GpFrameIn, std::allocator<GpFrameIn> > const&, std::vector<GpFrameOut, std::allocator<GpFrameOut> >&, GpTimes&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, CUstream_st*, GpDevRecords*) [0x75960] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda(GpEncoder*, GpEncoder*, CUstream_st*)#9}::operator()(GpEncoder*, GpEncoder*, CUstream_st*) const [0x9a339] in B13
+=========         Host Frame: std::thread::_State_impl<std::thread::_Invoker<std::tuple<run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda()#11}> > >::_M_run() [0x9d855] in B13
+=========         Host Frame:  [0xecdb3] in libstdc++.so.6
+=========         Host Frame:  [0x9cb83] in libc.so.6
+=========         Host Frame:  [0x129ecb] in libc.so.6
+========= 
+========= Leaked 499712 bytes at 0x12b4f5e000
+=========     Saved host backtrace up to driver entry point at allocation time
+=========         Host Frame: cudaMallocAsync [0x1ce6f7] in B13
+=========         Host Frame: cudaError (anonymous namespace)::Alloc::get<unsigned short>(unsigned short*&, unsigned long) [0x6a820] in B13
+=========         Host Frame: GpEncoder::encode(std::vector<GpFrameIn, std::allocator<GpFrameIn> > const&, std::vector<GpFrameOut, std::allocator<GpFrameOut> >&, GpTimes&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, CUstream_st*, GpDevRecords*) [0x7631a] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda(GpEncoder*, GpEncoder*, CUstream_st*)#9}::operator()(GpEncoder*, GpEncoder*, CUstream_st*) const [0x9a339] in B13
+=========         Host Frame: std::thread::_State_impl<std::thread::_Invoker<std::tuple<run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda()#11}> > >::_M_run() [0x9d855] in B13
+=========         Host Frame:  [0xecdb3] in libstdc++.so.6
+=========         Host Frame:  [0x9cb83] in libc.so.6
+=========         Host Frame:  [0x129ecb] in libc.so.6
+========= 
+========= Leaked 2539264 bytes at 0x12b5192400
+=========     Saved host backtrace up to driver entry point at allocation time
+=========         Host Frame: cudaMallocAsync [0x1ce6f7] in B13
+=========         Host Frame: GpEncoder::encode(std::vector<GpFrameIn, std::allocator<GpFrameIn> > const&, std::vector<GpFrameOut, std::allocator<GpFrameOut> >&, GpTimes&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, CUstream_st*, GpDevRecords*) [0x793bb] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda(GpEncoder*, GpEncoder*, CUstream_st*)#9}::operator()(GpEncoder*, GpEncoder*, CUstream_st*) const [0x9c87e] in B13
+=========         Host Frame: std::thread::_State_impl<std::thread::_Invoker<std::tuple<run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda()#11}> > >::_M_run() [0x9d855] in B13
+=========         Host Frame:  [0xecdb3] in libstdc++.so.6
+=========         Host Frame:  [0x9cb83] in libc.so.6
+=========         Host Frame:  [0x129ecb] in libc.so.6
+========= 
+========= Leaked 60700 bytes at 0x12b53fe400
+=========     Saved host backtrace up to driver entry point at allocation time
+=========         Host Frame: cudaMallocAsync [0x1ce6f7] in B13
+=========         Host Frame: GpEncoder::encode(std::vector<GpFrameIn, std::allocator<GpFrameIn> > const&, std::vector<GpFrameOut, std::allocator<GpFrameOut> >&, GpTimes&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, CUstream_st*, GpDevRecords*) [0x71801] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda(GpEncoder*, GpEncoder*, CUstream_st*)#9}::operator()(GpEncoder*, GpEncoder*, CUstream_st*) const [0x9a339] in B13
+=========         Host Frame: std::thread::_State_impl<std::thread::_Invoker<std::tuple<run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda()#11}> > >::_M_run() [0x9d855] in B13
+=========         Host Frame:  [0xecdb3] in libstdc++.so.6
+=========         Host Frame:  [0x9cb83] in libc.so.6
+=========         Host Frame:  [0x129ecb] in libc.so.6
+========= 
+========= Leaked 2192 bytes at 0x12b540d200
+=========     Saved host backtrace up to driver entry point at allocation time
+=========         Host Frame: cudaMallocAsync [0x1ce6f7] in B13
+=========         Host Frame: GpEncoder::encode(std::vector<GpFrameIn, std::allocator<GpFrameIn> > const&, std::vector<GpFrameOut, std::allocator<GpFrameOut> >&, GpTimes&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, CUstream_st*, GpDevRecords*) [0x73778] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda(GpEncoder*, GpEncoder*, CUstream_st*)#9}::operator()(GpEncoder*, GpEncoder*, CUstream_st*) const [0x9a339] in B13
+=========         Host Frame: std::thread::_State_impl<std::thread::_Invoker<std::tuple<run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda()#11}> > >::_M_run() [0x9d855] in B13
+=========         Host Frame:  [0xecdb3] in libstdc++.so.6
+=========         Host Frame:  [0x9cb83] in libc.so.6
+=========         Host Frame:  [0x129ecb] in libc.so.6
+========= 
+========= Leaked 3904 bytes at 0x12b540dc00
+=========     Saved host backtrace up to driver entry point at allocation time
+=========         Host Frame: cudaMallocAsync [0x1ce6f7] in B13
+=========         Host Frame: GpEncoder::encode(std::vector<GpFrameIn, std::allocator<GpFrameIn> > const&, std::vector<GpFrameOut, std::allocator<GpFrameOut> >&, GpTimes&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, CUstream_st*, GpDevRecords*) [0x754c9] in B13
+=========         Host Frame: run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda(GpEncoder*, GpEncoder*, CUstream_st*)#9}::operator()(GpEncoder*, GpEncoder*, CUstream_st*) const [0x9a339] in B13
+=========         Host Frame: std::thread::_State_impl<std::thread::_Invoker<std::tuple<run_batch_mode(GpConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)::{lambda()#11}> > >::_M_run() [0x9d855] in B13
+=========         Host Frame:  [0xecdb3] in libstdc++.so.6
+=========         Host Frame:  [0x9cb83] in libc.so.6
+=========         Host Frame:  [0x129ecb] in libc.so.6
+========= 
+========= Target application returned an error
+========= LEAK SUMMARY: 1354427804 bytes leaked in 58 allocations
+========= ERROR SUMMARY: 114 errors
+========= ERROR SUMMARY: 14 errors were not printed. Use --print-limit option to adjust the number of printed errors

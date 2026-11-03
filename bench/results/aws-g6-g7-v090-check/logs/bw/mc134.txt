@@ -1,0 +1,13 @@
+sanitizer /usr/local/cuda-13.4/bin/compute-sanitizer: Version 2026.3.0.0 (build 38855100) (public-release)
+sanitizer /usr/local/cuda-13.2/bin/compute-sanitizer: Version 2026.1.0.0 (build 37182542) (public-release)
+san134_B13_photo: rc 0; 0 invalid shared reads; first: ;  ERROR SUMMARY: 0 errors; 
+san134_B13_pair: rc 0; 0 invalid shared reads; first: ;  ERROR SUMMARY: 0 errors; 
+san134_A13_photo: rc 0; 0 invalid shared reads; first: ;  ERROR SUMMARY: 0 errors; 
+san134_A13_pair: rc 0; 0 invalid shared reads; first: ;  ERROR SUMMARY: 0 errors; 
+cubscan_cuda-13.4: rc 0; 0 invalid shared reads; first: ;  ERROR SUMMARY: 0 errors; CUB 3.4.3, all correct
+cubsweep_cuda-13.4_1_5000: rc 0; 0 invalid shared reads; first: ;  ERROR SUMMARY: 0 errors; CUB 3.4.3: n 1..5000 step 1, 5000 scans, no error (temp up to 511 B)
+cubsweep_cuda-13.4_5001_200000_7: rc 0; 0 invalid shared reads; first: ;  ERROR SUMMARY: 0 errors; CUB 3.4.3: n 5001..200000 step 7, 27858 scans, no error (temp up to 511 B)
+cubscan_cuda-13.2: rc 99; 0 invalid shared reads; first: at void cub::_V_300403_SM_1200::detail::scan::DeviceScanKernel<cub::_V_300403_SM_1200::det;  ERROR SUMMARY: 36 errors were not printed. Use --print-limit option to adjust the number of printed errors; CUB 3.4.3, FAILED
+cubsweep_cuda-13.2_1_5000: rc 99; 1 invalid shared reads; first: at void cub::_V_300403_SM_1200::detail::scan::DeviceScanKernel<cub::_V_300403_SM_1200::det;  ERROR SUMMARY: 2 errors; n 1: launch no error, sync unspecified launch failure
+cubsweep_cuda-13.2_5001_200000_7: rc 99; 1 invalid shared reads; first: at void cub::_V_300403_SM_1200::detail::scan::DeviceScanKernel<cub::_V_300403_SM_1200::det;  ERROR SUMMARY: 2 errors; n 5001: launch no error, sync unspecified launch failure
+MC134_DONE

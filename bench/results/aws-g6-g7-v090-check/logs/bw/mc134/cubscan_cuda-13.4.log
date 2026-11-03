@@ -1,0 +1,12 @@
+========= COMPUTE-SANITIZER
+n        2 temp      511 B: launch no error, sync no error, 0 wrong
+n        3 temp      511 B: launch no error, sync no error, 0 wrong
+n       17 temp      511 B: launch no error, sync no error, 0 wrong
+n      100 temp      511 B: launch no error, sync no error, 0 wrong
+n      129 temp      511 B: launch no error, sync no error, 0 wrong
+n     1000 temp      511 B: launch no error, sync no error, 0 wrong
+n     4097 temp      511 B: launch no error, sync no error, 0 wrong
+n    65537 temp      511 B: launch no error, sync no error, 0 wrong
+n  1000001 temp     1279 B: launch no error, sync no error, 0 wrong
+CUB 3.4.3, all correct
+========= ERROR SUMMARY: 0 errors

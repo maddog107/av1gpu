@@ -1,0 +1,8 @@
+== A13 err_missing rc 3: decode /nonexistent.jpg: read failed 
+== A13 err_jpeg_lossless rc 3: /home/ubuntu/st/photo.jpg: --lossless on a JPEG makes a file about twice the size of the JPEG, or more; drop --lossless to encode it lossy 
+== A13 err_crop rc 3: /home/ubuntu/st/t320.jpg: the crop 999x999+2000+2000 is outside the 320x196 image 
+== B13 err_missing rc 3: decode /nonexistent.jpg: read failed 
+== B13 err_jpeg_lossless rc 3: /home/ubuntu/st/photo.jpg: --lossless on a JPEG makes a file about twice the size of the JPEG, or more; drop --lossless to encode it lossy 
+== B13 err_crop rc 3: /home/ubuntu/st/t320.jpg: the crop 999x999+2000+2000 is outside the 320x196 image 
+043_la16.png 3
+/home/ubuntu/sets/gray/la16.png: 16-bit PNG holds more than 10 significant bits (colour sample 29041 at (0,0) is not v * 65535 / 1023 for a 10-bit v): AV1 lossless here is 8- or 10-bit, so it cannot be coded losslessly (convert to 8 bits, or encode lossy with --depth 10)
