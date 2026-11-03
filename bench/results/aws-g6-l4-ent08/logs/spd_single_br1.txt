@@ -1,0 +1,2 @@
+single_br1 single 0cf2daca3f1c50e1_large.jpg wall s: A 1.2421 B 1.2466 B/A 1.0037
+SPD_DONE single_br1

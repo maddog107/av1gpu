@@ -1,0 +1,43 @@
+[av1gpu] 840 images (127.4 MP) in 2256.2 ms: 372.30 img/s, 56.47 MP/s; 0 batches; out 12.27 MB (0.771 bpp); CPU 1586 ms = 0.70 cores; skipped (unsupported): 0; WebP/PNG via CPU decode: 0; write failures 0
+[av1gpu] stage ms: ingest wait 1314.6 | gpu setup 0.0 analysis 1851.0 dp 0.0 recon 1317.2 pack 0.0 postfilter 0.0 download 0.0 (gpu total 4342.8, encode wall 0.0) | entropy wall 125.8 (gpu 109.4) | write 38.6 | peak dev 948 MB
+GPU span 2093.5 ms; any-kernel busy 1981.6 ms; encoder-stream busy 1953.9; entropy busy 97.5; entropy busy while encoders busy 69.8; entropy-only time 27.7; tail after last encoder kernel 27.6 ms; head before first encoder kernel 0.0
+kernel ms by class: {'encode': 2322.0, 'postfilter': 292.6, 'entropy': 106.9}
+encode        1163.3 ms n=    54 avg   21542.6 us  k_recon
+encode         624.3 ms n=    39 avg   16007.0 us  k_analysis
+encode         519.1 ms n=    18 avg   28837.7 us  k_analysis_small
+postfilter     174.9 ms n=   840 avg     208.2 us  k_select_small
+entropy         59.5 ms n=     3 avg   19845.7 us  k_entropy_win
+postfilter      47.6 ms n=   840 avg      56.7 us  k_cdef_sse_t
+postfilter      35.8 ms n=   840 avg      42.6 us  k_cdef
+entropy         26.5 ms n=     6 avg    4416.5 us  k_sbsym
+entropy         15.9 ms n=     6 avg    2657.7 us  k_txsym
+postfilter      14.5 ms n=  1680 avg       8.6 us  k_deblock
+postfilter       8.8 ms n=   840 avg      10.5 us  k_mark
+encode           4.7 ms n=     8 avg     585.1 us  finalize_kernel
+encode           4.5 ms n=     3 avg    1510.9 us  k_pack
+encode           3.4 ms n=     3 avg    1122.0 us  k_dp
+postfilter       3.1 ms n=   840 avg       3.7 us  k_cdef_dir
+entropy          3.0 ms n=     3 avg    1001.7 us  k_txctx
+postfilter       2.1 ms n=   840 avg       2.5 us  k_finalize
+encode           1.8 ms n=     3 avg     608.9 us  k_sc_count
+postfilter       1.7 ms n=   840 avg       2.1 us  k_rd_pick
+postfilter       1.7 ms n=   840 avg       2.0 us  k_assign_dev
+postfilter       1.2 ms n=   840 avg       1.5 us  k_cdef_idx_norm
+postfilter       1.1 ms n=   840 avg       1.4 us  k_count_active
+entropy          0.9 ms n=     3 avg     310.6 us  k_maps
+encode           0.7 ms n=     3 avg     235.1 us  k_sb_stats
+entropy          0.3 ms n=     3 avg     101.5 us  k_pack
+entropy          0.3 ms n=     3 avg      92.5 us  k_cdf_defaults
+entropy          0.1 ms n=    11 avg      10.7 us  k_put
+encode           0.1 ms n=     3 avg      36.1 us  k_set_cdef
+entropy          0.1 ms n=     9 avg      11.8 us  DeviceScanKernel
+encode           0.1 ms n=     3 avg      30.2 us  k_pal_an
+entropy          0.1 ms n=     3 avg      25.6 us  k_blocks
+encode           0.0 ms n=     3 avg       5.6 us  k_sb_round
+entropy          0.0 ms n=     9 avg       1.8 us  DeviceScanInitKernel
+entropy          0.0 ms n=     3 avg       4.2 us  k_sbs
+entropy          0.0 ms n=     3 avg       4.1 us  k_tilerange
+entropy          0.0 ms n=     3 avg       3.5 us  k_iscan
+entropy          0.0 ms n=     3 avg       3.0 us  k_tiles
+encode           0.0 ms n=     3 avg       2.1 us  k_sc_decide
+memcpy: all 4086 (11.0 ms), entropy streams 6 (0.8 ms)

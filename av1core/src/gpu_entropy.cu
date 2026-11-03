@@ -30,6 +30,7 @@
 #include <cub/cub.cuh>
 #include <cuda_runtime.h>
 #include <algorithm>
+#include <type_traits>
 #include <cstdio>
 #include <mutex>
 #include <cstring>
@@ -1118,6 +1119,34 @@ __device__ __forceinline__ void rc_code(Rc64 &rc, uint32_t cw PROF(, unsigned lo
     rc.rng = r << d;
     rc.cnt = s;
 }
+// The same, split in two for k_entropy_win's two coder threads.  rc_range: the range, the serial chain from one
+// symbol to the next; returns (r - u) | d << 16 (r - u < 2^16: u <= r < 2^16).  rc_low: low, carries and bytes from it.
+__device__ __forceinline__ uint32_t rc_range(uint32_t &rng, uint32_t cw) {
+    const uint32_t r = rng;
+    const uint32_t r8 = r >> 8, nms4 = 4u * (cw & 31u);
+    const uint32_t v = ((r8 * ((cw >> 11) & 1023u)) >> 1) + nms4;
+    const uint32_t uq = ((r8 * ((cw >> 21) & 1023u)) >> 1) + nms4 + 4u;
+    const uint32_t u = (cw >> 31) ? uq : r;
+    const uint32_t rr = u - v;
+    const int d = __clz((int)rr) - 16;
+    rng = rr << d;
+    return (r - u) | ((uint32_t)d << 16);
+}
+__device__ __forceinline__ void rc_low(Rc64 &rc, uint32_t x PROF(, unsigned long long *pc)) {
+    const int d = (int)(x >> 16);
+    uint64_t l = rc.low + (x & 0xFFFFu);
+    int c = rc.cnt;
+    int s = c + d;
+    if (s >= 40) {
+        PROF(pc[0]++;)
+        rc.low = l;
+        rc.flush(c, s);
+        l = rc.low;
+        s = c + d - 24;
+    }
+    rc.low = l << d;
+    rc.cnt = s;
+}
 __device__ __forceinline__ void rc_code(Rc32 &rc, uint32_t cw PROF(, unsigned long long *pc)) {
     uint32_t l = rc.low, r = rc.rng;
     const uint32_t r8 = r >> 8, nms4 = 4u * (cw & 31u);
@@ -1166,10 +1195,18 @@ __device__ __forceinline__ void win_group(uint16_t *c, uint32_t N, uint32_t m, c
 #pragma unroll
     for (int i = 0; i < NC; i++) cr[i] = (uint32_t)i < N ? c[i] : 0u;
     uint32_t cnt = c[N];
-    while (m) {
-        const int j = __ffs((int)m) - 1;
+    // the next member's lane and word are fetched one step ahead (they do not depend on the CDF), so each step's
+    // chain is the CDF update alone, not __ffs + the shared load + the update
+    int j = __ffs((int)m) - 1;
+    m &= m - 1;
+    uint32_t x = sw[j];
+    for (;;) {
+        const bool more = m != 0;
+        const int jn = __ffs((int)m) - 1;
         m &= m - 1;
-        const uint32_t x = sw[j], sj = x & 15u;
+        const uint32_t xn = more ? sw[jn] : 0u;
+        const uint32_t sj = x & 15u;
+        bool adapt = true;
         if constexpr (NC == 16) {
             if ((x >> 8) != AV1G_SYM_ADAPT) {  // split_or_horz / split_or_vert: read-only use of the partition CDF
 #define P_(k) (cr[k] - ((k) > 0 ? cr[(k) > 0 ? (k) - 1 : 0] : 0u))
@@ -1180,19 +1217,24 @@ __device__ __forceinline__ void win_group(uint16_t *c, uint32_t N, uint32_t m, c
                           P_(AV1G_PARTITION_HORZ_B) + P_(AV1G_PARTITION_VERT_A) + P_(AV1G_PARTITION_HORZ_4);
 #undef P_
                 sc[j] = coded_word(sj ? psum : 32768u, sj ? 0u : psum, 1u - sj);
-                continue;
+                adapt = false;
             }
         }
-        sc[j] = coded_word(sj ? 32768u - sel(cr, sj - 1) : 32768u, 32768u - sel(cr, sj), N - 1 - sj);
-        const int rate = 3 + (cnt > 15) + (cnt > 31) + (N >= 4 ? 2 : 1);
-        // all NC entries unconditionally (straight-line code): cr[N-1] == 32768 stays 32768, entries >= N are never
-        // read nor written back
+        if (adapt) {
+            sc[j] = coded_word(sj ? 32768u - sel(cr, sj - 1) : 32768u, 32768u - sel(cr, sj), N - 1 - sj);
+            const int rate = 3 + (cnt > 15) + (cnt > 31) + (N >= 4 ? 2 : 1);
+            // all NC entries unconditionally (straight-line code): cr[N-1] == 32768 stays 32768, entries >= N are
+            // never read nor written back
 #pragma unroll
-        for (int i = 0; i < NC; i++) {
-            const uint32_t y = cr[i];
-            cr[i] = (uint32_t)i < sj ? y - (y >> rate) : y + ((32768u - y) >> rate);
+            for (int i = 0; i < NC; i++) {
+                const uint32_t y = cr[i];
+                cr[i] = (uint32_t)i < sj ? y - (y >> rate) : y + ((32768u - y) >> rate);
+            }
+            cnt += cnt < 32;
         }
-        cnt += cnt < 32;
+        if (!more) break;
+        j = jn;
+        x = xn;
     }
 #pragma unroll
     for (int i = 0; i < NC - 1; i++)
@@ -1200,24 +1242,30 @@ __device__ __forceinline__ void win_group(uint16_t *c, uint32_t N, uint32_t m, c
     c[N] = (uint16_t)cnt;
 }
 
-// Two warps per tile: warp 0 computes the coded words of 32-symbol windows (phase A, CDF
-// adaptation) into a shared ring, warp 1 lane 0 range-codes them (phase B), so the per-window
-// cost is max(A, B) instead of A + B.
+// Three warps per tile: warp 0 computes the coded words of 32-symbol windows (phase A, CDF
+// adaptation) into a shared ring; warp 1 lane 0 runs the range of the coder over them (phase B1:
+// the serial chain from symbol to symbol) into a second ring, and warp 2 lane 0 the low end, carries
+// and bytes (phase B2).  The per-window cost is max(A, B1, B2) instead of A + B.  (Rc32, the A/B
+// variant, keeps one coder thread: warp 1 lane 0 does B1 + B2.)
 #define AV1G_WIN_RING 8
 struct WinShared {
-    uint32_t ring[AV1G_WIN_RING][32];  // coded words
-    uint32_t sw[32];                   // producer: per lane s | kind << 8
-    int prod, cons;                    // windows produced / consumed
+    uint32_t ring[AV1G_WIN_RING][32];   // coded words
+    uint32_t ring2[AV1G_WIN_RING][32];  // B1 -> B2: (r - u) | d << 16
+    uint32_t sw[32];                    // producer: per lane s | kind << 8
+    int prod, cons;                     // windows produced / consumed by B1
+    int prod2, cons2;                   // windows B1 handed to B2 / B2 consumed
 };
 constexpr size_t kWinSmem = sizeof(av1g_cdfs) + sizeof(WinShared);
+constexpr int kWinThreads = 96;
 
 __device__ __forceinline__ int vload(const int *p) { return *(const volatile int *)p; }
 __device__ __forceinline__ void vstore(int *p, int v) { *(volatile int *)p = v; }
 
 template <class Coder>
-__global__ void __launch_bounds__(64) k_entropy_win(const uint32_t *syms, const uint64_t *tb, const uint64_t *te, const int *tq,
-                                                     const uint64_t *capOff, const av1g_cdfs *cdfDef, uint8_t *out,
-                                                     uint64_t *sizeArr, DevStatus *st) {
+__global__ void __launch_bounds__(kWinThreads) k_entropy_win(const uint32_t *syms, const uint64_t *tb, const uint64_t *te,
+                                                              const int *tq, const uint64_t *capOff, const av1g_cdfs *cdfDef,
+                                                              uint8_t *out, uint64_t *sizeArr, DevStatus *st) {
+    constexpr bool kSplit = std::is_same<Coder, Rc64>::value;   // B1 / B2 on two threads (Rc64 only)
     extern __shared__ uint4 sh4[];
     uint16_t *cdf = (uint16_t *)sh4;
     WinShared &W = *(WinShared *)(sh4 + sizeof(av1g_cdfs) / 16);
@@ -1225,8 +1273,8 @@ __global__ void __launch_bounds__(64) k_entropy_win(const uint32_t *syms, const 
     const int lane = threadIdx.x & 31, warp = threadIdx.x >> 5;
     {
         const uint4 *src = (const uint4 *)(cdfDef + av1g_coeff_cdf_q_ctx(tq[t]));
-        for (int i = threadIdx.x; i < (int)(sizeof(av1g_cdfs) / 16); i += 64) sh4[i] = src[i];
-        if (threadIdx.x == 0) { W.prod = 0; W.cons = 0; }
+        for (int i = threadIdx.x; i < (int)(sizeof(av1g_cdfs) / 16); i += kWinThreads) sh4[i] = src[i];
+        if (threadIdx.x == 0) { W.prod = 0; W.cons = 0; W.prod2 = 0; W.cons2 = 0; }
         __syncthreads();
     }
     const uint64_t b = tb[t], e = te[t];
@@ -1268,8 +1316,80 @@ __global__ void __launch_bounds__(64) k_entropy_win(const uint32_t *syms, const 
                 vstore(&W.prod, (int)w + 1);
             }
         }
-    } else if (lane == 0) {
-        // ---------------- phase B (consumer, one thread) ----------------
+    } else if (kSplit && warp == 1) {
+        if (lane == 0) {
+            // ---------------- phase B1 (the range, one thread): coded word -> (r - u, d) ----------------
+            uint32_t rng = 0x8000;   // Rc64::init
+            for (uint32_t w = 0; w < nWin; w++) {
+                while (vload(&W.prod) <= (int)w) __nanosleep(32);   // backing off: a spinning thread slows the producer's shared-memory accesses
+                while ((int)w - vload(&W.cons2) >= AV1G_WIN_RING) __nanosleep(32);
+                __threadfence_block();
+                PROF(const unsigned long long pb0 = clock64();)
+                const uint32_t *sc = W.ring[w % AV1G_WIN_RING];
+                uint32_t *so = W.ring2[w % AV1G_WIN_RING];
+                const uint32_t nv = (uint32_t)min((uint64_t)32, (uint64_t)(e - (b + 32ull * w)));
+                if (nv == 32) {   // a full window (all but a tile's last): 16-byte loads and stores
+                    const uint4 *s4 = (const uint4 *)sc;
+                    uint4 *o4 = (uint4 *)so;
+                    uint4 q = s4[0];
+#pragma unroll 2
+                    for (int k = 0; k < 8; k++) {
+                        const uint4 cur = q;
+                        q = s4[k + 1 < 8 ? k + 1 : 7];
+                        uint4 o;
+                        o.x = rc_range(rng, cur.x);
+                        o.y = rc_range(rng, cur.y);
+                        o.z = rc_range(rng, cur.z);
+                        o.w = rc_range(rng, cur.w);
+                        o4[k] = o;
+                    }
+                } else {
+                    for (uint32_t j = 0; j < nv; j++) so[j] = rc_range(rng, sc[j]);
+                }
+                __threadfence_block();
+                vstore(&W.cons, (int)w + 1);
+                vstore(&W.prod2, (int)w + 1);
+                PROF(pB += clock64() - pb0;)
+            }
+        }
+    } else if (kSplit && warp == 2) {
+        if (lane == 0) {
+            // ---------------- phase B2 (low, carries and bytes, one thread) ----------------
+            Rc64 rc;
+            rc.init(out + capOff[t], (uint32_t)(capOff[t + 1] - capOff[t]));
+            PROF(unsigned long long pC = 0;)
+            for (uint32_t w = 0; w < nWin; w++) {
+                while (vload(&W.prod2) <= (int)w) __nanosleep(32);
+                __threadfence_block();
+                PROF(const unsigned long long pc0 = clock64();)
+                const uint32_t *so = W.ring2[w % AV1G_WIN_RING];
+                const uint32_t nv = (uint32_t)min((uint64_t)32, (uint64_t)(e - (b + 32ull * w)));
+                if (nv == 32) {
+                    const uint4 *s4 = (const uint4 *)so;
+                    uint4 q = s4[0];
+#pragma unroll 2
+                    for (int k = 0; k < 8; k++) {
+                        const uint4 cur = q;
+                        q = s4[k + 1 < 8 ? k + 1 : 7];
+                        rc_low(rc, cur.x PROF(, pc));
+                        rc_low(rc, cur.y PROF(, pc));
+                        rc_low(rc, cur.z PROF(, pc));
+                        rc_low(rc, cur.w PROF(, pc));
+                    }
+                } else {
+                    for (uint32_t j = 0; j < nv; j++) rc_low(rc, so[j] PROF(, pc));
+                }
+                __threadfence_block();
+                vstore(&W.cons2, (int)w + 1);
+                PROF(pC += clock64() - pc0;)
+            }
+            const int n = rc.done();
+            PROF(if (t < 4096) { g_prof[t][0] = clock64() - pT0; g_prof[t][5] = pc[0]; g_prof[t][6] = pC; })
+            sizeArr[t] = n < 0 ? 0 : (uint64_t)n;
+            if (n < 0) atomicOr(&st->error, AV1G_GPU_ERR_OUTPUT);
+        }
+    } else if (warp == 1 && lane == 0) {
+        // ---------------- phase B (consumer, one thread; the Rc32 A/B variant) ----------------
         Coder rc;
         rc.init(out + capOff[t], (uint32_t)(capOff[t + 1] - capOff[t]));
         for (uint32_t w = 0; w < nWin; w++) {
@@ -1293,6 +1413,9 @@ __global__ void __launch_bounds__(64) k_entropy_win(const uint32_t *syms, const 
         sizeArr[t] = n < 0 ? 0 : (uint64_t)n;
         if (n < 0) atomicOr(&st->error, AV1G_GPU_ERR_OUTPUT);
     }
+#ifdef AV1G_ENTROPY_PROFILE
+    if (kSplit && warp == 1 && lane == 0 && t < 4096) g_prof[t][2] = pB;
+#endif
 #ifdef AV1G_ENTROPY_PROFILE
     if (warp == 0 && lane == 0 && t < 4096) { g_prof[t][1] = pA; g_prof[t][3] = pG; g_prof[t][4] = pW; }
 #endif
@@ -1625,9 +1748,9 @@ int run_batch_device(const DevBatch &b, cudaStream_t s, void *scratch, size_t sc
     cubBytes = P.cubTiles;
     CK(cub::DeviceScan::ExclusiveSum(dCub, cubBytes, dCapArr, dCapOff, (int)(nTiles + 1), s));
     if (g_entropy_mode == 4)
-        k_entropy_win<Rc32><<<nTiles, 64, kWinSmem, s>>>(dSyms, dTb, dTe, dTq, dCapOff, dCdfDef, dStaging, dSizes, dSt);
+        k_entropy_win<Rc32><<<nTiles, kWinThreads, kWinSmem, s>>>(dSyms, dTb, dTe, dTq, dCapOff, dCdfDef, dStaging, dSizes, dSt);
     else
-        k_entropy_win<Rc64><<<nTiles, 64, kWinSmem, s>>>(dSyms, dTb, dTe, dTq, dCapOff, dCdfDef, dStaging, dSizes, dSt);
+        k_entropy_win<Rc64><<<nTiles, kWinThreads, kWinSmem, s>>>(dSyms, dTb, dTe, dTq, dCapOff, dCdfDef, dStaging, dSizes, dSt);
     rec(6);
     cubBytes = P.cubTiles;
     CK(cub::DeviceScan::ExclusiveSum(dCub, cubBytes, dSizes, dTileOff, (int)(nTiles + 1), s));
@@ -1653,11 +1776,15 @@ int run_batch_device(const DevBatch &b, cudaStream_t s, void *scratch, size_t sc
 // host convenience wrapper: upload records -> run_batch_device -> download
 // ---------------------------------------------------------------------------
 template <class T>
-static int up(T *&d, const std::vector<T> &h, size_t &bytes, std::string &err) {
-    CK(cudaMalloc(&d, std::max<size_t>(1, h.size()) * sizeof(T)));
-    if (!h.empty()) CK(cudaMemcpy(d, h.data(), h.size() * sizeof(T), cudaMemcpyHostToDevice));
-    bytes += h.size() * sizeof(T);
+static int up(T *&d, const T *h, size_t n, size_t &bytes, std::string &err) {
+    CK(cudaMalloc(&d, std::max<size_t>(1, n) * sizeof(T)));
+    if (n) CK(cudaMemcpy(d, h, n * sizeof(T), cudaMemcpyHostToDevice));
+    bytes += n * sizeof(T);
     return 0;
+}
+template <class T>
+static int up(T *&d, const std::vector<T> &h, size_t &bytes, std::string &err) {
+    return up(d, h.data(), h.size(), bytes, err);
 }
 
 int run_batch(const std::vector<const av1g_decision_record *> &frames, bool keepSyms, BatchResult &res, std::string &err) {
@@ -1670,27 +1797,46 @@ int run_batch(const std::vector<const av1g_decision_record *> &frames, bool keep
     std::vector<int16_t> coeffs;
     std::vector<av1g_palette> pals;
     std::vector<uint8_t> cmap;
+    // the arrays to upload: one frame (single-file mode) straight from its record, several concatenated
+    const av1g_block *hB = nullptr; const uint32_t *hBT = nullptr; const av1g_txb *hT = nullptr; const int16_t *hC = nullptr;
+    const av1g_palette *hP = nullptr; const uint8_t *hM = nullptr;
+    size_t nBk = 0, nTx = 0, nCo = 0, nPa = 0, nMa = 0;
     for (uint32_t f = 0; f < nF; f++) {
         const av1g_decision_record &R = *frames[f];
+        const bool pal = R.fp.version >= 5 && R.n_palettes;
         DevFrame &d = df[f];
         d.fp = R.fp;
-        d.blockBase = (uint32_t)blocks.size();
+        d.blockBase = (uint32_t)nBk;
         d.nBlocks = R.n_blocks;
-        d.txbBase = (uint32_t)txb.size();
+        d.txbBase = (uint32_t)nTx;
         d.nTxb = R.n_txb;
-        d.coeffBase = coeffs.size();
+        d.coeffBase = nCo;
+        d.palBase = (uint32_t)nPa;
+        d.mapBase = nMa;
+        if (pal) {
+            d.nPal = R.n_palettes;
+            d.nMap = R.n_color_map;
+        }
+        nBk += R.n_blocks;
+        nTx += R.n_txb;
+        nCo += R.n_coeffs;
+        if (pal) { nPa += R.n_palettes; nMa += R.n_color_map; }
+        if (nF == 1) {
+            hB = R.blocks; hBT = R.block_txb; hT = R.txb; hC = R.coeffs;
+            if (pal) { hP = R.palettes; hM = R.color_map; }
+            continue;
+        }
         blocks.insert(blocks.end(), R.blocks, R.blocks + R.n_blocks);
         blockTxb.insert(blockTxb.end(), R.block_txb, R.block_txb + R.n_blocks);
         txb.insert(txb.end(), R.txb, R.txb + R.n_txb);
         coeffs.insert(coeffs.end(), R.coeffs, R.coeffs + R.n_coeffs);
-        d.palBase = (uint32_t)pals.size();
-        d.mapBase = cmap.size();
-        if (R.fp.version >= 5 && R.n_palettes) {
-            d.nPal = R.n_palettes;
-            d.nMap = R.n_color_map;
+        if (pal) {
             pals.insert(pals.end(), R.palettes, R.palettes + R.n_palettes);
             cmap.insert(cmap.end(), R.color_map, R.color_map + R.n_color_map);
         }
+    }
+    if (nF != 1) {
+        hB = blocks.data(); hBT = blockTxb.data(); hT = txb.data(); hC = coeffs.data(); hP = pals.data(); hM = cmap.data();
     }
     cudaEvent_t eu0, eu1, ed0, ed1;
     cudaEventCreate(&eu0); cudaEventCreate(&eu1); cudaEventCreate(&ed0); cudaEventCreate(&ed1);
@@ -1701,8 +1847,8 @@ int run_batch(const std::vector<const av1g_decision_record *> &frames, bool keep
     av1g_block *dB; uint32_t *dBT; av1g_txb *dT; int16_t *dC;
     av1g_palette *dP;
     uint8_t *dM;
-    if (up(dB, blocks, bytes, err) || up(dBT, blockTxb, bytes, err) || up(dT, txb, bytes, err) || up(dC, coeffs, bytes, err) ||
-        up(dP, pals, bytes, err) || up(dM, cmap, bytes, err))
+    if (up(dB, hB, nBk, bytes, err) || up(dBT, hBT, nBk, bytes, err) || up(dT, hT, nTx, bytes, err) || up(dC, hC, nCo, bytes, err) ||
+        up(dP, hP, nPa, bytes, err) || up(dM, hM, nMa, bytes, err))
         return -1;
     cudaEventRecord(eu1);
     DevBatch b;
@@ -1810,8 +1956,8 @@ int code_streams(const std::vector<const std::vector<uint32_t> *> &streams, cons
     cudaEvent_t e0, e1;
     cudaEventCreate(&e0); cudaEventCreate(&e1);
     cudaEventRecord(e0);
-    if (g_entropy_mode == 4) k_entropy_win<Rc32><<<n, 64, kWinSmem>>>(dS, dB, dE, dQ, dCap, dDef, dOut, dSz64, dSt);
-    else if (win) k_entropy_win<Rc64><<<n, 64, kWinSmem>>>(dS, dB, dE, dQ, dCap, dDef, dOut, dSz64, dSt);
+    if (g_entropy_mode == 4) k_entropy_win<Rc32><<<n, kWinThreads, kWinSmem>>>(dS, dB, dE, dQ, dCap, dDef, dOut, dSz64, dSt);
+    else if (win) k_entropy_win<Rc64><<<n, kWinThreads, kWinSmem>>>(dS, dB, dE, dQ, dCap, dDef, dOut, dSz64, dSt);
     else launch_entropy_m4(g_entropy_smem, dS, dB, dE, dQ, dCap, dScr, dPre, dOut, dSize, n);
     cudaEventRecord(e1);
     CK(cudaEventSynchronize(e1));

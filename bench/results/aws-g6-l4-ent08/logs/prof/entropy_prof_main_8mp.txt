@@ -1,0 +1,16 @@
+PROF tile 0 syms 78929 cyc 10820539 cyc/sym 137.1 A/sym 126.4 B/sym 112.2 maxgrp/win 17.13 wins 2467 flush/sym 0.016
+PROF tile 1 syms 169698 cyc 21273427 cyc/sym 125.4 A/sym 110.3 B/sym 113.3 maxgrp/win 13.87 wins 5304 flush/sym 0.019
+PROF tile 2 syms 146221 cyc 18674288 cyc/sym 127.7 A/sym 115.5 B/sym 113.0 maxgrp/win 15.14 wins 4570 flush/sym 0.018
+PROF tile 3 syms 82700 cyc 11521670 cyc/sym 139.3 A/sym 128.8 B/sym 111.8 maxgrp/win 17.53 wins 2585 flush/sym 0.015
+PROF tile 4 syms 132280 cyc 16634130 cyc/sym 125.7 A/sym 112.0 B/sym 113.2 maxgrp/win 14.57 wins 4134 flush/sym 0.019
+PROF tile 5 syms 267824 cyc 31960535 cyc/sym 119.3 A/sym 94.0 B/sym 114.8 maxgrp/win 9.79 wins 8370 flush/sym 0.023
+PROF tile 6 syms 326702 cyc 38821766 cyc/sym 118.8 A/sym 92.3 B/sym 114.9 maxgrp/win 9.57 wins 10210 flush/sym 0.023
+PROF tile 7 syms 141304 cyc 18024639 cyc/sym 127.6 A/sym 114.7 B/sym 113.0 maxgrp/win 14.84 wins 4416 flush/sym 0.018
+PROF tile 8 syms 197063 cyc 23639579 cyc/sym 120.0 A/sym 97.4 B/sym 114.5 maxgrp/win 10.68 wins 6159 flush/sym 0.022
+PROF tile 9 syms 302227 cyc 35844775 cyc/sym 118.6 A/sym 87.9 B/sym 115.3 maxgrp/win 7.86 wins 9445 flush/sym 0.024
+PROF tile 10 syms 318026 cyc 37641042 cyc/sym 118.4 A/sym 90.6 B/sym 115.0 maxgrp/win 8.86 wins 9939 flush/sym 0.024
+PROF tile 11 syms 279576 cyc 33081387 cyc/sym 118.3 A/sym 95.3 B/sym 114.5 maxgrp/win 10.45 wins 8737 flush/sym 0.023
+PROF tile 12 syms 199732 cyc 23738822 cyc/sym 118.9 A/sym 91.6 B/sym 115.0 maxgrp/win 9.02 wins 6242 flush/sym 0.024
+PROF tile 13 syms 184450 cyc 21848640 cyc/sym 118.5 A/sym 91.8 B/sym 115.1 maxgrp/win 9.12 wins 5765 flush/sym 0.024
+PROF tile 14 syms 180032 cyc 21330540 cyc/sym 118.5 A/sym 92.8 B/sym 115.0 maxgrp/win 9.42 wins 5626 flush/sym 0.024
+PROF tile 15 syms 217526 cyc 25820624 cyc/sym 118.7 A/sym 88.4 B/sym 115.3 maxgrp/win 8.24 wins 6798 flush/sym 0.024

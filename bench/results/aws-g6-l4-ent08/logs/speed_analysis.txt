@@ -1,0 +1,9 @@
+spd_ab.jsonl sr_default mp_s: A 228.92 B 225.84 B/A 0.9865 | per round B/A 0.9929 (A first), 1.0013 (B first) | run range A 225.2-233.7 B 223.6-231.5
+spd_ab.jsonl std_default mp_s: A 73.89 B 74.40 B/A 1.0069 | per round B/A 1.0106 (A first), 1.0058 (B first) | run range A 72.9-74.1 B 73.6-74.9
+spd_ab.jsonl thumbs_default img_s: A 407.74 B 407.71 B/A 0.9999 | per round B/A 0.9891 (A first), 1.0022 (B first) | run range A 404.7-414.7 B 406.4-410.6
+spd_ab.jsonl single: A 1247.1 ms B 1231.3 ms  B/A 0.9874  (12 + 12 runs; A min/max 1239/1279, B 1227/1246)
+spd_noise.jsonl sr_default mp_s: A 225.83 B 226.22 B/A 1.0018 | per round B/A 0.9953 (A first), 1.0181 (B first) | run range A 224.2-227.5 B 224.9-231.1
+spd_noise.jsonl std_default mp_s: A 73.66 B 73.35 B/A 0.9957 | per round B/A 1.0008 (A first), 0.9854 (B first) | run range A 72.1-74.8 B 72.1-74.4
+spd_noise.jsonl thumbs_default img_s: A 405.91 B 404.61 B/A 0.9968 | per round B/A 1.0117 (A first), 0.9920 (B first) | run range A 397.7-409.5 B 399.4-406.8
+spd_noise.jsonl single: A 1243.1 ms B 1247.2 ms  B/A 1.0033  (12 + 12 runs; A min/max 1236/1261, B 1238/1254)
+spd_single_br1.jsonl single: A 1242.0 ms B 1246.6 ms  B/A 1.0037  (12 + 12 runs; A min/max 1233/1261, B 1236/1273)

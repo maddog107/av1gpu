@@ -1,0 +1,18 @@
+A=/home/ubuntu/main/build/av1gpu (cde1f74) B=/home/ubuntu/br/build/av1gpu (br)
+mono_default: inputs 47, files 47 / 47, differ 0, skipped 0, rc 0/0, digest a9a9bf1b458cec98, opts [] 
+mono_q90: inputs 47, files 47 / 47, differ 0, skipped 0, rc 0/0, digest aa313afef630900d, opts [--quality 90] 
+mono_q95: inputs 47, files 47 / 47, differ 0, skipped 0, rc 0/0, digest 0823b00fd9d6d38e, opts [--quality 95] 
+mono_slow: inputs 47, files 47 / 47, differ 0, skipped 0, rc 0/0, digest b74bf8340b28026b, opts [--preset slow] 
+mono_nosmall: inputs 47, files 47 / 47, differ 0, skipped 0, rc 0/0, digest 3b7866a45a733bff, opts [--small-preset none] 
+mono_10: inputs 47, files 47 / 47, differ 0, skipped 0, rc 0/0, digest e380e82ed1195032, opts [--depth 10] 
+mono_tune_none: inputs 47, files 47 / 47, differ 0, skipped 0, rc 0/0, digest 950cae3a85f8f00a, opts [--tune none] 
+gray_default: inputs 9, files 9 / 9, differ 0, skipped 0, rc 0/0, digest 21a27131b872e107, opts [] 
+gray_lossless: inputs 9, files 8 / 8, differ 0, skipped 1, rc 0/0, digest 6f0549ebf70ef9a0, opts [--lossless] 
+misc_default: inputs 13, files 13 / 13, differ 0, skipped 0, rc 0/0, digest 4d086758dd822fb1, opts [] 
+png16_10_default: inputs 8, files 8 / 8, differ 0, skipped 0, rc 0/0, digest b20feae7f07c3d75, opts [--depth 10] 
+png16_10_lossless: inputs 8, files 8 / 8, differ 0, skipped 0, rc 0/0, digest 72aadf5d872ed69a, opts [--lossless] 
+llgraphics_lossless: inputs 27, files 27 / 27, differ 0, skipped 0, rc 0/0, digest deeaf4adf9b42d52, opts [--lossless --ycgco-re] 
+webp_default: inputs 7, files 7 / 7, differ 0, skipped 0, rc 0/0, digest 201b965a97ef4f0e, opts [] 
+webp_lossless: inputs 7, files 7 / 7, differ 0, skipped 0, rc 0/0, digest 017599e3dcd23f27, opts [--lossless] 
+lljpeg_set: inputs 25, files 25 / 25, differ 0, skipped 0, rc 0/0, digest 6105feda85b9a199, opts [] 
+IDENTITY_DONE
