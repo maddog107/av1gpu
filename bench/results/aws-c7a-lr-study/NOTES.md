@@ -69,7 +69,7 @@ self-guided on all 16 units, +47 % time. s4: 166,140 B; s4r1 +21 B (same LR choi
   run above 5 MP (time). Note: `pkill -f` in an ssh command line matches the ssh's own shell; use `stop_cv.sh`.
 - 06:33 CVVDP done: all photos -0.0 % (p6keep and p6full); large -0.8 / -1.1 %, huge -0.4 / -0.6 %.
 - 06:36 final analyze_lr.py; results copied (tables.md, results.json, rows/, logs/, raw_jsonl.tgz = the raw rows).
-- 06:37 teardown.sh: instance terminated, SG and key pair deleted, no volume; spot request sir-vhyqqgcg cancelled.
+- 06:37 teardown: instance terminated, SG and key pair deleted, no volume; spot request sir-vhyqqgcg cancelled.
 
 ## Status
 
