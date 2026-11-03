@@ -1,0 +1,5 @@
+=========         Host Frame:  [0x9cb83] in libc.so.6
+=========         Host Frame:  [0x129ecb] in libc.so.6
+========= 
+========= LEAK SUMMARY: 1572864 bytes leaked in 6 allocations
+========= ERROR SUMMARY: 6 errors

@@ -10,9 +10,14 @@
 
 template <int W, int H, typename P = uint8_t>
 struct ASmem {
+    // shapes with a 32- or 64-sample side have only DCT_DCT for intra luma (no tx-type search), so every evaluation
+    // follows a fresh warp_residual: the quantized levels reuse the residual's storage (the column pass has read all of
+    // it before warp_quant_rate_rt writes a level).  Less shared memory per warp: 32x32 fits 3 CTAs per SM instead of 2.
+    static constexpr bool qInRes = W >= 32 || H >= 32;
     int16_t res[W * H];
     float tmp[TxD<W, H>::th * TxD<W, H>::TS];
-    int16_t q[TxD<W, H>::n];
+    int16_t qs[qInRes ? 2 : TxD<W, H>::n];
+    __device__ __forceinline__ int16_t *q() { return qInRes ? res : qs; }
     P ea[AV1G_EDGE_LEN], el[AV1G_EDGE_LEN];
     P pa[AV1G_EDGE_LEN], pl[AV1G_EDGE_LEN];   // edge-filter prepared edges (RD stage)
     int up[2];
@@ -198,9 +203,76 @@ __device__ __forceinline__ void warp_screen(const P *src, int sp, const int *can
     __syncwarp();
 }
 
+// warp-parallel av1g_edge_filter / av1g_edge_upsample / av1g_edge_prepare (dsp.h), the same integer arithmetic
+// (the k_recon.cuh versions, under their own names here): every lane reads its outputs' inputs (the unfiltered edge)
+// into registers, __syncwarp, then writes.  Called by full warps with warp-uniform arguments.
+template <typename P>
+__device__ __forceinline__ void an_edge_filter(P *buf, int sz, int strength) {   // sz <= 129: outputs 1 .. 128
+    if (!strength) return;
+    const int lane = threadIdx.x & 31;
+    const uint8_t *K = AV1G_T(Intra_Edge_Kernel)[strength - 1];
+    int v[4];
+#pragma unroll
+    for (int k = 0; k < 4; k++) {
+        const int i = lane + 1 + 32 * k;
+        int s = 0;
+        if (i < sz) {
+#pragma unroll
+            for (int j = 0; j < AV1G_INTRA_EDGE_TAPS; j++) s += K[j] * buf[av1g_clip3(0, sz - 1, i - 2 + j) - 1];
+        }
+        v[k] = (s + 8) >> 4;
+    }
+    __syncwarp();
+#pragma unroll
+    for (int k = 0; k < 4; k++)
+        if (lane + 1 + 32 * k < sz) buf[lane + 32 * k] = (P)v[k];
+    __syncwarp();
+}
+template <int BD, typename P>
+__device__ __forceinline__ void an_edge_upsample(P *buf, int numPx) {   // numPx <= 16 (upsampling: w + h <= 16)
+    const int lane = threadIdx.x & 31;
+    // dup[0] = buf[-1], dup[k] = buf[k - 2] (k = 1 .. numPx + 1), dup[numPx + 2] = buf[numPx - 1]
+    auto dup = [&](int k) -> int { return k == 0 ? buf[-1] : k == numPx + 2 ? buf[numPx - 1] : buf[k - 2]; };
+    int s = 0, e = 0;
+    if (lane < numPx) {
+        s = av1g_clip1<BD>(av1g_round2(-dup(lane) + 9 * dup(lane + 1) + 9 * dup(lane + 2) - dup(lane + 3), 4));
+        e = dup(lane + 2);
+    }
+    const P c = buf[-1];
+    __syncwarp();
+    if (lane < numPx) { buf[2 * lane - 1] = (P)s; buf[2 * lane] = (P)e; }
+    if (lane == 0) buf[-2] = c;
+    __syncwarp();
+}
+template <int BD, typename P>
+__device__ __forceinline__ void an_edge_prepare(int pAngle, int log2W, int log2H, int filterType, int haveLeft, int haveAbove, int x,
+                                                int y, int maxX, int maxY, P *above, P *left, int &upA, int &upL) {
+    const int w = 1 << log2W, h = 1 << log2H;
+    if (pAngle != 90 && pAngle != 180) {
+        if (pAngle > 90 && pAngle < 180 && (w + h) >= 24) {
+            if ((threadIdx.x & 31) == 0) {
+                const P c = (P)av1g_round2(left[0] * 5 + above[-1] * 6 + above[0] * 5, 4);
+                left[-1] = c;
+                above[-1] = c;
+            }
+            __syncwarp();
+        }
+        if (haveAbove)
+            an_edge_filter(above, (w < maxX - x + 1 ? w : maxX - x + 1) + (pAngle < 90 ? h : 0) + 1,
+                           av1g_edge_strength(w, h, filterType, pAngle - 90));
+        if (haveLeft)
+            an_edge_filter(left, (h < maxY - y + 1 ? h : maxY - y + 1) + (pAngle > 180 ? w : 0) + 1,
+                           av1g_edge_strength(w, h, filterType, pAngle - 180));
+    }
+    upA = av1g_edge_use_upsample(w, h, filterType, pAngle - 90);
+    if (upA) an_edge_upsample<BD>(above, w + (pAngle < 90 ? h : 0));
+    upL = av1g_edge_use_upsample(w, h, filterType, pAngle - 180);
+    if (upL) an_edge_upsample<BD>(left, h + (pAngle > 180 ? w : 0));
+}
+
 // residual of candidate c into res (W x H), returns sum r^2 in raster lane order (all lanes; 0 without a 64-sample
 // side, where EvalIn::resEnergy is unused).  With the intra edge filter, directional candidates use edges prepared
-// by lane 0 into pa/pl (filter type 0: neighbour modes unknown).
+// by the warp into pa/pl (filter type 0: neighbour modes unknown).
 template <int W, int H, int BD = 8, typename P>
 __device__ __forceinline__ float warp_residual(const P *src, int sp, int c, int16_t *res, const P *A,
                                                const P *L, int dcv, P *pa = nullptr, P *pl = nullptr,
@@ -214,13 +286,12 @@ __device__ __forceinline__ float warp_residual(const P *src, int sp, int c, int1
     if (ef) {
         for (int k = lane; k < AV1G_EDGE_LEN; k += 32) { pa[k] = A[k - AV1G_EDGE_OFF]; pl[k] = L[k - AV1G_EDGE_OFF]; }
         __syncwarp();
-        if (lane == 0)
-            av1g_edge_prepare<BD>(pangle_of(m, cand_delta(c)), T::lw, T::lh, 0, haveL, haveA, x, y, maxX, maxY, pa + AV1G_EDGE_OFF,
-                                  pl + AV1G_EDGE_OFF, &up[0], &up[1]);
-        __syncwarp();
-        upA = up[0]; upL = up[1];
+        an_edge_prepare<BD>(pangle_of(m, cand_delta(c)), T::lw, T::lh, 0, haveL, haveA, x, y, maxX, maxY, pa + AV1G_EDGE_OFF,
+                            pl + AV1G_EDGE_OFF, upA, upL);
     }
     const P *EA = ef ? pa + AV1G_EDGE_OFF : A, *EL = ef ? pl + AV1G_EDGE_OFF : L;
+    // res may hold the previous evaluation's quantized levels (ASmem::qInRes): every lane is done reading them
+    __syncwarp();
     constexpr int nsx = W / 4;
     for (int sb = lane; sb < (W / 4) * (H / 4); sb += 32) {
         const int sx = (sb % nsx) * 4, sy = (sb / nsx) * 4;
@@ -395,7 +466,7 @@ __global__ void __launch_bounds__(NW * 32, (W * H <= 64 ? 768 : 512) / (NW * 32)
             e.intraDir = cand_mode(c);
             e.qm = av1g_qm(I.usingQm, I.qm[0], 0, txSz, t);
             EvalOut o;
-            warp_eval<W, H, BD>(S.res, S.tmp, S.q, e, o);
+            warp_eval<W, H, BD>(S.res, S.tmp, S.q(), e, o);
             const float J = o.D + lambda * (o.R + mbits(c) + overhead);
             if (J < bestJ) {
                 bestJ = J;

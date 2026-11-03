@@ -1,0 +1,71 @@
+total 716.2 ms over 3432 kernels
+== by kernel
+     314.3 ms  43.9 %      18  k_recon
+     169.8 ms  23.7 %      13  k_analysis
+     113.8 ms  15.9 %       6  k_analysis_small
+      85.5 ms  11.9 %    3360  
+      18.1 ms   2.5 %       1  av1g_gpu::k_entropy_win
+       6.0 ms   0.8 %       2  av1g_gpu::k_sbsym
+       3.5 ms   0.5 %       2  av1g_gpu::k_txsym
+       1.1 ms   0.2 %       1  k_pack(GpBatch, const GpPackOff *, av1g_block *, unsigned int *, av1g_txb *, short *, GpPackAux, av1g_palette *, unsigned char *)
+       0.9 ms   0.1 %       3  ingest::finalize_kernel(const ingest::OutDesc *, int, const ingest::PlaneDesc *, const unsigned char *, unsigned char *)
+       0.9 ms   0.1 %       1  av1g_gpu::k_txctx
+       0.8 ms   0.1 %       1  k_dp
+       0.6 ms   0.1 %       1  k_sc_count
+       0.3 ms   0.0 %       1  av1g_gpu::k_maps(const av1g_block *, const unsigned int *, const av1g_gpu::FrameG *, unsigned int, unsigned char *, unsigned char *, unsigned char *, unsigned char *, av1g_gpu::PalG)
+       0.2 ms   0.0 %       1  k_sb_stats
+       0.1 ms   0.0 %       1  av1g_gpu::k_pack(const unsigned char *, const unsigned long *, const unsigned long *, const unsigned long *, unsigned char *, unsigned int, av1g_gpu::DevStatus *)
+       0.1 ms   0.0 %       1  av1g_gpu::k_cdf_defaults(av1g_cdfs *)
+       0.0 ms   0.0 %       4  av1g_gpu::k_put
+       0.0 ms   0.0 %       1  av1g_gpu::k_blocks(const av1g_gpu::FrameG *, unsigned int, const av1g_gpu::TileG *, const av1g_block *, const unsigned int *, unsigned int, unsigned int, unsigned int *, unsigned int *, unsigned int *, unsigned int *, unsigned int *, av1g_gpu::DevStatus *)
+       0.0 ms   0.0 %       3  cub::DeviceScanKernel
+       0.0 ms   0.0 %       1  k_set_cdef(av1g_block *, unsigned int, const unsigned int *, const unsigned int *, const int *, const int *, const signed char *)
+       0.0 ms   0.0 %       1  av1g_gpu::k_tiles(const av1g_gpu::FrameG *, av1g_gpu::TileG *, av1g_gpu::SbG *, const av1g_block *)
+       0.0 ms   0.0 %       1  av1g_gpu::k_sbs(const av1g_gpu::FrameG *, const av1g_gpu::TileG *, unsigned int, unsigned int, const unsigned int *, av1g_gpu::SbG *, av1g_gpu::DevStatus *)
+       0.0 ms   0.0 %       1  k_sb_round(const av1f_vb_desc *, int, const unsigned char *, unsigned char *, int)
+       0.0 ms   0.0 %       3  cub::DeviceScanInitKernel
+       0.0 ms   0.0 %       1  k_pal_an
+       0.0 ms   0.0 %       1  av1g_gpu::k_iscan(unsigned short *)
+       0.0 ms   0.0 %       1  av1g_gpu::k_tilerange(const av1g_gpu::TileG *, unsigned int, const av1g_gpu::FrameG *, const unsigned int *, const unsigned int *, unsigned long, unsigned int, unsigned long, unsigned long *, unsigned long *, int *, unsigned long *, unsigned long *, av1g_gpu::DevStatus *)
+       0.0 ms   0.0 %       1  k_sc_decide(const unsigned long long *, GpImage *, int, unsigned int *)
+== by instantiation (top 40)
+     314.3 ms  43.9 %      18  void k_recon<1, 8>(GpBatch, GpParams, const unsigned int *)
+      54.9 ms   7.7 %     280  <unnamed>::k_select_small(const unsigned int *, const unsigned int *, int, int, int, int, int, int, int *, unsigned long long *, unsigned long long *)
+      24.6 ms   3.4 %       1  void k_analysis_small<16, 4, 17, 8>(GpBatch, GpParams, unsigned int)
+      23.1 ms   3.2 %       1  void k_analysis<8, 16, 4, 4, 8>(GpBatch, GpParams, unsigned int)
+      23.0 ms   3.2 %       1  void k_analysis_small<4, 16, 16, 8>(GpBatch, GpParams, unsigned int)
+      23.0 ms   3.2 %       1  void k_analysis<16, 8, 5, 4, 8>(GpBatch, GpParams, unsigned int)
+      19.4 ms   2.7 %       1  void k_analysis_small<8, 8, 3, 8>(GpBatch, GpParams, unsigned int)
+      18.1 ms   2.5 %       1  void av1g_gpu::k_entropy_win<av1g_gpu::Rc64>(const unsigned int *, const unsigned long *, const unsigned long *, const int *, const unsigned long *, c
+      15.8 ms   2.2 %       1  void k_analysis_small<4, 4, 0, 8>(GpBatch, GpParams, unsigned int)
+      15.7 ms   2.2 %       1  void k_analysis_small<8, 4, 2, 8>(GpBatch, GpParams, unsigned int)
+      15.3 ms   2.1 %       1  void k_analysis_small<4, 8, 1, 8>(GpBatch, GpParams, unsigned int)
+      15.1 ms   2.1 %       1  void k_analysis<64, 64, 12, 2, 8>(GpBatch, GpParams, unsigned int)
+      15.1 ms   2.1 %       1  void k_analysis<16, 16, 6, 4, 8>(GpBatch, GpParams, unsigned int)
+      14.3 ms   2.0 %       1  void k_analysis<64, 32, 11, 2, 8>(GpBatch, GpParams, unsigned int)
+      12.5 ms   1.7 %       1  void k_analysis<32, 32, 9, 4, 8>(GpBatch, GpParams, unsigned int)
+      11.4 ms   1.6 %       1  void k_analysis<32, 64, 10, 2, 8>(GpBatch, GpParams, unsigned int)
+      11.0 ms   1.5 %     280  void <unnamed>::k_cdef_sse_t<2, 2, unsigned int, 1>(av1g_pf_frame, const unsigned char *, const unsigned char *, const unsigned char *, int, int, int,
+      10.9 ms   1.5 %       1  void k_analysis<32, 8, 19, 4, 8>(GpBatch, GpParams, unsigned int)
+       9.8 ms   1.4 %       1  void k_analysis<8, 32, 18, 4, 8>(GpBatch, GpParams, unsigned int)
+       9.1 ms   1.3 %       1  void k_analysis<64, 16, 21, 2, 8>(GpBatch, GpParams, unsigned int)
+       8.9 ms   1.2 %       1  void k_analysis<16, 32, 7, 4, 8>(GpBatch, GpParams, unsigned int)
+       8.5 ms   1.2 %       1  void k_analysis<32, 16, 8, 4, 8>(GpBatch, GpParams, unsigned int)
+       8.2 ms   1.1 %       1  void k_analysis<16, 64, 20, 2, 8>(GpBatch, GpParams, unsigned int)
+       7.9 ms   1.1 %     280  void <unnamed>::k_cdef<8, 1>(av1g_pf_frame, <unnamed>::OutPlanes)
+       6.0 ms   0.8 %       2  void av1g_gpu::k_sbsym<0>(const av1g_gpu::SbG *, unsigned int, const av1g_gpu::FrameG *, const av1g_gpu::TileG *, const av1g_block *, const unsigned i
+       4.2 ms   0.6 %     560  void <unnamed>::k_deblock<8>(av1g_pf_frame, int)
+       2.8 ms   0.4 %       1  void av1g_gpu::k_txsym<0, 1>(const av1g_block *, const unsigned int *, const unsigned int *, const av1g_gpu::FrameG *, const av1g_gpu::TileG *, const 
+       2.8 ms   0.4 %     280  <unnamed>::k_mark(av1g_pf_frame, const av1g_block *, unsigned int)
+       1.1 ms   0.2 %       1  k_pack(GpBatch, const GpPackOff *, av1g_block *, unsigned int *, av1g_txb *, short *, GpPackAux, av1g_palette *, unsigned char *)
+       1.1 ms   0.1 %     280  void <unnamed>::k_cdef_dir<8>(av1g_pf_frame)
+       0.9 ms   0.1 %     280  <unnamed>::k_finalize(<unnamed>::FinArgs, const int *, const int *, const int *, const int *, av1f_lf_result *)
+       0.9 ms   0.1 %       3  ingest::finalize_kernel(const ingest::OutDesc *, int, const ingest::PlaneDesc *, const unsigned char *, unsigned char *)
+       0.9 ms   0.1 %     280  <unnamed>::k_assign_dev(const unsigned int *, const unsigned int *, int, int, const int *, const int *, int, const signed char *, signed char *)
+       0.9 ms   0.1 %       1  void av1g_gpu::k_txctx<0>(const av1g_block *, const unsigned int *, const av1g_gpu::FrameG *, const av1g_txb *, const unsigned int *, const short *, u
+       0.8 ms   0.1 %       1  void k_dp<8>(GpBatch, GpParams)
+       0.7 ms   0.1 %       1  void av1g_gpu::k_txsym<0, 0>(const av1g_block *, const unsigned int *, const unsigned int *, const av1g_gpu::FrameG *, const av1g_gpu::TileG *, const 
+       0.7 ms   0.1 %     280  <unnamed>::k_rd_pick(const unsigned long long *, const int *, <unnamed>::RdArgs, int *)
+       0.6 ms   0.1 %       1  void k_sc_count<unsigned char>(const GpImage *, int, unsigned int, int, unsigned long long *)
+       0.6 ms   0.1 %     280  <unnamed>::k_count_active(const signed char *, int, int *)
+       0.5 ms   0.1 %     280  <unnamed>::k_cdef_idx_norm(signed char *, int)

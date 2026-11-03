@@ -1,0 +1,16 @@
+q_std: inputs 100, files 100 / 100, differ 0, skipped 0, rc 0/0, digest 392cc5736fb8835e, opts [] 
+q_thumbs: inputs 280, files 280 / 280, differ 0, skipped 0, rc 0/0, digest 1d342d7bb647ae11, opts [] 
+q_sr: inputs 100, files 100 / 100, differ 0, skipped 0, rc 0/0, digest dea4d62e01dc791f, opts [] 
+q_std_444_10: inputs 100, files 100 / 100, differ 0, skipped 0, rc 0/0, digest 7d46683e98695421, opts [--yuv 444 --depth 10] 
+q_sr_uvdp: inputs 100, files 100 / 100, differ 0, skipped 0, rc 0/0, digest 4af0931170de210c, opts [--uv-in-dp] 
+== std
+total 1602.4 ms over 1494 kernels
+     184.4 ms  11.5 %      16  k_analysis_small
+      38.2 ms   2.4 %       2  void k_analysis_small<4, 16, 16, 8>(GpBatch, GpParams, unsigned int)
+      36.7 ms   2.3 %       2  void k_analysis_small<16, 4, 17, 8>(GpBatch, GpParams, unsigned int)
+== thumbs
+total 722.0 ms over 3432 kernels
+     113.5 ms  15.7 %       6  k_analysis_small
+      24.3 ms   3.4 %       1  void k_analysis_small<16, 4, 17, 8>(GpBatch, GpParams, unsigned int)
+      24.3 ms   3.4 %       1  void k_analysis_small<4, 16, 16, 8>(GpBatch, GpParams, unsigned int)
+QUICK_DONE

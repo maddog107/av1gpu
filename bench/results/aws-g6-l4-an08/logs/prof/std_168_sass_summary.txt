@@ -1,0 +1,49 @@
+7368 instructions, 98490 samples, 234246796 warp instructions executed
+avg threads ( 0.0,  1.5]: samples  14.7 %  instructions  15.9 %
+avg threads ( 1.5,  4.5]: samples   3.8 %  instructions   3.3 %
+avg threads ( 4.5,  8.5]: samples   9.5 %  instructions   9.8 %
+avg threads ( 8.5, 16.5]: samples   4.9 %  instructions   4.1 %
+avg threads (16.5, 31.5]: samples  21.6 %  instructions  25.3 %
+avg threads (31.5, 33.0]: samples  44.8 %  instructions  41.5 %
+local-memory instructions: samples   1.1 %
+== hottest 40
+    698 thr  26.0 b20c0 IMAD R43, R44, 0x2, R87
+    639 thr  26.0 b2f50 IADD3 R41, R41, 0x20, RZ
+    615 thr  26.0 b2df0 ISETP.NE.AND P1, PT, R43, RZ, PT
+    608 thr  26.0 b26c0 IMAD.IADD R28, R49, 0x1, R26
+    601 thr  26.0 b2100 PRMT R28, R43, 0x9910, RZ
+    527 thr  24.0 9c650 STS.U8 [R24+0x430], R45
+    464 thr   1.0 a96e0 PRMT R43, R41, 0x7604, R30
+    447 thr  32.0 a85a0 ISETP.NE.AND P1, PT, R26, RZ, PT
+    403 thr  11.0 b2eb0 FADD R49, R49, R26
+    400 thr  32.0 b0ba0 I2FP.F32.U32 R35, R32
+    395 thr   1.0 b1c90 @P2   BRA 0x7674969b1c60
+    377 thr  18.0 b2de0 BSYNC B1
+    376 thr  32.0 b1080 I2FP.F32.U32 R35, R26
+    375 thr  32.0 b0f00 FCHK P1, |R28|, R33
+    375 thr  26.0 b2780 IMAD.MOV.U32 R28, RZ, RZ, 0x61c0
+    368 thr  26.0 b26e0 IMAD.WIDE R26, R28, R51, c[0x2][0x60]
+    353 thr  32.0 b1300 ISETP.GE.U32.AND P1, PT, R43, 0x60, PT
+    343 thr   4.0 b2c80 FADD R49, R49, R26
+    320 thr  32.0 b1200 IMNMX R26, R26, 0x3fff, PT
+    320 thr  32.0 b3050 FADD R50, R27, R50
+    315 thr   1.0 b1c60 ISETP.GT.U32.AND P2, PT, R28, 0x3, PT
+    314 thr  32.0 b0a20 @!P5  IMAD R32, R44, R32, 0x10
+    314 thr   1.0 b1e60 FADD R38, R38, R26
+    311 thr  32.0 af260 ISETP.GT.AND P1, PT, R27, 0xe, PT
+    306 thr  32.0 a8620 IMAD R90, R26, 0x4, R87
+    302 thr  13.0 b2f40 BSYNC B1
+    301 thr  32.0 b0c80 BSYNC B3
+    300 thr  32.0 b2fb0 SHF.R.S32.HI R29, RZ, 0x3, R90
+    298 thr  32.0 b1430 FADD R50, R27, R28
+    293 thr  32.0 b17d0 IMNMX R50, R50, R33, !PT
+    288 thr  26.0 b2f80 @P1   CALL.REL.NOINC 0x7674969b2fa0
+    285 thr  26.0 b2270 @!P1  IMAD R28, R27, 0x10, R28
+    283 thr  32.0 b2fe0 FADD R38, R33, R38
+    282 thr  32.0 b1450 FADD R36, R33, R50
+    281 thr  32.0 b1820 IMNMX R27, R26, R27, !PT
+    280 thr  32.0 b13c0 FADD R50, R50, R33
+    280 thr  26.0 b21f0 @P6   ISETP.NE.AND P2, PT, R39, 0x2, PT
+    279 thr   1.0 aa4c0 PRMT R39, R32, 0x7604, R27
+    277 thr  32.0 b0e40 FFMA R35, -R33, R36, 1
+    274 thr  32.0 b3010 FADD R26, R38, R26
