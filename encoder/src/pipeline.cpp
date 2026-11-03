@@ -111,6 +111,12 @@ int GpEncoder::init(const GpConfig &cfg, std::string &err) {
     cfg_ = cfg;
     char buf[256] = {0};
     if (gp_init_tables(buf, sizeof buf)) { err = buf; return -1; }
+    // the closed loop for the frames this configuration makes (colour frames, and monochrome ones without 4:4:4
+    // frames beside them, as 4:2:0); encode prepares any other one on first use
+    if (!cfg_.lossless && gp_recon_prepare(cfg_.depth == 10 ? 10 : 8, !cfg_.yuv444, cfg_.yuv444 != 0)) {
+        err = "k_recon table upload failed";
+        return -1;
+    }
     for (auto &e : ev_) GPCK(cudaEventCreate(&e));
     for (auto &e : evx_) GPCK(cudaEventCreateWithFlags(&e, cudaEventDisableTiming));
     {
@@ -288,7 +294,7 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
     Alloc A;
     A.st = st;
     size_t planeBytes = 0, miTotal = 0, ctxTotal = 0, sbqTotal = 0;
-    bool any444 = false, any420 = false;
+    bool any444 = false, any420 = false, anyMono = false;
     for (int i = 0; i < n; i++) {
         const GpImage &I = imgs[i];
         planeBytes += ((size_t)in[i].aw * in[i].ah + 2 * (size_t)(in[i].aw >> I.ssx) * (in[i].ah >> I.ssy)) * bps;
@@ -296,6 +302,12 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
         ctxTotal += (size_t)I.MiCols * I.MiRows + 2 * (size_t)(I.MiCols >> I.ssx) * (I.MiRows >> I.ssy);
         sbqTotal += (size_t)I.sbCols * I.sbRows;
         if (!I.mono) (I.ssx ? any420 : any444) = true;
+        anyMono |= I.mono != 0;
+    }
+    // the closed-loop instantiations of the wavefront's two groups (monochrome frames join the 4:4:4 one when there is one)
+    if (!ll && gp_recon_prepare(bd, any420 || (anyMono && !any444), any444)) {
+        err = "k_recon table upload failed";
+        return -1;
     }
     uint8_t *dRec, *dMaps, *dCtx, *dSbq = nullptr;
     GPCK(A.get(dRec, planeBytes));
