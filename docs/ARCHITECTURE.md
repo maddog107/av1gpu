@@ -71,6 +71,9 @@ so the next batch's analysis fills the gaps.
 Deblocking levels and CDEF strengths are chosen on the GPU. With `--tune iq` this reproduces libaom's
 all-intra choices: loop-filter level from q, and CDEF strength search with libaom's preset list.
 `--preset slow` searches both instead. The filters are then applied to the reconstruction.
+AV1's third loop filter, loop restoration, is not implemented: on photos it is worth nothing at equal
+SSIMULACRA2 or CVVDP, and libaom turns it off at the speeds av1gpu is compared with
+([LOOP_RESTORATION.md](LOOP_RESTORATION.md)).
 
 ## Entropy coding (`av1core/src/gpu_entropy.cu`)
 
