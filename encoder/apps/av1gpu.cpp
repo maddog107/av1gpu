@@ -12,6 +12,9 @@
 #include "av1f/tuneiq.h"
 
 #include <cuda_runtime.h>
+#ifndef _WIN32
+#include <unistd.h>
+#endif
 
 #include <algorithm>
 #include <chrono>
@@ -615,7 +618,12 @@ static int run_single(const GpConfig &cfg0, const Opts &o) {
     };
     if (E->encode({fin}, outs, tm, err)) return failed("encode");
     if (hasAlpha && encA.encode({afin}, aouts, tma, err)) return failed("encode (alpha)");
+#ifdef _WIN32
     if (ictx) { ingest_release_batch(ictx, ib.batch_id, nullptr); ingest_destroy(ictx); }
+#else
+    // Linux: the ingest is not torn down; the process ends after this image (main: _exit), and the kernel frees its
+    // memory faster than nvJPEG's teardown (the destroy took 77 ms on an L4, 35 ms of it freeing the preallocated decoder)
+#endif
     if (dplanes) cudaFree(dplanes);
     if (dconv) cudaFree(dconv);
     if (dxf) cudaFree(dxf);
@@ -813,5 +821,13 @@ int main(int argc, char **argv) {
         }
         return rc;
     }
-    return run_single(cfg, o);
+    const int rc = run_single(cfg, o);
+#ifndef _WIN32
+    // single image, Linux: end without the orderly CUDA / nvJPEG teardown (run_single closed every output file; the kernel
+    // releases the GPU context and memory as the process exits): 40 ms less per process on an L4
+    fflush(stdout);
+    fflush(stderr);
+    _exit(rc);
+#endif
+    return rc;
 }
