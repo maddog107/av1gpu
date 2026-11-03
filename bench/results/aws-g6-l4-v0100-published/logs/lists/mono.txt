@@ -1,0 +1,17 @@
+/home/ubuntu/img/mono/m_037774ce28834ba2_tiny.jpg
+/home/ubuntu/img/mono/m_1068f4f5ac7e8d01_typical.jpg
+/home/ubuntu/img/mono/m_2f7fde1527d592e5_small.jpg
+/home/ubuntu/img/mono/m_3c353054856daa8e_typical.jpg
+/home/ubuntu/img/mono/m_4cfd020b97be68d5_tiny.jpg
+/home/ubuntu/img/mono/m_6b1467a43bd1c705_typical.jpg
+/home/ubuntu/img/mono/m_72496a1a66a3d206_small.jpg
+/home/ubuntu/img/mono/m_81f84f0b4da76d1d_large.jpg
+/home/ubuntu/img/mono/m_9bbf8af223aa423f_huge.jpg
+/home/ubuntu/img/mono/m_a8cbf71967aba819_tiny.jpg
+/home/ubuntu/img/mono/m_b0c4e3247203d631_typical.jpg
+/home/ubuntu/img/mono/m_b2fef7eca1352b4a_small.jpg
+/home/ubuntu/img/mono/m_bd4ff3b451c3ba6b_large.jpg
+/home/ubuntu/img/mono/m_c6952770be3b1fb1_tiny.jpg
+/home/ubuntu/img/mono/m_d952f6ca796cc51c_typical.jpg
+/home/ubuntu/img/mono/m_dffb1cea132cdffb_tiny.jpg
+/home/ubuntu/img/mono/m_f0656ef9af634733_tiny.jpg

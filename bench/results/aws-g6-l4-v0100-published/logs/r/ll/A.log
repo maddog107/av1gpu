@@ -1,0 +1,5 @@
+libpng warning: iCCP: known incorrect sRGB profile
+libpng warning: iCCP: known incorrect sRGB profile
+libpng warning: iCCP: known incorrect sRGB profile
+[av1gpu] 10 images (0.6 MP) in 207.5 ms: 48.20 img/s, 2.87 MP/s; 2 batches; out 0.77 MB (10.297 bpp); CPU 241 ms = 1.16 cores; skipped (unsupported): 0; WebP/PNG via CPU decode: 10; write failures 0
+[av1gpu] stage ms: ingest wait 0.0 | gpu setup 0.5 analysis 11.0 dp 3.4 recon 4.4 pack 0.1 postfilter 0.0 download 0.0 (gpu total 23.4, encode wall 25.6) | entropy wall 138.7 (gpu 130.5) | write 1.4 | peak dev 19 MB
