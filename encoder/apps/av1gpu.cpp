@@ -724,6 +724,16 @@ static int run_single(const GpConfig &cfg, const Opts &o) {
 
 int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::string &outdir, bool gpuEntropy, bool stats,
                    const std::string &suffix);
+long gp_batch_input_count(const std::string &list);   // batch.cpp
+// A run with little GPU work to overlap: single-file mode, or a --batch of at most kShortBatch encodes (inputs times
+// --qindex values), such as one upload and its thumbnail.  Counted before CUDA starts (run_batch_mode reads the list
+// again).
+static bool gp_short_run(const Opts &o) {
+    const long kShortBatch = 8;
+    if (o.batch.empty()) return true;
+    const long n = gp_batch_input_count(o.batch);   // -1 (unreadable): run_batch_mode reports it
+    return n * std::max<long>(1, (long)o.qlist.size()) <= kShortBatch;
+}
 
 int main(int argc, char **argv) {
 #ifdef _WIN32
@@ -742,10 +752,14 @@ int main(int argc, char **argv) {
     }
 #endif
     // blocking sync: host threads sleep while waiting for the GPU (CPU budget <= 4 cores)
-    // more hardware work queues than the default 8: ingest (nvJPEG + per-worker streams), encoders
-    // (main + high-priority wavefront stream) and entropy threads use > 20 streams; aliased queues
-    // serialise unrelated work (nsys 2026-10-02: next batch's analysis queued behind entropy)
-    setenv("CUDA_DEVICE_MAX_CONNECTIONS", getenv("GP_MAX_CONNECTIONS") ? getenv("GP_MAX_CONNECTIONS") : "32", 0);
+    // hardware work queues: long batches use 32, more than the default 8: ingest (nvJPEG + per-worker streams), encoders
+    // (main + high-priority wavefront stream) and entropy threads use > 20 streams; aliased queues serialise unrelated
+    // work (nsys 2026-10-02: next batch's analysis queued behind entropy).  But every queue is set up with the context
+    // and torn down at exit: on an L4, 32 queues made each process 0.5 s slower than 1 (a 320 x 213 JPEG: 1.10 s against
+    // 0.59 s).  A single image or a short list has little work to overlap, so it gets one queue.
+    const char *conns = getenv("GP_MAX_CONNECTIONS");
+    if (!conns) conns = gp_short_run(o) ? "1" : "32";
+    setenv("CUDA_DEVICE_MAX_CONNECTIONS", conns, 0);
     // batch mode: every kernel module loaded with the context, not on first use.  A lazy load mid-run waited for
     // the GPU to drain while every thread's CUDA calls blocked (nsys, L4: 0.33-0.47 s at the first batch's post-filter
     // launch); eager loading moves that before the batch starts (unless CUDA_MODULE_LOADING is set)
