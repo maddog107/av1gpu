@@ -1,0 +1,46 @@
+k_entropy_win<Rc64> main, 8 MP photo, ncu warp stall sampling; total samples 385805
+the consumer loop (one thread), per instruction: samples, top stall reason
+  740    258 LDS R14, [R11+0x30e0]                                stall_wait 215
+  750   8783 SHF.R.U32.HI R4, RZ, 0x15, R14                       stall_branch_resolving 4632
+  760   3200 SHF.R.U32.HI R24, RZ, 0x8, R20                       stall_wait 1622
+  770   3091 LOP3.LUT R21, R4, 0x3ff, RZ, 0xc0, !PT               stall_selected 1557
+  780   1588 IMAD.SHL.U32 R4, R14, 0x4, RZ                        stall_selected 1588
+  790   1646 SHF.R.U32.HI R13, RZ, 0xb, R14                       stall_selected 1646
+  7a0   3128 ISETP.GE.AND P0, PT, R14, RZ, PT                     stall_wait 1605
+  7b0   1581 IMAD R26, R24, R21, RZ                               stall_selected 1581
+  7c0   1531 LOP3.LUT R15, R13, 0x3ff, RZ, 0xc0, !PT              stall_selected 1531
+  7d0   3267 LOP3.LUT R13, R4, 0x7c, RZ, 0xc0, !PT                stall_wait 1664
+  7e0   3139 IADD3 R12, R12, 0x1, RZ                              stall_wait 1588
+  7f0   1602 IMAD R24, R15, R24, RZ                               stall_selected 1602
+  800   1512 LEA.HI R26, R26, R13, RZ, 0x1f                       stall_selected 1512
+  810   3180 IMNMX.U32 R4, R12, 0x1f, PT                          stall_selected 1618
+  820   3124 IADD3 R15, R26, 0x4, RZ                              stall_selected 1587
+  830   3194 LEA.HI R24, R24, R13, RZ, 0x1f                       stall_wait 1619
+  840   1617 IMAD R14, R4, 0x4, R11                               stall_selected 1617
+  850   1553 SEL R21, R15, R20, !P0                               stall_selected 1553
+  860   3059 ISETP.GE.U32.AND P1, PT, R12, R10, PT                stall_selected 1604
+  870   4673 IMAD.IADD R13, R21, 0x1, -R24                        stall_wait 3105
+  880   1560 LDS R14, [R14+0x30e0]                                stall_selected 1560
+  890   1530 IMAD.IADD R21, R20, 0x1, -R21                        stall_selected 1530
+  8a0   3249 FLO.U32 R15, R13                                     stall_wait 1637
+  8b0   4740 IADD3 R16, P2, R21, R16, RZ                          stall_wait 3165
+  8c0   7834 IMAD.X R17, RZ, RZ, R17, P2                          stall_wait 6298
+  8d0  14231 IADD3 R15, -R15, 0x1f, RZ                            stall_short_sb 12640
+  8e0   6364 IADD3 R4, R15, -0x10, R22                            stall_wait 4826
+  8f0   6284 ISETP.GE.AND P0, PT, R4, 0x28, PT                    stall_wait 4730
+  900  20563 @!P0  BRA 0x7629dbedb9a0                             stall_wait 18899
+  910   7688 LEA.HI R33, R4, 0x1, RZ, 0x1d                        stall_wait 6089
+  cc0    373 @P0   BRA 0x7629dbedb490                             stall_wait 329
+  ce0    465 @!P0  BRA 0x7629dbedb8a0                             stall_wait 424
+  d70    370 @!P0  BRA 0x7629dbedb8a0                             stall_wait 325
+  d90    253 LEA.HI R21, R4, -UR4, RZ, 0x1d                       stall_wait 219
+  e10    353 @!P0  BRA 0x7629dbedb8a0                             stall_wait 320
+  ee0    364 @P0   BRA 0x7629dbedb980                             stall_wait 324
+  f40   4395 IADD3 R23, R4, 0x1, RZ                               stall_long_sb 4374
+  fa0   7668 IADD3 R15, R15, -0x10, RZ                            stall_branch_resolving 4572
+  fb0   1672 IMAD.MOV.U32 R22, RZ, RZ, R4                         stall_selected 1672
+  fc0   4616 SHF.L.U64.HI R17, R16, R15, R17                      stall_wait 3126
+  fd0   3164 SHF.L.U32 R16, R16, R15, RZ                          stall_selected 1609
+  fe0   3118 SHF.L.U32 R20, R13, R15, RZ                          stall_wait 1573
+  ff0   1536 @!P1  BRA 0x7629dbedb150                             stall_selected 1536
+ 1000   7895 MEMBAR.SC.CTA                                        stall_wait 6347

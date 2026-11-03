@@ -1,0 +1,17 @@
+/home/ubuntu/sets/san2:
+0
+/home/ubuntu/images/6057c6daef8fc78a_typical.jpg
+/home/ubuntu/images/b2fef7eca1352b4a_small.jpg
+
+/home/ubuntu/sets/san_thumbs:
+0
+/home/ubuntu/sets/thumbs/d512_037774ce28834ba2_tiny.jpg
+/home/ubuntu/sets/thumbs/d512_06593b76585ed9a5_small.jpg
+synccheck_br rc 0, 14 s: ========= ERROR SUMMARY: 0 errors
+memcheck_br rc 0, 43 s: ========= ERROR SUMMARY: 0 errors
+racecheck_main rc 0, 159 s: ========= RACECHECK SUMMARY: 4 hazards displayed (4 errors, 0 warnings)
+racecheck_br rc 0, 162 s: ========= RACECHECK SUMMARY: 10 hazards displayed (10 errors, 0 warnings)
+memcheck outputs differing from the plain run: 0
+== racecheck_br hazards per source pair
+== racecheck_main hazards per source pair
+SANITIZER_DONE

@@ -1,0 +1,29 @@
+Test project /home/ubuntu/br/build
+    Start 1: fuzz_dav1d_aomdec
+    Start 2: fuzz_lossless
+    Start 3: avif_alpha
+    Start 4: gate_cfl_edge
+1/9 Test #3: avif_alpha .......................   Passed    0.22 sec
+    Start 5: batch_skip_unreadable
+2/9 Test #2: fuzz_lossless ....................   Passed    4.12 sec
+    Start 6: crop_resize
+3/9 Test #4: gate_cfl_edge ....................   Passed    6.91 sec
+    Start 7: gate_crop_resize
+4/9 Test #1: fuzz_dav1d_aomdec ................   Passed    7.60 sec
+    Start 8: jpeg_gray_sampling
+5/9 Test #5: batch_skip_unreadable ............   Passed   12.12 sec
+    Start 9: jpeg_inverted_sampling
+6/9 Test #7: gate_crop_resize .................   Passed   12.20 sec
+7/9 Test #6: crop_resize ......................   Passed   49.54 sec
+8/9 Test #8: jpeg_gray_sampling ...............   Passed  204.71 sec
+9/9 Test #9: jpeg_inverted_sampling ...........   Passed  295.36 sec
+
+100% tests passed, 0 tests failed out of 9
+
+Total Test time (real) = 307.74 sec
+ctest rc 0 (309 s)
+GPU FUZZ (run_batch_device, device arrays, non-blocking stream, 1 scratch allocations) seeds 1..400: 400 cases (131 4:4:4, 80 monochrome, 157 10-bit, 105 lossless), 493 tiles, 53959098 symbols, 3 symbol-capacity errors reported + rerun (+2 reruns over the default bound), order check ok, 0 mismatches -> PASSED
+gpu_fuzz_test rc 0
+GPU FUZZ (run_batch_device, device arrays, non-blocking stream, 4 scratch allocations) seeds 77..276: 200 cases (104 4:4:4, 31 monochrome, 122 10-bit, 62 lossless), 212 tiles, 19179629 symbols, 2 symbol-capacity errors reported + rerun (+2 reruns over the default bound), order check ok, 0 mismatches -> PASSED
+gpu_fuzz_test (444/10/ll) rc 0
+CTEST_DONE

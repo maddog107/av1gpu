@@ -1,0 +1,5 @@
+A=/home/ubuntu/main/build/av1gpu B=/home/ubuntu/br2/build/av1gpu
+single_file: inputs 10, files 10 / 10, differ 0, failed runs 0, digest 8d3748dc6c60b4d2, opts []
+single_file: inputs 10, files 10 / 10, differ 0, failed runs 0, digest 303de56a41faa31d, opts [--yuv 444 --depth 10]
+single_file: inputs 10, files 10 / 10, differ 0, failed runs 0, digest 5bb13b3d9f38632e, opts [--preset slow]
+IDENTITY_DONE

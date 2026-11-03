@@ -1,0 +1,15 @@
+GPU FUZZ (run_batch_device, device arrays, non-blocking stream, 1 scratch allocations) seeds 1..400: 400 cases (131 4:4:4, 80 monochrome, 157 10-bit, 105 lossless), 493 tiles, 53959098 symbols, 3 symbol-capacity errors reported + rerun (+2 reruns over the default bound), order check ok, 0 mismatches -> PASSED
+gpu_fuzz_test rc 0
+GPU FUZZ (run_batch_device, device arrays, non-blocking stream, 4 scratch allocations) seeds 77..276: 200 cases (104 4:4:4, 31 monochrome, 122 10-bit, 62 lossless), 212 tiles, 19179629 symbols, 2 symbol-capacity errors reported + rerun (+2 reruns over the default bound), order check ok, 0 mismatches -> PASSED
+gpu_fuzz_test (444/10/ll) rc 0
+2287cba126a77fed_huge.jpg: check-entropy: device entropy == CPU writer (230290 bytes, 28.9 ms GPU)
+25d19e868909e5e2_huge.jpg: check-entropy: device entropy == CPU writer (1245259 bytes, 432.7 ms GPU)
+2e67ed20c61dfe3e_typical.jpg: check-entropy: device entropy == CPU writer (269683 bytes, 74.1 ms GPU)
+72496a1a66a3d206_small.jpg: check-entropy: device entropy == CPU writer (94417 bytes, 158.8 ms GPU)
+9fba6f263f3c4f3e_tiny.jpg: check-entropy: device entropy == CPU writer (18810 bytes, 53.8 ms GPU)
+chart_by-size-dark.png: check-entropy: device entropy == CPU writer (10436 bytes, 50.0 ms GPU)
+chart_by-size-dark.png: check-entropy: alpha: device entropy == CPU writer (204 bytes, 6.7 ms GPU)
+kodim01.png: check-entropy: device entropy == CPU writer (53126 bytes, 95.6 ms GPU)
+kodim02.png: check-entropy: device entropy == CPU writer (32005 bytes, 39.6 ms GPU)
+o63x65_420.jpg: check-entropy: device entropy == CPU writer (749 bytes, 9.4 ms GPU)
+FUZZ2_DONE

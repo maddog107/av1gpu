@@ -1,0 +1,11 @@
+== gray9_q120: --images /home/ubuntu/sets/gray
+rc 0
+[gate] q120: 9/9 identical in dav1d and aomdec (420 9; 265760 bytes); alpha items 3/3 identical (alpha qindex 120), 0 not encoded (unsupported input), rc=0 PASS
+== mono47_q120: --images /home/ubuntu/sets/mono
+rc 0
+[gate] q120: 47/47 identical in dav1d and aomdec (420 5, mono 42; 8435721 bytes), 0 not encoded (unsupported input), rc=0 PASS
+== misc13_q120: --images /home/ubuntu/ll/misc
+rc 0
+[gate] q120: 13/13 identical in dav1d and aomdec (420 13; 2447625 bytes); alpha items 2/2 identical (alpha qindex 120), 0 not encoded (unsupported input), rc=0 PASS
+GATE_DONE
+POST_DONE

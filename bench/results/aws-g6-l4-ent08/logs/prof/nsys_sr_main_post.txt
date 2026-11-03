@@ -1,0 +1,14 @@
+[av1gpu] 100 images (477.8 MP) in 2553.1 ms: 39.17 img/s, 187.16 MP/s; 9 batches; out 22.54 MB (0.377 bpp); CPU 814 ms = 0.32 cores; skipped (unsupported): 0; WebP/PNG via CPU decode: 0; write failures 0
+[av1gpu] stage ms: ingest wait 1.7 | gpu setup 53.2 analysis 1252.4 dp 12.2 recon 3615.3 pack 20.3 postfilter 503.0 download 0.0 (gpu total 5530.5, encode wall 5533.5) | entropy wall 1325.0 (gpu 1298.1) | write 17.3 | peak dev 1023 MB
+GPU span 2408.9 ms; any-kernel busy 2277.5 ms; encoder-stream busy 2189.9; entropy busy 853.7; entropy busy while encoders busy 766.1; entropy-only time 87.5; tail after last encoder kernel 87.9 ms; head before first encoder kernel 0.0
+kernel ms by class: {'encode': 4522.1, 'postfilter': 184.9, 'entropy': 979.5}
+encode        3531.3 ms n=   567 avg    6228.0 us  k_recon
+entropy        825.4 ms n=    11 avg   75036.5 us  k_entropy_win
+encode         669.2 ms n=    89 avg    7519.1 us  k_analysis
+encode         262.3 ms n=    48 avg    5464.4 us  k_analysis_small
+entropy         75.9 ms n=    22 avg    3449.0 us  k_sbsym
+postfilter      69.4 ms n=   100 avg     693.9 us  k_select_small
+postfilter      59.0 ms n=   100 avg     590.3 us  k_cdef_sse_t
+entropy         54.4 ms n=    22 avg    2473.0 us  k_txsym
+postfilter      33.4 ms n=   100 avg     334.3 us  k_cdef
+encode          16.3 ms n=    37 avg     441.3 us  finalize_kernel
