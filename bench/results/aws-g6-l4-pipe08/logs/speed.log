@@ -1,0 +1,73 @@
+start 06:27:49
+== t320.jpg
+/home/ubuntu/old/build/av1gpu: median 1103.7 ms, min 1094.2, max 1119.9, n 10
+/home/ubuntu/c1/build/av1gpu: median 585.1 ms, min 579.1, max 610.1, n 10
+/home/ubuntu/c2/build/av1gpu: median 590.1 ms, min 583.4, max 604.1, n 10
+/home/ubuntu/c3/build/av1gpu: median 537.5 ms, min 528.4, max 543.3, n 10
+/home/ubuntu/c4/build/av1gpu: median 514.6 ms, min 502.5, max 521.7, n 10
+/home/ubuntu/c5/build/av1gpu: median 433.0 ms, min 424.9, max 437.2, n 10
+/home/ubuntu/c6/build/av1gpu: median 389.1 ms, min 384.6, max 398.9, n 10
+/home/ubuntu/old2/av1gpu: median 1112.7 ms, min 1097.3, max 1125.1, n 10
+== thumb512.jpg
+/home/ubuntu/old/build/av1gpu: median 1146.1 ms, min 1133.5, max 1166.2, n 10
+/home/ubuntu/c1/build/av1gpu: median 629.0 ms, min 621.4, max 639.6, n 10
+/home/ubuntu/c2/build/av1gpu: median 628.9 ms, min 622.0, max 638.2, n 10
+/home/ubuntu/c3/build/av1gpu: median 583.9 ms, min 569.8, max 592.7, n 10
+/home/ubuntu/c4/build/av1gpu: median 552.7 ms, min 543.2, max 558.5, n 10
+/home/ubuntu/c5/build/av1gpu: median 475.3 ms, min 470.3, max 486.2, n 10
+/home/ubuntu/c6/build/av1gpu: median 433.2 ms, min 426.3, max 438.6, n 10
+/home/ubuntu/old2/av1gpu: median 1149.1 ms, min 1140.0, max 1157.1, n 10
+== photo.jpg
+/home/ubuntu/old/build/av1gpu: median 1137.2 ms, min 1122.2, max 1146.7, n 10
+/home/ubuntu/c1/build/av1gpu: median 614.7 ms, min 609.8, max 639.3, n 10
+/home/ubuntu/c2/build/av1gpu: median 610.2 ms, min 597.7, max 617.9, n 10
+/home/ubuntu/c3/build/av1gpu: median 583.5 ms, min 575.3, max 587.7, n 10
+/home/ubuntu/c4/build/av1gpu: median 552.7 ms, min 547.5, max 562.3, n 10
+/home/ubuntu/c5/build/av1gpu: median 468.8 ms, min 460.4, max 472.4, n 10
+/home/ubuntu/c6/build/av1gpu: median 422.5 ms, min 419.0, max 473.3, n 10
+/home/ubuntu/old2/av1gpu: median 1133.4 ms, min 1117.3, max 1144.1, n 10
+== big10.jpg
+/home/ubuntu/old/build/av1gpu: median 1185.5 ms, min 1175.4, max 1200.7, n 10
+/home/ubuntu/c1/build/av1gpu: median 667.2 ms, min 660.7, max 681.1, n 10
+/home/ubuntu/c2/build/av1gpu: median 635.3 ms, min 627.6, max 642.7, n 10
+/home/ubuntu/c3/build/av1gpu: median 609.8 ms, min 602.6, max 621.2, n 10
+/home/ubuntu/c4/build/av1gpu: median 581.9 ms, min 571.1, max 595.1, n 10
+/home/ubuntu/c5/build/av1gpu: median 496.8 ms, min 489.3, max 501.6, n 10
+/home/ubuntu/c6/build/av1gpu: median 453.1 ms, min 446.8, max 463.2, n 10
+/home/ubuntu/old2/av1gpu: median 1193.1 ms, min 1175.5, max 1211.3, n 10
+== pair batch
+/home/ubuntu/old/build/av1gpu: median 1357.1 ms, min 1342.5, max 1367.2, n 10
+/home/ubuntu/c1/build/av1gpu: median 839.2 ms, min 828.0, max 859.3, n 10
+/home/ubuntu/c2/build/av1gpu: median 847.5 ms, min 835.3, max 859.3, n 10
+/home/ubuntu/c3/build/av1gpu: median 709.6 ms, min 704.8, max 726.9, n 10
+/home/ubuntu/c4/build/av1gpu: median 717.3 ms, min 709.7, max 733.1, n 10
+/home/ubuntu/c5/build/av1gpu: median 715.8 ms, min 708.2, max 725.2, n 10
+/home/ubuntu/c6/build/av1gpu: median 718.4 ms, min 701.7, max 730.4, n 10
+/home/ubuntu/old2/av1gpu: median 1359.3 ms, min 1347.2, max 1377.7, n 10
+batch size_range/default new: 243.9 MP/s (runs 248.5, 243.9, 240.5), wall 6.81 s
+batch size_range/default old: 233.5 MP/s (runs 232.6, 233.6, 233.5), wall 7.10 s
+batch size_range/default old2: 233.2 MP/s (runs 233.1, 238.2, 233.2), wall 7.11 s
+batch standard/default new: 76.4 MP/s (runs 76.5, 76.4, 75.9), wall 14.34 s
+batch standard/default old: 74.7 MP/s (runs 74.7, 74.7, 74.5), wall 14.67 s
+batch standard/default old2: 73.9 MP/s (runs 73.8, 73.9, 74.4), wall 14.82 s
+batch thumbs/default new: 62.2 MP/s (runs 62.2, 61.6, 63.0), wall 17.34 s
+batch thumbs/default old: 63.1 MP/s (runs 63.4, 63.0, 63.1), wall 17.10 s
+batch thumbs/default old2: 61.9 MP/s (runs 62.1, 61.9, 61.2), wall 17.43 s
+batch size_range/default old2: 227.3 MP/s (runs 227.3, 224.6, 229.6), wall 7.28 s
+batch size_range/default old: 226.8 MP/s (runs 226.8, 225.7, 227.5), wall 7.28 s
+batch size_range/default new: 240.9 MP/s (runs 237.2, 242.8, 240.9), wall 6.89 s
+batch standard/default old2: 77.2 MP/s (runs 77.2, 77.4, 77.2), wall 14.22 s
+batch standard/default old: 76.2 MP/s (runs 76.5, 75.9, 76.2), wall 14.39 s
+batch standard/default new: 76.6 MP/s (runs 76.7, 76.6, 76.4), wall 14.30 s
+batch thumbs/default old2: 61.6 MP/s (runs 61.6, 61.1, 61.7), wall 17.49 s
+batch thumbs/default old: 62.3 MP/s (runs 60.9, 62.3, 63.4), wall 17.32 s
+batch thumbs/default new: 64.9 MP/s (runs 64.9, 64.9, 64.7), wall 16.63 s
+spd8 rc 0 end 06:48:48
+SPEED_DONE
+split size_range/default c1: 232.8 MP/s (runs 236.9, 232.6, 232.8), wall 7.11 s
+split size_range/default c2: 235.9 MP/s (runs 237.1, 235.6, 235.9), wall 7.04 s
+split size_range/default c3: 239.7 MP/s (runs 237.3, 239.7, 241.9), wall 6.91 s
+split size_range/default c3: 239.3 MP/s (runs 239.3, 237.2, 242.7), wall 6.93 s
+split size_range/default c2: 237.5 MP/s (runs 238.0, 237.5, 231.4), wall 7.00 s
+split size_range/default c1: 229.9 MP/s (runs 228.6, 229.9, 231.1), wall 7.19 s
+SPLIT_DONE

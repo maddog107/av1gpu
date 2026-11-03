@@ -1,0 +1,43 @@
+A=/home/ubuntu/old/build/av1gpu (cde1f74) B=/home/ubuntu/new/build/av1gpu (final: commits 1-6); sets remade: exit 0 exit 0 exit 0
+  /home/ubuntu/ll/cmp/: 51 files
+  /home/ubuntu/ll/graphics/: 27 files
+  /home/ubuntu/ll/gray/: 5 files
+  /home/ubuntu/ll/jpeg/: 25 files
+  /home/ubuntu/ll/kodak/: 24 files
+  /home/ubuntu/ll/misc/: 13 files
+  /home/ubuntu/ll/png16_10/: 8 files
+  /home/ubuntu/ll/png16_8/: 3 files
+  /home/ubuntu/ll/png16_full/: 2 files
+  /home/ubuntu/ll/webp/: 4 files
+  /home/ubuntu/sets/gate30/: 30 files
+  /home/ubuntu/sets/gate_thumbs/: 28 files
+  /home/ubuntu/sets/gray/: 9 files
+  /home/ubuntu/sets/mono/: 47 files
+  /home/ubuntu/sets/odd/: 30 files
+  /home/ubuntu/sets/single/: 10 files
+  /home/ubuntu/sets/thumbs/: 280 files
+  /home/ubuntu/sets/webp/: 7 files
+  mixed.txt: 33 lines
+mono_default: inputs 47, files 47 / 47, differ 0, skipped 0, rc 0/0, digest a9a9bf1b458cec98, opts [] 
+mono_q90: inputs 47, files 47 / 47, differ 0, skipped 0, rc 0/0, digest aa313afef630900d, opts [--quality 90] 
+mono_q95: inputs 47, files 47 / 47, differ 0, skipped 0, rc 0/0, digest 0823b00fd9d6d38e, opts [--quality 95] 
+mono_slow: inputs 47, files 47 / 47, differ 0, skipped 0, rc 0/0, digest b74bf8340b28026b, opts [--preset slow] 
+mono_nosmall: inputs 47, files 47 / 47, differ 0, skipped 0, rc 0/0, digest 3b7866a45a733bff, opts [--small-preset none] 
+mono_10: inputs 47, files 47 / 47, differ 0, skipped 0, rc 0/0, digest e380e82ed1195032, opts [--depth 10] 
+mono_tune_none: inputs 47, files 47 / 47, differ 0, skipped 0, rc 0/0, digest 950cae3a85f8f00a, opts [--tune none] 
+thumbs_default: inputs 280, files 280 / 280, differ 0, skipped 0, rc 0/0, digest 1d342d7bb647ae11, opts [] 
+gray_default: inputs 9, files 9 / 9, differ 0, skipped 0, rc 0/0, digest 21a27131b872e107, opts [] 
+gray_lossless: inputs 9, files 8 / 8, differ 0, skipped 1, rc 0/0, digest 6f0549ebf70ef9a0, opts [--lossless] 
+misc_default: inputs 13, files 13 / 13, differ 0, skipped 0, rc 0/0, digest 4d086758dd822fb1, opts [] 
+png16_10_default: inputs 8, files 8 / 8, differ 0, skipped 0, rc 0/0, digest b20feae7f07c3d75, opts [--depth 10] 
+png16_10_lossless: inputs 8, files 8 / 8, differ 0, skipped 0, rc 0/0, digest 72aadf5d872ed69a, opts [--lossless] 
+llgraphics_lossless: inputs 27, files 27 / 27, differ 0, skipped 0, rc 0/0, digest deeaf4adf9b42d52, opts [--lossless --ycgco-re] 
+webp_default: inputs 7, files 7 / 7, differ 0, skipped 0, rc 0/0, digest 201b965a97ef4f0e, opts [] 
+webp_lossless: inputs 7, files 7 / 7, differ 0, skipped 0, rc 0/0, digest 017599e3dcd23f27, opts [--lossless] 
+mixed_list: inputs 33, files 33 / 33, differ 0, skipped 0, rc 0/0, digest 09bf045044bf026a, opts [] 
+mixed_list_444_10: inputs 33, files 33 / 33, differ 0, skipped 0, rc 0/0, digest b07ae6a0f9248890, opts [--yuv 444 --depth 10] 
+lljpeg_set: inputs 25, files 25 / 25, differ 0, skipped 0, rc 0/0, digest 6105feda85b9a199, opts [] 
+odd_default: inputs 30, files 30 / 30, differ 0, skipped 0, rc 0/0, digest 629d9d72fced1a32, opts [] 
+kodak_default: inputs 24, files 24 / 24, differ 0, skipped 0, rc 0/0, digest 3e95cdbad77e63ae, opts [] 
+rgba_default: inputs 39, files 39 / 39, differ 0, skipped 0, rc 0/0, digest 12136b1dec1ca976, opts [] 
+IDENT_FIX_DONE

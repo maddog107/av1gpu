@@ -1,0 +1,100 @@
+# main cde1f74 (sm_89 build) with the temporary timestamps of scripts/instrument.py, run by scripts/ttrun.py:
+# ms since the launcher's exec (CLOCK_MONOTONIC), median of N runs, (+ delta to the previous label).  GPU otherwise idle.
+
+== t320 (320 x 213 JPEG), default (32 queues), N=5
+     3.5 ms  (+   3.5)  main
+     3.5 ms  (+   0.0)  before setdevice
+   377.1 ms  (+ 373.5)  after setdevice
+   377.1 ms  (+   0.0)  enc.init start
+   377.1 ms  (+   0.0)    init: start
+   469.0 ms  (+  91.9)    init: tables
+   493.1 ms  (+  24.1)    init: vb luts
+   493.2 ms  (+   0.1)  enc.init done
+   493.2 ms  (+   0.0)  ic: start
+   493.8 ms  (+   0.6)  ic: kernels_warmup
+   569.8 ms  (+  76.0)  ic: nvjpeg done
+   593.9 ms  (+  24.2)  ic: arena
+   594.2 ms  (+   0.3)  ingest_create done
+   604.0 ms  (+   9.8)  ingest_next_batch done
+   604.0 ms  (+   0.0)  t1
+   604.1 ms  (+   0.0)    init: start #2
+   606.4 ms  (+   2.4)    init: tables #2
+   630.2 ms  (+  23.8)    init: vb luts #2
+   630.2 ms  (+   0.0)  encoders ready
+   706.9 ms  (+  76.7)  encode done
+   706.9 ms  (+   0.0)  ingest_destroy start
+   783.2 ms  (+  76.3)  ingest destroyed, buffers freed
+   793.3 ms  (+  10.1)  entropy done
+   793.5 ms  (+   0.1)  written
+   793.7 ms  (+   0.2)  atexit
+  1094.4 ms  (+ 300.8)  process end
+
+== t320, GP_MAX_CONNECTIONS=1, N=5
+     3.4 ms  (+   3.4)  main
+     3.4 ms  (+   0.0)  before setdevice
+   101.1 ms  (+  97.7)  after setdevice
+   101.2 ms  (+   0.0)  enc.init start
+   101.2 ms  (+   0.0)    init: start
+   192.3 ms  (+  91.1)    init: tables
+   216.4 ms  (+  24.1)    init: vb luts
+   216.5 ms  (+   0.1)  enc.init done
+   216.6 ms  (+   0.0)  ic: start
+   217.1 ms  (+   0.6)  ic: kernels_warmup
+   292.7 ms  (+  75.6)  ic: nvjpeg done
+   316.8 ms  (+  24.1)  ic: arena
+   317.1 ms  (+   0.3)  ingest_create done
+   326.7 ms  (+   9.6)  ingest_next_batch done
+   326.7 ms  (+   0.0)  t1
+   326.7 ms  (+   0.0)    init: start #2
+   329.0 ms  (+   2.3)    init: tables #2
+   352.8 ms  (+  23.8)    init: vb luts #2
+   352.8 ms  (+   0.0)  encoders ready
+   430.1 ms  (+  77.3)  encode done
+   430.1 ms  (+   0.0)  ingest_destroy start
+   506.0 ms  (+  75.9)  ingest destroyed, buffers freed
+   516.1 ms  (+  10.1)  entropy done
+   516.3 ms  (+   0.2)  written
+   516.5 ms  (+   0.2)  atexit
+   586.1 ms  (+  69.6)  process end
+
+== big10 (3648 x 2736, 10 MP JPEG), GP_MAX_CONNECTIONS=1, N=3
+     3.3 ms  (+   3.3)  main
+   102.6 ms  (+  99.2)  after setdevice
+   193.1 ms  (+  90.5)    init: tables
+   217.3 ms  (+  24.2)    init: vb luts
+   292.6 ms  (+  74.6)  ic: nvjpeg done
+   316.3 ms  (+  23.7)  ic: arena
+   334.8 ms  (+  18.2)  ingest_next_batch done
+   469.6 ms  (+ 134.8)  encode done
+   546.5 ms  (+  77.0)  ingest destroyed, buffers freed
+   574.1 ms  (+  27.5)  entropy done
+   576.5 ms  (+   2.2)  atexit
+   659.1 ms  (+  82.6)  process end
+
+== photo (1883 x 1255), GP_MAX_CONNECTIONS=1, INGEST_HW_MAX_SIDE=6000 (default) vs 0 (no nvJPEG pre-allocation), N=5
+   INGEST_HW_MAX_SIDE=6000: nvjpeg done +75.8, ingest destroyed +77.4, process end 614.8 ms
+   INGEST_HW_MAX_SIDE=0:    nvjpeg done +71.7, ingest destroyed +42.6, process end 571.4 ms   (same output; but the
+                            6000 px limit also routes larger JPEGs to the CPU decoder, so this is not a free change)
+
+== photo, GP_MAX_CONNECTIONS=1: orderly end vs skip ingest_destroy + _exit after the write (TT_FASTEXIT), N=7
+   orderly: encode done 438.2, ingest destroyed +77.6, entropy +22.5, written 538.6, process end 610.6 ms
+   _exit:   encode done 440.5, (no destroy),      entropy +25.5, written 466.2, process end 572.2 ms   (same output)
+
+== cold wall, CUDA_DEVICE_MAX_CONNECTIONS / GP_MAX_CONNECTIONS (wall.py, median of 5-7)
+   trivial CUDA program (cudaSetDevice + one empty kernel, sm_89, static cudart): 32: 645.0 ms, 8: 252.1, 1: 152.6
+   v0.8.0 release binary, t320: 32: 1115.7 ms, 8: 704.0, 4: 646.6, 2: 610.3, 1: 598.3 (identical output)
+   main sm_89 build vs v0.8.0 release, t320: 32: 1100.4 / 1094.8 ms; 1: 587.5 / 590.8 (binary size does not matter here)
+   main, --batch photo + 512x384 thumbnail: 32: 1344.6, 8: 937.0, 4: 873.9, 1: 849.5
+   main, --batch 10 MP + 512x384 thumbnail: 32: 1324.6, 8: 922.8, 4: 869.9, 1: 835.8
+   main, single big10: 32: 1168.9, 8: 769.9, 4: 701.0, 1: 664.1
+   main, --batch 5 size-range photos: 32: 1572.0, 8: 1171.2, 4: 1104.0, 1: 1086.1
+   main, --batch 10 thumbnails: 32: 1279.0, 8: 884.1, 4: 816.4, 1: 776.8
+   main, --batch 50 size-range photos (another job ran on the GPU at the same time: rough): 32: 2780.3, 8: 2441.1, 4: 2950.6
+
+== /usr/bin/time, v0.8.0 release, photo, 32 queues: 1.18 s wall, 0.11 s user, 0.94 s system, max RSS 1.15 GB
+== strace -c -f (t320, release, 32 queues): poll 0.99 s (driver threads), ioctl 0.51 s in 3,918 calls, futex 0.24 s;
+   exit_group at +1130 ms, process gone at +1455 ms (325 ms of kernel teardown under strace)
+== nsys (t320, release, 1 queue): GPU busy 66 ms, of it k_recon 53.4 ms in 11 launches (4.85 ms each: the wavefront
+   of the base small-image preset), k_entropy_win 4.7 ms, k_sbsym 2.2 ms; 12 cudaMemcpyToSymbol calls of
+   gp_init_tables 2-34 ms each (each loads its kernel module)
+== perf (t320, main, 1 queue): 9.8 % of samples in av1f_vb_build_luts_bd, 17 % osDevReadReg032 (driver)

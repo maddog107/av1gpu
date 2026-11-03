@@ -1,0 +1,15 @@
+single photo.jpg: ========= COMPUTE-SANITIZER
+single photo.jpg: ========= ERROR SUMMARY: 0 errors
+single t320.jpg: ========= COMPUTE-SANITIZER
+single t320.jpg: ========= ERROR SUMMARY: 0 errors
+single chart_by-size-dark.png: ========= COMPUTE-SANITIZER
+single chart_by-size-dark.png: ========= ERROR SUMMARY: 0 errors
+single huge 444 10: ========= COMPUTE-SANITIZER
+single huge 444 10: ========= ERROR SUMMARY: 0 errors
+batch pair: [av1gpu] stage ms: ingest wait 0.1 | gpu setup 94.9 analysis 1898.4 dp 35.9 recon 6734.9 pack 3.0 postfilter 46.2 download 0.0 (gpu total 8906.6, encode wall 8910.8) | entropy wall 5191.3 (gpu 2069.9) | write 0.8 | peak dev 45 MB
+batch pair: ========= ERROR SUMMARY: 0 errors
+batch 3 photos: [av1gpu] stage ms: ingest wait 0.0 | gpu setup 45.5 analysis 2144.8 dp 31.3 recon 9538.2 pack 12.1 postfilter 180.9 download 0.0 (gpu total 12034.0, encode wall 12035.1) | entropy wall 4507.9 (gpu 1714.5) | write 0.3 | peak dev 68 MB
+batch 3 photos: ========= ERROR SUMMARY: 0 errors
+batch 12 photos (32 queues): [av1gpu] stage ms: ingest wait 0.1 | gpu setup 530.1 analysis 30069.3 dp 177.3 recon 33765.3 pack 147.9 postfilter 13766.7 download 0.0 (gpu total 81932.0, encode wall 81939.6) | entropy wall 19398.1 (gpu 10899.9) | write 4.8 | peak dev 856 MB
+batch 12 photos (32 queues): ========= ERROR SUMMARY: 0 errors
+CHECKS_DONE

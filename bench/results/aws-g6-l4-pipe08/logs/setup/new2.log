@@ -1,0 +1,4 @@
+[1/4] Building CXX object CMakeFiles/av1gpu.dir/encoder/apps/av1gpu.cpp.o
+[2/4] Building CXX object CMakeFiles/av1gpu_encoder.dir/encoder/src/batch.cpp.o
+[3/4] Linking CXX static library libav1gpu_encoder.a
+[4/4] Linking CXX executable av1gpu

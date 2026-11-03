@@ -1,0 +1,5 @@
+[4/8] Building CUDA object CMakeFiles/gpujpegingest.dir/ingest/src/pipeline.cu.o
+[5/8] Linking CXX static library libgpujpegingest.a
+[6/8] Building CXX object CMakeFiles/av1gpu_encoder.dir/encoder/src/pipeline.cpp.o
+[7/8] Linking CXX static library libav1gpu_encoder.a
+[8/8] Linking CXX executable av1gpu

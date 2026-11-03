@@ -1,0 +1,37 @@
+A=/home/ubuntu/old/build/av1gpu (cde1f74) B=/home/ubuntu/new/build/av1gpu (final: commits 1-6)
+single_file: inputs 10, files 10 / 10, differ 0, failed runs 0, digest 8d3748dc6c60b4d2, opts []
+single_file: inputs 10, files 10 / 10, differ 0, failed runs 0, digest 303de56a41faa31d, opts [--yuv 444 --depth 10]
+single_file: inputs 10, files 10 / 10, differ 0, failed runs 0, digest 5bb13b3d9f38632e, opts [--preset slow]
+single_default: inputs 97, files 96 / 96, differ 0, rc mismatches 0, digest e2eaf7634de220a4, opts []
+single_lossless: inputs 47, files 45 / 45, differ 0, rc mismatches 0, digest b16fdb11ebfd58df, opts [--lossless]
+single_palette_on: inputs 97, files 96 / 96, differ 0, rc mismatches 0, digest 079d3181c908c0d5, opts [--palette on]
+single_444_10: inputs 97, files 96 / 96, differ 0, rc mismatches 0, digest 386b4f5902e47bc8, opts [--yuv 444 --depth 10]
+single_slow: inputs 97, files 96 / 96, differ 0, rc mismatches 0, digest d0a9f36c19629880, opts [--preset slow]
+single_q90: inputs 97, files 96 / 96, differ 0, rc mismatches 0, digest f3e6467161f7048a, opts [--quality 90]
+error case [/nonexistent.jpg]: rc 3/3, message same
+error case [/home/ubuntu/st/photo.jpg --lossless]: rc 3/3, message same
+error case [/home/ubuntu/st/t320.jpg --crop 999x999+0+0]: rc 0/0, message same
+check photo.jpg: check: recon identical to av1core (269683 bytes obu)
+debug-outputs photo.jpg : same
+debug-outputs photo.jpg .obu: same
+debug-outputs photo.jpg .recon.yuv: same
+check t320.jpg: check: recon identical to av1core (12996 bytes obu)
+debug-outputs t320.jpg : same
+debug-outputs t320.jpg .obu: same
+debug-outputs t320.jpg .recon.yuv: same
+check kodim01.png: check: recon identical to av1core (53126 bytes obu)
+debug-outputs kodim01.png : same
+debug-outputs kodim01.png .obu: same
+debug-outputs kodim01.png .recon.yuv: same
+{"file":"/home/ubuntu/st/photo.jpg","w":1883,"h":1255,"q":120,"bytes":295528,"load_ms":99.68,"gpu_total_ms":95.49,"analysis_ms":6.12,"dp_ms":2.62,"recon_ms":68.24,"pack_ms":0.05,"postfilter_ms":6.93,"download_ms":9.42,"entropy_ms":15.14,"wall_encode_ms":95.99,"steps":16,"blocks":9928,"skip":616,"cfl
+final_short_mixed_00: inputs 8, files 8 / 8, differ 0, skipped 0, rc 0/0, digest 537bc874e65509f3, opts [] 
+final_short_mixed_01: inputs 8, files 8 / 8, differ 0, skipped 0, rc 0/0, digest cbb7fc591a78b4da, opts [] 
+final_short_mixed_02: inputs 8, files 8 / 8, differ 0, skipped 0, rc 0/0, digest 06794c9bacd68f08, opts [] 
+final_short_mixed_03: inputs 8, files 8 / 8, differ 0, skipped 0, rc 0/0, digest ce3f375748929e4f, opts [] 
+final_short_mixed_04: inputs 1, files 1 / 1, differ 0, skipped 0, rc 0/0, digest cff468bbb2d6fb2c, opts [] 
+final_short_pair.txt: inputs 2, files 2 / 2, differ 0, skipped 0, rc 0/0, digest 746013ef13c37814, opts [] 
+memcheck single photo.jpg: ========= ERROR SUMMARY: 0 errors
+memcheck single t320.jpg: ========= ERROR SUMMARY: 0 errors
+memcheck single chart_by-size-dark.png: ========= ERROR SUMMARY: 0 errors
+memcheck single 16aaa6421eaf9905_huge.jpg: ========= ERROR SUMMARY: 0 errors
+IDENT_SINGLE_DONE
