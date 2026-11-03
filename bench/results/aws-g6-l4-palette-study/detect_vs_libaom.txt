@@ -1,0 +1,3 @@
+169 images, 169 with av1gpu scores; libaom 61 av1gpu port 61
+only libaom: []
+only av1gpu: []

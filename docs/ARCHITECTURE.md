@@ -37,6 +37,12 @@ directional modes with angle deltas around the best directions, smooth, and Paet
 candidates get an exact-rate RD evaluation with the real AV1 coefficient cost model, followed by a
 transform-type search. The output is a per-shape grid of RD costs.
 
+Images that pass a screen-content detection (`k_sc_count`, libaom's count of few-colour 16×16 blocks) also get
+palette candidates (`k_pal.cu`): for each block of 8×8 to 64×64 with at most 64 distinct luma values, palettes of 8
+down to 2 colours (the most frequent values, and k-means) with their index-map and residual cost. The closed loop
+rebuilds the winning palette from the source. Photos do not pass the detection and skip all of this. Details:
+[PALETTE.md](PALETTE.md).
+
 ## Partition DP (`k_dp.cuh`)
 
 For each 64×64 superblock, a bottom-up dynamic program over the cost grids picks the partition tree.
@@ -104,6 +110,7 @@ On the L4's size-range photos (40 of the 100 below 1 MP), v0.6's default runs 14
 | `encoder/src/batch.cpp` | batch mode: ingest ↔ encoders ↔ entropy threads |
 | `encoder/src/pipeline.cpp` | one GPU batch: allocation, kernel sequence, record packing |
 | `encoder/src/gp.h` | shared host/device structures and tunables |
+| `encoder/src/k_pal.cu`, `pal_dev.cuh` | palette candidates of screen-content images (analysis and closed loop) |
 | `av1core/include/av1g/decisions.h` | the DecisionRecord: every coding decision of a frame |
 | `av1core/src/encoder.cpp` | CPU bitstream writer and reference reconstruction |
 | `av1core/include/av1g/dsp.h` | prediction, transforms, quantization shared by CPU and GPU |

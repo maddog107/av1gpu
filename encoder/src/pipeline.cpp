@@ -77,6 +77,10 @@ av1g_decision_record GpFrameOut::record() {
     r.block_txb = block_txb.data();
     r.txb = txb.data();
     r.coeffs = coeffs.data();
+    r.n_palettes = (uint32_t)palettes.size();
+    r.palettes = palettes.empty() ? nullptr : palettes.data();
+    r.n_color_map = color_map.size();
+    r.color_map = color_map.empty() ? nullptr : color_map.data();
     return r;
 }
 
@@ -236,6 +240,18 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
         I.sbBase = nSb;
         nSb += (uint32_t)(I.sbCols * I.sbRows);
         for (int k = 0; k < I.sbCols * I.sbRows; k++) sbImg.push_back((uint32_t)i);
+    }
+    // ---- screen-content tools (palette mode): per frame, the detection (on the GPU, after the image upload) or --palette
+    // on; frames without them encode as before (no palette syntax at all) ----
+    const bool palOn = cfg_.palette && gp_palette_supported(cfg_);
+    bool anySct = palOn && cfg_.palette == 2;   // known on the host: --palette on, or (lossless) after the detection
+    if (palOn) {
+        uint32_t b0 = 0;
+        for (int i = 0; i < n; i++) {
+            imgs[i].scBlk0 = b0;
+            b0 += (uint32_t)((imgs[i].W / 16) * (imgs[i].H / 16));
+            imgs[i].sct = cfg_.palette == 2;
+        }
     }
     uint32_t shapeBase[GP_NSHAPES];
     uint64_t blkTotal = 0;
@@ -403,6 +419,21 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
     GPCK(A.get(B.oBlockTxb, (size_t)nSb * GP_MAX_LEAVES));
     GPCK(A.get(B.oTxb, (size_t)nSb * B.sbTxbCap));
     GPCK(A.get(B.oCoeffs, (size_t)nSb * B.sbCoefCap));
+    unsigned long long *dScCnt = nullptr;
+    uint32_t *dPalAny = nullptr;
+    if (palOn) {
+        GPCK(A.get(dScCnt, (size_t)3 * n));
+        GPCK(A.get(dPalAny, 1));
+        B.palAny = dPalAny;
+    }
+    // palette slots: lossy batches get them whenever palettes are possible, so the detection can decide on the GPU
+    // without a host sync (k_pal and the closed loop read the images' sct, photos pay nothing else); lossless batches
+    // only with a screen-content frame (below), because their kernels are instantiated with or without palettes
+    auto palSlots = [&]() -> cudaError_t {
+        cudaError_t e = A.get(B.oPal, (size_t)nSb * GP_SB_PAL);
+        return e == cudaSuccess ? A.get(B.oMap, (size_t)nSb * GP_SB_MAP) : e;
+    };
+    if (palOn && (!ll || anySct)) GPCK(palSlots());
     GPCK(A.get(B.stats, 16));
     GPCK(A.get(B.prof, 16));
     GPCK(cudaMemsetAsync(B.prof, 0, 16 * sizeof(unsigned long long), st));
@@ -410,6 +441,18 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
     if (P.profile && getenv("GP_SBCYC_DUMP")) GPCK(A.get(B.sbCyc, nSb));
     GPCK(cudaMemsetAsync(B.stats, 0, 16 * sizeof(uint32_t), st));
     GPCK(cudaMemcpyAsync(B.img, imgs.data(), n * sizeof(GpImage), cudaMemcpyHostToDevice, st));
+    if (palOn && cfg_.palette == 1) {
+        gp_launch_sc_detect(B.img, imgs.data(), n, bd, dScCnt, dPalAny, st);
+        if (ll) {
+            uint32_t any = 0;
+            GPCK(cudaMemcpyAsync(&any, dPalAny, 4, cudaMemcpyDeviceToHost, st));
+            GPCK(cudaStreamSynchronize(st));
+            if (any) {
+                anySct = true;
+                GPCK(palSlots());
+            }
+        }
+    } else if (palOn) GPCK(cudaMemsetAsync(dPalAny, 1, 4, st));   // --palette on: every frame
     GPCK(cudaMemcpyAsync(B.shImgStart, shStart.data(), shStart.size() * 4, cudaMemcpyHostToDevice, st));
     GPCK(cudaMemcpyAsync(B.sbImg, sbImg.data(), nSb * 4, cudaMemcpyHostToDevice, st));
     // wavefront step lists
@@ -485,7 +528,10 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
     cudaEventRecord(ev_[1], st);
     // ---- analysis + DP ----
     if (ll) gp_launch_ll_analysis(B, L, shTotal, cfg_.edgeFilter, P.filterIntra, st, bd);
-    else gp_launch_analysis(B, P, shTotal, st, bd);
+    else {
+        gp_launch_analysis(B, P, shTotal, st, bd);
+        gp_launch_pal_analysis(B, P, shTotal, st, bd);   // palette candidates (batches with screen-content frames)
+    }
     GPCK(cudaGetLastError());
     cudaEventRecord(ev_[2], st);
     gp_launch_dp(B, P, st, bd);
@@ -545,13 +591,13 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
         dumpBatch++;
     }
     std::vector<GpPackOff> po(nSb);
-    std::vector<uint32_t> imgBlk0(n + 1), imgTxb0(n + 1);
-    std::vector<uint64_t> imgCoef0(n + 1);
-    uint32_t gBlk = 0, gTxb = 0, tileCounter = 0;
-    uint64_t gCoef = 0;
+    std::vector<uint32_t> imgBlk0(n + 1), imgTxb0(n + 1), imgPal0(n + 1);
+    std::vector<uint64_t> imgCoef0(n + 1), imgMap0(n + 1);
+    uint32_t gBlk = 0, gTxb = 0, gPal = 0, tileCounter = 0;
+    uint64_t gCoef = 0, gMap = 0;
     for (int i = 0; i < n; i++) {
         const GpImage &I = imgs[i];
-        imgBlk0[i] = gBlk; imgTxb0[i] = gTxb; imgCoef0[i] = gCoef;
+        imgBlk0[i] = gBlk; imgTxb0[i] = gTxb; imgCoef0[i] = gCoef; imgPal0[i] = gPal; imgMap0[i] = gMap;
         uint32_t rTxb = 0, rCoef = 0;
         const av1g_tiles &T = tiles[i];
         for (uint32_t tr = 0; tr < T.rows; tr++)
@@ -563,18 +609,21 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
                         GpPackOff &o = po[sb];
                         o.gBlk = gBlk; o.gTxb = gTxb; o.gCoef = gCoef; o.rTxb = rTxb; o.rCoef = rCoef;
                         o.img = (uint32_t)i; o.tile = tileIdx;
+                        o.gPal = gPal; o.gMap = gMap; o.rBlk = gBlk - imgBlk0[i]; o.rMap = gMap - imgMap0[i];
                         gBlk += so[sb].nBlocks; gTxb += so[sb].nTxb; gCoef += so[sb].nCoeffs;
                         rTxb += so[sb].nTxb; rCoef += so[sb].nCoeffs;
+                        gPal += so[sb].nPal; gMap += so[sb].nMap;
                     }
             }
     }
-    imgBlk0[n] = gBlk; imgTxb0[n] = gTxb; imgCoef0[n] = gCoef;
+    imgBlk0[n] = gBlk; imgTxb0[n] = gTxb; imgCoef0[n] = gCoef; imgPal0[n] = gPal; imgMap0[n] = gMap;
     // record arrays: one allocation; handed to the caller (dev) or freed at the end
     auto al = [](size_t x) { return (x + 255) & ~(size_t)255; };
     const size_t szB = al((size_t)gBlk * sizeof(av1g_block)), szBT = al((size_t)gBlk * 4), szAux = al(((size_t)gBlk + 1) * 4);
     const size_t szT = al((size_t)gTxb * sizeof(av1g_txb)), szTB = al((size_t)gTxb * 4), szTC = al((size_t)gTxb * 8);
     const size_t szC = al((size_t)gCoef * 2 + 2);
-    const size_t poolBytes = szB + szBT + 3 * szAux + szT + szTB + szTC + szC;
+    const size_t szP = gPal ? al((size_t)gPal * sizeof(av1g_palette)) : 0, szM = gMap ? al(gMap) : 0;
+    const size_t poolBytes = szB + szBT + 3 * szAux + szT + szTB + szTC + szC + szP + szM;
     uint8_t *pool = nullptr;
     GPCK(cudaMallocAsync((void **)&pool, poolBytes, st));
     size_t pp = 0;
@@ -589,12 +638,14 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
     aux.txbBlock = (uint32_t *)take(szTB);
     aux.txbCoeff = (uint64_t *)take(szTC);
     int16_t *dC = (int16_t *)take(szC);
+    av1g_palette *dPal = gPal ? (av1g_palette *)take(szP) : nullptr;
+    uint8_t *dMap = gMap ? take(szM) : nullptr;
     GPCK(cudaMemcpyAsync(aux.blockTxbG + gBlk, &gTxb, 4, cudaMemcpyHostToDevice, st));
     GpPackOff *dPo;
     GPCK(A.get(dPo, nSb));
     GPCK(cudaMemcpyAsync(dPo, po.data(), nSb * sizeof(GpPackOff), cudaMemcpyHostToDevice, st));
     cudaEventRecord(ev_[5], st);
-    gp_launch_pack(B, dPo, dB, dBT, dT, dC, aux, st);
+    gp_launch_pack(B, dPo, dB, dBT, dT, dC, aux, st, dPal, dMap);
     GPCK(cudaGetLastError());
     cudaEventRecord(ev_[8], st);
     // ---- frame parameters ----
@@ -619,6 +670,7 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
         fp.enable_filter_intra = (uint8_t)cfg_.P.filterIntra;
         fp.delta_q_present = (uint8_t)(I.sbQ != nullptr);
         fp.delta_q_res = (uint8_t)(I.sbQ ? dqResLog2[i] : 0);
+        fp.allow_screen_content_tools = (uint8_t)(imgPal0[i + 1] > imgPal0[i]);   // only frames that use a palette
         if (cfg_.lfMode) {
             // libaom LPF_PICK_FROM_Q (key frame, 8-bit): ROUND_POWER_OF_TWO(acq * 17563 - 421574, 18), times lfMul
             int lv = cfg_.lfLevel;
@@ -784,6 +836,13 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
                 PS3.stage(o.coeffs.data(), dC + imgCoef0[i], nc * 2, st))
                 GPCK(cudaErrorUnknown);
             o.block_txb[nb] = nt;
+            const uint32_t np = imgPal0[i + 1] - imgPal0[i];
+            const uint64_t nm = imgMap0[i + 1] - imgMap0[i];
+            o.palettes.resize(np);
+            o.color_map.resize(nm);
+            if ((np && PS3.stage(o.palettes.data(), dPal + imgPal0[i], np * sizeof(av1g_palette), st)) ||
+                (nm && PS3.stage(o.color_map.data(), dMap + imgMap0[i], nm, st)))
+                GPCK(cudaErrorUnknown);
         }
         const int np = !cfg_.wantRecon ? 0 : I.mono ? 1 : 3;
         for (int p = 0; p < np; p++) {
@@ -803,6 +862,8 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
         for (int i = 0; i < n; i++) dev->fp.push_back(out[i].fp);
         dev->blk0 = imgBlk0; dev->txb0 = imgTxb0; dev->coef0 = imgCoef0;
         dev->blocks = dB; dev->blockTxbRel = dBT; dev->txb = dT; dev->coeffs = dC;
+        dev->pal0 = imgPal0; dev->map0 = imgMap0;
+        dev->palettes = dPal; dev->colorMap = dMap;
         dev->pool = pool;
     } else {
         cudaFreeAsync(pool, st);

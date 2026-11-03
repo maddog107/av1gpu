@@ -5,6 +5,7 @@
 
 #include <cmath>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <type_traits>
 #include <vector>
@@ -20,6 +21,7 @@ int gp_upload_tables_recon_420_10(const GpHostTables *);
 int gp_upload_tables_recon_444_10(const GpHostTables *);
 int gp_upload_tables_an_uv(const GpHostTables *);
 int gp_upload_tables_ll(const GpHostTables *);
+int gp_upload_tables_pal(const GpHostTables *);
 void gp_launch_an_uv(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st, int bd);
 void gp_launch_an_a(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st, int bd);
 void gp_launch_an_b(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st, int bd);
@@ -28,7 +30,8 @@ void gp_launch_an_d(const GpBatch &B, const GpParams &P, const uint32_t *shTotal
 
 // ---------------------------------------------------------------------------
 // pack: per-SB output slots -> DecisionRecord arrays (decode order, one CTA per SB)
-__global__ void k_pack(GpBatch B, const GpPackOff *off, av1g_block *oB, uint32_t *oBT, av1g_txb *oT, int16_t *oC, GpPackAux aux) {
+__global__ void k_pack(GpBatch B, const GpPackOff *off, av1g_block *oB, uint32_t *oBT, av1g_txb *oT, int16_t *oC, GpPackAux aux,
+                       av1g_palette *oP, uint8_t *oM) {
     const uint32_t sb = blockIdx.x;
     const GpSbOut so = B.sbOut[sb];
     const GpPackOff o = off[sb];
@@ -54,6 +57,16 @@ __global__ void k_pack(GpBatch B, const GpPackOff *off, av1g_block *oB, uint32_t
     }
     const int16_t *src = B.oCoeffs + (size_t)sb * B.sbCoefCap;
     for (uint32_t k = threadIdx.x; k < so.nCoeffs; k += blockDim.x) oC[o.gCoef + k] = src[k];
+    if (B.oPal) {   // palettes: block and map offsets SB-local -> image-relative
+        for (uint32_t k = threadIdx.x; k < so.nPal; k += blockDim.x) {
+            av1g_palette p = B.oPal[(size_t)sb * GP_SB_PAL + k];
+            p.block += o.rBlk;
+            p.map_off += (uint32_t)o.rMap;
+            oP[o.gPal + k] = p;
+        }
+        const uint8_t *m = B.oMap + (size_t)sb * GP_SB_MAP;
+        for (uint32_t k = threadIdx.x; k < so.nMap; k += blockDim.x) oM[o.gMap + k] = m[k];
+    }
 }
 
 __global__ void k_set_cdef(av1g_block *blocks, uint32_t nB, const uint32_t *blockFrame, const uint32_t *frameSbBase,
@@ -150,6 +163,147 @@ void gp_launch_var16(const uint8_t *y, int pitch, int MiCols, int MiRows, float 
     if (bd == 10) k_var16<<<(n + 127) / 128, 128, 0, st>>>((const uint16_t *)y, pitch, MiCols, MiRows, cols16, rows16, out);
     else k_var16<<<(n + 127) / 128, 128, 0, st>>>(y, pitch, MiCols, MiRows, cols16, rows16, out);
 }
+// screen-content detection: libaom 3.13's estimate_screen_content_antialiasing_aware (av1/encoder/encoder.c, the full
+// scan without the fast checkerboard) on the 16x16 luma blocks that fit the picture, one warp per block.  Samples are
+// counted at 8 bits (10-bit: >> 2, as libaom down-converts); a block with 2..4 colours is palette-friendly; one with
+// 5..40 is too if a dilation by its dominant value leaves at most 6 colours and its variance (source depth, libaom's
+// per-pixel variance) is above 5; one with more than 40 is photo-like.  av1gpu adds one condition: a palette-friendly
+// block must also span at least SC_MIN_RANGE 8-bit levels.  Photos pass libaom's rule through smooth areas (sky, studio
+// backgrounds: 16x16 blocks of 2..4 neighbouring levels): 7 of the size range's 100, 8 of the standard set's 100 and 2
+// of the palette study's 44 photos.  With the range none of these 244 passes (highest score 0.12), while the study's
+// screen content keeps 38 of 40.
+// cnt[img]: palette-friendly (libaom's rule; debug output only), photo-like, palette-friendly with the range.
+#define SC_WPB 8   // warps (16x16 blocks) per CTA
+#define SC_NC 3    // counters per image
+#define SC_MIN_RANGE 8
+template <typename Px>
+__global__ void __launch_bounds__(SC_WPB * 32) k_sc_count(const GpImage *img, int n, uint32_t total, int bd, unsigned long long *cnt) {
+    __shared__ uint32_t hist[SC_WPB][256], last[SC_WPB][256];
+    __shared__ uint8_t v[SC_WPB][256], dil[SC_WPB][256];
+    const int wi = threadIdx.x >> 5, lane = threadIdx.x & 31;
+    const uint32_t g = blockIdx.x * SC_WPB + wi;
+    if (g >= total) return;
+    int lo = 0, hi = n - 1;   // image of this block (the last whose first block is <= g)
+    while (lo < hi) {
+        const int mid = (lo + hi + 1) >> 1;
+        if (img[mid].scBlk0 <= g) lo = mid; else hi = mid - 1;
+    }
+    const GpImage &I = img[lo];
+    const int cols = I.W / 16, bi = (int)(g - I.scBlk0);
+    const int x0 = (bi % cols) * 16, y0 = (bi / cols) * 16, sp = I.spitch[0];
+    const Px *s = (const Px *)I.src[0] + (size_t)y0 * sp + x0;
+    uint32_t *H = hist[wi];
+    uint8_t *V = v[wi];
+    // colours at 8 bits (libaom av1_count_colors_with_threshold, 40), value range; source sums for the variance
+    for (int i = lane; i < 256; i += 32) H[i] = 0;
+    __syncwarp();
+    int mn = 255, mx = 0, sum = 0;
+    long long sse = 0;
+    for (int i = lane; i < 256; i += 32) {
+        const int q = s[(size_t)(i >> 4) * sp + (i & 15)];
+        const int p = q >> (bd - 8);
+        V[i] = (uint8_t)p;
+        atomicAdd(&H[p], 1u);
+        mn = min(mn, p);
+        mx = max(mx, p);
+        sum += q;
+        sse += (long long)q * q;
+    }
+    __syncwarp();
+    int ncol = 0;
+    for (int i = lane; i < 256; i += 32) ncol += H[i] != 0;
+    for (int o = 16; o > 0; o >>= 1) {
+        ncol += __shfl_xor_sync(0xffffffffu, ncol, o);
+        mn = min(mn, __shfl_xor_sync(0xffffffffu, mn, o));
+        mx = max(mx, __shfl_xor_sync(0xffffffffu, mx, o));
+        sum += __shfl_xor_sync(0xffffffffu, sum, o);
+        sse += __shfl_xor_sync(0xffffffffu, sse, o);
+    }
+    if (ncol > 40) {
+        if (lane == 0) atomicAdd(&cnt[SC_NC * lo + 1], 1ull);
+        return;
+    }
+    if (ncol <= 1) return;
+    // per-pixel variance of the source (aom_variance16x16 / aom_highbd_10_variance16x16, then ROUND_POWER_OF_TWO(v, 8))
+    long long S = sum, Q = sse;
+    if (bd == 10) { Q = (Q + 8) >> 4; S = (S + 2) >> 2; }
+    const long long var = Q - ((S * S) >> 8);
+    const int perPixel = (int)((var + 128) >> 8);
+    bool friendly = true;
+    if (ncol > 4) {   // 5..40 colours: dilate with the dominant value, then at most 6 colours, and the variance
+        if (perPixel <= 5) return;
+        // dominant value (av1_find_dominant_value: the first value to reach the highest count in raster order, i.e.
+        // among the values of the highest count the one whose last occurrence comes first)
+        uint32_t *Lst = last[wi];
+        for (int i = lane; i < 256; i += 32) Lst[i] = 0;
+        __syncwarp();
+        for (int i = lane; i < 256; i += 32) atomicMax(&Lst[V[i]], (uint32_t)i);
+        __syncwarp();
+        uint32_t key = 0;   // count << 16 | (255 - last) << 8 | value: the largest is the dominant value
+        for (int k = lane; k < 256; k += 32)
+            if (H[k]) key = max(key, (H[k] << 16) | ((255u - Lst[k]) << 8) | (uint32_t)k);
+        for (int o = 16; o > 0; o >>= 1) key = max(key, __shfl_xor_sync(0xffffffffu, key, o));
+        const int dom = (int)(key & 255u);
+        // dilation: a pixel becomes dom where dom occurs in its 3x3 neighbourhood (inside the block)
+        uint8_t *D = dil[wi];
+        for (int i = lane; i < 256; i += 32) {
+            const int r = i >> 4, c = i & 15;
+            bool hit = false;
+            for (int dr = -1; dr <= 1; dr++)
+                for (int dc = -1; dc <= 1; dc++) {
+                    const int rr = r + dr, cc = c + dc;
+                    hit |= rr >= 0 && rr < 16 && cc >= 0 && cc < 16 && V[rr * 16 + cc] == dom;
+                }
+            D[i] = hit ? (uint8_t)dom : V[i];
+        }
+        for (int i = lane; i < 256; i += 32) H[i] = 0;
+        __syncwarp();
+        for (int i = lane; i < 256; i += 32) H[D[i]] = 1;
+        __syncwarp();
+        int n2 = 0;
+        for (int i = lane; i < 256; i += 32) n2 += (int)H[i];
+        for (int o = 16; o > 0; o >>= 1) n2 += __shfl_xor_sync(0xffffffffu, n2, o);
+        friendly = n2 <= 6;
+    }
+    if (friendly && lane == 0) {
+        atomicAdd(&cnt[SC_NC * lo], 1ull);
+        if (mx - mn >= SC_MIN_RANGE) atomicAdd(&cnt[SC_NC * lo + 2], 1ull);
+    }
+}
+// the decision per image, into the device copy of its GpImage (sct) and the batch flag
+__global__ void k_sc_decide(const unsigned long long *cnt, GpImage *img, int n, uint32_t *any) {
+    const int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i >= n) return;
+    // (palette-friendly - photo-like / 16) * 256 * 10 > area
+    const long long pal = (long long)cnt[SC_NC * i + 2], photo = (long long)cnt[SC_NC * i + 1];
+    const int sct = (pal - photo / 16) * 256 * 10 > (long long)img[i].W * img[i].H;
+    img[i].sct = sct;
+    if (sct) atomicOr(any, 1u);
+}
+void gp_launch_sc_detect(GpImage *dImg, const GpImage *hImg, int n, int bd, unsigned long long *cnt, uint32_t *any, cudaStream_t st) {
+    const uint32_t total = hImg[n - 1].scBlk0 + (uint32_t)((hImg[n - 1].W / 16) * (hImg[n - 1].H / 16));
+    cudaMemsetAsync(cnt, 0, (size_t)SC_NC * n * 8, st);
+    cudaMemsetAsync(any, 0, 4, st);
+    if (total) {
+        const uint32_t grid = (total + SC_WPB - 1) / SC_WPB;
+        if (bd == 10) k_sc_count<uint16_t><<<grid, SC_WPB * 32, 0, st>>>(dImg, n, total, bd, cnt);
+        else k_sc_count<uint8_t><<<grid, SC_WPB * 32, 0, st>>>(dImg, n, total, bd, cnt);
+    }
+    k_sc_decide<<<(n + 63) / 64, 64, 0, st>>>(cnt, dImg, n, any);
+    if (getenv("GP_SC_DEBUG")) {   // per image: the counters and the scores (> 1: screen content; the decision: with the range)
+        std::vector<unsigned long long> c(SC_NC * n);
+        cudaMemcpyAsync(c.data(), cnt, SC_NC * n * 8, cudaMemcpyDeviceToHost, st);
+        cudaStreamSynchronize(st);
+        for (int i = 0; i < n; i++) {
+            const unsigned long long *q = &c[SC_NC * i];
+            const int w = hImg[i].W, h = hImg[i].H;
+            auto sc = [&](unsigned long long p) { return ((double)p - (double)(q[1] / 16)) * 2560.0 / ((double)w * h); };
+            fprintf(stderr, "sc-detect %dx%d palette-friendly %llu photo-like %llu libaom-score %.3f with-range %llu score %.3f\n", w, h,
+                    q[0], q[1], sc(q[0]), q[2], sc(q[2]));
+        }
+    }
+}
+
 void gp_launch_ssim_map(const uint8_t *y, int pitch, int MiCols, int MiRows, float *out, double *sum, cudaStream_t st, int bd) {
     const int cols16 = (MiCols + 3) / 4, rows16 = (MiRows + 3) / 4, n = cols16 * rows16;
     cudaMemsetAsync(sum, 0, sizeof(double), st);
@@ -271,9 +425,9 @@ void gp_launch_dp(const GpBatch &B, const GpParams &P, cudaStream_t st, int bd) 
 }
 
 void gp_launch_pack(const GpBatch &B, const GpPackOff *dOff, av1g_block *oB, uint32_t *oBT, av1g_txb *oT, int16_t *oC,
-                    const GpPackAux &aux, cudaStream_t st) {
+                    const GpPackAux &aux, cudaStream_t st, av1g_palette *oP, uint8_t *oM) {
     if (!B.nSb) return;
-    k_pack<<<B.nSb, 256, 0, st>>>(B, dOff, oB, oBT, oT, oC, aux);
+    k_pack<<<B.nSb, 256, 0, st>>>(B, dOff, oB, oBT, oT, oC, aux, oP, oM);
 }
 
 // ---------------------------------------------------------------------------
@@ -387,6 +541,10 @@ int gp_init_tables(char *err, int errlen) {
         CF(palette_y_mode); CF(palette_uv_mode); CF(txb_skip); CF(eob_pt_16); CF(eob_pt_32); CF(eob_pt_64); CF(eob_pt_128);
         CF(eob_pt_256); CF(eob_pt_512); CF(eob_pt_1024); CF(eob_extra); CF(dc_sign); CF(coeff_base_eob); CF(coeff_base);
         CF(coeff_br);
+        CF(palette_y_size); CF(palette_uv_size); CF(palette_y_color2); CF(palette_y_color3); CF(palette_y_color4);
+        CF(palette_y_color5); CF(palette_y_color6); CF(palette_y_color7); CF(palette_y_color8); CF(palette_uv_color2);
+        CF(palette_uv_color3); CF(palette_uv_color4); CF(palette_uv_color5); CF(palette_uv_color6); CF(palette_uv_color7);
+        CF(palette_uv_color8);
 #undef CF
         if (qc == 0) {
             for (int m = 0; m < 13; m++) {
@@ -436,7 +594,8 @@ int gp_init_tables(char *err, int errlen) {
     int (*ups[])(const GpHostTables *) = {gp_upload_tables_misc, gp_upload_tables_an_a, gp_upload_tables_an_b,
                                           gp_upload_tables_an_c, gp_upload_tables_an_d, gp_upload_tables_recon,
                                           gp_upload_tables_recon_444_8, gp_upload_tables_recon_420_10,
-                                          gp_upload_tables_recon_444_10, gp_upload_tables_an_uv, gp_upload_tables_ll};
+                                          gp_upload_tables_recon_444_10, gp_upload_tables_an_uv, gp_upload_tables_ll,
+                                          gp_upload_tables_pal};
     for (auto f : ups)
         if (f(&H)) { snprintf(err, errlen, "table upload failed"); return -1; }
     return 0;

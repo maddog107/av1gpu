@@ -1,0 +1,3 @@
+[gate] q120: 64/64 identical in dav1d and aomdec (420 64; 5056452 bytes), 0 not encoded (unsupported input), rc=0 PASS
+[gate] q60: 64/64 identical in dav1d and aomdec (420 64; 7820762 bytes), 0 not encoded (unsupported input), rc=0 PASS
+[gate] q20: 64/64 identical in dav1d and aomdec (420 64; 11118124 bytes), 0 not encoded (unsupported input), rc=0 PASS

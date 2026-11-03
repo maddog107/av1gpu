@@ -1,0 +1,85 @@
+20:42:22 build
+20:42:29 ident
+20:42:55 6 ident lines
+20:42:55 lltest
+20:44:10 encode-gpu
+20:45:51 gate
+20:46:55 score
+20:48:52 CHAIN_DONE
+21:01:16 chain2 br2 build
+21:01:16 BUILD FAILED
+21:01:51 chain2 br2 build
+21:06:01 ident
+21:06:27 IDENT std100_default: 100/100 identical (100 branch files) IDENT std100_444_10: 100/100 identical (100 branch files) IDENT sizes_default: 20/20 identical (20 branch files) IDENT sizes_444_10: 20/20 identical (20 branch files) IDENT kodak_ll: 24/24 identical (24 branch files) IDENT kodak_ll_ycgco: 24/24 identical (24 branch files) 
+21:06:27 encode-gpu
+21:08:35 gate
+21:09:55 7 gates pass
+21:09:55 score
+21:12:04 CHAIN_DONE
+21:12:28 speed
+21:15:07 8 speed lines
+21:15:07 ctest
+21:17:50 ctest: 44% tests passed, 5 tests failed out of 9
+21:17:50 crops
+21:19:29 crops exit 143
+21:19:29 CHAIN_DONE
+21:19:34 fetch
+21:19:35 100/100 images (477.8 MP) in /home/ubuntu/pal/sizerange
+21:19:35 ident
+21:20:08 IDENT std100_default: 100/100 identical (100 branch files) IDENT std100_444_10: 100/100 identical (100 branch files) IDENT sizes_default: 100/100 identical (100 branch files) IDENT sizes_444_10: 100/100 identical (100 branch files) IDENT kodak_ll: 24/24 identical (24 branch files) IDENT kodak_ll_ycgco: 24/24 identical (24 branch files) 
+21:20:08 spd-race
+21:25:27 fetch
+21:25:27 100/100 images (477.8 MP) in /home/ubuntu/pal/sizerange
+21:25:27 ident
+21:26:01 IDENT std100_default: 100/100 identical (100 branch files) IDENT std100_444_10: 100/100 identical (100 branch files) IDENT sizes_default: 100/100 identical (100 branch files) IDENT sizes_444_10: 100/100 identical (100 branch files) IDENT kodak_ll: 24/24 identical (24 branch files) IDENT kodak_ll_ycgco: 24/24 identical (24 branch files) 
+21:26:01 spd-race
+21:41:10 fetch
+21:41:10 100/100 images (477.8 MP) in /home/ubuntu/pal/sizerange
+21:41:10 ident
+21:41:43 IDENT std100_default: 100/100 identical (100 branch files) IDENT std100_444_10: 100/100 identical (100 branch files) IDENT sizes_default: 100/100 identical (100 branch files) IDENT sizes_444_10: 100/100 identical (100 branch files) IDENT kodak_ll: 24/24 identical (24 branch files) IDENT kodak_ll_ycgco: 24/24 identical (24 branch files) 
+21:41:46 LLRECHECK screen: 40/40 identical to the lltest run
+21:41:49 LLRECHECK screen--ycgco-re: 40/40 identical to the lltest run
+21:41:52 LLRECHECK flat_png: 24/24 identical to the lltest run
+21:41:52 spd-race
+21:52:56 fetch
+21:52:56 100/100 images (477.8 MP) in /home/ubuntu/pal/sizerange
+21:52:56 ident
+21:53:29 IDENT std100_default: 100/100 identical (100 branch files) IDENT std100_444_10: 100/100 identical (100 branch files) IDENT sizes_default: 100/100 identical (100 branch files) IDENT sizes_444_10: 100/100 identical (100 branch files) IDENT kodak_ll: 24/24 identical (24 branch files) IDENT kodak_ll_ycgco: 24/24 identical (24 branch files) 
+21:53:32 LLRECHECK screen: 40/40 identical to the lltest run
+21:53:35 LLRECHECK screen--ycgco-re: 40/40 identical to the lltest run
+21:53:39 LLRECHECK flat_png: 24/24 identical to the lltest run
+21:53:39 spd-race
+22:02:10 spd-noise
+22:26:47 chain5 ident
+22:27:20 IDENT std100_default: 100/100 identical (100 branch files) IDENT std100_444_10: 100/100 identical (100 branch files) IDENT sizes_default: 100/100 identical (100 branch files) IDENT sizes_444_10: 100/100 identical (100 branch files) IDENT kodak_ll: 24/24 identical (24 branch files) IDENT kodak_ll_ycgco: 24/24 identical (24 branch files) 
+22:27:20 chain5 spd-race
+22:35:49 SUMMARY race size_range/default: new 226.3 MP/s, old 229.3 MP/s, -1.3 % SUMMARY race size_range/444_10: new 163.8 MP/s, old 162.2 MP/s, +0.9 % SUMMARY race standard/default: new 75.0 MP/s, old 74.4 MP/s, +0.8 % 
+22:35:49 chain5 spd-noise
+22:37:44 SUMMARY noise size_range/default: old 229.5 MP/s, old2 229.1 MP/s, +0.2 %
+22:37:44 chain5 spd-off
+22:39:41 SUMMARY off size_range/default palette off: new 225.3 MP/s, old 227.5 MP/s, -1.0 %
+22:39:41 chain5 gate
+22:41:00 7 of 7 gates pass
+22:41:00 ident-off
+22:41:33 IDENT_OFF default: 64/64 identical IDENT_OFF 444_10: 64/64 identical IDENT_OFF lossless: 64/64 identical IDENT_OFF lossless_ycgco: 64/64 identical 
+22:41:33 ctest
+22:44:15 ctest: 100% tests passed, 0 tests failed out of 9
+22:44:15 spd-screen
+22:59:51 SUMMARY screen graphics/default: new 57.0 MP/s, old 152.7 MP/s, -62.6 % 
+22:59:51 palette-on
+23:03:26 crops
+23:06:55 crops exit 1
+23:06:55 CHAIN_DONE
+23:19:19 chain6 build
+23:20:27 RECHECK 420 flat_png: 120/120 identical to the previous branch build RECHECK 420 screen: 200/200 identical to the previous branch build RECHECK 444_10 flat_png: 120/120 identical to the previous branch build RECHECK 444_10 screen: 200/200 identical to the previous branch build 
+23:23:01 fast scored
+23:25:40 SUMMARY graphics graphics/default: new 102.5 MP/s, old 153.0 MP/s, -33.0 % 
+23:25:40 CHAIN_DONE
+23:29:55 crops exit 0
+23:29:55 PACKED
+23:30:00 chain7 build
+23:30:38 IDENT std100_default: 100/100 identical (100 branch files) IDENT std100_444_10: 100/100 identical (100 branch files) IDENT sizes_default: 100/100 identical (100 branch files) IDENT sizes_444_10: 100/100 identical (100 branch files) IDENT kodak_ll: 24/24 identical (24 branch files) IDENT kodak_ll_ycgco: 24/24 identical (24 branch files) 
+23:31:40 RECHECK 420 flat_png: 120/120 identical to the previous branch build RECHECK 420 screen: 200/200 identical to the previous branch build RECHECK 444_10 flat_png: 120/120 identical to the previous branch build RECHECK 444_10 screen: 200/200 identical to the previous branch build 
+23:31:42 gpu_fuzz exit 2: CUDA error
+23:31:43 gpu_fuzz lossless exit 2: CUDA error
+23:31:43 CHAIN7_DONE

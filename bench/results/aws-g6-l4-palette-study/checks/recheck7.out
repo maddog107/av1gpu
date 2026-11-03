@@ -1,0 +1,7 @@
+RECHECK 420 flat_png: 120/120 identical to the previous branch build
+RECHECK 420 screen: 200/200 identical to the previous branch build
+RECHECK 444_10 flat_png: 120/120 identical to the previous branch build
+RECHECK 444_10 screen: 200/200 identical to the previous branch build
+DETECT sizerange: 100 images, 0 pass, max score 0.121, libaom's rule would pass 100
+DETECT std100: 100 images, 0 pass, max score 0.057, libaom's rule would pass 100
+DETECT study photos: 44 images, 0 pass, libaom's rule would pass 44

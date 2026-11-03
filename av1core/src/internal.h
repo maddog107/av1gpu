@@ -82,6 +82,8 @@ struct ParseStore {
     std::vector<uint32_t> block_txb;
     std::vector<av1g_txb> txb;
     std::vector<int16_t> coeffs;
+    std::vector<av1g_palette> palettes;  // v5
+    std::vector<uint8_t> color_map;
     std::vector<uint32_t> tile_bytes;
     std::vector<uint64_t> tile_offsets;  // offset of each tile payload in the parsed buffer
     int seq_level_idx = 0;

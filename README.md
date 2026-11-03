@@ -203,10 +203,19 @@ and screenshots, 42.7 MP), with every output checked pixel for pixel in libavif 
 | cwebp `-lossless` | 66.5 % | 11.34 MB | 0.98 MB | 44 |
 
 av1gpu beats libaom's lossless AVIF on size and is about 5× faster, but lossless WebP is much smaller,
-especially on graphics: av1gpu has no palette or intra block copy, the AV1 tools for flat colours and
-repeated patterns. (av1gpu's speed is for the set repeated 4×; a single pass of 42.7 MP, CUDA start-up
-included, ran at 19 MP/s. CPU encoders: 16 single-threaded processes on the same 16-vCPU host.) Details:
+especially on graphics. (av1gpu's speed is for the set repeated 4×; a single pass of 42.7 MP, CUDA start-up
+included, ran at 19 MP/s. CPU encoders: 16 single-threaded processes on the same 16-vCPU host.) The table is
+without palette mode (below), which takes 10 % off the graphics and leaves the photos unchanged. Details:
 [docs/RESULTS.md](docs/RESULTS.md#lossless).
+
+### 🖥️ Screen content and flat colour
+
+Screenshots, charts and flat-colour art that pass a screen-content detection get AV1's palette mode. At equal
+SSIMULACRA2 that makes the 40 screen images of the [palette study](docs/PALETTE.md) about 24 % smaller (median
+BD-rate). That is 9.5 % smaller than libaom speed 6 with palette, and 3.3 % bigger than libaom with palette and
+intra block copy. The flat-colour PNGs that pass detection are 22 % smaller. Photos never pass, so their files and
+speed are unchanged. Screen content encodes at about 0.37× the speed without it (57 against 153 MP/s on the L4). `--palette off`
+turns palette mode off, and `--palette on` tries it on every image.
 
 ### 🪟 Transparency
 
@@ -319,7 +328,8 @@ project. Before you rely on it, note:
 - Some inputs are not handled on the GPU path. The batch mode skips them and lists them on stderr, so
   you can send them to another encoder: CMYK/YCCK JPEGs, 12-bit JPEGs, images over 35.6 MP and
   unreadable files. PNG and WebP inputs are decoded on the CPU, on every core av1gpu may use.
-- Tools not implemented: palette, intra block copy, loop restoration, superres, film grain.
+- Palette mode runs on screen content and flat-colour images that pass its detection (`--palette`). Tools not
+  implemented: intra block copy, loop restoration, superres, film grain.
 
 ## 📦 Download
 
@@ -473,6 +483,7 @@ for CUDA start-up.
 | `--yuv 420` / `444` | chroma format (default `420`; `444` is AV1 High profile and keeps full-resolution colour) |
 | `--lossless` | exact (AV1 lossless). PNG/WebP RGB as GBR 4:4:4 at the source depth (as `avifenc -l`). JPEGs are refused (skipped in batch mode): a lossless AVIF of a JPEG is about twice its size, or more |
 | `--ycgco-re` | with `--lossless`: RGB as YCgCo-Re (`--cicp 1/13/16` in avifenc), 8-bit RGB → 10-bit 4:4:4; usually smaller |
+| `--palette M` | palette mode for screen content and flat colours: `auto` (default) tries it on the images that pass a screen-content detection (photos do not, and their output is unchanged), `on` on every image, `off` never (the output and speed without palette mode, as in v0.7). Lossy: luma palettes; lossless: luma and chroma ([docs/PALETTE.md](docs/PALETTE.md)) |
 | `--alpha-quality Q` | quality of the alpha channel of PNG/WebP files with transparency: defaults to `--quality`, as in avifenc 1.2+; `100` is lossless (also with `--lossless`) |
 | `--no-alpha` | drop transparency as before alpha support (PNG colour composited onto black) |
 | `--depth 8` / `10` | bit depth (default 8; 16-bit PNGs keep 10 bits, 8-bit sources are scaled to the 10-bit range) |

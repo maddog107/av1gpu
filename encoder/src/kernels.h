@@ -18,6 +18,10 @@ struct GpPackOff {
     uint32_t rTxb;      // image-relative txb index (block_txb values)
     uint32_t rCoef;     // image-relative coefficient offset (txb.coeff_off)
     uint32_t img, tile; // image index, global tile index (entropy auxiliaries)
+    uint32_t gPal;      // global palette index of the SB's first palette
+    uint32_t rBlk;      // image-relative index of the SB's first block (palette block fields)
+    uint64_t gMap;      // global colour index map offset
+    uint64_t rMap;      // image-relative colour index map offset (palette map_off)
 };
 // optional auxiliary outputs of k_pack for the device entropy path (entropy_dev.h)
 struct GpPackAux {
@@ -28,6 +32,8 @@ struct GpPackAux {
 // bd: bit depth of the batch (8 or 10): the kernels are instantiated per bit depth.  The images' sample planes
 // (GpImage::src / rec) are uint16_t at 10 bits.
 void gp_launch_analysis(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st, int bd = 8);
+// palette candidates (k_pal.cu) of the screen-content frames, after gp_launch_analysis; nothing when B.oPal is null
+void gp_launch_pal_analysis(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st, int bd = 8);
 // y: luma plane (bd = 10: uint16_t samples, pitch in samples)
 void gp_launch_ssim_map(const uint8_t *y, int pitch, int MiCols, int MiRows, float *out, double *sum, cudaStream_t st, int bd = 8);
 void gp_launch_var16(const uint8_t *y, int pitch, int MiCols, int MiRows, float *out, cudaStream_t st, int bd = 8);
@@ -46,7 +52,11 @@ void gp_launch_resize(const void *src, int spitch, int in10, int sx0, int tw, co
 void gp_launch_recon(const GpBatch &B, const GpParams &P, const uint32_t *dSbList, uint32_t n420, uint32_t n444, cudaStream_t st,
                      int bd = 8);
 void gp_launch_pack(const GpBatch &B, const GpPackOff *dOff, av1g_block *oB, uint32_t *oBT, av1g_txb *oT, int16_t *oC,
-                    const GpPackAux &aux, cudaStream_t st);
+                    const GpPackAux &aux, cudaStream_t st, av1g_palette *oP = nullptr, uint8_t *oM = nullptr);
+// screen-content detection (libaom's anti-aliasing-aware mode 2 on 16x16 luma blocks, k_misc.cu): sets dImg[i].sct (the
+// device copy of the batch's images, hImg its host copy with scBlk0 / W / H) and *any if some image passes.  cnt:
+// device scratch of 3 counters per image.  No host synchronisation (GP_SC_DEBUG=1: prints the counts, synchronising)
+void gp_launch_sc_detect(GpImage *dImg, const GpImage *hImg, int n, int bd, unsigned long long *cnt, uint32_t *any, cudaStream_t st);
 // cdef_idx of every block from the per-SB map (av1f search); frames with cdefOn[f] == 0 keep 0
 void gp_launch_set_cdef(av1g_block *blocks, uint32_t nB, const uint32_t *blockFrame, const uint32_t *frameSbBase,
                         const int *frameSbCols, const int *cdefOn, const int8_t *sbCdef, cudaStream_t st);

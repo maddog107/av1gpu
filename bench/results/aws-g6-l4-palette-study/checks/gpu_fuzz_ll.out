@@ -1,0 +1,1 @@
+GPU FUZZ (run_batch_device, device arrays, non-blocking stream, 3 scratch allocations) seeds 1000..1199: 200 cases (69 4:4:4, 23 monochrome, 86 10-bit, 200 lossless), 263 tiles, 56169917 symbols, 2 symbol-capacity errors reported + rerun (+2 reruns over the default bound), order check ok, 0 mismatches -> PASSED

@@ -22,6 +22,7 @@
 #include <cstddef>
 #include "dev_tx.cuh"
 #include "k_analysis.cuh"
+#include "pal_dev.cuh"
 #include "rc_inv.cuh"
 
 #define RC_NT 128
@@ -107,6 +108,13 @@ struct RcShared {
     // per-warp best luma task (tx blocks <= 16x16): its levels are the final ones, no re-evaluation
     float bestJw[RC_NW];
     int bestCw[RC_NW], bestTw[RC_NW], bestEw[RC_NW];
+    // luma palette candidate of the current block (screen-content frames; pal_cand): colours, size (0: none), bits, its
+    // index map (in the SB's colour-map slot, at nMap), and the SB's palettes so far
+    uint16_t palCol[8];
+    int palN;
+    float palBits;
+    const uint8_t *palMap;
+    int nPal, nMap;
 };
 
 // ---------------------------------------------------------------------------
@@ -245,10 +253,13 @@ __device__ __forceinline__ int rc_pred(const RcShared<BD> &S, int plane, int c, 
     return av1g_pred_pixel(m, pangle_of(m, cand_delta(c)), i, j, lw, lh, S.ea[plane] + AV1G_EDGE_OFF, S.el[plane] + AV1G_EDGE_OFF);
 }
 
-// filter-intra candidates are coded as 128 + filter_intra_mode (y_mode DC_PRED)
-__device__ __forceinline__ bool is_fi(int c) { return c >= 128; }
+// filter-intra candidates are coded as 128 + filter_intra_mode (y_mode DC_PRED), a luma palette as PAL_CAND + size - 2
+// (DC_PRED; pal_dev.cuh)
+__device__ __forceinline__ bool is_fi(int c) { return c >= 128 && c < 133; }
 __device__ __forceinline__ int luma_mode(int c) { return c >= 128 ? AV1G_DC_PRED : cand_mode(c); }
-__device__ __forceinline__ int intra_dir(int c) { return c >= 128 ? AV1G_T(Filter_Intra_Mode_To_Intra_Dir)[c - 128] : cand_mode(c); }
+__device__ __forceinline__ int intra_dir(int c) {
+    return is_fi(c) ? AV1G_T(Filter_Intra_Mode_To_Intra_Dir)[c - 128] : pal_cand(c) ? AV1G_DC_PRED : cand_mode(c);
+}
 
 // warp: prepare the edge-filtered edges of (plane, candidate) into this warp's slot (lane 0)
 static_assert(AV1G_EDGE_LEN % 16 == 0 && offsetof(RcShared<8>, ea) % 16 == 0 && offsetof(RcShared<8>, el) % 16 == 0 &&
@@ -363,6 +374,16 @@ __device__ float rc_residual(int W, int H, RcShared<BD> &S, int plane, int c, bo
         for (int p = lane; p < W * H; p += 32) {
             const int i = p >> T.lw, j = p & (W - 1);
             const int r = (int)src[i * sp + j] - (int)fiBuf[p];
+            res[p] = (int16_t)r;
+            e += (float)(r * r);
+        }
+        __syncwarp();
+        return warp_sum(e);
+    }
+    if (plane == 0 && pal_cand(c)) {   // luma palette (one tx block of the block's size): the colours of the map
+        for (int p = lane; p < W * H; p += 32) {
+            const int i = p >> T.lw, j = p & (W - 1);
+            const int r = (int)src[i * sp + j] - (int)S.palCol[S.palMap[p]];
             res[p] = (int16_t)r;
             e += (float)(r * r);
         }
@@ -486,6 +507,8 @@ __device__ void rc_final_quant(int W, int H, RcShared<BD> &S, const EvalIn &e, i
     float *tmp = big ? BG.tmp : S.u.w[0].tmp;
     if (plane == 0 && is_fi(c)) {
         if (tid < 32) rc_residual<BD>(W, H, S, plane, c, cfl, alpha, src, sp, res, (av1g_pixel_t(BD) *)tmp);
+    } else if (plane == 0 && pal_cand(c)) {
+        for (int p = tid; p < W * H; p += RC_NT) res[p] = (int16_t)((int)src[(p >> T.lw) * sp + (p & (W - 1))] - (int)S.palCol[S.palMap[p]]);
     } else {
         if (tid < 32) rc_prepare_edges<BD>(S, plane, c, cfl, T.lw, T.lh);
         __syncthreads();
@@ -564,6 +587,11 @@ __device__ void rc_write_pred(int W, int H, const RcShared<BD> &S, int plane, in
     if (plane == 0 && is_fi(c)) {
         if (g.t == 0)
             av1g_predict_filter_intra<BD>(c - 128, T.lw, T.lh, S.ea[0] + AV1G_EDGE_OFF, S.el[0] + AV1G_EDGE_OFF, dst, pitch);
+        g.sync();
+        return;
+    }
+    if (plane == 0 && pal_cand(c)) {
+        for (int p = g.t; p < W * H; p += g.nt) dst[(p >> T.lw) * pitch + (p & (W - 1))] = (av1g_pixel_t(BD))S.palCol[S.palMap[p]];
         g.sync();
         return;
     }
@@ -677,10 +705,43 @@ __device__ __forceinline__ void rc_tick(const GpBatch &B, const GpParams &P, int
 
 // ---------------------------------------------------------------------------
 // luma of one block (tx size = block size, tx_depth 0)
+// the luma palette of candidate c (pal_dev.cuh) for the block at (x, y): colours, its map in the SB's colour-map slot (at
+// S.nMap) and its bits, rebuilt from the source exactly as k_pal built it (warp 0; histogram scratch in the union).  Not
+// inlined: it stays out of rc_luma's register allocation.  The analysis only proposes palettes of 2 or more colours, and
+// this rebuilds the same one; should it ever come out smaller, a 2-colour palette keeps the block valid.
+template <int BD>
+__device__ __noinline__ void rc_pal_prepare(RcShared<BD> &S, const GpBatch &B, const GpImage &I, uint32_t sb, const av1g_pixel_t(BD) *src,
+                                            int x, int y, int W, int H, int bsize, int c, const float *C) {
+    const int tid = threadIdx.x;
+    if (tid < 32) {
+        const int ow = min(W, I.MiCols * 4 - x), oh = min(H, I.MiRows * 4 - y);
+        uint32_t *hist = (uint32_t *)S.u.raw;
+        uint16_t *dv = (uint16_t *)(S.u.raw + 4096), *dc = dv + 64;
+        const int nd = pal_hist<BD>(src, I.spitch[0], ow, oh, hist, dv, dc);
+        int n = 0;
+        if (tid == 0) {
+            if (nd >= 2 && nd <= 64) n = pal_kmeans(dv, dc, nd, pal_target(c), pal_top(c), BD, S.palCol);
+            if (n < 2) {
+                S.palCol[0] = (uint16_t)min((int)src[0], (1 << BD) - 2);
+                S.palCol[1] = (uint16_t)(S.palCol[0] + 1);
+                n = 2;
+            }
+        }
+        n = __shfl_sync(0xffffffffu, n, 0);
+        __syncwarp();
+        uint8_t *map = B.oMap + (size_t)sb * GP_SB_MAP + S.nMap;
+        pal_map(src, I.spitch[0], W, H, ow, oh, S.palCol, n, map, tid, 32);
+        __syncwarp();
+        const float bits = pal_bits(n, S.palCol, map, W, ow, oh, bsize, BD, C);
+        if (tid == 0) { S.palBits = bits; S.palN = n; S.palMap = map; }
+    }
+    __syncthreads();
+}
+
 template <int BD>
 __device__ __noinline__ void rc_luma(int W, int H, RcShared<BD> &S, const GpBatch &B, const GpParams &P, uint32_t sb, const GpImage &I, int bsize, int x,
                         int y, int availU, int availL, const TileBox &tb, const BlockQ &bq, float lambda, const float *C,
-                        int *outMode, int *outDelta, int *outEob, int *outFi, int *outTxDepth) {
+                        int *outMode, int *outDelta, int *outEob, int *outFi, int *outTxDepth, int *outPal) {
     const TxR T(W, H);
     const int tid = threadIdx.x;
     const int txSz = AV1G_T(Max_Tx_Size_Rect)[bsize];
@@ -701,6 +762,7 @@ __device__ __noinline__ void rc_luma(int W, int H, RcShared<BD> &S, const GpBatc
     auto mbits = [&](int c) -> float {
         const int m = luma_mode(c);
         float b = C[CID(y_mode[am][lm]) + m];
+        if (pal_cand(c)) return b + S.palBits;   // no filter intra with a palette
         if (!is_fi(c) && bsize >= AV1G_BLOCK_8X8 && av1g_is_directional(m)) b += C[CID(angle_delta[m - AV1G_V_PRED]) + cand_delta(c) + 3];
         if (fiOk && m == AV1G_DC_PRED) {
             b += C[CID(filter_intra[bsize]) + (is_fi(c) ? 1 : 0)];
@@ -718,6 +780,8 @@ __device__ __noinline__ void rc_luma(int W, int H, RcShared<BD> &S, const GpBatc
     const int spP[3] = {I.spitch[0], I.spitch[0], I.spitch[0]};
     const int nc = max(1, min((int)br.ncand, P.Krecheck));
     const int set = av1g_get_tx_set_intra(txSz, 0);
+    // luma palette candidate (screen-content frames; k_pal makes it candidate 0): its palette, map and bits
+    if (B.oPal && I.sct && pal_cand(br.cand[0])) rc_pal_prepare<BD>(S, B, I, sb, src, x, y, W, H, bsize, br.cand[0], C);
     int bestC = br.cand[0], bestT = br.tx;
     __syncthreads();
     rc_tick(B, P, 0);  // luma setup: edges, contexts
@@ -835,10 +899,14 @@ __device__ __noinline__ void rc_luma(int W, int H, RcShared<BD> &S, const GpBatc
                     if (tid < 32) rc_prepare_edges<BD>(S, 0, bestC, false, T.lw, T.lh);
                     __syncthreads();
                     int16_t *res = S.u.w[0].res;
-                    for (int p = tid; p < W * H; p += RC_NT) {
-                        const int i = p >> T.lw, j = p & (W - 1);
-                        res[p] = (int16_t)((int)src[i * I.spitch[0] + j] - rc_pred<BD>(S, 0, bestC, false, 0, i, j, T.lw, T.lh, W, 0));
-                    }
+                    if (pal_cand(bestC))
+                        for (int p = tid; p < W * H; p += RC_NT)
+                            res[p] = (int16_t)((int)src[(p >> T.lw) * I.spitch[0] + (p & (W - 1))] - (int)S.palCol[S.palMap[p]]);
+                    else
+                        for (int p = tid; p < W * H; p += RC_NT) {
+                            const int i = p >> T.lw, j = p & (W - 1);
+                            res[p] = (int16_t)((int)src[i * I.spitch[0] + j] - rc_pred<BD>(S, 0, bestC, false, 0, i, j, T.lw, T.lh, W, 0));
+                        }
                     __syncthreads();
                     if (W == 64 || H == 64) {   // only the 64-point distortion uses the energy (never in pass 2)
                         float en = 0.f;
@@ -874,7 +942,7 @@ __device__ __noinline__ void rc_luma(int W, int H, RcShared<BD> &S, const GpBatc
     e.intraDir = intra_dir(bestC);
     e.qm = av1g_qm(I.usingQm, I.qm[0], 0, txSz, bestT);
     float J0;
-    const bool trySplit = P.txSizeSearch && av1g_max_tx_depth(bsize) >= 1;
+    const bool trySplit = P.txSizeSearch && av1g_max_tx_depth(bsize) >= 1 && !pal_cand(bestC);   // palette: one tx block
     // W1/W2: without the tx-size trial the final prediction is src - residual (the shared pass-2
     // residual of bestC, or the final quantization's), no second prediction pass
     const int16_t *predRes = nullptr;
@@ -895,7 +963,7 @@ __device__ __noinline__ void rc_luma(int W, int H, RcShared<BD> &S, const GpBatc
         J0 = 0.f;   // only the tx-size trial uses it
     }
     int txDepth = 0;
-    if (P.txSizeSearch && av1g_max_tx_depth(bsize) >= 1) {
+    if (trySplit) {
         // ---- tx-size search: largest tx (above) vs one split level, closed loop: every sub tx block is
         //      predicted from the reconstruction of the previous ones (raster order), tx type searched per
         //      sub block, recorded as it goes; rolled back when depth 0 wins ----
@@ -1026,7 +1094,8 @@ __device__ __noinline__ void rc_luma(int W, int H, RcShared<BD> &S, const GpBatc
     }
     rc_tick(B, P, 3);  // final quant + prediction + inverse + record
     *outMode = luma_mode(bestC);
-    *outDelta = is_fi(bestC) ? 0 : cand_delta(bestC);
+    *outDelta = is_fi(bestC) || pal_cand(bestC) ? 0 : cand_delta(bestC);
+    *outPal = pal_cand(bestC) ? S.palN : 0;
     *outFi = is_fi(bestC) ? bestC - 128 + 1 : 0;
 }
 
@@ -1475,7 +1544,7 @@ __global__ void __launch_bounds__(RC_NT, 4) k_recon(GpBatch B, GpParams P, const
         S.bdm[p][yy + 1] = w;
     }
     const int nLeaves = B.leafCountW[sb];
-    if (tid == 0) { S.nTxb = 0; S.nCoef = 0; S.edgeFilter = I.edgeFilter; S.bigG = (RcBigScr *)((char *)B.bigScratch + (size_t)blockIdx.x * RC_CTA_BIG_BYTES); S.bigQ = (int16_t *)(S.bigG + RC_NW); }
+    if (tid == 0) { S.nTxb = 0; S.nCoef = 0; S.nPal = 0; S.nMap = 0; S.edgeFilter = I.edgeFilter; S.bigG = (RcBigScr *)((char *)B.bigScratch + (size_t)blockIdx.x * RC_CTA_BIG_BYTES); S.bigQ = (int16_t *)(S.bigG + RC_NW); }
     const int qidx = sb_qindex(I, sbx, sby);
     const BlockQ bq = block_q<BD>(I, qidx);
     const float lambda = gp_lambda<BD>(qidx, P.lambdaMul);
@@ -1493,9 +1562,9 @@ __global__ void __launch_bounds__(RC_NT, 4) k_recon(GpBatch B, GpParams P, const
         const int hasChroma = av1g_has_chroma(bsize, mi_row, mi_col, I.mono, SS, SS);
         const uint32_t firstTxb = (uint32_t)S.nTxb;
         const float lambdaB = lambda * ssim_scale(I, x, y, bw_px(bsize), bh_px(bsize));
-        int yMode = 0, yDelta = 0, eobY = 0, yFi = 0, yTxDepth = 0;
+        int yMode = 0, yDelta = 0, eobY = 0, yFi = 0, yTxDepth = 0, yPal = 0;
         const int txSz = AV1G_T(Max_Tx_Size_Rect)[bsize];
-rc_luma<BD>(AV1G_T(Tx_Width)[txSz], AV1G_T(Tx_Height)[txSz], S, B, P, sb, I, bsize, x, y, availU, availL, tb, bq, lambdaB, C, &yMode, &yDelta, &eobY, &yFi, &yTxDepth);
+rc_luma<BD>(AV1G_T(Tx_Width)[txSz], AV1G_T(Tx_Height)[txSz], S, B, P, sb, I, bsize, x, y, availU, availL, tb, bq, lambdaB, C, &yMode, &yDelta, &eobY, &yFi, &yTxDepth, &yPal);
         int uv = 0, duv = 0, aU = 0, aV = 0, eobU = 0, eobV = 0;
         if (hasChroma) {
             const int uvTx = av1g_uv_tx_size(bsize, SS, SS);
@@ -1527,6 +1596,17 @@ rc_chroma<SS, BD>(AV1G_T(Tx_Width)[uvTx], AV1G_T(Tx_Height)[uvTx], S, B, P, sb, 
             b.sb_qindex = (uint8_t)(I.sbQ ? qidx : 0);
             B.oBlocks[(size_t)sb * GP_MAX_LEAVES + li] = b;
             B.oBlockTxb[(size_t)sb * GP_MAX_LEAVES + li] = (uint16_t)firstTxb;
+            if (yPal) {   // the luma palette: its map is already at S.nMap of the SB's slot
+                av1g_palette p;
+                memset(&p, 0, sizeof p);
+                p.block = (uint32_t)li;
+                p.map_off = (uint32_t)S.nMap;
+                p.size_y = (uint8_t)yPal;
+                for (int k = 0; k < yPal; k++) p.colors[0][k] = S.palCol[k];
+                B.oPal[(size_t)sb * GP_SB_PAL + S.nPal] = p;
+                S.nPal++;
+                S.nMap += bw_px(bsize) * bh_px(bsize);
+            }
             if (skip) atomicAdd(&B.stats[1], 1u);
             if (hasChroma && uv == AV1G_UV_CFL_PRED) atomicAdd(&B.stats[2], 1u);
             atomicAdd(&B.stats[0], 1u);
@@ -1536,7 +1616,9 @@ rc_chroma<SS, BD>(AV1G_T(Tx_Width)[uvTx], AV1G_T(Tx_Height)[uvTx], S, B, P, sb, 
     }
     if (tid == 0) {
         GpSbOut o;
-        o.nBlocks = (uint32_t)nLeaves; o.nTxb = (uint32_t)S.nTxb; o.nCoeffs = (uint32_t)S.nCoef; o.pad = 0;
+        memset(&o, 0, sizeof o);
+        o.nBlocks = (uint32_t)nLeaves; o.nTxb = (uint32_t)S.nTxb; o.nCoeffs = (uint32_t)S.nCoef;
+        o.nPal = (uint32_t)S.nPal; o.nMap = (uint32_t)S.nMap;
         B.sbOut[sb] = o;
         if (P.profile && B.sbCyc) B.sbCyc[sb] = (uint32_t)min(clock64() - sbT0, 0xffffffffLL);
     }

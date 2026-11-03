@@ -1,0 +1,15 @@
+race r0 size_range/default new: 229.9 MP/s (runs 234.2, 228.8, 229.9)
+race r0 size_range/default old: 233.3 MP/s (runs 231.1, 233.3, 233.7)
+race r0 size_range/444_10 new: 166.6 MP/s (runs 167.5, 166.6, 164.0)
+race r0 size_range/444_10 old: 166.7 MP/s (runs 166.7, 165.1, 169.0)
+race r0 standard/default new: 74.6 MP/s (runs 74.7, 74.6, 73.9)
+race r0 standard/default old: 73.3 MP/s (runs 73.4, 73.2, 73.3)
+race r1 size_range/default old: 223.9 MP/s (runs 223.9, 221.4, 227.5)
+race r1 size_range/default new: 222.6 MP/s (runs 224.9, 219.9, 222.6)
+race r1 size_range/444_10 old: 165.4 MP/s (runs 165.4, 167.6, 164.6)
+race r1 size_range/444_10 new: 164.5 MP/s (runs 165.2, 164.5, 162.5)
+race r1 standard/default old: 73.4 MP/s (runs 73.4, 73.3, 75.0)
+race r1 standard/default new: 76.5 MP/s (runs 76.5, 76.5, 76.5)
+SUMMARY race size_range/default: new 226.9 MP/s, old 229.3 MP/s, -1.1 %
+SUMMARY race size_range/444_10: new 164.8 MP/s, old 166.1 MP/s, -0.7 %
+SUMMARY race standard/default: new 75.6 MP/s, old 73.3 MP/s, +3.1 %

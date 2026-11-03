@@ -1,0 +1,5 @@
+off r0 size_range/default palette off new: 227.0 MP/s (runs 225.8, 227.7, 227.0)
+off r0 size_range/default palette off old: 227.9 MP/s (runs 228.1, 227.9, 226.4)
+off r1 size_range/default palette off old: 227.2 MP/s (runs 226.5, 228.3, 227.2)
+off r1 size_range/default palette off new: 222.8 MP/s (runs 224.7, 222.8, 221.0)
+SUMMARY off size_range/default palette off: new 225.3 MP/s, old 227.5 MP/s, -1.0 %

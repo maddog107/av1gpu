@@ -49,7 +49,39 @@ typedef struct av1g_cdfs {
     uint16_t coeff_base_eob[5][2][4][4];
     uint16_t coeff_base[5][2][42][5];
     uint16_t coeff_br[5][2][21][5];
+    /* palette CDFs (palette_mode_info / palette_tokens, only with allow_screen_content_tools); appended so the ids of
+       the CDFs above stay what they were */
+    uint16_t palette_y_size[7][8];      /* palette_size_y_minus_2 [bsizeCtx] */
+    uint16_t palette_uv_size[7][8];
+    uint16_t palette_y_color2[5][3];    /* palette_color_idx_y for PaletteSizeY 2 .. 8 [ctx] */
+    uint16_t palette_y_color3[5][4];
+    uint16_t palette_y_color4[5][5];
+    uint16_t palette_y_color5[5][6];
+    uint16_t palette_y_color6[5][7];
+    uint16_t palette_y_color7[5][8];
+    uint16_t palette_y_color8[5][9];
+    uint16_t palette_uv_color2[5][3];   /* palette_color_idx_uv */
+    uint16_t palette_uv_color3[5][4];
+    uint16_t palette_uv_color4[5][5];
+    uint16_t palette_uv_color5[5][6];
+    uint16_t palette_uv_color6[5][7];
+    uint16_t palette_uv_color7[5][8];
+    uint16_t palette_uv_color8[5][9];
+    uint16_t pad_[4];                   /* sizeof a multiple of 16 bytes: the GPU coder copies the state in uint4 units */
 } av1g_cdfs;
+
+/* the colour-index CDF of palette size n (2..8) and context ctx: uv = 0 luma, 1 chroma */
+AV1G_HDI uint16_t *av1g_palette_color_cdf(av1g_cdfs *c, int uv, int n, int ctx) {
+    switch (n) {
+    case 2: return uv ? c->palette_uv_color2[ctx] : c->palette_y_color2[ctx];
+    case 3: return uv ? c->palette_uv_color3[ctx] : c->palette_y_color3[ctx];
+    case 4: return uv ? c->palette_uv_color4[ctx] : c->palette_y_color4[ctx];
+    case 5: return uv ? c->palette_uv_color5[ctx] : c->palette_y_color5[ctx];
+    case 6: return uv ? c->palette_uv_color6[ctx] : c->palette_y_color6[ctx];
+    case 7: return uv ? c->palette_uv_color7[ctx] : c->palette_y_color7[ctx];
+    default: return uv ? c->palette_uv_color8[ctx] : c->palette_y_color8[ctx];
+    }
+}
 
 /* quantizer context for init_coeff_cdfs */
 AV1G_HD int av1g_coeff_cdf_q_ctx(int base_q_idx) {
@@ -102,6 +134,22 @@ AV1G_HDI void av1g_cdfs_init(av1g_cdfs *c, int base_q_idx) {
     AV1G_CDF_COPY(c->coeff_base_eob, AV1G_T(Default_Coeff_Base_Eob_Cdf)[q]);
     AV1G_CDF_COPY(c->coeff_base, AV1G_T(Default_Coeff_Base_Cdf)[q]);
     AV1G_CDF_COPY(c->coeff_br, AV1G_T(Default_Coeff_Br_Cdf)[q]);
+    AV1G_CDF_COPY(c->palette_y_size, AV1G_T(Default_Palette_Y_Size_Cdf));
+    AV1G_CDF_COPY(c->palette_uv_size, AV1G_T(Default_Palette_Uv_Size_Cdf));
+    AV1G_CDF_COPY(c->palette_y_color2, AV1G_T(Default_Palette_Size_2_Y_Color_Cdf));
+    AV1G_CDF_COPY(c->palette_y_color3, AV1G_T(Default_Palette_Size_3_Y_Color_Cdf));
+    AV1G_CDF_COPY(c->palette_y_color4, AV1G_T(Default_Palette_Size_4_Y_Color_Cdf));
+    AV1G_CDF_COPY(c->palette_y_color5, AV1G_T(Default_Palette_Size_5_Y_Color_Cdf));
+    AV1G_CDF_COPY(c->palette_y_color6, AV1G_T(Default_Palette_Size_6_Y_Color_Cdf));
+    AV1G_CDF_COPY(c->palette_y_color7, AV1G_T(Default_Palette_Size_7_Y_Color_Cdf));
+    AV1G_CDF_COPY(c->palette_y_color8, AV1G_T(Default_Palette_Size_8_Y_Color_Cdf));
+    AV1G_CDF_COPY(c->palette_uv_color2, AV1G_T(Default_Palette_Size_2_Uv_Color_Cdf));
+    AV1G_CDF_COPY(c->palette_uv_color3, AV1G_T(Default_Palette_Size_3_Uv_Color_Cdf));
+    AV1G_CDF_COPY(c->palette_uv_color4, AV1G_T(Default_Palette_Size_4_Uv_Color_Cdf));
+    AV1G_CDF_COPY(c->palette_uv_color5, AV1G_T(Default_Palette_Size_5_Uv_Color_Cdf));
+    AV1G_CDF_COPY(c->palette_uv_color6, AV1G_T(Default_Palette_Size_6_Uv_Color_Cdf));
+    AV1G_CDF_COPY(c->palette_uv_color7, AV1G_T(Default_Palette_Size_7_Uv_Color_Cdf));
+    AV1G_CDF_COPY(c->palette_uv_color8, AV1G_T(Default_Palette_Size_8_Uv_Color_Cdf));
 }
 
 #endif

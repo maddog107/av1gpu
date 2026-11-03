@@ -65,7 +65,9 @@ struct GpConfig {
     int alpha = 1;            // front ends: PNG / WebP transparency is coded as an AVIF alpha item (monochrome frames
                               // encoded with gp_alpha_config(); 0 = --no-alpha: not coded, as before)
     int alphaQindex = -1;     // alpha frames: 0 = lossless, 1..255 = qindex; -1 = the colour frames' qindex
-    GpXform xform;            // front ends: crop / fit-inside for every image (batch lines may override it)
+    int palette = 1;          // palette mode (allow_screen_content_tools): 0 off, 1 frames that pass the screen-content
+                              // detection (gp_launch_sc_detect), 2 every frame.  Frames without palettes code 0.
+    GpXform xform;           // front ends: crop / fit-inside for every image (batch lines may override it)
     double maxMp = 0;         // front ends: largest picture encoded, after crop / resize (--max-mp; 0: the front end's
                               // default, gp_enc_max_mp).  Pictures above 35.65 MP (AV1 level 6.3, the most AVIF's
                               // Advanced profile allows) are written with seq_level_idx 31 (no level limits)
@@ -73,6 +75,10 @@ struct GpConfig {
                               // limit); above it only helps sources that a crop / max-size brings under maxMp
     GpConfig();
 };
+
+// palette search exists for this configuration (GpConfig::palette applies): lossless (luma + chroma palettes) and lossy
+// (luma palettes)
+inline bool gp_palette_supported(const GpConfig &) { return true; }
 
 // The front ends' limits in megapixels (0: none): the largest picture encoded (--max-mp, else dflt: 35.6 in batch mode
 // and for JPEGs, none for single PNG / WebP images, as before the options) and the largest source decoded.
@@ -118,6 +124,8 @@ struct GpFrameOut {
     std::vector<uint32_t> block_txb;
     std::vector<av1g_txb> txb;
     std::vector<int16_t> coeffs;
+    std::vector<av1g_palette> palettes;  // v5 palettes and their colour index maps
+    std::vector<uint8_t> color_map;
     std::vector<uint8_t> recon[3];   // cropped: Y W x H, U/V ((W+1)/2) x ((H+1)/2) (4:4:4: W x H); 10-bit frames:
                                      // uint16_t samples (2 bytes each, native byte order)
     int orientation = 1;             // EXIF orientation of the source (set by the caller; AVIF irot/imir)

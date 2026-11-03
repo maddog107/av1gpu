@@ -1,0 +1,139 @@
+screen r0 graphics/default new: 57.5 MP/s (runs 57.5, 57.2, 57.5)
+screen r0 graphics/default old: 152.3 MP/s (runs 153.1, 152.3, 150.0)
+FAILED graphics/lossless new  1 GB of GPU memory per megapixel of GP_ENCODE_MP (now 48; this GPU has 23.7 GB); try a smaller GP_ENCODE_MP, e.g. 16
+encode: CUDA: out of memory at cudaMallocAsync((void **)&pool, poolBytes, st) (/home/ubuntu/br/encoder/src/pipeline.cpp:628)
+entropy: CUDA: out of memory at cudaMallocAsync(&scr.p, need, st)
+entropy: CUDA: out of memory at cudaMallocAsync(&scr.p, need, st)
+encode: CUDA: out of memory at cudaMallocAsync((void **)&pool, poolBytes, st) (/home/ubuntu/br/encoder/src/pipeline.cpp:628)
+
+FAILED graphics/lossless new y at A.get(L.cost[p], tot[p]) (/home/ubuntu/br/encoder/src/pipeline.cpp:515)
+[av1gpu] out of GPU memory: lossless batches need about 1 GB of GPU memory per megapixel of GP_ENCODE_MP (now 48; this GPU has 23.7 GB); try a smaller GP_ENCODE_MP, e.g. 16
+encode: CUDA: out of memory at cudaMallocAsync((void **)&pool, poolBytes, st) (/home/ubuntu/br/encoder/src/pipeline.cpp:628)
+encode: CUDA: out of memory at cudaMallocAsync((void **)&pool, poolBytes, st) (/home/ubuntu/br/encoder/src/pipeline.cpp:628)
+
+FAILED graphics/lossless new f GPU memory per megapixel of GP_ENCODE_MP (now 48; this GPU has 23.7 GB); try a smaller GP_ENCODE_MP, e.g. 16
+encode: CUDA: out of memory at cudaMallocAsync((void **)&pool, poolBytes, st) (/home/ubuntu/br/encoder/src/pipeline.cpp:628)
+entropy: CUDA: out of memory at cudaMallocAsync(&scr.p, need, st)
+entropy: CUDA: out of memory at cudaMallocAsync(&scr.p, need, st)
+entropy: CUDA: out of memory at cudaMallocAsync(&scr.p, need, st)
+entropy: CUDA: out of memory at cudaMallocAsync(&scr.p, need, st)
+
+FAILED graphics/lossless new DE_MP (now 48; this GPU has 23.7 GB); try a smaller GP_ENCODE_MP, e.g. 16
+encode: CUDA: out of memory at cudaMallocAsync((void **)&pool, poolBytes, st) (/home/ubuntu/br/encoder/src/pipeline.cpp:628)
+entropy: CUDA: out of memory at cudaMallocAsync(&scr.p, need, st)
+entropy: CUDA: out of memory at cudaMallocAsync(&scr.p, need, st)
+entropy: CUDA: out of memory at cudaMallocAsync(&scr.p, need, st)
+encode: CUDA: out of memory at A.get(L.cost[p], tot[p]) (/home/ubuntu/br/encoder/src/pipeline.cpp:515)
+
+screen r0 graphics/lossless new: 0.0 MP/s (runs 0.0, 0.0, 0.0)
+FAILED graphics/lossless old  at cudaMallocAsync(&scr.p, need, st)
+entropy: CUDA: out of memory at cudaMallocAsync(&scr.p, need, st)
+entropy: CUDA: out of memory at cudaMallocAsync(&scr.p, need, st)
+entropy: CUDA: out of memory at cudaMallocAsync(&scr.p, need, st)
+entropy: CUDA: out of memory at cudaMallocAsync(&scr.p, need, st)
+entropy: CUDA: out of memory at cudaMallocAsync(&scr.p, need, st)
+entropy: CUDA: out of memory at cudaMallocAsync(&scr.p, need, st)
+entropy: CUDA: out of memory at cudaMallocAsync(&scr.p, need, st)
+
+FAILED graphics/lossless old t)
+entropy: CUDA: out of memory at cudaMallocAsync(&scr.p, need, st)
+encode: CUDA: out of memory at cudaMallocAsync((void **)&pool, poolBytes, st) (/home/ubuntu/av1gpu/encoder/src/pipeline.cpp:579)
+encode: CUDA: out of memory at A.get(L.cost[p], tot[p]) (/home/ubuntu/av1gpu/encoder/src/pipeline.cpp:472)
+entropy: CUDA: out of memory at cudaMallocAsync(&scr.p, need, st)
+encode: CUDA: out of memory at cudaMallocAsync((void **)&pool, poolBytes, st) (/home/ubuntu/av1gpu/encoder/src/pipeline.cpp:579)
+
+FAILED graphics/lossless old ; try a smaller GP_ENCODE_MP, e.g. 16
+entropy: CUDA: out of memory at cudaMallocAsync(&scr.p, need, st)
+entropy: CUDA: out of memory at cudaMallocAsync(&scr.p, need, st)
+entropy: CUDA: out of memory at cudaMallocAsync(&scr.p, need, st)
+entropy: CUDA: out of memory at cudaMallocAsync(&scr.p, need, st)
+entropy: CUDA: out of memory at cudaMallocAsync(&scr.p, need, st)
+entropy: CUDA: out of memory at cudaMallocAsync(&scr.p, need, st)
+entropy: CUDA: out of memory at cudaMallocAsync(&scr.p, need, st)
+
+FAILED graphics/lossless old ntu/av1gpu/encoder/src/pipeline.cpp:579)
+entropy: CUDA: out of memory at cudaMallocAsync(&scr.p, need, st)
+entropy: CUDA: out of memory at cudaMallocAsync(&scr.p, need, st)
+entropy: CUDA: out of memory at cudaMallocAsync(&scr.p, need, st)
+encode: CUDA: out of memory at cudaMallocAsync((void **)&pool, poolBytes, st) (/home/ubuntu/av1gpu/encoder/src/pipeline.cpp:579)
+entropy: CUDA: out of memory at cudaMallocAsync(&scr.p, need, st)
+entropy: CUDA: out of memory at cudaMallocAsync(&scr.p, need, st)
+
+screen r0 graphics/lossless old: 0.0 MP/s (runs 0.0, 0.0, 0.0)
+screen r0 graphics/default palette off new: 154.5 MP/s (runs 154.5, 151.5, 157.4)
+screen r0 graphics/default palette off old: 155.7 MP/s (runs 149.8, 159.7, 155.7)
+screen r0 graphics/default palette on new: 37.2 MP/s (runs 37.0, 37.2, 37.3)
+screen r0 graphics/default palette on old: 153.2 MP/s (runs 153.3, 153.2, 148.9)
+screen r1 graphics/default old: 154.8 MP/s (runs 151.2, 154.8, 155.3)
+screen r1 graphics/default new: 56.8 MP/s (runs 56.6, 56.9, 56.8)
+FAILED graphics/lossless old  GPU memory per megapixel of GP_ENCODE_MP (now 48; this GPU has 23.7 GB); try a smaller GP_ENCODE_MP, e.g. 16
+encode: CUDA: out of memory at cudaMallocAsync((void **)&pool, poolBytes, st) (/home/ubuntu/av1gpu/encoder/src/pipeline.cpp:579)
+entropy: CUDA: out of memory at cudaMallocAsync(&scr.p, need, st)
+encode: CUDA: out of memory at cudaMallocAsync((void **)&pool, poolBytes, st) (/home/ubuntu/av1gpu/encoder/src/pipeline.cpp:579)
+entropy: CUDA: out of memory at cudaMallocAsync(&scr.p, need, st)
+
+FAILED graphics/lossless old  (now 48; this GPU has 23.7 GB); try a smaller GP_ENCODE_MP, e.g. 16
+encode: CUDA: out of memory at cudaMallocAsync((void **)&pool, poolBytes, st) (/home/ubuntu/av1gpu/encoder/src/pipeline.cpp:579)
+entropy: CUDA: out of memory at cudaMallocAsync(&scr.p, need, st)
+encode: CUDA: out of memory at A.get(L.cost[p], tot[p]) (/home/ubuntu/av1gpu/encoder/src/pipeline.cpp:472)
+encode: CUDA: out of memory at cudaMallocAsync((void **)&pool, poolBytes, st) (/home/ubuntu/av1gpu/encoder/src/pipeline.cpp:579)
+
+FAILED graphics/lossless old memory at cudaMallocAsync(&scr.p, need, st)
+encode: CUDA: out of memory at cudaMallocAsync((void **)&pool, poolBytes, st) (/home/ubuntu/av1gpu/encoder/src/pipeline.cpp:579)
+encode: CUDA: out of memory at cudaMallocAsync((void **)&pool, poolBytes, st) (/home/ubuntu/av1gpu/encoder/src/pipeline.cpp:579)
+entropy: CUDA: out of memory at cudaMallocAsync(&scr.p, need, st)
+entropy: CUDA: out of memory at cudaMallocAsync(&scr.p, need, st)
+entropy: CUDA: out of memory at cudaMallocAsync(&scr.p, need, st)
+
+FAILED graphics/lossless old entropy: CUDA: out of memory at cudaMallocAsync(&scr.p, need, st)
+encode: CUDA: out of memory at cudaMallocAsync((void **)&pool, poolBytes, st) (/home/ubuntu/av1gpu/encoder/src/pipeline.cpp:579)
+entropy: CUDA: out of memory at cudaMallocAsync(&scr.p, need, st)
+entropy: CUDA: out of memory at cudaMallocAsync(&scr.p, need, st)
+encode: CUDA: out of memory at A.get(L.cost[p], tot[p]) (/home/ubuntu/av1gpu/encoder/src/pipeline.cpp:472)
+entropy: CUDA: out of memory at cudaMallocAsync(&scr.p, need, st)
+
+screen r1 graphics/lossless old: 0.0 MP/s (runs 0.0, 0.0, 0.0)
+FAILED graphics/lossless new e.g. 16
+encode: CUDA: out of memory at A.get(L.cost[p], tot[p]) (/home/ubuntu/br/encoder/src/pipeline.cpp:515)
+entropy: CUDA: out of memory at cudaMallocAsync(&scr.p, need, st)
+encode: CUDA: out of memory at cudaMallocAsync((void **)&pool, poolBytes, st) (/home/ubuntu/br/encoder/src/pipeline.cpp:628)
+entropy: CUDA: out of memory at cudaMallocAsync(&scr.p, need, st)
+entropy: CUDA: out of memory at cudaMallocAsync(&scr.p, need, st)
+entropy: CUDA: out of memory at cudaMallocAsync(&scr.p, need, st)
+
+FAILED graphics/lossless new 
+entropy: CUDA: out of memory at cudaMallocAsync(&scr.p, need, st)
+entropy: CUDA: out of memory at cudaMallocAsync(&scr.p, need, st)
+entropy: CUDA: out of memory at cudaMallocAsync(&scr.p, need, st)
+entropy: CUDA: out of memory at cudaMallocAsync(&scr.p, need, st)
+entropy: CUDA: out of memory at cudaMallocAsync(&scr.p, need, st)
+encode: CUDA: out of memory at A.get(L.cost[p], tot[p]) (/home/ubuntu/br/encoder/src/pipeline.cpp:515)
+entropy: CUDA: out of memory at cudaMallocAsync(&scr.p, need, st)
+
+FAILED graphics/lossless new mory per megapixel of GP_ENCODE_MP (now 48; this GPU has 23.7 GB); try a smaller GP_ENCODE_MP, e.g. 16
+encode: CUDA: out of memory at A.get(L.cost[p], tot[p]) (/home/ubuntu/br/encoder/src/pipeline.cpp:515)
+encode: CUDA: out of memory at cudaMallocAsync((void **)&pool, poolBytes, st) (/home/ubuntu/br/encoder/src/pipeline.cpp:628)
+entropy: CUDA: out of memory at cudaMallocAsync(&scr.p, need, st)
+encode: CUDA: out of memory at A.get(L.cost[p], tot[p]) (/home/ubuntu/br/encoder/src/pipeline.cpp:515)
+
+FAILED graphics/lossless new t of GPU memory: lossless batches need about 1 GB of GPU memory per megapixel of GP_ENCODE_MP (now 48; this GPU has 23.7 GB); try a smaller GP_ENCODE_MP, e.g. 16
+encode: CUDA: out of memory at A.get(L.cost[p], tot[p]) (/home/ubuntu/br/encoder/src/pipeline.cpp:515)
+entropy: CUDA: out of memory at cudaMallocAsync(&scr.p, need, st)
+entropy: CUDA: out of memory at cudaMallocAsync(&scr.p, need, st)
+encode: CUDA: out of memory at A.get(L.cost[p], tot[p]) (/home/ubuntu/br/encoder/src/pipeline.cpp:515)
+
+screen r1 graphics/lossless new: 0.0 MP/s (runs 0.0, 0.0, 0.0)
+screen r1 graphics/default palette off old: 156.1 MP/s (runs 156.1, 152.9, 156.2)
+screen r1 graphics/default palette off new: 149.9 MP/s (runs 150.1, 149.2, 149.9)
+screen r1 graphics/default palette on old: 149.8 MP/s (runs 149.8, 149.5, 151.4)
+screen r1 graphics/default palette on new: 37.2 MP/s (runs 37.6, 37.0, 37.2)
+SUMMARY screen graphics/default: new 57.0 MP/s, old 152.7 MP/s, -62.6 %
+Traceback (most recent call last):
+  File "/home/ubuntu/scripts/spd_pal_off.py", line 128, in <module>
+    {"race": race, "noise": noise, "screen": screen, "off": off}[ph]()
+  File "/home/ubuntu/scripts/spd_pal_off.py", line 121, in screen
+    ab("screen", [(sc[0], "graphics/default", [], []), (sc[0], "graphics/lossless", ["--lossless"], ["--lossless"]),
+  File "/home/ubuntu/scripts/spd_pal_off.py", line 89, in ab
+    out[tag] = dict(new=a, old=o, change=a / o - 1)
+                                         ~~^~~
+ZeroDivisionError: float division by zero
