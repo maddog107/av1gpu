@@ -113,17 +113,52 @@ static void usage() {
             "                          The box is the displayed size (turned for EXIF rotations by 90 degrees).  With\n"
             "                          --lossless the shrunk image is coded losslessly\n"
             "  --max-height H          same as --max-size xH\n"
+            "  --resize GEOMETRY       resize after the crop / trim, ImageMagick's -resize geometry and filters: W, xH, WxH (fit\n"
+            "                          inside), WxH^ (fill), WxH! (exactly), with > (only shrink) or < (only enlarge); N%%,\n"
+            "                          N%%xM%%; @AREA (pixels).  Shrinking: Lanczos as --max-size; enlarging (more pixels):\n"
+            "                          Mitchell (B = C = 1/3).  The geometry is for the displayed image (EXIF rotations by\n"
+            "                          90 degrees turn it).  The last of --resize / --max-size counts.  A batch LIST line may\n"
+            "                          add resize=GEOMETRY\n"
             "  --max-mp MP             largest picture encoded, after crop / resize (default 35.6 = AV1 level 6.3, the most\n"
             "                          AVIF's Advanced profile allows; single PNG / WebP images: no limit); larger ones are\n"
             "                          skipped.  Above 35.6 the stream says level 31 (no limits): dav1d and libavif decode\n"
             "                          it, decoders that enforce levels may not\n"
             "  --max-input-mp MP       largest source decoded (default and at least: the --max-mp limit); with --crop /\n"
             "                          --max-size, a larger source is decoded at full size and encoded once it fits --max-mp\n"
+            "  --trim                  remove the border, on the GPU after --crop and before --max-size: ImageMagick's -trim\n"
+            "                          (the bounding box of the pixels that differ from the corners by more than --fuzz: left\n"
+            "                          and top edges against the top-left corner, right against the top-right, bottom against\n"
+            "                          the bottom-left and, left of the right edge, the bottom-right), measured on the decoded\n"
+            "                          planes as whole RGB samples.  An image that is all border is encoded whole (ImageMagick\n"
+            "                          makes it 1x1; see --skip-blank).  The options below only apply with --trim\n"
+            "  --fuzz D%%               colours within D percent of the largest RGB distance count as the border (ImageMagick's\n"
+            "                          -fuzz; also D in Q16 units, 0..65535; default 0: exactly the corner colour).  With\n"
+            "                          alpha the colour distance is weighted by both alphas and alphas must be equal\n"
+            "  --trim-margin N|N%%      keep N pixels (N%%: percent of the shorter side) of the border around what --trim keeps\n"
+            "  --trim-limits MIN%%,MAX%% trim only when that removes MIN..MAX percent of the width and MIN..MAX percent of the\n"
+            "                          height (each rounded down to whole pixels); otherwise the image is encoded whole\n"
+            "  --trim-lightness L      trim only when the border is light: 3 of the 4 corners at HSL lightness L%% or more\n"
+            "                          (paper, not a dark frame or a picture running off the edge)\n"
+            "  --skip-blank P          an image whose trim would remove more than P percent of its width or height is not\n"
+            "                          encoded: skipped with a message (exit status 3 for a single image)\n"
+            "  --auto-level            stretch the smallest..largest R, G or B sample of the (cropped, trimmed) image to the\n"
+            "                          full range (ImageMagick's -auto-level: channels together)\n"
+            "  --level B[%%],W[%%][,G]  ImageMagick's -level on each RGB channel: ((v - B) / (W - B)) ^ (1 / G), clipped; plain\n"
+            "                          numbers in Q16 units (0..65535); W defaults to 100%% - B\n"
+            "  --gamma G               ImageMagick's -gamma: v ^ (1 / G) on each RGB channel\n"
+            "  --negate                ImageMagick's -negate: 1 - v\n"
+            "                          (these four run on the GPU after --trim and before the resize, in this order, on the\n"
+            "                          gamma-encoded RGB of each pixel; 4:2:0 chroma gets the mean of its 2x2 pixels'; alpha\n"
+            "                          is left alone)\n"
+            "  --grayscale METHOD      monochrome output, on the GPU after the resize: ImageMagick's -grayscale on the\n"
+            "                          gamma-encoded RGB: Rec601Luma (on JPEG / PNG / WebP planes: their own luma, no\n"
+            "                          work), Rec709Luma, Average, Brightness (max), Lightness ((max + min) / 2) or RMS\n"
+            "  --colorspace Gray       same as --grayscale Rec709Luma (ImageMagick 7's -colorspace Gray)\n"
             "  --cpu-entropy           entropy-code on the CPU instead of the GPU (identical bytes)\n"
             "  --batch LIST|DIR        encode every file in LIST (one path per line) or DIR; outputs <name>.avif.  A LIST line\n"
-            "                          may add TAB-separated crop=WxH+X+Y and max-size=WxH for its image (they replace\n"
-            "                          --crop / --max-size for it; a line that names an existing file is a path; a line\n"
-            "                          with a bad option is skipped)\n"
+            "                          may add TAB-separated crop=WxH+X+Y, max-size=WxH and resize=GEOMETRY for its image\n"
+            "                          (they replace --crop / --max-size / --resize for it; a line that names an existing\n"
+            "                          file is a path; a line with a bad option is skipped)\n"
             "  --outdir DIR            batch output directory (outputs are named <input file name>.avif)\n"
             "  --stats                 print one JSON line with timings / counts\n"
             "  --debug-outputs         also write <out>.obu and <out>.recon.yuv (decoder identity tests)\n"
@@ -159,6 +194,7 @@ struct Opts {
     bool tilesSet = false;    // --tiles (the last one): applied after all options, so a --preset after it keeps it
     float tileMinMp = 0;
     int tileColsLog2 = 0, tileRowsLog2 = 0;
+    bool trimOpts = false;    // --fuzz / --trim-margin / --trim-limits / --trim-lightness / --skip-blank (need --trim)
 };
 
 // alpha quality -> qindex as libavif codes alpha with libaom (tune=psnr: quantizer ((100 - Q) * 63 + 50) / 100, libaom's
@@ -329,14 +365,51 @@ static bool parse(int argc, char **argv, GpConfig &cfg, Opts &o) {
             else if (!strcmp(v, "on")) cfg.palette = 2;
             else { fprintf(stderr, "unknown --palette %s (auto, on, off)\n", v); return false; }
         }
-        else if (a == "--crop" || a == "--max-size" || a == "--max-height") {
+        else if (a == "--crop" || a == "--max-size" || a == "--max-height" || a == "--resize") {
             const std::string v = a == "--max-height" ? std::string("x") + nxt() : nxt();
             std::string why;
-            if (!(a == "--crop" ? gp_parse_crop(v.c_str(), cfg.xform, &why) : gp_parse_max_size(v.c_str(), cfg.xform, &why))) {
+            if (!(a == "--crop" ? gp_parse_crop(v.c_str(), cfg.xform, &why)
+                  : a == "--resize" ? gp_parse_resize(v.c_str(), cfg.xform, &why)
+                                    : gp_parse_max_size(v.c_str(), cfg.xform, &why))) {
                 fprintf(stderr, "bad %s %s: %s\n", a.c_str(), a == "--max-height" ? v.c_str() + 1 : v.c_str(),
                         a == "--max-height" ? "expected a height in whole pixels, at least 1" : why.c_str());
                 return false;
             }
+        }
+        else if (a == "--trim") cfg.trim.on = true;
+        else if (a == "--auto-level") cfg.tone.autoLevel = true;
+        else if (a == "--negate") cfg.tone.negate = true;
+        else if (a == "--level") {
+            const char *v = nxt();
+            std::string why;
+            if (!gp_parse_level(v, cfg.tone, &why)) { fprintf(stderr, "bad --level %s: %s\n", v, why.c_str()); return false; }
+        }
+        else if (a == "--gamma") {
+            const char *v = nxt();
+            char *end = nullptr;
+            const double g = strtod(v, &end);
+            if (end == v || *end || !(g > 0 && g <= 100)) { fprintf(stderr, "bad --gamma %s: expected a number above 0 (ImageMagick's -gamma)\n", v); return false; }
+            cfg.tone.gamma = g;
+        }
+        else if (a == "--grayscale" || a == "--colorspace") {
+            const char *v = nxt();
+            cfg.gray = a == "--colorspace" ? (!strcmp(v, "gray") || !strcmp(v, "Gray") ? (int)GP_GRAY_REC709 : 0) : gp_parse_gray(v);
+            if (!cfg.gray) {
+                fprintf(stderr, "bad %s %s: %s\n", a.c_str(), v,
+                        a == "--colorspace" ? "only Gray (Rec709Luma, as ImageMagick's -colorspace Gray)"
+                                            : "Rec601Luma, Rec709Luma, Average, Brightness, Lightness or RMS");
+                return false;
+            }
+        }
+        else if (a == "--fuzz" || a == "--trim-margin" || a == "--trim-limits" || a == "--trim-lightness" || a == "--skip-blank") {
+            const char *v = nxt();
+            std::string why;
+            const bool ok = a == "--fuzz"          ? gp_parse_fuzz(v, cfg.trim, &why)
+                            : a == "--trim-margin" ? gp_parse_trim_margin(v, cfg.trim, &why)
+                            : a == "--trim-limits" ? gp_parse_trim_limits(v, cfg.trim, &why)
+                                                   : gp_parse_percent(v, a == "--skip-blank" ? &cfg.trim.blankPct : &cfg.trim.lightness, &why);
+            if (!ok) { fprintf(stderr, "bad %s %s: %s\n", a.c_str(), v, why.c_str()); return false; }
+            o.trimOpts = true;
         }
         else if (a == "--max-mp" || a == "--max-input-mp") {
             const char *v = nxt();
@@ -414,6 +487,10 @@ static bool parse(int argc, char **argv, GpConfig &cfg, Opts &o) {
         cfg.smallMp = 0;
     }
     if (cfg.ycgcoRe && !cfg.lossless) { fprintf(stderr, "--ycgco-re needs --lossless\n"); return false; }
+    if (o.trimOpts && !cfg.trim.on) {
+        fprintf(stderr, "--fuzz, --trim-margin, --trim-limits, --trim-lightness and --skip-blank need --trim\n");
+        return false;
+    }
     if (cfg.lossless && (o.yuvSet || o.depthSet)) {
         fprintf(stderr, "--yuv / --depth cannot be combined with --lossless (the format follows the input; --ycgco-re for 10-bit 4:4:4)\n");
         return false;
@@ -543,12 +620,28 @@ static int run_single(const GpConfig &cfg0, const Opts &o) {
             afin.spitch[0] = hp.aw;
         }
     }
-    if (cfg.xform.active()) {
+    if (cfg.xform.active() || cfg.trim.on || cfg.tone.on()) {
         // crop / shrink, straight to 10 bits with --depth 10; the alpha frame the same way and the colour with alpha-weighted
         // taps.  An EXIF orientation that swaps the sides turns the box (the box is what is displayed)
         GpXform x = cfg.xform;
-        if (orientation >= 5) std::swap(x.maxW, x.maxH);
+        if (orientation >= 5) x.turn();
         int ow, oh;
+        if (cfg.trim.on && gp_xform_size(x, fin.W, fin.H, &ow, &oh)) {   // --trim: the kept crop replaces x's
+            std::vector<GpXform> tx = {x};
+            std::vector<int> verdict;
+            const std::vector<GpFrameIn> al = {afin};
+            if (gp_frames_trim({fin}, tx, cfg.trim, 0, verdict, err, &al)) { fprintf(stderr, "trim: %s\n", err.c_str()); return 1; }
+            if (verdict[0] == GP_TRIM_BLANK) {
+                fprintf(stderr, "%s: blank (--trim would remove more than %g%% of its width or height, --skip-blank)\n", o.in.c_str(),
+                        cfg.trim.blankPct);
+                return 3;
+            }
+            x = tx[0];
+        }
+        if (cfg.tone.on()) {   // --auto-level / --level / --gamma / --negate: in place, before the resize
+            std::vector<GpFrameIn> v = {fin};
+            if (gp_frames_tone(v, {x}, cfg.tone, 0, err)) { fprintf(stderr, "tone: %s\n", err.c_str()); return 1; }
+        }
         if (!gp_xform_size(x, fin.W, fin.H, &ow, &oh)) {
             fprintf(stderr, "%s: the crop %s is outside the %dx%d image\n", o.in.c_str(), gp_crop_str(x).c_str(), fin.W, fin.H);
             return 3;
@@ -561,6 +654,12 @@ static int run_single(const GpConfig &cfg0, const Opts &o) {
         }
         fin = v[0];
         if (afin.W > 0) afin = v[1];
+    }
+    if (cfg.gray) {   // --grayscale: in place, after the resize
+        std::vector<GpFrameIn> v = {fin};
+        gp_frames_gray(v, cfg.gray, 0);
+        if (cudaDeviceSynchronize() != cudaSuccess) { fprintf(stderr, "grayscale: %s\n", cudaGetErrorString(cudaGetLastError())); return 1; }
+        fin = v[0];
     }
     if (encMaxMp > 0 && (double)fin.W * fin.H > encMaxMp * 1e6) {
         fprintf(stderr, "%s: %dx%d is larger than %.1f megapixels (--max-mp)\n", o.in.c_str(), fin.W, fin.H, encMaxMp);
