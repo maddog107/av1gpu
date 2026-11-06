@@ -1,0 +1,20 @@
+# 1,621 JPEG pages of six digital comic albums (cm1..cm6), 120 phone photos; trim_vs_imagemagick.py
+## pages, --fuzz 10%
+[av1gpu] 1621 images (8026.9 MP) in 14820.5 ms: 109.38 img/s, 541.61 MP/s; 208 batches; out 1043.56 MB (1.040 bpp); CPU 44392 ms = 3.00 cores; skipped (unsupported): 0; WebP/PNG via CPU decode: 0; write failures 0
+[av1gpu] trim: 1621 images trimmed, 0 skipped as blank
+fuzz 10%: 1621 images, 1621 of the same size as ImageMagick's -trim, 0 differ
+## pages, --fuzz 3%
+[av1gpu] 1621 images (8077.5 MP) in 14982.1 ms: 108.20 img/s, 539.14 MP/s; 208 batches; out 1044.64 MB (1.035 bpp); CPU 41205 ms = 2.75 cores; skipped (unsupported): 0; WebP/PNG via CPU decode: 0; write failures 0
+[av1gpu] trim: 1618 images trimmed, 0 skipped as blank
+fuzz 3%: 1621 images, 1621 of the same size as ImageMagick's -trim, 0 differ
+## pages, --fuzz 0%
+[av1gpu] 1621 images (8151.1 MP) in 15380.5 ms: 105.39 img/s, 529.97 MP/s; 208 batches; out 1049.61 MB (1.030 bpp); CPU 41216 ms = 2.68 cores; skipped (unsupported): 0; WebP/PNG via CPU decode: 0; write failures 0
+[av1gpu] trim: 1605 images trimmed, 0 skipped as blank
+fuzz 0%: 1621 images, 1621 of the same size as ImageMagick's -trim, 0 differ
+## photos
+[av1gpu] 120 images (1409.4 MP) in 1814.4 ms: 66.14 img/s, 776.76 MP/s; 30 batches; out 72.68 MB (0.413 bpp); CPU 5363 ms = 2.96 cores; skipped (unsupported): 0; WebP/PNG via CPU decode: 0; write failures 0
+[av1gpu] trim: 25 images trimmed, 0 skipped as blank
+fuzz 10%: 120 images, 120 of the same size as ImageMagick's -trim, 0 differ
+[av1gpu] 120 images (1441.6 MP) in 1745.2 ms: 68.76 img/s, 826.01 MP/s; 30 batches; out 72.77 MB (0.404 bpp); CPU 5441 ms = 3.12 cores; skipped (unsupported): 0; WebP/PNG via CPU decode: 0; write failures 0
+[av1gpu] trim: 0 images trimmed, 0 skipped as blank
+fuzz 0%: 120 images, 120 of the same size as ImageMagick's -trim, 0 differ

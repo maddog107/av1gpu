@@ -499,6 +499,11 @@ but briefly: on the L4 a cold `av1gpu photo.jpg photo.avif` takes 0.36 s for a 2
 | `--max-size WxH` / `--max-height H` | shrink to fit inside `WxH` (`Wx` or `xH` for one side) on the GPU after the crop, never enlarge: ImageMagick's `-resize 'WxH>'` size and its Lanczos filter. The box is the displayed size (turned for EXIF rotations by 90°) |
 | `--max-mp MP` | largest picture encoded, after crop and resize (default 35.6, AV1 level 6.3; single PNG and WebP images have no limit, as before). Larger pictures are written with level 31 (no limits): dav1d and libavif decode them, decoders that enforce levels may not |
 | `--max-input-mp MP` | largest source decoded (default: the `--max-mp` limit); with a crop or `--max-size`, a larger source is decoded at full size and encoded once it fits |
+| `--resize GEOMETRY` | ImageMagick's `-resize` geometry on the GPU: `W`, `xH`, `WxH` (fit inside), `WxH^` (fill), `WxH!` (exactly), with `>` (only shrink) or `<` (only enlarge); `N%`, `N%xM%`; `@AREA`. Lanczos when shrinking (as `--max-size`), Mitchell when enlarging, as ImageMagick |
+| `--trim` | remove the border, as ImageMagick's `-trim`: the box of the pixels that differ from the corner colours by more than `--fuzz D%` (ImageMagick's `-fuzz`). An image that is all border is encoded whole |
+| `--trim-margin N\|N%`, `--trim-limits MIN%,MAX%`, `--trim-lightness L`, `--skip-blank P` | conditions on `--trim` for scans: keep N pixels (or N % of the shorter side) of the border; trim only when that removes MIN–MAX % of both sides; only when 3 of the 4 corners are at least L % light (paper, not a dark frame); skip an image whose trim would remove more than P % of a side (blank) |
+| `--auto-level`, `--level B%,W%[,G]`, `--gamma G`, `--negate` | ImageMagick's tone operators on each gamma-encoded RGB channel, on the GPU |
+| `--grayscale METHOD`, `--colorspace Gray` | monochrome output: ImageMagick's `-grayscale` methods (`Rec601Luma`, `Rec709Luma`, `Average`, `Brightness`, `Lightness`, `RMS`); `--colorspace Gray` is `Rec709Luma`, as in ImageMagick 7 |
 | `--cpu-entropy` | entropy-code on the CPU (produces bytes identical to the GPU coder) |
 | `--stats` | print a JSON line with timings, throughput and CPU use |
 | `--debug-outputs` | also write `<out>.obu` and `<out>.recon.yuv` for decoder comparisons |
@@ -531,8 +536,8 @@ The encoder needs about 1 GB of GPU memory with these settings, and the JPEG dec
 `GP_INGEST_DECODER=1` forces the CPU-entropy-decode + GPU-IDCT JPEG path on GPUs without a hardware
 JPEG engine. av1gpu also falls back to that path automatically.
 
-In a batch list, a line may add TAB-separated `crop=WxH+X+Y` and `max-size=WxH` options for its image; they
-replace `--crop` / `--max-size` for that image. A line that names an existing file as a whole is a path, and a
+In a batch list, a line may add TAB-separated `crop=WxH+X+Y`, `max-size=WxH` and `resize=GEOMETRY` options for its
+image; they replace `--crop` / `--max-size` / `--resize` for that image. A line that names an existing file as a whole is a path, and a
 line with a bad option is skipped like an unreadable file. Crop and resize run on the GPU after decoding, on the
 planes that are about to be encoded: the image is decoded once, at full size, and there is no intermediate
 file. The resize filters the YCbCr planes (gamma-encoded, as ImageMagick filters sRGB) with ImageMagick's
@@ -544,6 +549,17 @@ RGB photo the planes differ from `magick -resize` by 0.19 of a 10-bit step on av
 by about 0.5 (62 dB; ImageMagick's own decode differs by about 0.7 with no resize). Shrinking 3840 × 5586
 pages to 2960 rows on the GPU runs at 169 MP/s of output on the L4, against 195 for pages shrunk beforehand
 ([results](docs/RESULTS.md#crop-and-resize-contributed-by-pickae)).
+
+The other image operations run on the same decoded planes, in a fixed order: `--crop`, `--trim`, the tone
+operators (`--auto-level`, `--level`, `--gamma`, `--negate`), the resize, then `--grayscale`. `--trim` compares
+whole RGB samples, as ImageMagick does on its decode: on 1,621 comic pages and 120 photos its box had the size of
+`magick -fuzz F -trim`'s for every image at 0, 3 and 10 % fuzz. Its conditions are what a comic converter decides
+a trim by, so that the decision needs no CPU decode: on the same pages `--trim --fuzz 10% --trim-margin 1%
+--trim-limits 1%,20% --trim-lightness 80 --skip-blank 99` reached the decision and the size of that converter's
+ImageMagick road on every page. The tone operators and `--grayscale` work on the RGB of each pixel (4:2:0
+chroma: the mean of its 2 × 2 pixels' new chroma) and are within one or two steps of ImageMagick's output; a
+steep curve (`--gamma 2` near black) magnifies the rounding of the decoded planes to a few steps. Without these
+options the output is byte-identical to before ([results](docs/RESULTS.md#trim-resize-tone-and-gray-contributed-by-pickae)).
 
 AVIF files made from JPEGs carry the source's ICC profile (PNG and WebP profiles are not read yet). EXIF orientation is signalled with `irot`/`imir` rather
 than by rotating pixels.

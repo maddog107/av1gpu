@@ -1,0 +1,14 @@
+== build/av1gpu --batch <work>/san --outdir <work>/sano --trim --fuzz 10% --trim-margin 1% --trim-limits 1%,40% --trim-lightness 50 --skip-blank 99
+========= ERROR SUMMARY: 0 errors
+== build/av1gpu --batch <work>/san --outdir <work>/sano --yuv 444 --depth 10 --trim --fuzz 5% --level 5%,95%,1.2 --negate --resize 150%
+========= ERROR SUMMARY: 0 errors
+== build/av1gpu --batch <work>/san --outdir <work>/sano --auto-level --grayscale Lightness --resize x200
+========= ERROR SUMMARY: 0 errors
+== build/av1gpu --batch <work>/san --outdir <work>/sano --lossless --trim --auto-level --resize 50%
+========= ERROR SUMMARY: 0 errors
+== build/av1gpu --batch <work>/san --outdir <work>/sano --lossless --ycgco-re --gamma 1.4 --colorspace Gray
+========= ERROR SUMMARY: 0 errors
+== build/av1gpu <work>/san/rgba.png <work>/sano/s.avif --trim --level 10%,90% --resize 77x77^
+========= ERROR SUMMARY: 0 errors
+== build/av1gpu <work>/san/page_small.png <work>/sano/s.avif --depth 10 --yuv 444 --trim --fuzz 10% --auto-level --grayscale RMS --resize @300000
+========= ERROR SUMMARY: 0 errors

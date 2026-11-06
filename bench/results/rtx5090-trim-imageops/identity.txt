@@ -1,0 +1,14 @@
+pages default                                     150 files, 0 differ
+pages --yuv 444 --depth 10                        150 files, 0 differ
+pages 444 10-bit turbo3 --max-height 2960         150 files, 0 differ
+pages --crop 1000x1500+77+33                      150 files, 0 differ
+photos default                                     60 files, 0 differ
+photos --preset fast                               60 files, 0 differ
+photos via CPU route (GP_INGEST_DECODER=1)         60 files, 0 differ
+PNG/WebP default                                    4 files, 0 differ
+PNG/WebP --yuv 444 --depth 10                       4 files, 0 differ
+PNG/WebP --lossless                                 4 files, 0 differ
+PNG/WebP --lossless --ycgco-re                      4 files, 0 differ
+PNG/WebP --max-size 97x97                           4 files, 0 differ
+single-image mode                                  16 files, 0 differ
+TOTAL 816 files, 0 differ
