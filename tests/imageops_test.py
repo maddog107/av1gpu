@@ -2,14 +2,14 @@
 """--resize, --grayscale / --colorspace Gray, --auto-level / --level / --gamma / --negate.
 
 On a PNG (and on PNGs made here): --resize gives ImageMagick's -resize sizes for every geometry form (computed here
-with ImageMagick's rules), in single-image mode and on --batch list lines (resize=), and is turned by an EXIF-style
-90-degree box like --max-size; --resize 'WxH>' gives the bytes of --max-size WxH; an identity geometry gives the bytes of
-a plain encode.  --grayscale writes a monochrome AVIF whose luma follows the method on gray and coloured pixels;
-Rec601Luma keeps the planes' own luma.  The tone operators move known samples where ImageMagick's formulas put them
-(--dump-source, 4:4:4 and 4:2:0, 8 and 10 bits), --level with plain numbers is in Q16 units, and an identity --level /
---gamma 1 gives the bytes of a plain encode.  Bad values: status 2.  With ImageMagick (`magick`) installed, the
---dump-source planes are also compared with ImageMagick's own -resize / -grayscale / -level / -gamma output (mean
-difference below 0.6 of a step).
+with ImageMagick's rules, and asked of ImageMagick itself when it is installed), in single-image mode and on --batch list
+lines (resize=); --resize 'WxH>' gives the bytes of --max-size WxH; an identity geometry gives the bytes of a plain
+encode.  --grayscale writes a monochrome AVIF whose luma follows the method on gray and coloured pixels; Rec601Luma keeps
+the planes' own luma.  The tone operators move known samples where ImageMagick's formulas put them (--dump-source, 4:4:4,
+8 and 10 bits), --level with plain numbers is in Q16 units, and an identity --level / --gamma 1 gives the bytes of a
+plain encode.  Bad values: status 2.  With ImageMagick (`magick`) installed, the --dump-source planes are also compared
+with ImageMagick's own -resize / -grayscale / -level / -gamma output (mean difference below 0.6 of a step).  JPEGs, EXIF
+rotations and 4:2:0 samples: imageops_jpeg_test.py.
 
   tests/imageops_test.py --bin build/av1gpu --image tests/gate_images/cfl_edge_211x149.png
 """
@@ -52,27 +52,36 @@ def write_png(path, w, h, px):
 
 
 def im_resize(w, h, g):
-    """ImageMagick's -resize size for geometry g (its ParseMetaGeometry: floor(v + 0.5), at least 1)"""
+    """ImageMagick's -resize size for geometry g (its GetGeometry and ParseMetaGeometry; at least 1 here)"""
     rnd = lambda v: max(1, math.floor(v + 0.5))
-    m = re.fullmatch(r"(@)?([\d.]*)(%?)(?:x([\d.]*)(%?))?([!<>^%]*)", g)
-    area, gw, p1, gh, p2, fl = m.groups()
+    m = re.fullmatch(r"(@)?([\d.]*)(%?)(@)?(?:x([\d.]*)(%?))?([!<>^%]*)", g)
+    a1, gw, p1, a2, gh, p2, fl = m.groups()
     pct = "%" in (p1 + (p2 or "") + fl)
-    if area:
-        k = math.sqrt(float(gw) / (w * h))
+    gw = float(gw) if gw else None
+    gh = float(gh) if gh else None
+    if a1 or a2:
+        k = math.sqrt(gw / (w * h))
         tw, th = rnd(w * k), rnd(h * k)
-    elif pct:
-        sw = float(gw) if gw else float(gh)
-        sh = float(gh) if gh else sw
-        tw, th = rnd(w * sw / 100), rnd(h * sh / 100)
-    elif gw and gh and "!" in fl:
-        tw, th = int(gw), int(gh)
+        return (min(tw, w), min(th, h)) if ">" in fl else (tw, th)
+    if pct:   # (a percentage is already the size that > and < compare with)
+        sw = 100 if gw is None else gw
+        sh = sw if gh is None else gh
+        return rnd(w * sw / 100), rnd(h * sh / 100)
+    gw = None if gw is None else rnd(gw)
+    gh = None if gh is None else rnd(gh)
+    if "!" in fl:
+        tw, th = gw or w, gh or h
     elif gw and gh:
-        k = (max if "^" in fl else min)(float(gw) / w, float(gh) / h)
+        k = (max if "^" in fl else min)(gw / w, gh / h)
+        tw, th = rnd(w * k), rnd(h * k)
+    elif "^" in fl:   # one number: the smaller side's
+        n = gw or gh
+        k = max(n / w, n / h) if gw else max(n / h, n / w)
         tw, th = rnd(w * k), rnd(h * k)
     elif gw:
-        tw, th = int(gw), rnd(h * float(gw) / w)
+        tw, th = gw, rnd(h * gw / w)
     else:
-        tw, th = rnd(w * float(gh) / h), int(gh)
+        tw, th = rnd(w * gh / h), gh
     if ">" in fl:
         tw, th = min(tw, w), min(th, h)
     if "<" in fl:
@@ -116,11 +125,16 @@ def main():
         W, H = png_size(img)
         # ---- --resize sizes ----
         for g in ("100x", "x100", "100x100", "100x100!", "100x100^", "100x100<", "300x300<", "300x300>", "50%", "50%x25%",
-                  "150%", "@5000", "@100000", "7x", "100x50%", "100x100>!", "3x2!"):
+                  "150%", "@5000", "@100000", "7x", "100x50%", "100x100>!", "3x2!", "x50%", "50%x", "150%>", "50%<", "x150%",
+                  "100!", "x100!", "100^", "x100^", "100x^", "@5000<", "@5000>", "5000@", "@2000000", "99.5x", "100.6x"):
             o = os.path.join(t, "r.avif")
             p = run(img, o, "--resize", g)
             got = ispe(o) if p.returncode == 0 else None
             want = im_resize(W, H, g)
+            if magick:
+                r = subprocess.run([magick, img, "-resize", g, "-format", "%w %h", "info:"], capture_output=True, text=True)
+                if r.returncode == 0:
+                    want = tuple(int(v) for v in r.stdout.split())
             check(f"--resize {g}", got == want, f"{got} (want {want}) {p.stderr.strip()[-200:]}")
         check("--resize 'WxH>' == --max-size WxH", same(img, ["--resize", "100x100>"], ["--max-size", "100x100"]))
         check("--resize 100% == plain encode", same(img, ["--resize", "100%"], []))
@@ -178,6 +192,8 @@ def main():
                 # (10-bit: the 8-bit source's rounding, magnified where a gamma curve is steep)
                 check(f"{' '.join(opts)} ({depth}-bit)", ok and err <= (1.5 if depth == 8 else 5), f"max error {err:.2f}")
         check("--level 0%,100% == plain encode", same(img, ["--level", "0%,100%"], []))
+        check("--level: one % makes both percentages", same(img, ["--level", "10,90%"], ["--level", "10%,90%"]))
+        check("--colorspace in any case", same(sw, ["--colorspace", "GRAY"], ["--colorspace", "gray"]))
         check("--gamma 1 == plain encode", same(img, ["--gamma", "1"], []))
         # 4:2:0: a gray ramp stays gray (chroma at the middle)
         o = os.path.join(t, "t.avif")
@@ -187,7 +203,8 @@ def main():
         # ---- errors ----
         for opts, word in ((["--resize", "abc"], "geometry"), (["--resize", "10x10+1+1"], "no offset"), (["--resize", "@50%"], "AREA"),
                            (["--grayscale", "luma"], "Rec601Luma"), (["--colorspace", "CMYK"], "Gray"), (["--level", "90%,10%"], "above"),
-                           (["--level", "a"], "BLACK"), (["--gamma", "0"], "above 0")):
+                           (["--level", "a"], "BLACK"), (["--gamma", "0"], "above 0"), (["--gamma", "101"], "up to 100"),
+                           (["--resize", "0.4x"], "rounds to 0"), (["--resize", "10x0.4!"], "rounds to 0"), (["--resize", "@5@"], "geometry")):
             p = run(img, os.path.join(t, "e.avif"), *opts)
             check(f"bad {' '.join(opts)}: status 2", p.returncode == 2 and word in p.stderr, (p.stderr.strip().splitlines() or [""])[0][-200:])
         # ---- ImageMagick ----

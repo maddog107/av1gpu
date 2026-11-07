@@ -1970,7 +1970,8 @@ using namespace av1g;
 
 extern "C" int av1g_tile_layout(uint32_t width, uint32_t height, int cols_log2, int rows_log2, av1g_tiles *out) {
     TileInfo t;
-    if (width < 1 || height < 1 || !compute_tiles(width, height, cols_log2, rows_log2, t)) return AV1G_ERR_INVALID;
+    if (width < 1 || height < 1 || width > 65536 || height > 65536 || !compute_tiles(width, height, cols_log2, rows_log2, t))
+        return AV1G_ERR_INVALID;   // (the sequence header gives each side 16 bits)
     out->cols_log2 = t.colsLog2;
     out->rows_log2 = t.rowsLog2;
     out->cols = t.cols;

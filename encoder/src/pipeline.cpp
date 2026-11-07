@@ -970,33 +970,35 @@ bool rz_ch(const char *&s, char c) {
 bool gp_xform_size(const GpXform &x, int W, int H, int *ow, int *oh) {
     int cx, cy, w, h;
     if (!rz_crop(x, W, H, &cx, &cy, &w, &h)) return false;
-    if (x.rsFlags) {   // --resize: ImageMagick's ParseMetaGeometry (each side floor(v + 0.5), at least 1)
+    if (x.rsFlags) {   // --resize: ImageMagick's ParseMetaGeometry (each side floor(v + 0.5), here at least 1)
         const int f = x.rsFlags;
-        auto rnd = [](double v) { return std::max(1, (int)std::floor(v + 0.5)); };
+        auto rnd = [](double v) { return (int)std::min(std::max(1.0, std::floor(v + 0.5)), 1073741824.0); };
         int tw = w, th = h;
-        if (f & GpXform::RS_PCT) {
+        if (f & GpXform::RS_PCT) {   // (the parser sets both numbers)
             tw = rnd(w * x.rsW / 100);
-            th = rnd(h * ((f & GpXform::RS_H) ? x.rsH : x.rsW) / 100);
+            th = rnd(h * x.rsH / 100);
         } else if (f & GpXform::RS_AREA) {
             const double k = std::sqrt(x.rsW / ((double)w * h));
             tw = rnd(w * k);
             th = rnd(h * k);
-        } else if ((f & GpXform::RS_EXACT) && (f & GpXform::RS_W) && (f & GpXform::RS_H)) {
-            tw = (int)x.rsW;
-            th = (int)x.rsH;
+        } else if (f & GpXform::RS_EXACT) {   // a side not given stays
+            if (f & GpXform::RS_W) tw = (int)x.rsW;
+            if (f & GpXform::RS_H) th = (int)x.rsH;
         } else if ((f & GpXform::RS_W) && (f & GpXform::RS_H)) {
             const double sw = x.rsW / w, sh = x.rsH / h, k = (f & GpXform::RS_FILL) ? std::max(sw, sh) : std::min(sw, sh);
             tw = rnd(w * k);
             th = rnd(h * k);
-        } else if (f & GpXform::RS_W) {
-            tw = (int)x.rsW;
-            th = rnd(h * (x.rsW / w));
-        } else {
-            th = (int)x.rsH;
-            tw = rnd(w * (x.rsH / h));
+        } else {   // one side; ^: the number is the smaller side's
+            const bool gw = f & GpXform::RS_W;
+            const double n = gw ? x.rsW : x.rsH, s = n / (gw ? w : h);
+            const double k = (f & GpXform::RS_FILL) ? std::max(s, n / (gw ? h : w)) : s;
+            tw = gw && !(f & GpXform::RS_FILL) ? (int)n : rnd(w * k);
+            th = !gw && !(f & GpXform::RS_FILL) ? (int)n : rnd(h * k);
         }
-        if (f & GpXform::RS_SHRINK) { tw = std::min(tw, w); th = std::min(th, h); }
-        if (f & GpXform::RS_ENLARGE) { tw = std::max(tw, w); th = std::max(th, h); }
+        if (!(f & GpXform::RS_PCT)) {   // (ImageMagick: a percentage is already the size that > and < compare with)
+            if (f & GpXform::RS_SHRINK) { tw = std::min(tw, w); th = std::min(th, h); }
+            if ((f & GpXform::RS_ENLARGE) && !(f & GpXform::RS_AREA)) { tw = std::max(tw, w); th = std::max(th, h); }
+        }
         *ow = tw;
         *oh = th;
         return true;
@@ -1011,6 +1013,32 @@ bool gp_xform_size(const GpXform &x, int W, int H, int *ow, int *oh) {
         *oh = std::max(1, (int)std::floor(h * s + 0.5));
     }
     return true;
+}
+
+std::string gp_size_refusal(int w, int h, double maxMp, const char *after) {
+    char b[200];
+    if (w > GP_MAX_SIDE || h > GP_MAX_SIDE) {
+        snprintf(b, sizeof b, "%dx%d%s is larger than AV1 can code (%d pixels per side)", w, h, after, GP_MAX_SIDE);
+        return b;
+    }
+    if (*after && h > GP_MAX_RESIZED_H) {
+        snprintf(b, sizeof b, "%dx%d%s is taller than a resized picture can be (%d rows)", w, h, after, GP_MAX_RESIZED_H);
+        return b;
+    }
+    const double mp = (double)w * h / 1e6;
+    if (maxMp <= 0 || mp <= maxMp) return "";
+    const int need = (int)std::ceil(mp);
+    if (need <= 1000) snprintf(b, sizeof b, "%dx%d%s is larger than %.1f megapixels (--max-mp); add --max-mp %d to encode it anyway", w, h, after, maxMp, need);
+    else snprintf(b, sizeof b, "%dx%d%s is larger than %.1f megapixels (--max-mp, 1000 at most)", w, h, after, maxMp);
+    return b;
+}
+
+std::string gp_source_refusal(int w, int h, double maxMp) {
+    char b[200];
+    const int need = (int)std::ceil((double)w * h / 1e6);
+    if (w > 0 && h > 0 && need <= 1000) snprintf(b, sizeof b, "larger than %.1f megapixels; add --max-mp %d to encode it anyway", maxMp, need);
+    else snprintf(b, sizeof b, "larger than %.1f megapixels; --max-mp raises the limit", maxMp);
+    return b;
 }
 
 std::string gp_crop_str(const GpXform &x) {
@@ -1044,17 +1072,17 @@ bool gp_parse_crop(const char *v, GpXform &x, std::string *why) {
 }
 
 bool gp_parse_resize(const char *v, GpXform &x, std::string *why) {
-    // [@]W[%][x[H[%]]] followed by any of ! > < ^ (and %, also after the numbers)
+    // W[%][x[H[%]]] or @A or A@, followed by any of ! > < ^ (and %, also after the numbers)
     const char *s = v;
     int f = GpXform::RS_ON;
     double w = 0, h = 0;
-    auto num = [&](double &d) {
+    auto num = [&](double &d, double most) {
         const char *b = s;
         while ((*s >= '0' && *s <= '9') || *s == '.') s++;
         if (s == b) return false;
         char *e = nullptr;
         d = strtod(std::string(b, s).c_str(), &e);
-        return e && !*e && d > 0 && d <= (1 << 20);
+        return e && !*e && d > 0 && d <= most;
     };
     auto flags = [&]() {
         for (;; s++) {
@@ -1066,30 +1094,45 @@ bool gp_parse_resize(const char *v, GpXform &x, std::string *why) {
             else return;
         }
     };
+    constexpr double kSide = 1 << 20, kArea = 1e12;
     bool ok = true;
-    if (*s == '@') {
-        s++;
+    if (strchr(s, '@')) {
+        const bool before = *s == '@';
+        if (before) s++;
         f |= GpXform::RS_AREA;
-        ok = num(w);
+        ok = num(w, kArea);
+        if (ok && !before && *s == '@') s++;
         flags();
     } else {
-        if (*s != 'x') { ok = num(w); f |= GpXform::RS_W; }
+        if (*s != 'x') { ok = num(w, kSide); f |= GpXform::RS_W; }
         flags();
         if (ok && *s == 'x') {
             s++;
-            if (*s && !strchr("%!<>^", *s)) { ok = num(h); f |= GpXform::RS_H; }
+            if (*s && !strchr("%!<>^", *s)) { ok = num(h, kSide); f |= GpXform::RS_H; }
             flags();
         }
         ok = ok && (f & (GpXform::RS_W | GpXform::RS_H));
     }
     if (!ok || *s) {
         if (why) *why = *s == '+' || *s == '-' ? "--resize takes no offset" : "expected ImageMagick's -resize geometry: W, xH, WxH, WxH^, WxH!, "
-                                                                            "with > or <; N% or N%xM%; @AREA";
+                                                                            "with > or <; N% or N%xM%; @AREA or AREA@";
         return false;
     }
     if ((f & GpXform::RS_PCT) && (f & GpXform::RS_AREA)) {
         if (why) *why = "@AREA cannot be a percentage";
         return false;
+    }
+    if (f & GpXform::RS_PCT) {   // ParseMetaGeometry: no height: the width's percentage; no width: 100 %
+        if (!(f & GpXform::RS_W)) w = 100;
+        else if (!(f & GpXform::RS_H)) h = w;
+        f |= GpXform::RS_W | GpXform::RS_H;
+    } else if (!(f & GpXform::RS_AREA)) {   // GetGeometry rounds the numbers; a side must be at least 1
+        w = std::floor(w + 0.5);
+        h = std::floor(h + 0.5);
+        if (((f & GpXform::RS_W) && w < 1) || ((f & GpXform::RS_H) && h < 1)) {
+            if (why) *why = "a side of the geometry rounds to 0";
+            return false;
+        }
     }
     x.rsFlags = f;
     x.rsW = w;
@@ -1209,7 +1252,8 @@ int gp_frames_transform(std::vector<GpFrameIn> &frames, const std::vector<GpXfor
         newH[i] = oh;
         const int aw = (ow + 63) & ~63, ah = (oh + 63) & ~63, out10 = outDepth == 10 || f.bitDepth == 10;
         const double fx = (double)ow / cw, fy = (double)oh / ch;
-        const bool enlarge = (double)ow * oh > (double)cw * ch;   // ImageMagick enlarges with Mitchell, shrinks with Lanczos
+        // --resize, as ImageMagick: Mitchell to enlarge and for anything with alpha, Lanczos to shrink (--max-size: Lanczos)
+        const bool mitchell = xf[i].rsFlags && (a || f.colorMatrix == -2 || (double)ow * oh > (double)cw * ch);
         for (int p = 0; p < (f.mono ? 1 : 3); p++) {
             Pl q{};
             q.fi = (int)i;
@@ -1227,10 +1271,10 @@ int gp_frames_transform(std::vector<GpFrameIn> &frames, const std::vector<GpXfor
             const int ylo = (int)std::floor(cy / d), yhi = std::min(ph, (int)std::ceil((cy + ch) / d));
             std::vector<int> s;
             std::vector<float> w;
-            rz_taps(cy / d, fy, q.oh, ylo, yhi, s, w, q.yt, enlarge);
+            rz_taps(cy / d, fy, q.oh, ylo, yhi, s, w, q.yt, mitchell);
             q.ys = put(s.data(), s.size() * 4);
             q.yw = put(w.data(), w.size() * 4);
-            rz_taps(cx / d, fx, q.ow, xlo, xhi, s, w, q.xt, enlarge);
+            rz_taps(cx / d, fx, q.ow, xlo, xhi, s, w, q.xt, mitchell);
             q.xs = put(s.data(), s.size() * 4);
             q.xw = put(w.data(), w.size() * 4);
             q.wlo = xlo;
@@ -1291,6 +1335,8 @@ GpTrimFrame rgb_view(const GpFrameIn &f, int x0 = 0, int y0 = 0, int w = 0, int 
     g.mono = f.mono;
     g.yuv444 = f.yuv444;
     g.in10 = f.bitDepth == 10;
+    g.cw = (f.W + 1) >> 1;
+    g.ch = (f.H + 1) >> 1;
     g.matrix = f.colorMatrix == 0 ? 1 : f.colorMatrix == 16 ? 2 : 0;
     g.scale = g.matrix == 2 ? 255.f : g.in10 ? 1023.f : 255.f;
     g.x0 = x0; g.y0 = y0; g.w = w; g.h = h;
@@ -1329,10 +1375,42 @@ int gp_frames_tone(std::vector<GpFrameIn> &frames, const std::vector<GpXform> &x
             if (hi > lo) maps[i] = gp_tone_map(t, lo, hi);
         }
     }
-    for (size_t i = 0; i < frames.size(); i++) {
+    // the frames to change (an identity leaves the planes as they are), and for 4:2:0 a copy of the chroma to read
+    auto runs = [&](size_t i) {
         const GpToneMap &m = maps[i];
-        if (frames[i].W > 0 && (m.s != 1.f || m.o != 0.f || m.e != 1.f || m.negate))   // (an identity leaves the planes as they are)
-            gp_launch_tone(rgb_view(frames[i]), frames[i].aw, frames[i].ah, m, st);
+        return frames[i].W > 0 && (m.s != 1.f || m.o != 0.f || m.e != 1.f || m.negate);
+    };
+    auto chromaBytes = [&](const GpFrameIn &f) {   // one plane, padding included
+        return (size_t)f.spitch[1] * (f.ah >> 1) * (f.bitDepth == 10 ? 2 : 1);
+    };
+    size_t copyBytes = 0;
+    for (size_t i = 0; i < frames.size(); i++)
+        if (runs(i) && !frames[i].mono && !frames[i].yuv444) copyBytes += 2 * chromaBytes(frames[i]);
+    uint8_t *copy = nullptr;
+    cudaError_t e = copyBytes ? cudaMallocAsync((void **)&copy, copyBytes, st) : cudaSuccess;
+    size_t at = 0;
+    for (size_t i = 0; e == cudaSuccess && i < frames.size(); i++) {
+        if (!runs(i)) continue;
+        const GpFrameIn &f = frames[i];
+        GpTrimFrame g = rgb_view(f);
+        void *du = (void *)f.dsrc[1], *dv = (void *)f.dsrc[2];
+        if (!f.mono && !f.yuv444) {
+            const size_t n = chromaBytes(f);
+            e = cudaMemcpyAsync(copy + at, f.dsrc[1], n, cudaMemcpyDeviceToDevice, st);
+            if (e == cudaSuccess) e = cudaMemcpyAsync(copy + at + n, f.dsrc[2], n, cudaMemcpyDeviceToDevice, st);
+            if (e != cudaSuccess) break;
+            g.p[1] = copy + at;
+            g.p[2] = copy + at + n;
+            at += 2 * n;
+        }
+        gp_launch_tone(g, f.aw, f.ah, maps[i], du, dv, st);
+    }
+    if (e == cudaSuccess) e = cudaGetLastError();
+    if (copy) cudaFreeAsync(copy, st);
+    if (e != cudaSuccess) {
+        cudaGetLastError();
+        err = std::string("CUDA: ") + cudaGetErrorString(e) + " (tone)";
+        return -1;
     }
     return 0;
 }

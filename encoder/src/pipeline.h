@@ -104,6 +104,17 @@ inline double gp_dec_max_mp(const GpConfig &c, double dflt) {
     const double e = gp_enc_max_mp(c, dflt);
     return e > 0 && c.maxInputMp < e ? e : c.maxInputMp;
 }
+// The largest side a stream can have: its sequence header gives each 16 bits (frame_width_minus_1)
+constexpr int GP_MAX_SIDE = 65536;
+// The tallest output of gp_frames_transform: k_rz_h has one block per row of the padded plane, and a grid dimension
+// holds at most 65535
+constexpr int GP_MAX_RESIZED_H = 65472;
+// Why a picture of w x h is not encoded ("": it is): a side above GP_MAX_SIDE, a crop / resize taller than
+// GP_MAX_RESIZED_H, or more than maxMp megapixels (0: no limit).  after: what the size comes from, as " after crop /
+// resize"; empty when it is the source's (no crop or resize runs)
+std::string gp_size_refusal(int w, int h, double maxMp, const char *after = "");
+// The message for a source of w x h above the largest source decoded, maxMp (w = 0: size not known)
+std::string gp_source_refusal(int w, int h, double maxMp);
 // The ingest's pinned staging arena for sources up to decMp megapixels: JPEGs the CPU route decodes (sides above 6000
 // px) stage their coefficients there, up to 6 bytes per pixel (4:4:4); 256 MiB for the default 35.6 MP
 inline int64_t gp_ingest_pinned_bytes(double decMp) {

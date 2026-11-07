@@ -364,11 +364,8 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
         *oh = H;
         if (x.active() && !gp_xform_size(x, W, H, ow, oh))
             return "the crop " + gp_crop_str(x) + " is outside the " + std::to_string(W) + "x" + std::to_string(H) + " image";
-        if ((double)*ow * *oh <= encMaxMp * 1e6) return "";
-        char b[160];
-        snprintf(b, sizeof b, "%dx%d%s is larger than %.1f megapixels (--max-mp)", *ow, *oh, *ow != W || *oh != H ? " after crop / resize" : "",
-                 encMaxMp);
-        return b;
+        if (cfg.trim.on) return "";   // (the size that counts is known after the trim: the encoder threads check it)
+        return gp_size_refusal(*ow, *oh, encMaxMp, *ow != W || *oh != H ? " after crop / resize" : "");
     };
     char eb[256] = {0};
     const double t0 = now_ms(), c0 = cpu_ms();
@@ -586,10 +583,9 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
             if (ingestDrained && encLive == 0) return;   // the encoders stopped (error)
             const std::string &p = paths[fe.index];
             const GpFileKind kind = gp_sniff(p);
-            char big[64];   // (--max-input-mp; 35.6 by default)
-            snprintf(big, sizeof big, "larger than %.1f megapixels", decMaxMp);
             if (kind != GP_FILE_WEBP && kind != GP_FILE_PNG) {
-                fprintf(stderr, "[av1gpu] skipped %s: %s\n", p.c_str(), fe.reason == INGEST_FB_GIANT ? big : gp_fallback_reason(fe.reason));
+                fprintf(stderr, "[av1gpu] skipped %s: %s\n", p.c_str(),
+                        fe.reason == INGEST_FB_GIANT ? gp_source_refusal(fe.width, fe.height, decMaxMp).c_str() : gp_fallback_reason(fe.reason));
                 cpuFallbackA++;
                 return;
             }
@@ -602,7 +598,7 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
             if (dec && !note.empty()) fprintf(stderr, "[av1gpu] %s: %s\n", p.c_str(), note.c_str());
             GpXform fx;
             int ow, oh;
-            if (dec && (double)hp.W * hp.H > decMaxMp * 1e6) e2 = big;
+            if (dec && (double)hp.W * hp.H > decMaxMp * 1e6) e2 = gp_source_refusal(hp.W, hp.H, decMaxMp);
             else if (dec) e2 = prepare(fe.index, hp.W, hp.H, 1, fx, &ow, &oh);
             if (!dec || !e2.empty()) {
                 fprintf(stderr, "[av1gpu] skipped %s: %s\n", p.c_str(), e2.c_str());
@@ -827,9 +823,9 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
                     }
                     int ow = fin[i].W, oh = fin[i].H;
                     gp_xform_size(xfin[i], fin[i].W, fin[i].H, &ow, &oh);
-                    if ((double)ow * oh > encMaxMp * 1e6) {   // (a fill geometry can grow a trimmed picture)
-                        fprintf(stderr, "[av1gpu] skipped %s: %dx%d after trim / resize is larger than %.1f megapixels (--max-mp)\n",
-                                srcs[i].c_str(), ow, oh, encMaxMp);
+                    const std::string why = gp_size_refusal(ow, oh, encMaxMp, ow != fin[i].W || oh != fin[i].H ? " after trim / resize" : "");
+                    if (!why.empty()) {
+                        fprintf(stderr, "[av1gpu] skipped %s: %s\n", srcs[i].c_str(), why.c_str());
                         cpuFallbackA++;
                         continue;
                     }

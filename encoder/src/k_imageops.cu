@@ -10,10 +10,22 @@ struct Rgba {
     float r, g, b, a;
 };
 
-// The pixel at (x, y) of f (luma coordinates) as normalised RGB, alpha 1 without an alpha plane.  4:2:0 chroma: the
-// sample covering the pixel.
+// 4:2:0: chroma at luma (x, y) of a w x h plane, as libjpeg-turbo's fancy upsampling gives it, and so ImageMagick's
+// decode of a JPEG: a triangle filter, with its rounding.  (x, y) may be in the padding, which replicates the edges.
 template <typename T>
-__device__ Rgba trim_px(const GpTrimFrame &f, int x, int y) {
+__device__ int chroma_up(const T *p, int pitch, int w, int h, int x, int y) {
+    const int cx = min(x >> 1, w - 1), cy = min(y >> 1, h - 1);
+    const int nx = max(0, min(cx + ((x & 1) ? 1 : -1), w - 1)), ny = max(0, min(cy + ((y & 1) ? 1 : -1), h - 1));
+    const T *r0 = p + (size_t)cy * pitch, *r1 = p + (size_t)ny * pitch;
+    const int here = 3 * r0[cx] + r1[cx], side = 3 * r0[nx] + r1[nx];
+    return (3 * here + side + ((x & 1) ? 7 : 8)) >> 4;
+}
+
+// The pixel at (x, y) of f (luma coordinates) as normalised RGB, alpha 1 without an alpha plane.  4:2:0 chroma:
+// upsampled, or with nearest the sample covering the pixel.  clip: YCbCr can leave RGB's range where chroma is shared at a
+// colour edge; false keeps that, so that a linear operation stays exact.
+template <typename T>
+__device__ Rgba trim_px(const GpTrimFrame &f, int x, int y, bool clip = true, bool nearest = false) {
     const T *P0 = (const T *)f.p[0];
     const float Y = (float)P0[(size_t)y * f.pitch[0] + x];
     Rgba o;
@@ -23,8 +35,9 @@ __device__ Rgba trim_px(const GpTrimFrame &f, int x, int y) {
         return o;
     }
     const int s = f.yuv444 ? 0 : 1;
-    const size_t c1 = (size_t)(y >> s) * f.pitch[1] + (x >> s), c2 = (size_t)(y >> s) * f.pitch[2] + (x >> s);
-    const float U = (float)((const T *)f.p[1])[c1], V = (float)((const T *)f.p[2])[c2];
+    const T *P1 = (const T *)f.p[1], *P2 = (const T *)f.p[2];
+    const float U = s && !nearest ? (float)chroma_up(P1, f.pitch[1], f.cw, f.ch, x, y) : (float)P1[(size_t)(y >> s) * f.pitch[1] + (x >> s)];
+    const float V = s && !nearest ? (float)chroma_up(P2, f.pitch[2], f.cw, f.ch, x, y) : (float)P2[(size_t)(y >> s) * f.pitch[2] + (x >> s)];
     if (f.matrix == 1) {   // identity: Y = G, U = B, V = R
         o.g = Y / f.scale; o.b = U / f.scale; o.r = V / f.scale;
         return o;
@@ -37,9 +50,14 @@ __device__ Rgba trim_px(const GpTrimFrame &f, int x, int y) {
     // BT.601 full range, as the decoders write it (8-bit: chroma centred on 128; 10-bit: c * 1023 + 512)
     const float mid = sizeof(T) == 2 ? 512.f : 128.f;
     const float yy = Y / f.scale, cb = (U - mid) / f.scale, cr = (V - mid) / f.scale;
-    o.r = fminf(fmaxf(yy + 1.402f * cr, 0.f), 1.f);
-    o.g = fminf(fmaxf(yy - 0.344136286f * cb - 0.714136286f * cr, 0.f), 1.f);
-    o.b = fminf(fmaxf(yy + 1.772f * cb, 0.f), 1.f);
+    o.r = yy + 1.402f * cr;
+    o.g = yy - 0.344136286f * cb - 0.714136286f * cr;
+    o.b = yy + 1.772f * cb;
+    if (clip) {
+        o.r = fminf(fmaxf(o.r, 0.f), 1.f);
+        o.g = fminf(fmaxf(o.g, 0.f), 1.f);
+        o.b = fminf(fmaxf(o.b, 0.f), 1.f);
+    }
     return o;
 }
 
@@ -123,7 +141,7 @@ __global__ void k_trim_measure(const GpTrimFrame *frames, float thr, GpTrimBox *
 // edges in every plane alike.  method: GpGray.
 template <typename T>
 __global__ void k_gray(GpTrimFrame f, int aw, int ah, int method) {
-    const int x = blockIdx.x * blockDim.x + threadIdx.x, y = blockIdx.y;
+    const int x = blockIdx.x * blockDim.x + threadIdx.x, y = blockIdx.y + blockIdx.z * gridDim.y;   // (tone_grid)
     if (x >= aw || y >= ah) return;
     const Rgba p = trim_px<T>(f, x, y);
     float g;
@@ -142,7 +160,8 @@ __global__ void k_gray(GpTrimFrame f, int aw, int ah, int method) {
 // --auto-level: the smallest and largest R, G, B sample in f's window (float bits: non-negative floats order as ints)
 template <typename T>
 __global__ void k_tone_range(GpTrimFrame f, int *range) {
-    const int y = blockIdx.y;
+    const int y = blockIdx.y + blockIdx.z * gridDim.y;
+    if (y >= f.h) return;
     int lo = 0x7f7fffff, hi = 0;
     for (int x = blockIdx.x * blockDim.x + threadIdx.x; x < f.w; x += gridDim.x * blockDim.x) {
         const Rgba p = trim_px<T>(f, f.x0 + x, f.y0 + y);
@@ -153,10 +172,13 @@ __global__ void k_tone_range(GpTrimFrame f, int *range) {
     atomicMax(&range[1], hi);
 }
 
-// --level / --gamma / --negate (and --auto-level's stretch), per RGB channel: v = clamp(v * s + o, 0, 1) ^ e, then 1 - v
+// --level / --gamma / --negate (and --auto-level's stretch), per RGB channel: v = clamp(v * s + o, 0, 1) ^ e, then 1 - v.
+// --negate alone does not clamp: it is linear, so it is exact on Y and chroma even where v left 0..1 (trim_px)
 __device__ float tone_v(float v, const GpToneMap &m) {
-    v = fminf(fmaxf(v * m.s + m.o, 0.f), 1.f);
-    if (m.e != 1.f) v = powf(v, m.e);
+    if (m.s != 1.f || m.o != 0.f || m.e != 1.f) {
+        v = fminf(fmaxf(v * m.s + m.o, 0.f), 1.f);
+        if (m.e != 1.f) v = powf(v, m.e);
+    }
     return m.negate ? 1.f - v : v;
 }
 // RGB (0..1) -> the frame's samples: YCbCr (BT.601 full range as the decoders write it; chroma unrounded, the caller
@@ -184,48 +206,60 @@ __device__ void tone_store(const GpTrimFrame &f, int x, int y, const Rgba &p, fl
     *cr = (0.5f * p.r - 0.418687589f * p.g - 0.081312411f * p.b) * m + mid;
 }
 // in place over the padded aw x ah planes: one thread per pixel (4:4:4, monochrome) or per 2x2 block (4:2:0: its four
-// pixels share one chroma sample, which gets the mean of their new chroma)
+// pixels share one chroma sample).  f.p[1], f.p[2] are what to read: at 4:2:0 a copy, as a block reads its neighbours'
+// samples while they are written; du, dv what to write.  At 4:2:0 each luma comes from the pixel's upsampled RGB, as a
+// decoder sees it; the block's chroma gets the mean of its pixels' new chroma from the block's own sample, so that an
+// operation that leaves a colour alone leaves its sample alone
 template <typename T>
-__global__ void k_tone(GpTrimFrame f, int aw, int ah, GpToneMap m) {
+__global__ void k_tone(GpTrimFrame f, int aw, int ah, GpToneMap m, T *du, T *dv) {
     const int s = (f.mono || f.yuv444) ? 0 : 1;
-    const int cx = blockIdx.x * blockDim.x + threadIdx.x, cy = blockIdx.y;
+    const int cx = blockIdx.x * blockDim.x + threadIdx.x, cy = blockIdx.y + blockIdx.z * gridDim.y;
     if (cx >= (aw >> s) || cy >= (ah >> s)) return;
     float cb = 0.f, cr = 0.f;
     for (int k = 0; k < (1 << (2 * s)); k++) {
         const int x = (cx << s) + (k & 1), y = (cy << s) + (k >> 1);
-        Rgba p = trim_px<T>(f, x, y);
+        Rgba p = trim_px<T>(f, x, y, false, true);
+        Rgba u = p;
+        if (s) u = trim_px<T>(f, x, y, false);   // (before Y is written)
         p.r = tone_v(p.r, m); p.g = tone_v(p.g, m); p.b = tone_v(p.b, m);
         float b1 = 0.f, r1 = 0.f;
         tone_store<T>(f, x, y, p, &b1, &r1);
         cb += b1;
         cr += r1;
+        if (s) {
+            u.r = tone_v(u.r, m); u.g = tone_v(u.g, m); u.b = tone_v(u.b, m);
+            tone_store<T>(f, x, y, u, &b1, &r1);
+        }
     }
     if (f.mono) return;
     const float n = (float)(1 << (2 * s)), top = sizeof(T) == 2 ? 1023.f : 255.f;
-    ((T *)f.p[1])[(size_t)cy * f.pitch[1] + cx] = (T)fminf(fmaxf(cb / n + 0.5f, 0.f), top);
-    ((T *)f.p[2])[(size_t)cy * f.pitch[2] + cx] = (T)fminf(fmaxf(cr / n + 0.5f, 0.f), top);
+    du[(size_t)cy * f.pitch[1] + cx] = (T)fminf(fmaxf(cb / n + 0.5f, 0.f), top);
+    dv[(size_t)cy * f.pitch[2] + cx] = (T)fminf(fmaxf(cr / n + 0.5f, 0.f), top);
 }
+
+// One block per row: a grid dimension holds at most 65535, and a padded plane can have 65536 rows
+dim3 tone_grid(int cols, int rows) { return dim3(cols, std::min(rows, 32768), (rows + 32767) / 32768); }
 
 }  // namespace
 
 void gp_launch_tone_range(const GpTrimFrame &f, int *dRange, cudaStream_t st) {
     if (f.w <= 0 || f.h <= 0) return;
-    const dim3 grid(std::min((f.w + 255) / 256, 8), f.h);
+    const dim3 grid = tone_grid(std::min((f.w + 255) / 256, 8), f.h);
     if (f.in10) k_tone_range<uint16_t><<<grid, 256, 0, st>>>(f, dRange);
     else k_tone_range<uint8_t><<<grid, 256, 0, st>>>(f, dRange);
 }
 
-void gp_launch_tone(const GpTrimFrame &f, int aw, int ah, const GpToneMap &m, cudaStream_t st) {
+void gp_launch_tone(const GpTrimFrame &f, int aw, int ah, const GpToneMap &m, void *du, void *dv, cudaStream_t st) {
     if (aw <= 0 || ah <= 0) return;
     const int s = (f.mono || f.yuv444) ? 0 : 1;
-    const dim3 grid(((aw >> s) + 127) / 128, ah >> s);
-    if (f.in10) k_tone<uint16_t><<<grid, 128, 0, st>>>(f, aw, ah, m);
-    else k_tone<uint8_t><<<grid, 128, 0, st>>>(f, aw, ah, m);
+    const dim3 grid = tone_grid(((aw >> s) + 127) / 128, ah >> s);
+    if (f.in10) k_tone<uint16_t><<<grid, 128, 0, st>>>(f, aw, ah, m, (uint16_t *)du, (uint16_t *)dv);
+    else k_tone<uint8_t><<<grid, 128, 0, st>>>(f, aw, ah, m, (uint8_t *)du, (uint8_t *)dv);
 }
 
 void gp_launch_gray(const GpTrimFrame &f, int aw, int ah, int method, cudaStream_t st) {
     if (aw <= 0 || ah <= 0) return;
-    const dim3 grid((aw + 127) / 128, ah);
+    const dim3 grid = tone_grid((aw + 127) / 128, ah);
     if (f.in10) k_gray<uint16_t><<<grid, 128, 0, st>>>(f, aw, ah, method);
     else k_gray<uint8_t><<<grid, 128, 0, st>>>(f, aw, ah, method);
 }

@@ -5,8 +5,8 @@ On PNGs made here: a page with a white margin around a grey picture is trimmed t
 at 8 and 10 bits, and with --lossless, where the trimmed encode decodes to exactly the crop of the lossless encode;
 --fuzz lets a paper margin with specks in it go and keeps a picture that differs by more; an image without a border
 of one colour, and a blank one without --skip-blank, give the bytes of a plain encode; the margin, limits, lightness
-and blank conditions decide as described in --help; --crop is applied first, --max-size after; a transparent border
-around an opaque picture is trimmed.  Errors: the trim options without --trim and bad values (status 2), a blank image
+and blank conditions decide as described in --help; a page of two colours with nothing on it is not blank; --crop is
+applied first, also at an offset, --max-size after; a transparent border around an opaque picture is trimmed.  Errors: the trim options without --trim and bad values (status 2), a blank image
 with --skip-blank (status 3).  A --batch run with a blank image skips it with a message and counts the trims.  With
 ImageMagick (`magick`) installed, the trimmed sizes are also compared with `magick -fuzz F -format %@ info:`.
 
@@ -146,6 +146,10 @@ def main():
         p = run(blank, os.path.join(t, "b2.avif"), "--trim", "--skip-blank", "99")
         check("blank with --skip-blank: status 3, nothing written", p.returncode == 3 and "blank" in p.stderr and not os.path.exists(os.path.join(t, "b2.avif")),
               p.stderr.strip()[-200:])
+        two = os.path.join(t, "two.png")   # edges that cross: no box, and nothing that says the page is blank
+        write_png(two, 64, 48, lambda x, y: (0, 0, 0) if x < 32 else (255, 255, 255))
+        got, p = size_of(two, "--trim", "--skip-blank", "99")
+        check("two-colour page with --skip-blank: encoded whole", got == (64, 48), f"{got} {p.stderr.strip()[-200:]}")
         # ---- conditions ----
         bx, by, bw, bh = box
         m = min(W, H) * 2 // 100   # --trim-margin 2%
@@ -177,8 +181,19 @@ def main():
         # ---- order: --crop first, --max-size after ----
         got, _ = size_of(img, "--trim", "--crop", "100x100+0+0")
         check("--crop then --trim", got == (100 - bx, 100 - by), f"{got} (want {(100 - bx, 100 - by)})")
+        got, _ = size_of(img, "--trim", "--crop", "120x110+20+10")   # the box is 31..180 x 17..117, the crop 20..139 x 10..119
+        check("--crop at an offset, then --trim", got == (140 - 31, 118 - 17), f"{got} (want {(140 - 31, 118 - 17)})")
         got, _ = size_of(img, "--trim", "--max-size", "75x")
         check("--trim then --max-size", got == (75, math.floor(bh * 75 / bw + 0.5)), f"{got}")
+        # ---- which corner each edge is measured against ----
+        brc = os.path.join(t, "br.png")   # the bottom row is the bottom-left's colour, but for the bottom-right corner
+        write_png(brc, 40, 40, lambda x, y: (0, 0, 0) if (x, y) == (39, 39) else (255, 255, 255) if y < 39 or x < 39 else (0, 0, 0))
+        got, _ = size_of(brc, "--trim", "--yuv", "444")
+        if magick:
+            want = im_box(brc, "0%")
+            check("bottom-right corner rule: ImageMagick's size", want is not None and got == want[:2], f"{got} (ImageMagick {want})")
+        else:
+            check("bottom-right corner rule", got == (39, 40), f"{got}")
         # ---- transparency ----
         rgba = os.path.join(t, "rgba.png")
         write_png(rgba, 64, 48, lambda x, y: (200, 10, 10, 255) if 9 <= x < 41 and 5 <= y < 30 else (0, 0, 0, 0), alpha=True)

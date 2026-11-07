@@ -257,7 +257,7 @@ if(AV1GPU_TESTS)
     add_test(NAME trim COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/trim_test.py --bin $<TARGET_FILE:av1gpu>)
     add_test(NAME gate_trim COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/decoder_gate.py
              --bin $<TARGET_FILE:av1gpu> --images ${PROJECT_SOURCE_DIR}/tests/gate_images --q 60,120
-             -- --trim --fuzz 30% --trim-margin 3 --small-preset none)
+             -- --trim --fuzz 5% --trim-margin 3 --small-preset none)
     # --resize (ImageMagick's geometry, Mitchell when enlarging), --grayscale / --colorspace Gray, --auto-level / --level /
     # --gamma / --negate: sizes, identities, known samples, errors (and ImageMagick's own output when it is installed);
     # then decoder identity on enlarged, grayscaled and tone-mapped frames
@@ -266,6 +266,13 @@ if(AV1GPU_TESTS)
     add_test(NAME gate_imageops COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/decoder_gate.py
              --bin $<TARGET_FILE:av1gpu> --images ${PROJECT_SOURCE_DIR}/tests/gate_images --q 60,120
              -- --resize 173% --level 5%,90%,1.3 --grayscale Rec709Luma --small-preset none)
+    # the same operations on JPEGs (the batch path that starts from the ingest): EXIF-turned geometries, the box, blank
+    # pages, --negate exact at 4:2:0, the size refusals and their --max-mp hint, one bad list line among good ones
+    add_test(NAME imageops_jpeg COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/imageops_jpeg_test.py
+             --bin $<TARGET_FILE:av1gpu> --gen $<TARGET_FILE:jpeg_gray_gen>)
+    # --help prints every option the parser takes
+    add_test(NAME help_lists_options COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/help_test.py
+             --bin $<TARGET_FILE:av1gpu> --source ${PROJECT_SOURCE_DIR}/encoder/apps/av1gpu.cpp)
     # #44: a gray JPEG's sampling factors (2x2, 2x1, 1x2) do not change its planes, on the nvJPEG and the CPU route
     add_test(NAME jpeg_gray_sampling COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/jpeg_gray_sampling_test.py
              --bin $<TARGET_FILE:av1gpu> --gen $<TARGET_FILE:jpeg_gray_gen>)

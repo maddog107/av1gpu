@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <climits>
+#include <cctype>
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
@@ -96,7 +97,8 @@ bool gp_parse_level(const char *v, GpTone &t, std::string *why) {
         if (why) *why = "expected BLACK[%][,WHITE[%][,GAMMA]] (ImageMagick's -level)";
         return false;
     }
-    auto frac = [&](int i) { return pct[i] ? n[i] / 100 : n[i] / 65535; };
+    const bool anyPct = pct[0] || pct[1];   // (ParseGeometry: one % makes both numbers percentages)
+    auto frac = [&](int i) { return anyPct ? n[i] / 100 : n[i] / 65535; };
     t.black = frac(0);
     t.white = k >= 2 ? frac(1) : 1 - t.black;
     t.levelGamma = k >= 3 ? n[2] : 1;
@@ -185,10 +187,12 @@ int gp_trim_decide(const GpTrim &t, int w, int h, const GpTrimBox &b, int *kx, i
     const int left = b.left == INT_MAX ? w : b.left, top = b.top == INT_MAX ? h : b.top;
     const int right = std::max(b.right, 0), bottom = std::max(b.bottom, 0);
     int bw = right - left + 1, bh = bottom - top + 1;
+    // edges that cross: pixels differ from the corners, but no box holds them, as on an empty page of two colours
+    const bool crossed = b.left != INT_MAX && (bw <= 0 || bh <= 0);
     if ((b.right < 0 && b.bottom < 0 && b.left == INT_MAX) || bw <= 0 || bh <= 0) bw = bh = 0;
     const int cutW = w - bw, cutH = h - bh;
     auto share = [](int side, double pct) { return (int)std::floor(side * pct / 100.0 + 1e-9); };
-    if (t.blankPct >= 0 && (cutW > share(w, t.blankPct) || cutH > share(h, t.blankPct))) return GP_TRIM_BLANK;
+    if (t.blankPct >= 0 && !crossed && (cutW > share(w, t.blankPct) || cutH > share(h, t.blankPct))) return GP_TRIM_BLANK;
     if (bw == 0 || (cutW == 0 && cutH == 0)) return GP_TRIM_WHOLE;
     if (t.limitMin >= 0 && !(share(w, t.limitMin) <= cutW && cutW <= share(w, t.limitMax) && share(h, t.limitMin) <= cutH &&
                              cutH <= share(h, t.limitMax)))

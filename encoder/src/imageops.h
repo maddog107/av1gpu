@@ -48,6 +48,7 @@ struct GpTrimFrame {
     const void *p[3];
     int pitch[3];
     int mono, yuv444, in10;
+    int cw, ch;                 // 4:2:0: size of the chroma planes without their padding
     int matrix;                 // 0: BT.601 full-range YCbCr (lossy planes), 1: identity / GBR, 2: YCgCo-Re (lossless)
     float scale;                // RGB = samples / scale (255 or 1023; YCgCo-Re: 255)
     int x0, y0, w, h;           // window
@@ -91,8 +92,9 @@ GpToneMap gp_tone_map(const GpTone &t, float lo = 0.f, float hi = 1.f);
 void gp_launch_trim_measure(const GpTrimFrame *dFrames, int n, int maxH, float thr, GpTrimBox *dBoxes, int in10, cudaStream_t st);
 // --auto-level: atomicMin / atomicMax of the float bits of f's R, G, B samples in its window into dRange[0] / [1]
 void gp_launch_tone_range(const GpTrimFrame &f, int *dRange, cudaStream_t st);
-// m applied in place to f's planes (aw x ah luma samples)
-void gp_launch_tone(const GpTrimFrame &f, int aw, int ah, const GpToneMap &m, cudaStream_t st);
+// m applied to f's planes (aw x ah luma samples), luma in place; the chroma read from f.p[1], f.p[2] and written to du, dv
+// (at 4:2:0 they can't be the same planes: k_tone reads neighbouring samples)
+void gp_launch_tone(const GpTrimFrame &f, int aw, int ah, const GpToneMap &m, void *du, void *dv, cudaStream_t st);
 // f's Y plane (aw x ah samples) replaced by the gray of each pixel (window fields of f unused)
 void gp_launch_gray(const GpTrimFrame &f, int aw, int ah, int method, cudaStream_t st);
 
