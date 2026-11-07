@@ -207,7 +207,7 @@ __device__ void tone_store(const GpTrimFrame &f, int x, int y, const Rgba &p, fl
     *cr = (0.5f * p.r - 0.418687589f * p.g - 0.081312411f * p.b) * m + mid;
 }
 // in place over the padded aw x ah planes: one thread per pixel (4:4:4, monochrome) or per 2x2 block (4:2:0: its four
-// pixels share one chroma sample).  f.p[1], f.p[2] are what to read: at 4:2:0 a copy, as a block reads its neighbours'
+// pixels share one chroma sample).  f.p[1], f.p[2] are what to read: with f.up a copy, as a block reads its neighbours'
 // samples while they are written; du, dv what to write.  With f.up each luma comes from the pixel's upsampled RGB, as a
 // decoder sees it; the block's chroma gets the mean of its pixels' new chroma from the block's own sample, so that an
 // operation that leaves a colour alone leaves its sample alone

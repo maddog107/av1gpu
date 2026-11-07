@@ -121,6 +121,12 @@ def main():
         badY = sum(1 for i in range(W * H) if neg[i] != 255 - base[i]) if ok else -1
         badC = max(abs(neg[W * H + i] - min(255, 256 - base[W * H + i])) for i in range(cn)) if ok else -1
         check("--negate at 4:2:0: Y exact, chroma within 1", ok and badY == 0 and badC <= 1, f"{badY} Y samples differ, chroma off by up to {badC}")
+        # a crop at even offsets keeps the JPEG's own chroma: gray of the crop = the crop of the gray (but at the crop's edges,
+        # where the upsampling no longer sees the samples outside it)
+        full, part = planes(page, "--grayscale", "Rec709Luma"), planes(page, "--grayscale", "Rec709Luma", "--crop", "320x240+64+48")
+        ok = full is not None and part is not None and len(part) == 320 * 240
+        bad = sum(1 for y in range(1, 239) for x in range(1, 319) if part[y * 320 + x] != full[(48 + y) * W + 64 + x]) if ok else -1
+        check("--grayscale after an even crop: the crop of the gray", ok and bad == 0, f"{bad} samples differ")
         gray = planes(page, "--grayscale", "Rec601Luma")
         check("--grayscale Rec601Luma keeps the Y plane", gray is not None and base is not None and gray == base[:W * H])
         # ---- the size limits ----

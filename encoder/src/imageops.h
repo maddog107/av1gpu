@@ -95,7 +95,7 @@ void gp_launch_trim_measure(const GpTrimFrame *dFrames, int n, int maxH, float t
 // --auto-level: atomicMin / atomicMax of the float bits of f's R, G, B samples in its window into dRange[0] / [1]
 void gp_launch_tone_range(const GpTrimFrame &f, int *dRange, cudaStream_t st);
 // m applied to f's planes (aw x ah luma samples), luma in place; the chroma read from f.p[1], f.p[2] and written to du, dv
-// (at 4:2:0 they can't be the same planes: k_tone reads neighbouring samples)
+// (with f.up they can't be the same planes: k_tone reads neighbouring samples)
 void gp_launch_tone(const GpTrimFrame &f, int aw, int ah, const GpToneMap &m, void *du, void *dv, cudaStream_t st);
 // f's Y plane (aw x ah samples) replaced by the gray of each pixel (window fields of f unused)
 void gp_launch_gray(const GpTrimFrame &f, int aw, int ah, int method, cudaStream_t st);

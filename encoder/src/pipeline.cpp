@@ -1051,7 +1051,13 @@ std::string gp_source_refusal(int w, int h, double decMp, const GpXform *x, bool
         GpXform t = *x;
         for (int k = 0; k < 2; k++, t.turn()) {
             int ow, oh;
-            if (gp_xform_size(t, w, h, &ow, &oh)) mp = std::max(mp, (double)ow * oh / 1e6);
+            if (!gp_xform_size(t, w, h, &ow, &oh)) continue;
+            if (ow > GP_MAX_SIDE || oh > GP_MAX_SIDE) {   // (no --max-mp would help)
+                snprintf(b, sizeof b, "larger than %.1f megapixels, and its crop / resize, %dx%d, is larger than AV1 can code (%d pixels "
+                         "per side)", decMp, ow, oh, GP_MAX_SIDE);
+                return b;
+            }
+            mp = std::max(mp, (double)ow * oh / 1e6);
         }
     }
     const int need = (int)std::ceil(mp);
@@ -1260,6 +1266,7 @@ int gp_frames_transform(std::vector<GpFrameIn> &frames, const std::vector<GpXfor
     };
     size_t outBytes = 0, tmpMax = 0;
     std::vector<int> newW(frames.size()), newH(frames.size());
+    std::vector<char> keepJpeg(frames.size(), 0);   // a crop alone at even offsets keeps a JPEG's 4:2:0 chroma as it was
     for (size_t i = 0; i < frames.size() && i < xf.size(); i++) {
         const GpFrameIn &f = frames[i];
         if (f.W <= 0 || !xf[i].active()) continue;
@@ -1272,6 +1279,7 @@ int gp_frames_transform(std::vector<GpFrameIn> &frames, const std::vector<GpXfor
         const GpFrameIn *a = alpha && i < alpha->size() && (*alpha)[i].W == f.W && (*alpha)[i].H == f.H ? &(*alpha)[i] : nullptr;
         newW[i] = ow;
         newH[i] = oh;
+        keepJpeg[i] = f.jpegChroma && ow == cw && oh == ch && !(cx & 1) && !(cy & 1);
         const int aw = (ow + 63) & ~63, ah = (oh + 63) & ~63, out10 = outDepth == 10 || f.bitDepth == 10;
         const double fx = (double)ow / cw, fy = (double)oh / ch;
         // --resize, as ImageMagick: Mitchell to enlarge and for anything with alpha, Lanczos to shrink (--max-size: Lanczos)
@@ -1338,7 +1346,7 @@ int gp_frames_transform(std::vector<GpFrameIn> &frames, const std::vector<GpXfor
             f.bitDepth = outDepth == 10 || f.bitDepth == 10 ? 10 : 8;
             f.W = newW[q.fi];
             f.H = newH[q.fi];
-            f.jpegChroma = 0;
+            f.jpegChroma = keepJpeg[q.fi];
             f.aw = (f.W + 63) & ~63;
             f.ah = (f.H + 63) & ~63;
         }
@@ -1407,9 +1415,9 @@ int gp_frames_tone(std::vector<GpFrameIn> &frames, const std::vector<GpXform> &x
     auto chromaBytes = [&](const GpFrameIn &f) {   // one plane, padding included
         return (size_t)f.spitch[1] * (f.ah >> 1) * (f.bitDepth == 10 ? 2 : 1);
     };
-    size_t copyBytes = 0;
+    size_t copyBytes = 0;   // (only upsampled chroma reads neighbouring samples; the nearest one is the block's own)
     for (size_t i = 0; i < frames.size(); i++)
-        if (runs(i) && !frames[i].mono && !frames[i].yuv444) copyBytes += 2 * chromaBytes(frames[i]);
+        if (runs(i) && rgb_view(frames[i]).up) copyBytes += 2 * chromaBytes(frames[i]);
     uint8_t *copy = nullptr;
     cudaError_t e = copyBytes ? cudaMallocAsync((void **)&copy, copyBytes, st) : cudaSuccess;
     size_t at = 0;
@@ -1418,7 +1426,7 @@ int gp_frames_tone(std::vector<GpFrameIn> &frames, const std::vector<GpXform> &x
         const GpFrameIn &f = frames[i];
         GpTrimFrame g = rgb_view(f);
         void *du = (void *)f.dsrc[1], *dv = (void *)f.dsrc[2];
-        if (!f.mono && !f.yuv444) {
+        if (g.up) {
             const size_t n = chromaBytes(f);
             e = cudaMemcpyAsync(copy + at, f.dsrc[1], n, cudaMemcpyDeviceToDevice, st);
             if (e == cudaSuccess) e = cudaMemcpyAsync(copy + at + n, f.dsrc[2], n, cudaMemcpyDeviceToDevice, st);
