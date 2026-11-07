@@ -1,0 +1,25 @@
+-- 200 iterations, 85 s, rc {('single', 0): 107, ('single', 3): 27, ('batch', 0): 65, ('batch', 2): 1}, signatures 0
+-- 400 iterations, 182 s, rc {('single', 0): 212, ('single', 3): 53, ('batch', 0): 132, ('batch', 2): 1, ('single', 2): 2}, signatures 0
+-- 600 iterations, 272 s, rc {('single', 0): 324, ('single', 3): 72, ('batch', 0): 196, ('batch', 2): 4, ('single', 2): 4}, signatures 0
+-- 800 iterations, 352 s, rc {('single', 0): 424, ('single', 3): 105, ('batch', 0): 259, ('batch', 2): 7, ('single', 2): 5}, signatures 0
+-- 1000 iterations, 442 s, rc {('single', 0): 532, ('single', 3): 127, ('batch', 0): 326, ('batch', 2): 7, ('single', 2): 8}, signatures 0
+[1155] NEW ['status|rc 1|py: CUDA: out of memory at cudaMalloc(&scratch, need)\nout of GPU memory: lossless frames need several times th']  -> single: --lossless --resize '65535x1^'  inputs ['adv/rand/r240.png']  (102 s to minimise)
+-- 1200 iterations, 611 s, rc {('single', 0): 629, ('single', 3): 158, ('batch', 0): 391, ('batch', 2): 9, ('single', 2): 12, ('single', 1): 1}, signatures 3
+[1235] NEW ['status|batch rc 1|of GPU memory: lossless batches need about N GB of GPU memory per megapixel of GP_ENCODE_MP (now N; this GPU h']  -> batch: --lossless --ycgco-re --palette on --max-mp 1 --trim --trim-margin 1% --trim-limits 50%,100% --negate --grayscale Rec601Luma  inputs ['../../dev/shm/fz/w1235_uw9009yx/in/000_r003.png\tcrop=17x17+0+7', '../../dev/shm/fz/w1235_uw9009yx/in/001_r450.png', '../../dev/shm/fz/w1235_uw9009yx/in/002_r186.jpg', '../../dev/shm/fz/w1235_uw9009yx/in/003_white_8x8.jpg', '../../dev/shm/fz/w1235_uw9009yx/in/004_white_1x17.png', '../../dev/shm/fz/w1235_uw9009yx/in/005_r118.webp\tresize=9x32']  (172 s to minimise)
+[1229] NEW ['status|batch rc 1|PATH: out of GPU memory for its planes\n[avNgpu] skipped PATH: out of GPU memory for its planes\n']  -> batch: --yuv 444 --depth 10 --preset base --small-preset none --small-preset turbo3 --quality 100 --max-size 40x --trim --fuzz 65535 --trim-limits 1%,20% --skip-blank 100  inputs ['../../dev/shm/fz/w1229_98qhsikd/in/000_r368.png', '../../dev/shm/fz/w1229_98qhsikd/in/001_pix_tr_1x40.png\tresize=100@', '../../dev/shm/fz/w1229_98qhsikd/in/002_lossy_65x33.webp', '../../dev/shm/fz/w1229_98qhsikd/in/003_r201.jpg', '../../dev/shm/fz/w1229_98qhsikd/in/004_r459.png\tresize=150%>', '../../dev/shm/fz/w1229_98qhsikd/in/005_r256.png']  (192 s to minimise)
+-- 1400 iterations, 774 s, rc {('single', 0): 746, ('single', 3): 175, ('batch', 0): 453, ('batch', 2): 11, ('single', 2): 12, ('single', 1): 1, ('batch', 1): 2}, signatures 3
+-- 1600 iterations, 861 s, rc {('single', 0): 855, ('single', 3): 197, ('batch', 0): 520, ('batch', 2): 11, ('single', 2): 14, ('single', 1): 1, ('batch', 1): 2}, signatures 3
+-- 1800 iterations, 936 s, rc {('single', 0): 949, ('single', 3): 234, ('batch', 0): 584, ('batch', 2): 14, ('single', 2): 16, ('single', 1): 1, ('batch', 1): 2}, signatures 3
+-- 2000 iterations, 1018 s, rc {('single', 0): 1054, ('single', 3): 262, ('batch', 0): 649, ('batch', 2): 15, ('single', 2): 17, ('single', 1): 1, ('batch', 1): 2}, signatures 3
+-- 2200 iterations, 1097 s, rc {('single', 0): 1154, ('single', 3): 292, ('batch', 0): 713, ('batch', 2): 18, ('single', 2): 20, ('single', 1): 1, ('batch', 1): 2}, signatures 3
+-- 2400 iterations, 1155 s, rc {('single', 0): 1257, ('single', 3): 322, ('batch', 0): 779, ('batch', 2): 19, ('single', 2): 20, ('single', 1): 1, ('batch', 1): 2}, signatures 3
+-- 2600 iterations, 1210 s, rc {('single', 0): 1364, ('single', 3): 347, ('batch', 0): 845, ('batch', 2): 19, ('single', 2): 22, ('single', 1): 1, ('batch', 1): 2}, signatures 3
+-- 2800 iterations, 1263 s, rc {('single', 0): 1461, ('single', 3): 377, ('batch', 0): 911, ('batch', 2): 20, ('single', 2): 28, ('single', 1): 1, ('batch', 1): 2}, signatures 3
+-- 3000 iterations, 1315 s, rc {('single', 0): 1561, ('single', 3): 405, ('batch', 0): 977, ('batch', 2): 21, ('single', 2): 33, ('single', 1): 1, ('batch', 1): 2}, signatures 3
+DONE {('single', 0): 1561, ('single', 3): 405, ('batch', 0): 977, ('batch', 2): 21, ('single', 2): 33, ('single', 1): 1, ('batch', 1): 2} signatures:
+1 status|rc 1|py: CUDA: out of memory at cudaMalloc(&scratch, need)
+out of GPU memory: lossless frames need several times th
+1 status|batch rc 1|PATH: out of GPU memory for its planes
+[avNgpu] skipped PATH: out of GPU memory for its planes
+
+1 status|batch rc 1|of GPU memory: lossless batches need about N GB of GPU memory per megapixel of GP_ENCODE_MP (now N; this GPU h

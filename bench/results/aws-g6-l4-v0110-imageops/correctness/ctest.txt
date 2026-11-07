@@ -1,0 +1,35 @@
+Test project /home/ubuntu/fix3/build
+      Start  1: fuzz_dav1d_aomdec
+ 1/15 Test  #1: fuzz_dav1d_aomdec ................   Passed    7.88 sec
+      Start  2: fuzz_lossless
+ 2/15 Test  #2: fuzz_lossless ....................   Passed    4.31 sec
+      Start  3: avif_alpha
+ 3/15 Test  #3: avif_alpha .......................   Passed    0.21 sec
+      Start  4: gate_cfl_edge
+ 4/15 Test  #4: gate_cfl_edge ....................   Passed    4.15 sec
+      Start  5: batch_skip_unreadable
+ 5/15 Test  #5: batch_skip_unreadable ............   Passed    4.87 sec
+      Start  6: crop_resize
+ 6/15 Test  #6: crop_resize ......................   Passed   14.40 sec
+      Start  7: gate_crop_resize
+ 7/15 Test  #7: gate_crop_resize .................   Passed    3.18 sec
+      Start  8: trim
+ 8/15 Test  #8: trim .............................   Passed   20.68 sec
+      Start  9: gate_trim
+ 9/15 Test  #9: gate_trim ........................   Passed    1.96 sec
+      Start 10: imageops
+10/15 Test #10: imageops .........................   Passed   55.02 sec
+      Start 11: gate_imageops
+11/15 Test #11: gate_imageops ....................   Passed    2.49 sec
+      Start 12: imageops_jpeg
+12/15 Test #12: imageops_jpeg ....................   Passed   28.33 sec
+      Start 13: help_lists_options
+13/15 Test #13: help_lists_options ...............   Passed    0.04 sec
+      Start 14: jpeg_gray_sampling
+14/15 Test #14: jpeg_gray_sampling ...............   Passed   48.48 sec
+      Start 15: jpeg_inverted_sampling
+15/15 Test #15: jpeg_inverted_sampling ...........   Passed   87.33 sec
+
+100% tests passed, 0 tests failed out of 15
+
+Total Test time (real) = 283.34 sec

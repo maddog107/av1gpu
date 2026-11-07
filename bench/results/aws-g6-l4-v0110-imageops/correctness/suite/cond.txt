@@ -1,0 +1,15 @@
+2000/2000 decisions as the model; {}
+auto-level inside --crop: output range 0 255 (want 0..255)
+auto-level after --trim: size (40, 60) range 0 255 (want 40x60, 0..255)
+agrad_120x80 ['--negate'] alpha unchanged: True
+agrad_120x80 ['--level', '10%,90%', '--gamma', '2'] alpha unchanged: True
+agrad_120x80 ['--auto-level'] alpha unchanged: True
+agrad_120x80 ['--grayscale', 'Average'] alpha unchanged: True
+hidden_120x80 ['--negate'] alpha unchanged: True
+hidden_120x80 ['--level', '10%,90%', '--gamma', '2'] alpha unchanged: True
+hidden_120x80 ['--auto-level'] alpha unchanged: True
+hidden_120x80 ['--grayscale', 'Average'] alpha unchanged: True
+astep_120x80 ['--negate'] alpha unchanged: True
+astep_120x80 ['--level', '10%,90%', '--gamma', '2'] alpha unchanged: True
+astep_120x80 ['--auto-level'] alpha unchanged: True
+astep_120x80 ['--grayscale', 'Average'] alpha unchanged: True

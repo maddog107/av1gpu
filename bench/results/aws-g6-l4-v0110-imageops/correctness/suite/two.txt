@@ -1,0 +1,18 @@
+two_lr.png: magick box 0x300+200+0 after -trim: 1x1, opaque pixels 0
+rc=0 0.4s [('420', 400, 300, 8, 6) ok Y 0 255  irot None imir None] fix3/build/av1gpu /dev/shm/two/two_lr.png  --trim --skip-blank 99 | 
+rc=0 0.4s [('420', 400, 300, 8, 6) ok Y 0 255  irot None imir None] fix3/build/av1gpu /dev/shm/two/two_lr.png  --trim | 
+rc=0 0.3s [('420', 400, 300, 8, 6) ok Y 0 255  irot None imir None] fix3/build/av1gpu /dev/shm/two/two_lr.png  --trim --fuzz 10% --skip-blank 99 | 
+two_tb.png: magick box 400x0+0+150 after -trim: 1x1, opaque pixels 0
+rc=0 0.3s [('420', 400, 300, 8, 6) ok Y 0 255  irot None imir None] fix3/build/av1gpu /dev/shm/two/two_tb.png  --trim --skip-blank 99 | 
+rc=0 0.3s [('420', 400, 300, 8, 6) ok Y 0 255  irot None imir None] fix3/build/av1gpu /dev/shm/two/two_tb.png  --trim | 
+rc=0 0.3s [('420', 400, 300, 8, 6) ok Y 0 255  irot None imir None] fix3/build/av1gpu /dev/shm/two/two_tb.png  --trim --fuzz 10% --skip-blank 99 | 
+two_lr.jpg: magick box 0x300+200+0 after -trim: 1x1, opaque pixels 0
+rc=0 0.4s [('420', 400, 300, 8, 6) ok Y 0 255  irot None imir None] fix3/build/av1gpu /dev/shm/two/two_lr.jpg  --trim --skip-blank 99 | 
+rc=0 0.5s [('420', 400, 300, 8, 6) ok Y 0 255  irot None imir None] fix3/build/av1gpu /dev/shm/two/two_lr.jpg  --trim | 
+rc=0 0.5s [('420', 400, 300, 8, 6) ok Y 0 255  irot None imir None] fix3/build/av1gpu /dev/shm/two/two_lr.jpg  --trim --fuzz 10% --skip-blank 99 | 
+two_tb.jpg: magick box 400x4+0+146 after -trim: 400x4, opaque pixels 0
+rc=0 0.4s [('420', 400, 4, 8, 6) ok Y 0 0  irot None imir None] fix3/build/av1gpu /dev/shm/two/two_tb.jpg  --trim --skip-blank 99 | 
+rc=0 0.5s [('420', 400, 4, 8, 6) ok Y 0 0  irot None imir None] fix3/build/av1gpu /dev/shm/two/two_tb.jpg  --trim | 
+rc=0 0.5s [('420', 400, 300, 8, 6) ok Y 0 255  irot None imir None] fix3/build/av1gpu /dev/shm/two/two_tb.jpg  --trim --fuzz 10% --skip-blank 99 | 
+batch: status 0 files: bar_mid_200x120.png.avif two_lr.png.avif two_tb.png.avif 
+[av1gpu] trim: 1 images trimmed, 0 skipped as blank

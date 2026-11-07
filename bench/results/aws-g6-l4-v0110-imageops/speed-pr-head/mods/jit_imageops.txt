@@ -1,0 +1,7 @@
+context 139.6 ms (CUDA_MODULE_LOADING=EAGER)
+pass 0 k_imageops.sm_89.ptx                         137.7 KB   8 functions load   2463.9 ms functions      0.0 ms
+pass 0 k_imageops.sm_89.ptx                         137.7 KB   8 functions load    225.4 ms functions      0.0 ms
+pass 0 total 0.3 MB load 2689.4 ms functions 0.0 ms
+pass 1 k_imageops.sm_89.ptx                         137.7 KB   8 functions load    226.8 ms functions      0.0 ms
+pass 1 k_imageops.sm_89.ptx                         137.7 KB   8 functions load    227.5 ms functions      0.0 ms
+pass 1 total 0.3 MB load 454.2 ms functions 0.0 ms

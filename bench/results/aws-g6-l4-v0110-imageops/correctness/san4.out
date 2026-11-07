@@ -1,0 +1,177 @@
+80 mixed inputs
+memcheck b_mix_t1 rc=0 files=80: ========= ERROR SUMMARY: 0 errors
+memcheck b_jpg_t1 rc=0 files=20: ========= ERROR SUMMARY: 0 errors
+memcheck b_png_t1 rc=0 files=20: ========= ERROR SUMMARY: 0 errors
+memcheck b_mix_t2 rc=0 files=80: ========= ERROR SUMMARY: 0 errors
+memcheck b_jpg_t2 rc=0 files=20: ========= ERROR SUMMARY: 0 errors
+memcheck b_png_t2 rc=0 files=20: ========= ERROR SUMMARY: 0 errors
+memcheck b_mix_t3 rc=0 files=80: ========= ERROR SUMMARY: 0 errors
+memcheck b_jpg_t3 rc=0 files=20: ========= ERROR SUMMARY: 0 errors
+memcheck b_png_t3 rc=0 files=20: ========= ERROR SUMMARY: 0 errors
+memcheck b_mix_t4 rc=0 files=80: ========= ERROR SUMMARY: 0 errors
+memcheck b_jpg_t4 rc=0 files=20: ========= ERROR SUMMARY: 0 errors
+memcheck b_png_t4 rc=0 files=20: ========= ERROR SUMMARY: 0 errors
+memcheck b_mix_t5 rc=0 files=80: ========= ERROR SUMMARY: 0 errors
+memcheck b_jpg_t5 rc=0 files=20: ========= ERROR SUMMARY: 0 errors
+memcheck b_png_t5 rc=0 files=20: ========= ERROR SUMMARY: 0 errors
+memcheck b_mix_t6 rc=0 files=80: ========= ERROR SUMMARY: 0 errors
+memcheck b_jpg_t6 rc=0 files=20: ========= ERROR SUMMARY: 0 errors
+memcheck b_png_t6 rc=0 files=20: ========= ERROR SUMMARY: 0 errors
+memcheck b_mix_t7 rc=0 files=80: ========= ERROR SUMMARY: 0 errors
+memcheck b_jpg_t7 rc=0 files=20: ========= ERROR SUMMARY: 0 errors
+memcheck b_png_t7 rc=0 files=20: ========= ERROR SUMMARY: 0 errors
+memcheck b_mix_t8 rc=0 files=80: ========= ERROR SUMMARY: 0 errors
+memcheck b_jpg_t8 rc=0 files=20: ========= ERROR SUMMARY: 0 errors
+memcheck b_png_t8 rc=0 files=20: ========= ERROR SUMMARY: 0 errors
+memcheck b_mix_t9 rc=0 files=80: ========= ERROR SUMMARY: 0 errors
+memcheck b_jpg_t9 rc=0 files=20: ========= ERROR SUMMARY: 0 errors
+memcheck b_png_t9 rc=0 files=20: ========= ERROR SUMMARY: 0 errors
+memcheck cropj_g1 rc=0 files=8: ========= ERROR SUMMARY: 0 errors
+memcheck crop_g1 rc=0 files=32: ========= ERROR SUMMARY: 0 errors
+memcheck cropd_g1 rc=0 files=32: ========= ERROR SUMMARY: 0 errors
+memcheck cropj_g2 rc=0 files=8: ========= ERROR SUMMARY: 0 errors
+memcheck crop_g2 rc=0 files=32: ========= ERROR SUMMARY: 0 errors
+memcheck cropd_g2 rc=0 files=32: ========= ERROR SUMMARY: 0 errors
+memcheck cropj_g3 rc=0 files=20: ========= ERROR SUMMARY: 0 errors
+memcheck crop_g3 rc=0 files=80: ========= ERROR SUMMARY: 0 errors
+memcheck cropd_g3 rc=0 files=80: ========= ERROR SUMMARY: 0 errors
+memcheck cropj_g4 rc=0 files=5: ========= ERROR SUMMARY: 0 errors
+memcheck crop_g4 rc=0 files=20: ========= ERROR SUMMARY: 0 errors
+memcheck cropd_g4 rc=0 files=20: ========= ERROR SUMMARY: 0 errors
+memcheck cropj_c1 rc=0 files=20: ========= ERROR SUMMARY: 0 errors
+memcheck crop_c1 rc=0 files=80: ========= ERROR SUMMARY: 0 errors
+memcheck cropd_c1 rc=0 files=80: ========= ERROR SUMMARY: 0 errors
+memcheck cropj_c2 rc=0 files=9: ========= ERROR SUMMARY: 0 errors
+memcheck crop_c2 rc=0 files=36: ========= ERROR SUMMARY: 0 errors
+memcheck cropd_c2 rc=0 files=36: ========= ERROR SUMMARY: 0 errors
+memcheck cropj_c3 rc=0 files=9: ========= ERROR SUMMARY: 0 errors
+memcheck crop_c3 rc=0 files=36: ========= ERROR SUMMARY: 0 errors
+memcheck cropd_c3 rc=0 files=36: ========= ERROR SUMMARY: 0 errors
+memcheck cropj_c4 rc=0 files=5: ========= ERROR SUMMARY: 0 errors
+memcheck crop_c4 rc=0 files=20: ========= ERROR SUMMARY: 0 errors
+memcheck cropd_c4 rc=0 files=20: ========= ERROR SUMMARY: 0 errors
+memcheck cropj_c5 rc=0 files=3: ========= ERROR SUMMARY: 0 errors
+memcheck crop_c5 rc=0 files=12: ========= ERROR SUMMARY: 0 errors
+memcheck cropd_c5 rc=0 files=12: ========= ERROR SUMMARY: 0 errors
+memcheck cropj_c6 rc=0 files=3: ========= ERROR SUMMARY: 0 errors
+memcheck crop_c6 rc=0 files=12: ========= ERROR SUMMARY: 0 errors
+memcheck cropd_c6 rc=0 files=12: ========= ERROR SUMMARY: 0 errors
+memcheck cropj_c7 rc=0 files=5: ========= ERROR SUMMARY: 0 errors
+memcheck crop_c7 rc=0 files=20: ========= ERROR SUMMARY: 0 errors
+memcheck cropd_c7 rc=0 files=20: ========= ERROR SUMMARY: 0 errors
+memcheck s_png_r1x1 rc=0 files=1: ========= ERROR SUMMARY: 0 errors
+memcheck s10_png_r1x1 rc=0 files=1: ========= ERROR SUMMARY: 0 errors
+memcheck s_jpg_r1x1 rc=0 files=1: ========= ERROR SUMMARY: 0 errors
+memcheck s10_jpg_r1x1 rc=0 files=1: ========= ERROR SUMMARY: 0 errors
+memcheck s_png_r1x37 rc=0 files=1: ========= ERROR SUMMARY: 0 errors
+memcheck s10_png_r1x37 rc=0 files=1: ========= ERROR SUMMARY: 0 errors
+memcheck s_jpg_r1x37 rc=0 files=1: ========= ERROR SUMMARY: 0 errors
+memcheck s10_jpg_r1x37 rc=0 files=1: ========= ERROR SUMMARY: 0 errors
+memcheck s_png_r37x1 rc=0 files=1: ========= ERROR SUMMARY: 0 errors
+memcheck s10_png_r37x1 rc=0 files=1: ========= ERROR SUMMARY: 0 errors
+memcheck s_jpg_r37x1 rc=0 files=1: ========= ERROR SUMMARY: 0 errors
+memcheck s10_jpg_r37x1 rc=0 files=1: ========= ERROR SUMMARY: 0 errors
+memcheck s_png_r2x2 rc=0 files=1: ========= ERROR SUMMARY: 0 errors
+memcheck s10_png_r2x2 rc=0 files=1: ========= ERROR SUMMARY: 0 errors
+memcheck s_jpg_r2x2 rc=0 files=1: ========= ERROR SUMMARY: 0 errors
+memcheck s10_jpg_r2x2 rc=0 files=1: ========= ERROR SUMMARY: 0 errors
+memcheck s_png_r3x3 rc=0 files=1: ========= ERROR SUMMARY: 0 errors
+memcheck s10_png_r3x3 rc=0 files=1: ========= ERROR SUMMARY: 0 errors
+memcheck s_jpg_r3x3 rc=0 files=1: ========= ERROR SUMMARY: 0 errors
+memcheck s10_jpg_r3x3 rc=0 files=1: ========= ERROR SUMMARY: 0 errors
+memcheck s_png_r65x63 rc=0 files=1: ========= ERROR SUMMARY: 0 errors
+memcheck s10_png_r65x63 rc=0 files=1: ========= ERROR SUMMARY: 0 errors
+memcheck s_jpg_r65x63 rc=0 files=1: ========= ERROR SUMMARY: 0 errors
+memcheck s10_jpg_r65x63 rc=0 files=1: ========= ERROR SUMMARY: 0 errors
+memcheck s_png_r127x129 rc=0 files=1: ========= ERROR SUMMARY: 0 errors
+memcheck s10_png_r127x129 rc=0 files=1: ========= ERROR SUMMARY: 0 errors
+memcheck s_jpg_r127x129 rc=0 files=1: ========= ERROR SUMMARY: 0 errors
+memcheck s10_jpg_r127x129 rc=0 files=1: ========= ERROR SUMMARY: 0 errors
+racecheck b_mix_t1 rc=99 files=80: ========= RACECHECK SUMMARY: 20 hazards displayed (89 errors, 0 warnings)
+racecheck b_jpg_t1 rc=99 files=20: ========= RACECHECK SUMMARY: 14 hazards displayed (14 errors, 0 warnings)
+racecheck b_png_t1 rc=99 files=20: ========= RACECHECK SUMMARY: 20 hazards displayed (47 errors, 0 warnings)
+racecheck b_mix_t2 rc=99 files=80: ========= RACECHECK SUMMARY: 20 hazards displayed (88 errors, 0 warnings)
+racecheck b_jpg_t2 rc=99 files=20: ========= RACECHECK SUMMARY: 14 hazards displayed (14 errors, 0 warnings)
+racecheck b_png_t2 rc=99 files=20: ========= RACECHECK SUMMARY: 20 hazards displayed (37 errors, 0 warnings)
+racecheck b_mix_t3 rc=99 files=80: ========= RACECHECK SUMMARY: 20 hazards displayed (65 errors, 0 warnings)
+racecheck b_jpg_t3 rc=99 files=20: ========= RACECHECK SUMMARY: 14 hazards displayed (14 errors, 0 warnings)
+racecheck b_png_t3 rc=99 files=20: ========= RACECHECK SUMMARY: 13 hazards displayed (13 errors, 0 warnings)
+racecheck b_mix_t4 rc=99 files=80: ========= RACECHECK SUMMARY: 20 hazards displayed (66 errors, 0 warnings)
+racecheck b_jpg_t4 rc=99 files=20: ========= RACECHECK SUMMARY: 14 hazards displayed (14 errors, 0 warnings)
+racecheck b_png_t4 rc=99 files=20: ========= RACECHECK SUMMARY: 14 hazards displayed (14 errors, 0 warnings)
+racecheck b_mix_t5 rc=99 files=80: ========= RACECHECK SUMMARY: 20 hazards displayed (26 errors, 0 warnings)
+racecheck b_jpg_t5 rc=99 files=20: ========= RACECHECK SUMMARY: 14 hazards displayed (14 errors, 0 warnings)
+racecheck b_png_t5 rc=99 files=20: ========= RACECHECK SUMMARY: 20 hazards displayed (51 errors, 0 warnings)
+racecheck b_mix_t6 rc=99 files=80: ========= RACECHECK SUMMARY: 20 hazards displayed (90 errors, 0 warnings)
+racecheck b_jpg_t6 rc=99 files=20: ========= RACECHECK SUMMARY: 14 hazards displayed (14 errors, 0 warnings)
+racecheck b_png_t6 rc=99 files=20: ========= RACECHECK SUMMARY: 20 hazards displayed (50 errors, 0 warnings)
+racecheck b_mix_t7 rc=99 files=80: ========= RACECHECK SUMMARY: 20 hazards displayed (68 errors, 0 warnings)
+racecheck b_jpg_t7 rc=99 files=20: ========= RACECHECK SUMMARY: 14 hazards displayed (14 errors, 0 warnings)
+racecheck b_png_t7 rc=99 files=20: ========= RACECHECK SUMMARY: 14 hazards displayed (14 errors, 0 warnings)
+racecheck b_mix_t8 rc=99 files=80: ========= RACECHECK SUMMARY: 20 hazards displayed (28 errors, 0 warnings)
+racecheck b_jpg_t8 rc=99 files=20: ========= RACECHECK SUMMARY: 14 hazards displayed (14 errors, 0 warnings)
+racecheck b_png_t8 rc=99 files=20: ========= RACECHECK SUMMARY: 14 hazards displayed (14 errors, 0 warnings)
+racecheck b_mix_t9 rc=99 files=80: ========= RACECHECK SUMMARY: 15 hazards displayed (14 errors, 1 warning)
+racecheck b_jpg_t9 rc=99 files=20: ========= RACECHECK SUMMARY: 14 hazards displayed (14 errors, 0 warnings)
+racecheck b_png_t9 rc=99 files=20: ========= RACECHECK SUMMARY: 14 hazards displayed (14 errors, 0 warnings)
+racecheck cropj_g1 rc=99 files=8: ========= RACECHECK SUMMARY: 14 hazards displayed (14 errors, 0 warnings)
+racecheck crop_g1 rc=99 files=32: ========= RACECHECK SUMMARY: 20 hazards displayed (25 errors, 0 warnings)
+racecheck cropd_g1 rc=99 files=32: ========= RACECHECK SUMMARY: 20 hazards displayed (26 errors, 0 warnings)
+racecheck cropj_g2 rc=99 files=8: ========= RACECHECK SUMMARY: 14 hazards displayed (14 errors, 0 warnings)
+racecheck crop_g2 rc=99 files=32: ========= RACECHECK SUMMARY: 20 hazards displayed (84 errors, 0 warnings)
+racecheck cropd_g2 rc=99 files=32: ========= RACECHECK SUMMARY: 20 hazards displayed (26 errors, 0 warnings)
+racecheck cropj_g3 rc=99 files=20: ========= RACECHECK SUMMARY: 14 hazards displayed (14 errors, 0 warnings)
+racecheck crop_g3 rc=99 files=80: ========= RACECHECK SUMMARY: 20 hazards displayed (26 errors, 0 warnings)
+racecheck cropd_g3 rc=99 files=80: ========= RACECHECK SUMMARY: 20 hazards displayed (27 errors, 0 warnings)
+racecheck cropj_g4 rc=99 files=5: ========= RACECHECK SUMMARY: 12 hazards displayed (12 errors, 0 warnings)
+racecheck crop_g4 rc=99 files=20: ========= RACECHECK SUMMARY: 20 hazards displayed (52 errors, 0 warnings)
+racecheck cropd_g4 rc=99 files=20: ========= RACECHECK SUMMARY: 20 hazards displayed (20 errors, 0 warnings)
+racecheck cropj_c1 rc=99 files=20: ========= RACECHECK SUMMARY: 14 hazards displayed (14 errors, 0 warnings)
+racecheck crop_c1 rc=99 files=80: ========= RACECHECK SUMMARY: 20 hazards displayed (26 errors, 0 warnings)
+racecheck cropd_c1 rc=99 files=80: ========= RACECHECK SUMMARY: 20 hazards displayed (67 errors, 0 warnings)
+racecheck cropj_c2 rc=99 files=9: ========= RACECHECK SUMMARY: 13 hazards displayed (13 errors, 0 warnings)
+racecheck crop_c2 rc=99 files=36: ========= RACECHECK SUMMARY: 20 hazards displayed (72 errors, 0 warnings)
+racecheck cropd_c2 rc=99 files=36: ========= RACECHECK SUMMARY: 20 hazards displayed (81 errors, 0 warnings)
+racecheck cropj_c3 rc=99 files=9: ========= RACECHECK SUMMARY: 13 hazards displayed (13 errors, 0 warnings)
+racecheck crop_c3 rc=99 files=36: ========= RACECHECK SUMMARY: 20 hazards displayed (87 errors, 0 warnings)
+racecheck cropd_c3 rc=99 files=36: ========= RACECHECK SUMMARY: 20 hazards displayed (59 errors, 0 warnings)
+racecheck cropj_c4 rc=99 files=5: ========= RACECHECK SUMMARY: 13 hazards displayed (13 errors, 0 warnings)
+racecheck crop_c4 rc=99 files=20: ========= RACECHECK SUMMARY: 20 hazards displayed (72 errors, 0 warnings)
+racecheck cropd_c4 rc=99 files=20: ========= RACECHECK SUMMARY: 20 hazards displayed (27 errors, 0 warnings)
+racecheck cropj_c5 rc=99 files=3: ========= RACECHECK SUMMARY: 14 hazards displayed (14 errors, 0 warnings)
+racecheck crop_c5 rc=99 files=12: ========= RACECHECK SUMMARY: 20 hazards displayed (24 errors, 0 warnings)
+racecheck cropd_c5 rc=99 files=12: ========= RACECHECK SUMMARY: 20 hazards displayed (25 errors, 0 warnings)
+racecheck cropj_c6 rc=99 files=3: ========= RACECHECK SUMMARY: 12 hazards displayed (12 errors, 0 warnings)
+racecheck crop_c6 rc=99 files=12: ========= RACECHECK SUMMARY: 20 hazards displayed (22 errors, 0 warnings)
+racecheck cropd_c6 rc=99 files=12: ========= RACECHECK SUMMARY: 20 hazards displayed (21 errors, 0 warnings)
+racecheck cropj_c7 rc=99 files=5: ========= RACECHECK SUMMARY: 10 hazards displayed (10 errors, 0 warnings)
+racecheck crop_c7 rc=99 files=20: ========= RACECHECK SUMMARY: 20 hazards displayed (58 errors, 0 warnings)
+racecheck cropd_c7 rc=99 files=20: ========= RACECHECK SUMMARY: 20 hazards displayed (42 errors, 0 warnings)
+synccheck b_mix_t1 rc=0 files=80: ========= ERROR SUMMARY: 0 errors
+synccheck b_jpg_t1 rc=0 files=20: ========= ERROR SUMMARY: 0 errors
+synccheck b_png_t1 rc=0 files=20: ========= ERROR SUMMARY: 0 errors
+synccheck b_mix_t2 rc=0 files=80: ========= ERROR SUMMARY: 0 errors
+synccheck b_jpg_t2 rc=0 files=20: ========= ERROR SUMMARY: 0 errors
+synccheck b_png_t2 rc=0 files=20: ========= ERROR SUMMARY: 0 errors
+synccheck b_mix_t3 rc=0 files=80: ========= ERROR SUMMARY: 0 errors
+synccheck b_jpg_t3 rc=0 files=20: ========= ERROR SUMMARY: 0 errors
+synccheck b_png_t3 rc=0 files=20: ========= ERROR SUMMARY: 0 errors
+synccheck b_mix_t4 rc=0 files=80: ========= ERROR SUMMARY: 0 errors
+synccheck b_jpg_t4 rc=0 files=20: ========= ERROR SUMMARY: 0 errors
+synccheck b_png_t4 rc=0 files=20: ========= ERROR SUMMARY: 0 errors
+synccheck b_mix_t5 rc=0 files=80: ========= ERROR SUMMARY: 0 errors
+synccheck b_jpg_t5 rc=0 files=20: ========= ERROR SUMMARY: 0 errors
+synccheck b_png_t5 rc=0 files=20: ========= ERROR SUMMARY: 0 errors
+synccheck b_mix_t6 rc=0 files=80: ========= ERROR SUMMARY: 0 errors
+synccheck b_jpg_t6 rc=0 files=20: ========= ERROR SUMMARY: 0 errors
+synccheck b_png_t6 rc=0 files=20: ========= ERROR SUMMARY: 0 errors
+synccheck b_mix_t7 rc=0 files=80: ========= ERROR SUMMARY: 0 errors
+synccheck b_jpg_t7 rc=0 files=20: ========= ERROR SUMMARY: 0 errors
+synccheck b_png_t7 rc=0 files=20: ========= ERROR SUMMARY: 0 errors
+synccheck b_mix_t8 rc=0 files=80: ========= ERROR SUMMARY: 0 errors
+synccheck b_jpg_t8 rc=0 files=20: ========= ERROR SUMMARY: 0 errors
+synccheck b_png_t8 rc=0 files=20: ========= ERROR SUMMARY: 0 errors
+synccheck b_mix_t9 rc=0 files=80: ========= ERROR SUMMARY: 0 errors
+synccheck b_jpg_t9 rc=0 files=20: ========= ERROR SUMMARY: 0 errors
+synccheck b_png_t9 rc=0 files=20: ========= ERROR SUMMARY: 0 errors
+SAN3_DONE

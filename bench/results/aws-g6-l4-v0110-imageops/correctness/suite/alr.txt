@@ -1,0 +1,9 @@
+image | true RGB range | magick -auto-level output range | planes 4:4:4 range | planes 4:2:0 range | av1gpu Y range 4:2:0 / magick luma range
+page_comics_americasgreatest1941_p true 0..244  magick out 0..255  444 0.0..244.7  420 0.0..235.7  mean |dY| 4.05
+page_comics_americasgreatest1941_p true 2..226  magick out 0..255  444 1.7..225.5  420 1.7..242.1  mean |dY| 9.68
+page_comics_americasgreatest1941_p true 4..238  magick out 0..255  444 3.9..237.2  420 2.4..237.8  mean |dY| 0.99
+page_comics_americasgreatest1941_p true 0..232  magick out 0..255  444 0.0..232.7  420 0.0..239.1  mean |dY| 4.00
+page_comics_americasgreatest1941_p true 0..232  magick out 0..255  444 0.0..232.3  420 0.9..238.9  mean |dY| 4.53
+page_comics_americasgreatest1941_p true 3..237  magick out 0..255  444 1.9..236.4  420 0.0..231.8  mean |dY| 4.43
+lineart.png                        true 20..255  magick out 0..255  444 19.1..255.0  420 0.0..255.0  mean |dY| 0.83
+cfl_edge_211x149.png               true 1..82  magick out 0..255  444 0.2..82.1  420 0.0..80.7  mean |dY| 3.60

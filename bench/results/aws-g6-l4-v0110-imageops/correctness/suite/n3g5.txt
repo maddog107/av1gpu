@@ -1,0 +1,51 @@
+=== N3: does each operation change alpha on an RGBA PNG (real magick)?
+source alpha at x=0,30,60,90,119: [0, 64, 128, 192, 255]
+-negate                                    alpha exactly inverted; alpha at x=0,30,60,90,119: [255, 191, 127, 63, 0]; RGB under alpha 255 column changed: 1
+-channel RGB -negate +channel              alpha unchanged; alpha at x=0,30,60,90,119: [0, 64, 128, 192, 255]; RGB under alpha 255 column changed: 1
+-level 10%,90%                             alpha changed; alpha at x=0,30,60,90,119: [0, 48, 128, 208, 255]; RGB under alpha 255 column changed: 1
+-channel RGB -level 10%,90% +channel       alpha unchanged; alpha at x=0,30,60,90,119: [0, 64, 128, 192, 255]; RGB under alpha 255 column changed: 1
+-gamma 2                                   alpha changed; alpha at x=0,30,60,90,119: [0, 128, 181, 221, 255]; RGB under alpha 255 column changed: 1
+-channel RGB -gamma 2 +channel             alpha unchanged; alpha at x=0,30,60,90,119: [0, 64, 128, 192, 255]; RGB under alpha 255 column changed: 1
+-auto-level                                alpha unchanged; alpha at x=0,30,60,90,119: [0, 64, 128, 192, 255]; RGB under alpha 255 column changed: 0
+-channel RGB -auto-level +channel          alpha unchanged; alpha at x=0,30,60,90,119: [0, 64, 128, 192, 255]; RGB under alpha 255 column changed: 0
+-grayscale Rec709Luma                      alpha unchanged; alpha at x=0,30,60,90,119: [0, 64, 128, 192, 255]; RGB under alpha 255 column changed: 1
+-colorspace Gray                           alpha unchanged; alpha at x=0,30,60,90,119: [0, 64, 128, 192, 255]; RGB under alpha 255 column changed: 1
+--- the same via the kernels report's one-liner: magick rgba.png -negate -alpha extract a.png
+alpha image, pixel x=0: gray(255), x=119: gray(0)
+--- av1gpu on the same file (--lossless, exact): alpha after each operation
+--negate alpha unchanged
+--level 10%,90% alpha unchanged
+--gamma 2 alpha unchanged
+--auto-level alpha unchanged
+--grayscale Rec709Luma alpha unchanged
+=== G5: which filter real magick picks (-define filter:verbose=1)
+rgba.png -resize 50%: filter = Cubic window = Box window-support = 2 practical-support = 2 B,C = 0.333333,0.333333 
+rgba.png -resize 200%: filter = Cubic window = Box window-support = 2 practical-support = 2 B,C = 0.333333,0.333333 
+rgba.png -resize 100x100!: filter = Cubic window = Box window-support = 2 practical-support = 2 B,C = 0.333333,0.333333 
+rgb.png -resize 50%: filter = SincFast window = SincFast window-support = 3 practical-support = 3 
+rgb.png -resize 200%: filter = Cubic window = Box window-support = 2 practical-support = 2 B,C = 0.333333,0.333333 
+rgb.png -resize 100x100!: filter = Cubic window = Box window-support = 2 practical-support = 2 B,C = 0.333333,0.333333 
+gray.png -resize 50%: filter = Cubic window = Box window-support = 2 practical-support = 2 B,C = 0.333333,0.333333 
+gray.png -resize 200%: filter = Cubic window = Box window-support = 2 practical-support = 2 B,C = 0.333333,0.333333 
+gray.png -resize 100x100!: filter = Cubic window = Box window-support = 2 practical-support = 2 B,C = 0.333333,0.333333 
+pal.png -resize 50%: filter = Cubic window = Box window-support = 2 practical-support = 2 B,C = 0.333333,0.333333 
+pal.png -resize 200%: filter = Cubic window = Box window-support = 2 practical-support = 2 B,C = 0.333333,0.333333 
+pal.png -resize 100x100!: filter = Cubic window = Box window-support = 2 practical-support = 2 B,C = 0.333333,0.333333 
+c.jpg -resize 50%: filter = SincFast window = SincFast window-support = 3 practical-support = 3 
+c.jpg -resize 200%: filter = Cubic window = Box window-support = 2 practical-support = 2 B,C = 0.333333,0.333333 
+c.jpg -resize 100x100!: filter = Cubic window = Box window-support = 2 practical-support = 2 B,C = 0.333333,0.333333 
+g.jpg -resize 50%: filter = Cubic window = Box window-support = 2 practical-support = 2 B,C = 0.333333,0.333333 
+g.jpg -resize 200%: filter = Cubic window = Box window-support = 2 practical-support = 2 B,C = 0.333333,0.333333 
+g.jpg -resize 100x100!: filter = Cubic window = Box window-support = 2 practical-support = 2 B,C = 0.333333,0.333333 
+rgba.png class=DirectClass sRGB Alpha channels=srgba 4.0
+rgb.png class=DirectClass sRGB  channels=srgb  3.0
+gray.png class=PseudoClass Gray  channels=gray  2.0
+pal.png class=PseudoClass sRGB  channels=srgb  4.0
+c.jpg class=DirectClass sRGB  channels=srgb  3.0
+g.jpg class=PseudoClass Gray  channels=gray  2.0
+--- the luma gap that makes: --resize 50% vs magick, RGBA / gray / palette / RGB PNG (mean abs. luma, 8-bit)
+p_rgb mean 0.147 max 1.0
+p_rgba mean 0.146 max 1.0
+p_gray mean 1.833 max 22.0
+p_pal mean 1.815 max 20.0
+N3G5_DONE

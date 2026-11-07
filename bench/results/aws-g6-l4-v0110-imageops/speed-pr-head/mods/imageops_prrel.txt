@@ -1,0 +1,8 @@
+k_imageops.sm_100.cubin
+k_imageops.sm_120.cubin
+k_imageops.sm_120.ptx
+k_imageops.sm_75.cubin
+k_imageops.sm_80.cubin
+k_imageops.sm_86.cubin
+k_imageops.sm_89.cubin
+k_imageops.sm_90.cubin

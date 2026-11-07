@@ -1,0 +1,864 @@
+{"wall": 359.2634159977024, "case": "photo_2.5MP", "spec": "R", "rnd": 0}
+{"wall": 359.36501900141593, "case": "photo_2.5MP", "spec": "Rc", "rnd": 0}
+{"wall": 359.65228300119634, "case": "photo_2.5MP", "spec": "M", "rnd": 0}
+{"wall": 369.0289549995214, "case": "photo_2.5MP", "spec": "Q", "rnd": 0}
+{"wall": 370.0639089984179, "case": "photo_2.5MP", "spec": "R", "rnd": 1}
+{"wall": 361.9473389990162, "case": "photo_2.5MP", "spec": "Q", "rnd": 1}
+{"wall": 366.2411109980894, "case": "photo_2.5MP", "spec": "M", "rnd": 1}
+{"wall": 366.1904099972162, "case": "photo_2.5MP", "spec": "Rc", "rnd": 1}
+{"wall": 356.2502700006007, "case": "photo_2.5MP", "spec": "M", "rnd": 2}
+{"wall": 370.1625570029137, "case": "photo_2.5MP", "spec": "Q", "rnd": 2}
+{"wall": 367.80069100132096, "case": "photo_2.5MP", "spec": "R", "rnd": 2}
+{"wall": 364.2771739978343, "case": "photo_2.5MP", "spec": "Rc", "rnd": 2}
+{"wall": 358.1763070033048, "case": "photo_2.5MP", "spec": "M", "rnd": 3}
+{"wall": 369.7295480014873, "case": "photo_2.5MP", "spec": "Rc", "rnd": 3}
+{"wall": 365.4611250021844, "case": "photo_2.5MP", "spec": "R", "rnd": 3}
+{"wall": 363.87248600294697, "case": "photo_2.5MP", "spec": "Q", "rnd": 3}
+{"wall": 378.7427600000228, "case": "photo_2.5MP", "spec": "R", "rnd": 4}
+{"wall": 372.9269989999011, "case": "photo_2.5MP", "spec": "Rc", "rnd": 4}
+{"wall": 360.49382100100047, "case": "photo_2.5MP", "spec": "M", "rnd": 4}
+{"wall": 365.7270410003548, "case": "photo_2.5MP", "spec": "Q", "rnd": 4}
+{"wall": 369.90846100161434, "case": "photo_2.5MP", "spec": "R", "rnd": 5}
+{"wall": 359.5120530007989, "case": "photo_2.5MP", "spec": "Q", "rnd": 5}
+{"wall": 369.8571510030888, "case": "photo_2.5MP", "spec": "M", "rnd": 5}
+{"wall": 361.0595509999257, "case": "photo_2.5MP", "spec": "Rc", "rnd": 5}
+{"wall": 364.5257380012481, "case": "photo_2.5MP", "spec": "M", "rnd": 6}
+{"wall": 370.1327359995048, "case": "photo_2.5MP", "spec": "Q", "rnd": 6}
+{"wall": 362.83442500280216, "case": "photo_2.5MP", "spec": "R", "rnd": 6}
+{"wall": 362.5494809966767, "case": "photo_2.5MP", "spec": "Rc", "rnd": 6}
+{"wall": 357.838060001086, "case": "photo_2.5MP", "spec": "M", "rnd": 7}
+{"wall": 369.5963549980661, "case": "photo_2.5MP", "spec": "Rc", "rnd": 7}
+{"wall": 359.7589370001515, "case": "photo_2.5MP", "spec": "R", "rnd": 7}
+{"wall": 361.81043599935947, "case": "photo_2.5MP", "spec": "Q", "rnd": 7}
+{"wall": 363.41481700219447, "case": "photo_2.5MP", "spec": "R", "rnd": 8}
+{"wall": 365.99276600099984, "case": "photo_2.5MP", "spec": "Rc", "rnd": 8}
+{"wall": 356.4734240026155, "case": "photo_2.5MP", "spec": "M", "rnd": 8}
+{"wall": 372.58110200127703, "case": "photo_2.5MP", "spec": "Q", "rnd": 8}
+{"wall": 366.70955999943544, "case": "photo_2.5MP", "spec": "R", "rnd": 9}
+{"wall": 377.22563199713477, "case": "photo_2.5MP", "spec": "Q", "rnd": 9}
+{"wall": 358.7988889994449, "case": "photo_2.5MP", "spec": "M", "rnd": 9}
+{"wall": 363.60269100259757, "case": "photo_2.5MP", "spec": "Rc", "rnd": 9}
+{"wall": 362.6797729993996, "case": "photo_2.5MP", "spec": "M", "rnd": 10}
+{"wall": 374.2240630017477, "case": "photo_2.5MP", "spec": "Q", "rnd": 10}
+{"wall": 372.28073599908384, "case": "photo_2.5MP", "spec": "R", "rnd": 10}
+{"wall": 350.65295299864374, "case": "photo_2.5MP", "spec": "Rc", "rnd": 10}
+{"wall": 364.63538099997095, "case": "photo_2.5MP", "spec": "M", "rnd": 11}
+{"wall": 361.6320529981749, "case": "photo_2.5MP", "spec": "Rc", "rnd": 11}
+{"wall": 359.9832419968152, "case": "photo_2.5MP", "spec": "R", "rnd": 11}
+{"wall": 361.56061200017575, "case": "photo_2.5MP", "spec": "Q", "rnd": 11}
+{"wall": 359.3570099983481, "case": "photo_2.5MP", "spec": "R", "rnd": 12}
+{"wall": 363.0755459998909, "case": "photo_2.5MP", "spec": "Rc", "rnd": 12}
+{"wall": 355.3711229978944, "case": "photo_2.5MP", "spec": "M", "rnd": 12}
+{"wall": 360.63503400146146, "case": "photo_2.5MP", "spec": "Q", "rnd": 12}
+{"wall": 353.58406599698355, "case": "photo_2.5MP", "spec": "R", "rnd": 13}
+{"wall": 363.0465349997394, "case": "photo_2.5MP", "spec": "Q", "rnd": 13}
+{"wall": 358.9346980006667, "case": "photo_2.5MP", "spec": "M", "rnd": 13}
+{"wall": 367.5936109975737, "case": "photo_2.5MP", "spec": "Rc", "rnd": 13}
+{"wall": 358.16501199951745, "case": "photo_2.5MP", "spec": "M", "rnd": 14}
+{"wall": 361.1712150013773, "case": "photo_2.5MP", "spec": "Q", "rnd": 14}
+{"wall": 367.8387760010082, "case": "photo_2.5MP", "spec": "R", "rnd": 14}
+{"wall": 364.4309629999043, "case": "photo_2.5MP", "spec": "Rc", "rnd": 14}
+{"wall": 360.3504380007507, "case": "photo_2.5MP", "spec": "M", "rnd": 15}
+{"wall": 362.1040449979773, "case": "photo_2.5MP", "spec": "Rc", "rnd": 15}
+{"wall": 365.51024700020207, "case": "photo_2.5MP", "spec": "R", "rnd": 15}
+{"wall": 366.29347299822257, "case": "photo_2.5MP", "spec": "Q", "rnd": 15}
+{"wall": 360.46833000000333, "case": "photo_2.5MP", "spec": "R", "rnd": 16}
+{"wall": 358.265193997795, "case": "photo_2.5MP", "spec": "Rc", "rnd": 16}
+{"wall": 359.05047000051127, "case": "photo_2.5MP", "spec": "M", "rnd": 16}
+{"wall": 369.58178200075054, "case": "photo_2.5MP", "spec": "Q", "rnd": 16}
+{"wall": 375.68578100035666, "case": "photo_2.5MP", "spec": "R", "rnd": 17}
+{"wall": 372.7203579983325, "case": "photo_2.5MP", "spec": "Q", "rnd": 17}
+{"wall": 375.34523399881436, "case": "photo_2.5MP", "spec": "M", "rnd": 17}
+{"wall": 357.48294799850555, "case": "photo_2.5MP", "spec": "Rc", "rnd": 17}
+{"wall": 368.17063199850963, "case": "photo_2.5MP", "spec": "M", "rnd": 18}
+{"wall": 369.6560739990673, "case": "photo_2.5MP", "spec": "Q", "rnd": 18}
+{"wall": 368.84600700068404, "case": "photo_2.5MP", "spec": "R", "rnd": 18}
+{"wall": 374.3840939969232, "case": "photo_2.5MP", "spec": "Rc", "rnd": 18}
+{"wall": 365.94820599930244, "case": "photo_2.5MP", "spec": "M", "rnd": 19}
+{"wall": 367.64201299956767, "case": "photo_2.5MP", "spec": "Rc", "rnd": 19}
+{"wall": 357.15372399863554, "case": "photo_2.5MP", "spec": "R", "rnd": 19}
+{"wall": 357.0453229986015, "case": "photo_2.5MP", "spec": "Q", "rnd": 19}
+{"wall": 354.5955080007843, "case": "photo_2.5MP", "spec": "R", "rnd": 20}
+{"wall": 366.5607269977045, "case": "photo_2.5MP", "spec": "Rc", "rnd": 20}
+{"wall": 354.50538599980064, "case": "photo_2.5MP", "spec": "M", "rnd": 20}
+{"wall": 367.6268569979584, "case": "photo_2.5MP", "spec": "Q", "rnd": 20}
+{"wall": 361.00072499903035, "case": "photo_2.5MP", "spec": "R", "rnd": 21}
+{"wall": 365.87194399908185, "case": "photo_2.5MP", "spec": "Q", "rnd": 21}
+{"wall": 355.58002600009786, "case": "photo_2.5MP", "spec": "M", "rnd": 21}
+{"wall": 355.71108699878096, "case": "photo_2.5MP", "spec": "Rc", "rnd": 21}
+{"wall": 364.88402600298286, "case": "photo_2.5MP", "spec": "M", "rnd": 22}
+{"wall": 357.60921300243353, "case": "photo_2.5MP", "spec": "Q", "rnd": 22}
+{"wall": 356.01310299898614, "case": "photo_2.5MP", "spec": "R", "rnd": 22}
+{"wall": 348.3630929986248, "case": "photo_2.5MP", "spec": "Rc", "rnd": 22}
+{"wall": 353.25670299789635, "case": "photo_2.5MP", "spec": "M", "rnd": 23}
+{"wall": 394.3311189977976, "case": "photo_2.5MP", "spec": "Rc", "rnd": 23}
+{"wall": 359.9008679993858, "case": "photo_2.5MP", "spec": "R", "rnd": 23}
+{"wall": 361.9161329988856, "case": "photo_2.5MP", "spec": "Q", "rnd": 23}
+{"wall": 489.8361539999314, "case": "big_10.5MP", "spec": "R", "rnd": 0}
+{"wall": 483.11958100021, "case": "big_10.5MP", "spec": "Rc", "rnd": 0}
+{"wall": 471.194416997605, "case": "big_10.5MP", "spec": "M", "rnd": 0}
+{"wall": 474.4764969982498, "case": "big_10.5MP", "spec": "Q", "rnd": 0}
+{"wall": 488.052056000015, "case": "big_10.5MP", "spec": "R", "rnd": 1}
+{"wall": 480.82269899896346, "case": "big_10.5MP", "spec": "Q", "rnd": 1}
+{"wall": 486.41178899924853, "case": "big_10.5MP", "spec": "M", "rnd": 1}
+{"wall": 476.82769899984123, "case": "big_10.5MP", "spec": "Rc", "rnd": 1}
+{"wall": 474.64288800256327, "case": "big_10.5MP", "spec": "M", "rnd": 2}
+{"wall": 473.86344200276653, "case": "big_10.5MP", "spec": "Q", "rnd": 2}
+{"wall": 488.691173002735, "case": "big_10.5MP", "spec": "R", "rnd": 2}
+{"wall": 480.6081799979438, "case": "big_10.5MP", "spec": "Rc", "rnd": 2}
+{"wall": 474.0163250025944, "case": "big_10.5MP", "spec": "M", "rnd": 3}
+{"wall": 476.90661100205034, "case": "big_10.5MP", "spec": "Rc", "rnd": 3}
+{"wall": 476.27017899867496, "case": "big_10.5MP", "spec": "R", "rnd": 3}
+{"wall": 472.84894100084784, "case": "big_10.5MP", "spec": "Q", "rnd": 3}
+{"wall": 476.02993399777915, "case": "big_10.5MP", "spec": "R", "rnd": 4}
+{"wall": 476.25059799975134, "case": "big_10.5MP", "spec": "Rc", "rnd": 4}
+{"wall": 475.7193080004072, "case": "big_10.5MP", "spec": "M", "rnd": 4}
+{"wall": 469.2285249984707, "case": "big_10.5MP", "spec": "Q", "rnd": 4}
+{"wall": 469.21765500155743, "case": "big_10.5MP", "spec": "R", "rnd": 5}
+{"wall": 475.1732570002787, "case": "big_10.5MP", "spec": "Q", "rnd": 5}
+{"wall": 481.3582550013962, "case": "big_10.5MP", "spec": "M", "rnd": 5}
+{"wall": 477.21893599737086, "case": "big_10.5MP", "spec": "Rc", "rnd": 5}
+{"wall": 484.558565000043, "case": "big_10.5MP", "spec": "M", "rnd": 6}
+{"wall": 477.8752180027368, "case": "big_10.5MP", "spec": "Q", "rnd": 6}
+{"wall": 481.42669499793556, "case": "big_10.5MP", "spec": "R", "rnd": 6}
+{"wall": 473.0610020014865, "case": "big_10.5MP", "spec": "Rc", "rnd": 6}
+{"wall": 473.717247001332, "case": "big_10.5MP", "spec": "M", "rnd": 7}
+{"wall": 468.42241800186457, "case": "big_10.5MP", "spec": "Rc", "rnd": 7}
+{"wall": 482.5249850000546, "case": "big_10.5MP", "spec": "R", "rnd": 7}
+{"wall": 482.7507509980933, "case": "big_10.5MP", "spec": "Q", "rnd": 7}
+{"wall": 471.12063900203793, "case": "big_10.5MP", "spec": "R", "rnd": 8}
+{"wall": 471.91604600084247, "case": "big_10.5MP", "spec": "Rc", "rnd": 8}
+{"wall": 471.50224600045476, "case": "big_10.5MP", "spec": "M", "rnd": 8}
+{"wall": 470.719298999029, "case": "big_10.5MP", "spec": "Q", "rnd": 8}
+{"wall": 472.647043003235, "case": "big_10.5MP", "spec": "R", "rnd": 9}
+{"wall": 481.23812600169913, "case": "big_10.5MP", "spec": "Q", "rnd": 9}
+{"wall": 482.60408799978904, "case": "big_10.5MP", "spec": "M", "rnd": 9}
+{"wall": 470.07801499785273, "case": "big_10.5MP", "spec": "Rc", "rnd": 9}
+{"wall": 465.7901380014664, "case": "big_10.5MP", "spec": "M", "rnd": 10}
+{"wall": 469.78066799783846, "case": "big_10.5MP", "spec": "Q", "rnd": 10}
+{"wall": 492.1407010006078, "case": "big_10.5MP", "spec": "R", "rnd": 10}
+{"wall": 476.1965500001679, "case": "big_10.5MP", "spec": "Rc", "rnd": 10}
+{"wall": 473.8178629995673, "case": "big_10.5MP", "spec": "M", "rnd": 11}
+{"wall": 481.6019159989082, "case": "big_10.5MP", "spec": "Rc", "rnd": 11}
+{"wall": 475.0499170004332, "case": "big_10.5MP", "spec": "R", "rnd": 11}
+{"wall": 475.81261199957225, "case": "big_10.5MP", "spec": "Q", "rnd": 11}
+{"wall": 476.83870299806586, "case": "big_10.5MP", "spec": "R", "rnd": 12}
+{"wall": 472.0256380023784, "case": "big_10.5MP", "spec": "Rc", "rnd": 12}
+{"wall": 469.2998440004885, "case": "big_10.5MP", "spec": "M", "rnd": 12}
+{"wall": 478.6792779996176, "case": "big_10.5MP", "spec": "Q", "rnd": 12}
+{"wall": 474.440065001545, "case": "big_10.5MP", "spec": "R", "rnd": 13}
+{"wall": 473.03621800165274, "case": "big_10.5MP", "spec": "Q", "rnd": 13}
+{"wall": 475.0182269999641, "case": "big_10.5MP", "spec": "M", "rnd": 13}
+{"wall": 482.9980530012108, "case": "big_10.5MP", "spec": "Rc", "rnd": 13}
+{"wall": 485.1548549995641, "case": "big_10.5MP", "spec": "M", "rnd": 14}
+{"wall": 476.0304269984772, "case": "big_10.5MP", "spec": "Q", "rnd": 14}
+{"wall": 518.5275190015091, "case": "big_10.5MP", "spec": "R", "rnd": 14}
+{"wall": 469.03716899760184, "case": "big_10.5MP", "spec": "Rc", "rnd": 14}
+{"wall": 471.7106420030177, "case": "big_10.5MP", "spec": "M", "rnd": 15}
+{"wall": 467.24502600045525, "case": "big_10.5MP", "spec": "Rc", "rnd": 15}
+{"wall": 477.23838399906526, "case": "big_10.5MP", "spec": "R", "rnd": 15}
+{"wall": 478.8635469994915, "case": "big_10.5MP", "spec": "Q", "rnd": 15}
+{"wall": 476.9276679980976, "case": "big_10.5MP", "spec": "R", "rnd": 16}
+{"wall": 468.5066990023188, "case": "big_10.5MP", "spec": "Rc", "rnd": 16}
+{"wall": 489.60974199872, "case": "big_10.5MP", "spec": "M", "rnd": 16}
+{"wall": 477.2510839975439, "case": "big_10.5MP", "spec": "Q", "rnd": 16}
+{"wall": 483.4042969996517, "case": "big_10.5MP", "spec": "R", "rnd": 17}
+{"wall": 479.06196099938825, "case": "big_10.5MP", "spec": "Q", "rnd": 17}
+{"wall": 479.3071050007711, "case": "big_10.5MP", "spec": "M", "rnd": 17}
+{"wall": 484.1493729982176, "case": "big_10.5MP", "spec": "Rc", "rnd": 17}
+{"wall": 475.66769200057024, "case": "big_10.5MP", "spec": "M", "rnd": 18}
+{"wall": 482.1922929986613, "case": "big_10.5MP", "spec": "Q", "rnd": 18}
+{"wall": 472.3137360015244, "case": "big_10.5MP", "spec": "R", "rnd": 18}
+{"wall": 479.0339000028325, "case": "big_10.5MP", "spec": "Rc", "rnd": 18}
+{"wall": 477.03983999963384, "case": "big_10.5MP", "spec": "M", "rnd": 19}
+{"wall": 483.31928600237006, "case": "big_10.5MP", "spec": "Rc", "rnd": 19}
+{"wall": 475.02746999816736, "case": "big_10.5MP", "spec": "R", "rnd": 19}
+{"wall": 482.0259400003124, "case": "big_10.5MP", "spec": "Q", "rnd": 19}
+{"wall": 475.74091400019825, "case": "big_10.5MP", "spec": "R", "rnd": 20}
+{"wall": 472.2325639995688, "case": "big_10.5MP", "spec": "Rc", "rnd": 20}
+{"wall": 471.729773998959, "case": "big_10.5MP", "spec": "M", "rnd": 20}
+{"wall": 480.4276979994029, "case": "big_10.5MP", "spec": "Q", "rnd": 20}
+{"wall": 486.59527099880506, "case": "big_10.5MP", "spec": "R", "rnd": 21}
+{"wall": 470.94014799949946, "case": "big_10.5MP", "spec": "Q", "rnd": 21}
+{"wall": 487.17019299874664, "case": "big_10.5MP", "spec": "M", "rnd": 21}
+{"wall": 470.8080050004355, "case": "big_10.5MP", "spec": "Rc", "rnd": 21}
+{"wall": 484.57138999947347, "case": "big_10.5MP", "spec": "M", "rnd": 22}
+{"wall": 468.98028800205793, "case": "big_10.5MP", "spec": "Q", "rnd": 22}
+{"wall": 484.2644550008117, "case": "big_10.5MP", "spec": "R", "rnd": 22}
+{"wall": 476.6513730028237, "case": "big_10.5MP", "spec": "Rc", "rnd": 22}
+{"wall": 470.7580050016986, "case": "big_10.5MP", "spec": "M", "rnd": 23}
+{"wall": 487.67539400068927, "case": "big_10.5MP", "spec": "Rc", "rnd": 23}
+{"wall": 470.4892980007571, "case": "big_10.5MP", "spec": "R", "rnd": 23}
+{"wall": 476.3737580033194, "case": "big_10.5MP", "spec": "Q", "rnd": 23}
+{"wall": 351.06777499822783, "case": "d512", "spec": "R", "rnd": 0}
+{"wall": 359.85348299800535, "case": "d512", "spec": "Rc", "rnd": 0}
+{"wall": 347.54718499971204, "case": "d512", "spec": "M", "rnd": 0}
+{"wall": 354.009415001201, "case": "d512", "spec": "Q", "rnd": 0}
+{"wall": 346.1689479991037, "case": "d512", "spec": "R", "rnd": 1}
+{"wall": 351.434882999456, "case": "d512", "spec": "Q", "rnd": 1}
+{"wall": 354.7248100003344, "case": "d512", "spec": "M", "rnd": 1}
+{"wall": 343.0903150001541, "case": "d512", "spec": "Rc", "rnd": 1}
+{"wall": 347.2897499996179, "case": "d512", "spec": "M", "rnd": 2}
+{"wall": 354.8568129990599, "case": "d512", "spec": "Q", "rnd": 2}
+{"wall": 355.4493640003784, "case": "d512", "spec": "R", "rnd": 2}
+{"wall": 355.3066709973791, "case": "d512", "spec": "Rc", "rnd": 2}
+{"wall": 354.14030899846694, "case": "d512", "spec": "M", "rnd": 3}
+{"wall": 350.86519199830946, "case": "d512", "spec": "Rc", "rnd": 3}
+{"wall": 358.2344110000122, "case": "d512", "spec": "R", "rnd": 3}
+{"wall": 351.3256309997814, "case": "d512", "spec": "Q", "rnd": 3}
+{"wall": 343.65131599770393, "case": "d512", "spec": "R", "rnd": 4}
+{"wall": 352.7614199992968, "case": "d512", "spec": "Rc", "rnd": 4}
+{"wall": 346.6049260023283, "case": "d512", "spec": "M", "rnd": 4}
+{"wall": 347.485284000868, "case": "d512", "spec": "Q", "rnd": 4}
+{"wall": 358.9345639993553, "case": "d512", "spec": "R", "rnd": 5}
+{"wall": 365.6672910001362, "case": "d512", "spec": "Q", "rnd": 5}
+{"wall": 357.20677000063006, "case": "d512", "spec": "M", "rnd": 5}
+{"wall": 358.8617629975488, "case": "d512", "spec": "Rc", "rnd": 5}
+{"wall": 357.45661499822745, "case": "d512", "spec": "M", "rnd": 6}
+{"wall": 354.0205050012446, "case": "d512", "spec": "Q", "rnd": 6}
+{"wall": 358.06032699838397, "case": "d512", "spec": "R", "rnd": 6}
+{"wall": 360.8526830030314, "case": "d512", "spec": "Rc", "rnd": 6}
+{"wall": 357.5563670019619, "case": "d512", "spec": "M", "rnd": 7}
+{"wall": 348.6364769996726, "case": "d512", "spec": "Rc", "rnd": 7}
+{"wall": 366.566218999651, "case": "d512", "spec": "R", "rnd": 7}
+{"wall": 358.23694999999134, "case": "d512", "spec": "Q", "rnd": 7}
+{"wall": 347.5897059979616, "case": "d512", "spec": "R", "rnd": 8}
+{"wall": 388.30581699949107, "case": "d512", "spec": "Rc", "rnd": 8}
+{"wall": 348.5042840002279, "case": "d512", "spec": "M", "rnd": 8}
+{"wall": 349.4497229985427, "case": "d512", "spec": "Q", "rnd": 8}
+{"wall": 348.10551699774805, "case": "d512", "spec": "R", "rnd": 9}
+{"wall": 347.6243559998693, "case": "d512", "spec": "Q", "rnd": 9}
+{"wall": 349.42518299794756, "case": "d512", "spec": "M", "rnd": 9}
+{"wall": 355.04587499963236, "case": "d512", "spec": "Rc", "rnd": 9}
+{"wall": 359.08207399916137, "case": "d512", "spec": "M", "rnd": 10}
+{"wall": 353.528710998944, "case": "d512", "spec": "Q", "rnd": 10}
+{"wall": 353.2390350010246, "case": "d512", "spec": "R", "rnd": 10}
+{"wall": 347.4020100002235, "case": "d512", "spec": "Rc", "rnd": 10}
+{"wall": 358.28077500264044, "case": "d512", "spec": "M", "rnd": 11}
+{"wall": 358.2075839985919, "case": "d512", "spec": "Rc", "rnd": 11}
+{"wall": 349.0378429996781, "case": "d512", "spec": "R", "rnd": 11}
+{"wall": 362.2061330024735, "case": "d512", "spec": "Q", "rnd": 11}
+{"wall": 357.2450140018191, "case": "d512", "spec": "R", "rnd": 12}
+{"wall": 344.6124050024082, "case": "d512", "spec": "Rc", "rnd": 12}
+{"wall": 352.2707270021783, "case": "d512", "spec": "M", "rnd": 12}
+{"wall": 365.94533599782153, "case": "d512", "spec": "Q", "rnd": 12}
+{"wall": 361.0906399990199, "case": "d512", "spec": "R", "rnd": 13}
+{"wall": 347.5282529980177, "case": "d512", "spec": "Q", "rnd": 13}
+{"wall": 351.74301600272884, "case": "d512", "spec": "M", "rnd": 13}
+{"wall": 360.7481730032305, "case": "d512", "spec": "Rc", "rnd": 13}
+{"wall": 351.6240940007265, "case": "d512", "spec": "M", "rnd": 14}
+{"wall": 359.3655260010564, "case": "d512", "spec": "Q", "rnd": 14}
+{"wall": 358.8051850019838, "case": "d512", "spec": "R", "rnd": 14}
+{"wall": 360.14145099761663, "case": "d512", "spec": "Rc", "rnd": 14}
+{"wall": 354.73792500124546, "case": "d512", "spec": "M", "rnd": 15}
+{"wall": 349.1214540008514, "case": "d512", "spec": "Rc", "rnd": 15}
+{"wall": 352.77000600035535, "case": "d512", "spec": "R", "rnd": 15}
+{"wall": 346.97754300214, "case": "d512", "spec": "Q", "rnd": 15}
+{"wall": 353.4398890005832, "case": "d512", "spec": "R", "rnd": 16}
+{"wall": 348.2664479997766, "case": "d512", "spec": "Rc", "rnd": 16}
+{"wall": 349.0718739994918, "case": "d512", "spec": "M", "rnd": 16}
+{"wall": 354.3882580015634, "case": "d512", "spec": "Q", "rnd": 16}
+{"wall": 346.4333820011234, "case": "d512", "spec": "R", "rnd": 17}
+{"wall": 370.78635100260726, "case": "d512", "spec": "Q", "rnd": 17}
+{"wall": 359.68527200020617, "case": "d512", "spec": "M", "rnd": 17}
+{"wall": 351.05505299725337, "case": "d512", "spec": "Rc", "rnd": 17}
+{"wall": 355.36977799711167, "case": "d512", "spec": "M", "rnd": 18}
+{"wall": 358.25245500018355, "case": "d512", "spec": "Q", "rnd": 18}
+{"wall": 351.40120899814065, "case": "d512", "spec": "R", "rnd": 18}
+{"wall": 354.8978579965478, "case": "d512", "spec": "Rc", "rnd": 18}
+{"wall": 355.956798997795, "case": "d512", "spec": "M", "rnd": 19}
+{"wall": 359.1474319982808, "case": "d512", "spec": "Rc", "rnd": 19}
+{"wall": 352.5802529984503, "case": "d512", "spec": "R", "rnd": 19}
+{"wall": 350.20709600212285, "case": "d512", "spec": "Q", "rnd": 19}
+{"wall": 350.62054399895715, "case": "d512", "spec": "R", "rnd": 20}
+{"wall": 345.0067429985211, "case": "d512", "spec": "Rc", "rnd": 20}
+{"wall": 358.75461400064523, "case": "d512", "spec": "M", "rnd": 20}
+{"wall": 348.7629980008933, "case": "d512", "spec": "Q", "rnd": 20}
+{"wall": 359.3425959988963, "case": "d512", "spec": "R", "rnd": 21}
+{"wall": 346.04748399942764, "case": "d512", "spec": "Q", "rnd": 21}
+{"wall": 342.2524890011118, "case": "d512", "spec": "M", "rnd": 21}
+{"wall": 356.69905499889865, "case": "d512", "spec": "Rc", "rnd": 21}
+{"wall": 352.62416600016877, "case": "d512", "spec": "M", "rnd": 22}
+{"wall": 349.85738600153127, "case": "d512", "spec": "Q", "rnd": 22}
+{"wall": 355.9750169988547, "case": "d512", "spec": "R", "rnd": 22}
+{"wall": 344.44853799868724, "case": "d512", "spec": "Rc", "rnd": 22}
+{"wall": 363.9166699977068, "case": "d512", "spec": "M", "rnd": 23}
+{"wall": 355.6216500001028, "case": "d512", "spec": "Rc", "rnd": 23}
+{"wall": 349.01162100140937, "case": "d512", "spec": "R", "rnd": 23}
+{"wall": 360.41630700128735, "case": "d512", "spec": "Q", "rnd": 23}
+{"wall": 338.9166880006087, "case": "t320", "spec": "R", "rnd": 0}
+{"wall": 349.2594060007832, "case": "t320", "spec": "Rc", "rnd": 0}
+{"wall": 341.04579699851456, "case": "t320", "spec": "M", "rnd": 0}
+{"wall": 343.3657690002292, "case": "t320", "spec": "Q", "rnd": 0}
+{"wall": 345.0761300009617, "case": "t320", "spec": "R", "rnd": 1}
+{"wall": 350.4739470008644, "case": "t320", "spec": "Q", "rnd": 1}
+{"wall": 334.4271279966051, "case": "t320", "spec": "M", "rnd": 1}
+{"wall": 342.43200199853163, "case": "t320", "spec": "Rc", "rnd": 1}
+{"wall": 346.2686310012941, "case": "t320", "spec": "M", "rnd": 2}
+{"wall": 354.0564520008047, "case": "t320", "spec": "Q", "rnd": 2}
+{"wall": 344.10743199987337, "case": "t320", "spec": "R", "rnd": 2}
+{"wall": 342.99864299828187, "case": "t320", "spec": "Rc", "rnd": 2}
+{"wall": 351.2391309996019, "case": "t320", "spec": "M", "rnd": 3}
+{"wall": 340.92325500023435, "case": "t320", "spec": "Rc", "rnd": 3}
+{"wall": 353.05282400076976, "case": "t320", "spec": "R", "rnd": 3}
+{"wall": 342.3830409992661, "case": "t320", "spec": "Q", "rnd": 3}
+{"wall": 340.6025900003442, "case": "t320", "spec": "R", "rnd": 4}
+{"wall": 344.2504749982618, "case": "t320", "spec": "Rc", "rnd": 4}
+{"wall": 341.26913100044476, "case": "t320", "spec": "M", "rnd": 4}
+{"wall": 352.0495739976468, "case": "t320", "spec": "Q", "rnd": 4}
+{"wall": 343.7863959989045, "case": "t320", "spec": "R", "rnd": 5}
+{"wall": 350.3742249995412, "case": "t320", "spec": "Q", "rnd": 5}
+{"wall": 351.5316779994464, "case": "t320", "spec": "M", "rnd": 5}
+{"wall": 342.29897600016557, "case": "t320", "spec": "Rc", "rnd": 5}
+{"wall": 343.96722900055465, "case": "t320", "spec": "M", "rnd": 6}
+{"wall": 341.88142900165985, "case": "t320", "spec": "Q", "rnd": 6}
+{"wall": 343.7682350013347, "case": "t320", "spec": "R", "rnd": 6}
+{"wall": 341.1484130010649, "case": "t320", "spec": "Rc", "rnd": 6}
+{"wall": 355.465725002432, "case": "t320", "spec": "M", "rnd": 7}
+{"wall": 342.39438800068456, "case": "t320", "spec": "Rc", "rnd": 7}
+{"wall": 342.23265500259004, "case": "t320", "spec": "R", "rnd": 7}
+{"wall": 347.4519080009486, "case": "t320", "spec": "Q", "rnd": 7}
+{"wall": 347.11968100236845, "case": "t320", "spec": "R", "rnd": 8}
+{"wall": 338.34740000020247, "case": "t320", "spec": "Rc", "rnd": 8}
+{"wall": 343.6821049981518, "case": "t320", "spec": "M", "rnd": 8}
+{"wall": 344.0525920013897, "case": "t320", "spec": "Q", "rnd": 8}
+{"wall": 339.61655699749826, "case": "t320", "spec": "R", "rnd": 9}
+{"wall": 345.1719500008039, "case": "t320", "spec": "Q", "rnd": 9}
+{"wall": 339.9399429981713, "case": "t320", "spec": "M", "rnd": 9}
+{"wall": 344.57246999954805, "case": "t320", "spec": "Rc", "rnd": 9}
+{"wall": 352.9099390034389, "case": "t320", "spec": "M", "rnd": 10}
+{"wall": 345.853630999045, "case": "t320", "spec": "Q", "rnd": 10}
+{"wall": 353.4023360007268, "case": "t320", "spec": "R", "rnd": 10}
+{"wall": 348.8171409990173, "case": "t320", "spec": "Rc", "rnd": 10}
+{"wall": 342.68677799991565, "case": "t320", "spec": "M", "rnd": 11}
+{"wall": 342.8541610010143, "case": "t320", "spec": "Rc", "rnd": 11}
+{"wall": 340.42956099801813, "case": "t320", "spec": "R", "rnd": 11}
+{"wall": 338.4076370020921, "case": "t320", "spec": "Q", "rnd": 11}
+{"wall": 342.4811149998277, "case": "t320", "spec": "R", "rnd": 12}
+{"wall": 340.491391998512, "case": "t320", "spec": "Rc", "rnd": 12}
+{"wall": 345.7511289998365, "case": "t320", "spec": "M", "rnd": 12}
+{"wall": 346.2040669983253, "case": "t320", "spec": "Q", "rnd": 12}
+{"wall": 348.65559799800394, "case": "t320", "spec": "R", "rnd": 13}
+{"wall": 355.5555019993335, "case": "t320", "spec": "Q", "rnd": 13}
+{"wall": 348.2704320012999, "case": "t320", "spec": "M", "rnd": 13}
+{"wall": 341.09016199727193, "case": "t320", "spec": "Rc", "rnd": 13}
+{"wall": 341.46349799993914, "case": "t320", "spec": "M", "rnd": 14}
+{"wall": 348.60805700009223, "case": "t320", "spec": "Q", "rnd": 14}
+{"wall": 339.8857100000896, "case": "t320", "spec": "R", "rnd": 14}
+{"wall": 347.43983799853595, "case": "t320", "spec": "Rc", "rnd": 14}
+{"wall": 350.60757999963243, "case": "t320", "spec": "M", "rnd": 15}
+{"wall": 348.5040490013489, "case": "t320", "spec": "Rc", "rnd": 15}
+{"wall": 346.8583569992916, "case": "t320", "spec": "R", "rnd": 15}
+{"wall": 343.5910340012924, "case": "t320", "spec": "Q", "rnd": 15}
+{"wall": 348.71408300023177, "case": "t320", "spec": "R", "rnd": 16}
+{"wall": 346.17550400071195, "case": "t320", "spec": "Rc", "rnd": 16}
+{"wall": 348.5996809977223, "case": "t320", "spec": "M", "rnd": 16}
+{"wall": 340.3754730024957, "case": "t320", "spec": "Q", "rnd": 16}
+{"wall": 355.16255699985777, "case": "t320", "spec": "R", "rnd": 17}
+{"wall": 352.48662600133684, "case": "t320", "spec": "Q", "rnd": 17}
+{"wall": 344.0715530014131, "case": "t320", "spec": "M", "rnd": 17}
+{"wall": 349.22067200022866, "case": "t320", "spec": "Rc", "rnd": 17}
+{"wall": 345.8059980002872, "case": "t320", "spec": "M", "rnd": 18}
+{"wall": 343.82887899846537, "case": "t320", "spec": "Q", "rnd": 18}
+{"wall": 346.8469969993748, "case": "t320", "spec": "R", "rnd": 18}
+{"wall": 349.9205059997621, "case": "t320", "spec": "Rc", "rnd": 18}
+{"wall": 345.9006489974854, "case": "t320", "spec": "M", "rnd": 19}
+{"wall": 348.53856900008395, "case": "t320", "spec": "Rc", "rnd": 19}
+{"wall": 344.9335900004371, "case": "t320", "spec": "R", "rnd": 19}
+{"wall": 343.28822899988154, "case": "t320", "spec": "Q", "rnd": 19}
+{"wall": 345.41314099988085, "case": "t320", "spec": "R", "rnd": 20}
+{"wall": 340.6486300009419, "case": "t320", "spec": "Rc", "rnd": 20}
+{"wall": 343.13911000208464, "case": "t320", "spec": "M", "rnd": 20}
+{"wall": 339.0698350012826, "case": "t320", "spec": "Q", "rnd": 20}
+{"wall": 347.6703810010804, "case": "t320", "spec": "R", "rnd": 21}
+{"wall": 336.15143899805844, "case": "t320", "spec": "Q", "rnd": 21}
+{"wall": 346.1530269996729, "case": "t320", "spec": "M", "rnd": 21}
+{"wall": 347.54868899835856, "case": "t320", "spec": "Rc", "rnd": 21}
+{"wall": 341.0887670033844, "case": "t320", "spec": "M", "rnd": 22}
+{"wall": 341.01413499956834, "case": "t320", "spec": "Q", "rnd": 22}
+{"wall": 336.8560500020976, "case": "t320", "spec": "R", "rnd": 22}
+{"wall": 344.3870289993356, "case": "t320", "spec": "Rc", "rnd": 22}
+{"wall": 341.7156969990174, "case": "t320", "spec": "M", "rnd": 23}
+{"wall": 341.3849509997817, "case": "t320", "spec": "Rc", "rnd": 23}
+{"wall": 334.8285539977951, "case": "t320", "spec": "R", "rnd": 23}
+{"wall": 343.52479000153835, "case": "t320", "spec": "Q", "rnd": 23}
+{"wall": 661.9191569989198, "case": "comic", "spec": "R", "rnd": 0}
+{"wall": 656.801491000806, "case": "comic", "spec": "Rc", "rnd": 0}
+{"wall": 672.3821730010968, "case": "comic", "spec": "M", "rnd": 0}
+{"wall": 665.2990299990051, "case": "comic", "spec": "Q", "rnd": 0}
+{"wall": 671.4980769975227, "case": "comic", "spec": "R", "rnd": 1}
+{"wall": 664.7440800006734, "case": "comic", "spec": "Q", "rnd": 1}
+{"wall": 666.6160250024404, "case": "comic", "spec": "M", "rnd": 1}
+{"wall": 647.4827759993786, "case": "comic", "spec": "Rc", "rnd": 1}
+{"wall": 651.4739810008905, "case": "comic", "spec": "M", "rnd": 2}
+{"wall": 657.5403250026284, "case": "comic", "spec": "Q", "rnd": 2}
+{"wall": 664.1665990027832, "case": "comic", "spec": "R", "rnd": 2}
+{"wall": 655.7565210023313, "case": "comic", "spec": "Rc", "rnd": 2}
+{"wall": 664.4899389975762, "case": "comic", "spec": "M", "rnd": 3}
+{"wall": 661.0202150004625, "case": "comic", "spec": "Rc", "rnd": 3}
+{"wall": 658.5465790012677, "case": "comic", "spec": "R", "rnd": 3}
+{"wall": 656.83123800045, "case": "comic", "spec": "Q", "rnd": 3}
+{"wall": 654.8542409982474, "case": "comic", "spec": "R", "rnd": 4}
+{"wall": 653.628067997488, "case": "comic", "spec": "Rc", "rnd": 4}
+{"wall": 667.6975890004542, "case": "comic", "spec": "M", "rnd": 4}
+{"wall": 658.6574020002445, "case": "comic", "spec": "Q", "rnd": 4}
+{"wall": 659.9518050024926, "case": "comic", "spec": "R", "rnd": 5}
+{"wall": 655.953060999309, "case": "comic", "spec": "Q", "rnd": 5}
+{"wall": 657.1597239999392, "case": "comic", "spec": "M", "rnd": 5}
+{"wall": 662.9793719985173, "case": "comic", "spec": "Rc", "rnd": 5}
+{"wall": 647.6696479985549, "case": "comic", "spec": "M", "rnd": 6}
+{"wall": 655.0947559990163, "case": "comic", "spec": "Q", "rnd": 6}
+{"wall": 653.1626899995899, "case": "comic", "spec": "R", "rnd": 6}
+{"wall": 655.6982069996593, "case": "comic", "spec": "Rc", "rnd": 6}
+{"wall": 661.1205770022934, "case": "comic", "spec": "M", "rnd": 7}
+{"wall": 660.8779529997264, "case": "comic", "spec": "Rc", "rnd": 7}
+{"wall": 670.7353249985317, "case": "comic", "spec": "R", "rnd": 7}
+{"wall": 653.9466350004659, "case": "comic", "spec": "Q", "rnd": 7}
+{"wall": 659.9446859981981, "case": "comic", "spec": "R", "rnd": 8}
+{"wall": 653.4772859995428, "case": "comic", "spec": "Rc", "rnd": 8}
+{"wall": 659.4313050009077, "case": "comic", "spec": "M", "rnd": 8}
+{"wall": 662.3917010001605, "case": "comic", "spec": "Q", "rnd": 8}
+{"wall": 655.2836789996945, "case": "comic", "spec": "R", "rnd": 9}
+{"wall": 665.0088850001339, "case": "comic", "spec": "Q", "rnd": 9}
+{"wall": 647.1302299978561, "case": "comic", "spec": "M", "rnd": 9}
+{"wall": 648.3626530025504, "case": "comic", "spec": "Rc", "rnd": 9}
+{"wall": 663.2400620001135, "case": "comic", "spec": "M", "rnd": 10}
+{"wall": 656.2202109998907, "case": "comic", "spec": "Q", "rnd": 10}
+{"wall": 666.5926649984613, "case": "comic", "spec": "R", "rnd": 10}
+{"wall": 655.0014679996821, "case": "comic", "spec": "Rc", "rnd": 10}
+{"wall": 668.7679259994184, "case": "comic", "spec": "M", "rnd": 11}
+{"wall": 667.1236049987783, "case": "comic", "spec": "Rc", "rnd": 11}
+{"wall": 666.6269250017649, "case": "comic", "spec": "R", "rnd": 11}
+{"wall": 661.9273979995342, "case": "comic", "spec": "Q", "rnd": 11}
+{"wall": 672.3209230003704, "case": "comic", "spec": "R", "rnd": 12}
+{"wall": 662.2507040010532, "case": "comic", "spec": "Rc", "rnd": 12}
+{"wall": 665.629467999679, "case": "comic", "spec": "M", "rnd": 12}
+{"wall": 664.8450829998183, "case": "comic", "spec": "Q", "rnd": 12}
+{"wall": 671.0668490013632, "case": "comic", "spec": "R", "rnd": 13}
+{"wall": 664.6524589996261, "case": "comic", "spec": "Q", "rnd": 13}
+{"wall": 665.1417980028782, "case": "comic", "spec": "M", "rnd": 13}
+{"wall": 655.2906229990185, "case": "comic", "spec": "Rc", "rnd": 13}
+{"wall": 666.2590790001559, "case": "comic", "spec": "M", "rnd": 14}
+{"wall": 661.1907350015827, "case": "comic", "spec": "Q", "rnd": 14}
+{"wall": 647.3638159986876, "case": "comic", "spec": "R", "rnd": 14}
+{"wall": 655.053868998948, "case": "comic", "spec": "Rc", "rnd": 14}
+{"wall": 664.5374369982164, "case": "comic", "spec": "M", "rnd": 15}
+{"wall": 658.4020170012082, "case": "comic", "spec": "Rc", "rnd": 15}
+{"wall": 657.0665910003299, "case": "comic", "spec": "R", "rnd": 15}
+{"wall": 675.3109630008112, "case": "comic", "spec": "Q", "rnd": 15}
+{"wall": 663.434010999481, "case": "comic", "spec": "R", "rnd": 16}
+{"wall": 669.8996920022182, "case": "comic", "spec": "Rc", "rnd": 16}
+{"wall": 669.7028380003758, "case": "comic", "spec": "M", "rnd": 16}
+{"wall": 660.672018002515, "case": "comic", "spec": "Q", "rnd": 16}
+{"wall": 661.6118159981852, "case": "comic", "spec": "R", "rnd": 17}
+{"wall": 665.2789149993623, "case": "comic", "spec": "Q", "rnd": 17}
+{"wall": 660.1253890003136, "case": "comic", "spec": "M", "rnd": 17}
+{"wall": 647.9180280002765, "case": "comic", "spec": "Rc", "rnd": 17}
+{"wall": 660.3790820008726, "case": "comic", "spec": "M", "rnd": 18}
+{"wall": 659.4664459989872, "case": "comic", "spec": "Q", "rnd": 18}
+{"wall": 663.8248479976028, "case": "comic", "spec": "R", "rnd": 18}
+{"wall": 647.9258090002986, "case": "comic", "spec": "Rc", "rnd": 18}
+{"wall": 644.804870000371, "case": "comic", "spec": "M", "rnd": 19}
+{"wall": 656.1876850028057, "case": "comic", "spec": "Rc", "rnd": 19}
+{"wall": 649.8818850013777, "case": "comic", "spec": "R", "rnd": 19}
+{"wall": 660.2110699968762, "case": "comic", "spec": "Q", "rnd": 19}
+{"wall": 656.4246579982864, "case": "comic", "spec": "R", "rnd": 20}
+{"wall": 664.365787000861, "case": "comic", "spec": "Rc", "rnd": 20}
+{"wall": 654.8683190012525, "case": "comic", "spec": "M", "rnd": 20}
+{"wall": 663.113244001579, "case": "comic", "spec": "Q", "rnd": 20}
+{"wall": 658.7830229982501, "case": "comic", "spec": "R", "rnd": 21}
+{"wall": 666.8651200016029, "case": "comic", "spec": "Q", "rnd": 21}
+{"wall": 660.1120080013061, "case": "comic", "spec": "M", "rnd": 21}
+{"wall": 661.1554709998018, "case": "comic", "spec": "Rc", "rnd": 21}
+{"wall": 652.5973420029914, "case": "comic", "spec": "M", "rnd": 22}
+{"wall": 655.5051670002285, "case": "comic", "spec": "Q", "rnd": 22}
+{"wall": 657.7534160023788, "case": "comic", "spec": "R", "rnd": 22}
+{"wall": 659.2999800013786, "case": "comic", "spec": "Rc", "rnd": 22}
+{"wall": 669.6921900002053, "case": "comic", "spec": "M", "rnd": 23}
+{"wall": 646.5471589981462, "case": "comic", "spec": "Rc", "rnd": 23}
+{"wall": 655.4258520009171, "case": "comic", "spec": "R", "rnd": 23}
+{"wall": 649.5633809972787, "case": "comic", "spec": "Q", "rnd": 23}
+{"wall": 800.9055570000783, "case": "comic_444_10", "spec": "R", "rnd": 0}
+{"wall": 810.0411599989457, "case": "comic_444_10", "spec": "Rc", "rnd": 0}
+{"wall": 803.7695820021327, "case": "comic_444_10", "spec": "M", "rnd": 0}
+{"wall": 791.6094209977018, "case": "comic_444_10", "spec": "Q", "rnd": 0}
+{"wall": 796.338840998942, "case": "comic_444_10", "spec": "R", "rnd": 1}
+{"wall": 798.6391340018599, "case": "comic_444_10", "spec": "Q", "rnd": 1}
+{"wall": 798.1304259992612, "case": "comic_444_10", "spec": "M", "rnd": 1}
+{"wall": 798.0705789996136, "case": "comic_444_10", "spec": "Rc", "rnd": 1}
+{"wall": 795.6664919984178, "case": "comic_444_10", "spec": "M", "rnd": 2}
+{"wall": 796.3950560006197, "case": "comic_444_10", "spec": "Q", "rnd": 2}
+{"wall": 804.879562001588, "case": "comic_444_10", "spec": "R", "rnd": 2}
+{"wall": 803.2846210007847, "case": "comic_444_10", "spec": "Rc", "rnd": 2}
+{"wall": 788.4125500022492, "case": "comic_444_10", "spec": "M", "rnd": 3}
+{"wall": 799.9472949995834, "case": "comic_444_10", "spec": "Rc", "rnd": 3}
+{"wall": 806.4903630001936, "case": "comic_444_10", "spec": "R", "rnd": 3}
+{"wall": 805.058314002963, "case": "comic_444_10", "spec": "Q", "rnd": 3}
+{"wall": 810.4087589999835, "case": "comic_444_10", "spec": "R", "rnd": 4}
+{"wall": 811.6749740001978, "case": "comic_444_10", "spec": "Rc", "rnd": 4}
+{"wall": 795.0824799991096, "case": "comic_444_10", "spec": "M", "rnd": 4}
+{"wall": 799.5683789995383, "case": "comic_444_10", "spec": "Q", "rnd": 4}
+{"wall": 795.3411149974272, "case": "comic_444_10", "spec": "R", "rnd": 5}
+{"wall": 790.6493929986027, "case": "comic_444_10", "spec": "Q", "rnd": 5}
+{"wall": 797.1067590005987, "case": "comic_444_10", "spec": "M", "rnd": 5}
+{"wall": 799.9569150015304, "case": "comic_444_10", "spec": "Rc", "rnd": 5}
+{"wall": 799.6494289982365, "case": "comic_444_10", "spec": "M", "rnd": 6}
+{"wall": 805.697556999803, "case": "comic_444_10", "spec": "Q", "rnd": 6}
+{"wall": 805.8975990024919, "case": "comic_444_10", "spec": "R", "rnd": 6}
+{"wall": 798.6253750023025, "case": "comic_444_10", "spec": "Rc", "rnd": 6}
+{"wall": 803.5977430008643, "case": "comic_444_10", "spec": "M", "rnd": 7}
+{"wall": 799.66966199936, "case": "comic_444_10", "spec": "Rc", "rnd": 7}
+{"wall": 801.1454820007202, "case": "comic_444_10", "spec": "R", "rnd": 7}
+{"wall": 816.1353470022732, "case": "comic_444_10", "spec": "Q", "rnd": 7}
+{"wall": 808.6898000001383, "case": "comic_444_10", "spec": "R", "rnd": 8}
+{"wall": 808.0724179999379, "case": "comic_444_10", "spec": "Rc", "rnd": 8}
+{"wall": 807.574886999646, "case": "comic_444_10", "spec": "M", "rnd": 8}
+{"wall": 807.7746210001351, "case": "comic_444_10", "spec": "Q", "rnd": 8}
+{"wall": 793.7023859994952, "case": "comic_444_10", "spec": "R", "rnd": 9}
+{"wall": 802.6111030012544, "case": "comic_444_10", "spec": "Q", "rnd": 9}
+{"wall": 802.1626240006299, "case": "comic_444_10", "spec": "M", "rnd": 9}
+{"wall": 791.6850139990856, "case": "comic_444_10", "spec": "Rc", "rnd": 9}
+{"wall": 789.3021639974904, "case": "comic_444_10", "spec": "M", "rnd": 10}
+{"wall": 799.1202889970737, "case": "comic_444_10", "spec": "Q", "rnd": 10}
+{"wall": 790.2754509996157, "case": "comic_444_10", "spec": "R", "rnd": 10}
+{"wall": 793.839639001817, "case": "comic_444_10", "spec": "Rc", "rnd": 10}
+{"wall": 812.7283839967276, "case": "comic_444_10", "spec": "M", "rnd": 11}
+{"wall": 795.4864509993058, "case": "comic_444_10", "spec": "Rc", "rnd": 11}
+{"wall": 796.2529860014911, "case": "comic_444_10", "spec": "R", "rnd": 11}
+{"wall": 807.5869460008107, "case": "comic_444_10", "spec": "Q", "rnd": 11}
+{"wall": 795.838289999665, "case": "comic_444_10", "spec": "R", "rnd": 12}
+{"wall": 791.1664040002506, "case": "comic_444_10", "spec": "Rc", "rnd": 12}
+{"wall": 802.7616330000455, "case": "comic_444_10", "spec": "M", "rnd": 12}
+{"wall": 803.0432890009251, "case": "comic_444_10", "spec": "Q", "rnd": 12}
+{"wall": 792.7375489998667, "case": "comic_444_10", "spec": "R", "rnd": 13}
+{"wall": 796.1938660009764, "case": "comic_444_10", "spec": "Q", "rnd": 13}
+{"wall": 802.3242930030392, "case": "comic_444_10", "spec": "M", "rnd": 13}
+{"wall": 787.3847899973043, "case": "comic_444_10", "spec": "Rc", "rnd": 13}
+{"wall": 806.4251550022163, "case": "comic_444_10", "spec": "M", "rnd": 14}
+{"wall": 808.9768220015685, "case": "comic_444_10", "spec": "Q", "rnd": 14}
+{"wall": 804.3928189981671, "case": "comic_444_10", "spec": "R", "rnd": 14}
+{"wall": 797.9249050004, "case": "comic_444_10", "spec": "Rc", "rnd": 14}
+{"wall": 814.8487209982704, "case": "comic_444_10", "spec": "M", "rnd": 15}
+{"wall": 808.8168939975731, "case": "comic_444_10", "spec": "Rc", "rnd": 15}
+{"wall": 800.2905559987994, "case": "comic_444_10", "spec": "R", "rnd": 15}
+{"wall": 806.0001890007698, "case": "comic_444_10", "spec": "Q", "rnd": 15}
+{"wall": 801.8509869980335, "case": "comic_444_10", "spec": "R", "rnd": 16}
+{"wall": 796.1575740009721, "case": "comic_444_10", "spec": "Rc", "rnd": 16}
+{"wall": 808.6072699989018, "case": "comic_444_10", "spec": "M", "rnd": 16}
+{"wall": 805.2688339994347, "case": "comic_444_10", "spec": "Q", "rnd": 16}
+{"wall": 800.2824370014423, "case": "comic_444_10", "spec": "R", "rnd": 17}
+{"wall": 804.0798850015562, "case": "comic_444_10", "spec": "Q", "rnd": 17}
+{"wall": 794.5723900011217, "case": "comic_444_10", "spec": "M", "rnd": 17}
+{"wall": 812.5956999974733, "case": "comic_444_10", "spec": "Rc", "rnd": 17}
+{"wall": 796.0381000011694, "case": "comic_444_10", "spec": "M", "rnd": 18}
+{"wall": 805.1789079981972, "case": "comic_444_10", "spec": "Q", "rnd": 18}
+{"wall": 791.6655400003947, "case": "comic_444_10", "spec": "R", "rnd": 18}
+{"wall": 791.1278600004152, "case": "comic_444_10", "spec": "Rc", "rnd": 18}
+{"wall": 796.9499790015107, "case": "comic_444_10", "spec": "M", "rnd": 19}
+{"wall": 797.1774139987247, "case": "comic_444_10", "spec": "Rc", "rnd": 19}
+{"wall": 787.1813990022929, "case": "comic_444_10", "spec": "R", "rnd": 19}
+{"wall": 789.2889319991809, "case": "comic_444_10", "spec": "Q", "rnd": 19}
+{"wall": 797.8847690028488, "case": "comic_444_10", "spec": "R", "rnd": 20}
+{"wall": 797.0219009985158, "case": "comic_444_10", "spec": "Rc", "rnd": 20}
+{"wall": 799.301438000839, "case": "comic_444_10", "spec": "M", "rnd": 20}
+{"wall": 808.2367200004228, "case": "comic_444_10", "spec": "Q", "rnd": 20}
+{"wall": 800.6855259991426, "case": "comic_444_10", "spec": "R", "rnd": 21}
+{"wall": 821.7332780004654, "case": "comic_444_10", "spec": "Q", "rnd": 21}
+{"wall": 801.4956420011004, "case": "comic_444_10", "spec": "M", "rnd": 21}
+{"wall": 801.4408509989153, "case": "comic_444_10", "spec": "Rc", "rnd": 21}
+{"wall": 801.3436740002362, "case": "comic_444_10", "spec": "M", "rnd": 22}
+{"wall": 795.7710079972458, "case": "comic_444_10", "spec": "Q", "rnd": 22}
+{"wall": 794.2075970022415, "case": "comic_444_10", "spec": "R", "rnd": 22}
+{"wall": 797.960472998966, "case": "comic_444_10", "spec": "Rc", "rnd": 22}
+{"wall": 813.4866270011116, "case": "comic_444_10", "spec": "M", "rnd": 23}
+{"wall": 808.913744000165, "case": "comic_444_10", "spec": "Rc", "rnd": 23}
+{"wall": 801.2872300023446, "case": "comic_444_10", "spec": "R", "rnd": 23}
+{"wall": 812.6791809991118, "case": "comic_444_10", "spec": "Q", "rnd": 23}
+{"wall": 988.2408240009681, "case": "page_png", "spec": "R", "rnd": 0}
+{"wall": 975.099337996653, "case": "page_png", "spec": "Rc", "rnd": 0}
+{"wall": 994.5469019985467, "case": "page_png", "spec": "M", "rnd": 0}
+{"wall": 990.4179889999796, "case": "page_png", "spec": "Q", "rnd": 0}
+{"wall": 987.7706250008487, "case": "page_png", "spec": "R", "rnd": 1}
+{"wall": 993.0321909996565, "case": "page_png", "spec": "Q", "rnd": 1}
+{"wall": 988.5601610003505, "case": "page_png", "spec": "M", "rnd": 1}
+{"wall": 983.878196002479, "case": "page_png", "spec": "Rc", "rnd": 1}
+{"wall": 988.783914999658, "case": "page_png", "spec": "M", "rnd": 2}
+{"wall": 985.2571839983284, "case": "page_png", "spec": "Q", "rnd": 2}
+{"wall": 986.8224360034219, "case": "page_png", "spec": "R", "rnd": 2}
+{"wall": 999.1739760007476, "case": "page_png", "spec": "Rc", "rnd": 2}
+{"wall": 993.0857229992398, "case": "page_png", "spec": "M", "rnd": 3}
+{"wall": 992.6714540015382, "case": "page_png", "spec": "Rc", "rnd": 3}
+{"wall": 996.9393299979856, "case": "page_png", "spec": "R", "rnd": 3}
+{"wall": 998.0107820010744, "case": "page_png", "spec": "Q", "rnd": 3}
+{"wall": 998.4840819997771, "case": "page_png", "spec": "R", "rnd": 4}
+{"wall": 995.5103419997613, "case": "page_png", "spec": "Rc", "rnd": 4}
+{"wall": 982.1049599995604, "case": "page_png", "spec": "M", "rnd": 4}
+{"wall": 984.250063997024, "case": "page_png", "spec": "Q", "rnd": 4}
+{"wall": 996.4693910005735, "case": "page_png", "spec": "R", "rnd": 5}
+{"wall": 997.5072119996184, "case": "page_png", "spec": "Q", "rnd": 5}
+{"wall": 1427.418901999772, "case": "page_png", "spec": "M", "rnd": 5}
+{"wall": 989.3836609990103, "case": "page_png", "spec": "Rc", "rnd": 5}
+{"wall": 996.0332919981738, "case": "page_png", "spec": "M", "rnd": 6}
+{"wall": 987.0308239987935, "case": "page_png", "spec": "Q", "rnd": 6}
+{"wall": 980.0240340009623, "case": "page_png", "spec": "R", "rnd": 6}
+{"wall": 982.386810999742, "case": "page_png", "spec": "Rc", "rnd": 6}
+{"wall": 987.4018100017565, "case": "page_png", "spec": "M", "rnd": 7}
+{"wall": 983.2566679979209, "case": "page_png", "spec": "Rc", "rnd": 7}
+{"wall": 985.7775880009285, "case": "page_png", "spec": "R", "rnd": 7}
+{"wall": 989.1488260000187, "case": "page_png", "spec": "Q", "rnd": 7}
+{"wall": 986.3740900000266, "case": "page_png", "spec": "R", "rnd": 8}
+{"wall": 983.1369960011216, "case": "page_png", "spec": "Rc", "rnd": 8}
+{"wall": 998.785707000934, "case": "page_png", "spec": "M", "rnd": 8}
+{"wall": 988.4610819972295, "case": "page_png", "spec": "Q", "rnd": 8}
+{"wall": 988.7190070003271, "case": "page_png", "spec": "R", "rnd": 9}
+{"wall": 993.0384229992342, "case": "page_png", "spec": "Q", "rnd": 9}
+{"wall": 999.636616998032, "case": "page_png", "spec": "M", "rnd": 9}
+{"wall": 982.3648229976243, "case": "page_png", "spec": "Rc", "rnd": 9}
+{"wall": 989.8804650001694, "case": "page_png", "spec": "M", "rnd": 10}
+{"wall": 996.4990980006405, "case": "page_png", "spec": "Q", "rnd": 10}
+{"wall": 993.5472389988718, "case": "page_png", "spec": "R", "rnd": 10}
+{"wall": 984.7784920020786, "case": "page_png", "spec": "Rc", "rnd": 10}
+{"wall": 986.8903149981634, "case": "page_png", "spec": "M", "rnd": 11}
+{"wall": 987.3456739987887, "case": "page_png", "spec": "Rc", "rnd": 11}
+{"wall": 993.8040740016731, "case": "page_png", "spec": "R", "rnd": 11}
+{"wall": 999.4237470018561, "case": "page_png", "spec": "Q", "rnd": 11}
+{"wall": 999.8105150007177, "case": "page_png", "spec": "R", "rnd": 12}
+{"wall": 994.0230389984208, "case": "page_png", "spec": "Rc", "rnd": 12}
+{"wall": 991.7838830006076, "case": "page_png", "spec": "M", "rnd": 12}
+{"wall": 989.805213001091, "case": "page_png", "spec": "Q", "rnd": 12}
+{"wall": 984.8494930010929, "case": "page_png", "spec": "R", "rnd": 13}
+{"wall": 998.1648830034828, "case": "page_png", "spec": "Q", "rnd": 13}
+{"wall": 990.5026650012587, "case": "page_png", "spec": "M", "rnd": 13}
+{"wall": 992.5373570004012, "case": "page_png", "spec": "Rc", "rnd": 13}
+{"wall": 991.2425319998874, "case": "page_png", "spec": "M", "rnd": 14}
+{"wall": 984.5504959994287, "case": "page_png", "spec": "Q", "rnd": 14}
+{"wall": 994.1267400026845, "case": "page_png", "spec": "R", "rnd": 14}
+{"wall": 979.9856850004289, "case": "page_png", "spec": "Rc", "rnd": 14}
+{"wall": 986.893274999602, "case": "page_png", "spec": "M", "rnd": 15}
+{"wall": 988.5365180016379, "case": "page_png", "spec": "Rc", "rnd": 15}
+{"wall": 997.5727300006838, "case": "page_png", "spec": "R", "rnd": 15}
+{"wall": 981.020946001081, "case": "page_png", "spec": "Q", "rnd": 15}
+{"wall": 976.267560999986, "case": "page_png", "spec": "R", "rnd": 16}
+{"wall": 982.3268029977044, "case": "page_png", "spec": "Rc", "rnd": 16}
+{"wall": 982.0428169987281, "case": "page_png", "spec": "M", "rnd": 16}
+{"wall": 985.1682189982967, "case": "page_png", "spec": "Q", "rnd": 16}
+{"wall": 990.4028450000624, "case": "page_png", "spec": "R", "rnd": 17}
+{"wall": 984.7532820022025, "case": "page_png", "spec": "Q", "rnd": 17}
+{"wall": 985.9953870000027, "case": "page_png", "spec": "M", "rnd": 17}
+{"wall": 1005.8090140009881, "case": "page_png", "spec": "Rc", "rnd": 17}
+{"wall": 1011.058359999879, "case": "page_png", "spec": "M", "rnd": 18}
+{"wall": 1016.4265979983611, "case": "page_png", "spec": "Q", "rnd": 18}
+{"wall": 986.1692000013136, "case": "page_png", "spec": "R", "rnd": 18}
+{"wall": 992.5788979999197, "case": "page_png", "spec": "Rc", "rnd": 18}
+{"wall": 993.5138069995446, "case": "page_png", "spec": "M", "rnd": 19}
+{"wall": 991.8850750000274, "case": "page_png", "spec": "Rc", "rnd": 19}
+{"wall": 994.2182919985498, "case": "page_png", "spec": "R", "rnd": 19}
+{"wall": 997.1465609996812, "case": "page_png", "spec": "Q", "rnd": 19}
+{"wall": 992.7474030009762, "case": "page_png", "spec": "R", "rnd": 20}
+{"wall": 994.1203400012455, "case": "page_png", "spec": "Rc", "rnd": 20}
+{"wall": 987.099448000663, "case": "page_png", "spec": "M", "rnd": 20}
+{"wall": 996.59463900025, "case": "page_png", "spec": "Q", "rnd": 20}
+{"wall": 991.4039349969244, "case": "page_png", "spec": "R", "rnd": 21}
+{"wall": 1001.3500149980246, "case": "page_png", "spec": "Q", "rnd": 21}
+{"wall": 980.7729509993806, "case": "page_png", "spec": "M", "rnd": 21}
+{"wall": 985.8663599989086, "case": "page_png", "spec": "Rc", "rnd": 21}
+{"wall": 982.1485630018287, "case": "page_png", "spec": "M", "rnd": 22}
+{"wall": 1002.8570680005942, "case": "page_png", "spec": "Q", "rnd": 22}
+{"wall": 995.5330709999544, "case": "page_png", "spec": "R", "rnd": 22}
+{"wall": 997.0309409982292, "case": "page_png", "spec": "Rc", "rnd": 22}
+{"wall": 990.9707299993897, "case": "page_png", "spec": "M", "rnd": 23}
+{"wall": 991.6739030013559, "case": "page_png", "spec": "Rc", "rnd": 23}
+{"wall": 998.8109459991392, "case": "page_png", "spec": "R", "rnd": 23}
+{"wall": 996.1116529993888, "case": "page_png", "spec": "Q", "rnd": 23}
+{"wall": 383.82918699790025, "case": "alpha_png", "spec": "R", "rnd": 0}
+{"wall": 389.8853779974161, "case": "alpha_png", "spec": "Rc", "rnd": 0}
+{"wall": 392.86117700248724, "case": "alpha_png", "spec": "M", "rnd": 0}
+{"wall": 400.6427229978726, "case": "alpha_png", "spec": "Q", "rnd": 0}
+{"wall": 403.88486799929524, "case": "alpha_png", "spec": "R", "rnd": 1}
+{"wall": 391.52493000074173, "case": "alpha_png", "spec": "Q", "rnd": 1}
+{"wall": 390.24943399999756, "case": "alpha_png", "spec": "M", "rnd": 1}
+{"wall": 400.9738690001541, "case": "alpha_png", "spec": "Rc", "rnd": 1}
+{"wall": 395.0837410011445, "case": "alpha_png", "spec": "M", "rnd": 2}
+{"wall": 400.52744099739357, "case": "alpha_png", "spec": "Q", "rnd": 2}
+{"wall": 396.1060619985801, "case": "alpha_png", "spec": "R", "rnd": 2}
+{"wall": 389.50044000011985, "case": "alpha_png", "spec": "Rc", "rnd": 2}
+{"wall": 400.1011819964333, "case": "alpha_png", "spec": "M", "rnd": 3}
+{"wall": 402.2458760009613, "case": "alpha_png", "spec": "Rc", "rnd": 3}
+{"wall": 393.69540400002734, "case": "alpha_png", "spec": "R", "rnd": 3}
+{"wall": 392.7502850019664, "case": "alpha_png", "spec": "Q", "rnd": 3}
+{"wall": 397.95767900068313, "case": "alpha_png", "spec": "R", "rnd": 4}
+{"wall": 388.6885740030266, "case": "alpha_png", "spec": "Rc", "rnd": 4}
+{"wall": 400.43475899801706, "case": "alpha_png", "spec": "M", "rnd": 4}
+{"wall": 395.79464599955827, "case": "alpha_png", "spec": "Q", "rnd": 4}
+{"wall": 389.39479799955734, "case": "alpha_png", "spec": "R", "rnd": 5}
+{"wall": 404.1105929973128, "case": "alpha_png", "spec": "Q", "rnd": 5}
+{"wall": 390.70229299977655, "case": "alpha_png", "spec": "M", "rnd": 5}
+{"wall": 402.21700400070404, "case": "alpha_png", "spec": "Rc", "rnd": 5}
+{"wall": 395.2636350004468, "case": "alpha_png", "spec": "M", "rnd": 6}
+{"wall": 403.5463010004605, "case": "alpha_png", "spec": "Q", "rnd": 6}
+{"wall": 390.61152200156357, "case": "alpha_png", "spec": "R", "rnd": 6}
+{"wall": 389.0504599985434, "case": "alpha_png", "spec": "Rc", "rnd": 6}
+{"wall": 392.6450830003887, "case": "alpha_png", "spec": "M", "rnd": 7}
+{"wall": 384.85220600341563, "case": "alpha_png", "spec": "Rc", "rnd": 7}
+{"wall": 388.8646570012497, "case": "alpha_png", "spec": "R", "rnd": 7}
+{"wall": 390.500620000239, "case": "alpha_png", "spec": "Q", "rnd": 7}
+{"wall": 398.72043400100665, "case": "alpha_png", "spec": "R", "rnd": 8}
+{"wall": 397.1200020023389, "case": "alpha_png", "spec": "Rc", "rnd": 8}
+{"wall": 399.76770599969313, "case": "alpha_png", "spec": "M", "rnd": 8}
+{"wall": 400.0936320007895, "case": "alpha_png", "spec": "Q", "rnd": 8}
+{"wall": 403.0119399976684, "case": "alpha_png", "spec": "R", "rnd": 9}
+{"wall": 392.5531009990664, "case": "alpha_png", "spec": "Q", "rnd": 9}
+{"wall": 398.10859200224513, "case": "alpha_png", "spec": "M", "rnd": 9}
+{"wall": 391.5331509997486, "case": "alpha_png", "spec": "Rc", "rnd": 9}
+{"wall": 393.2222850016842, "case": "alpha_png", "spec": "M", "rnd": 10}
+{"wall": 400.8484869991662, "case": "alpha_png", "spec": "Q", "rnd": 10}
+{"wall": 395.0427099989611, "case": "alpha_png", "spec": "R", "rnd": 10}
+{"wall": 387.92370800001663, "case": "alpha_png", "spec": "Rc", "rnd": 10}
+{"wall": 390.32899599988014, "case": "alpha_png", "spec": "M", "rnd": 11}
+{"wall": 389.6128320011485, "case": "alpha_png", "spec": "Rc", "rnd": 11}
+{"wall": 391.52026099691284, "case": "alpha_png", "spec": "R", "rnd": 11}
+{"wall": 386.03487000000314, "case": "alpha_png", "spec": "Q", "rnd": 11}
+{"wall": 398.3035960009147, "case": "alpha_png", "spec": "R", "rnd": 12}
+{"wall": 398.68062299865414, "case": "alpha_png", "spec": "Rc", "rnd": 12}
+{"wall": 403.37232800084166, "case": "alpha_png", "spec": "M", "rnd": 12}
+{"wall": 386.8851070001256, "case": "alpha_png", "spec": "Q", "rnd": 12}
+{"wall": 392.6831440003298, "case": "alpha_png", "spec": "R", "rnd": 13}
+{"wall": 389.7908750004717, "case": "alpha_png", "spec": "Q", "rnd": 13}
+{"wall": 389.75786499941023, "case": "alpha_png", "spec": "M", "rnd": 13}
+{"wall": 386.3103260009666, "case": "alpha_png", "spec": "Rc", "rnd": 13}
+{"wall": 392.68895400164183, "case": "alpha_png", "spec": "M", "rnd": 14}
+{"wall": 384.6365669996885, "case": "alpha_png", "spec": "Q", "rnd": 14}
+{"wall": 393.5785889989347, "case": "alpha_png", "spec": "R", "rnd": 14}
+{"wall": 388.83794199864496, "case": "alpha_png", "spec": "Rc", "rnd": 14}
+{"wall": 388.1998979995842, "case": "alpha_png", "spec": "M", "rnd": 15}
+{"wall": 398.1950830020651, "case": "alpha_png", "spec": "Rc", "rnd": 15}
+{"wall": 406.9777820004674, "case": "alpha_png", "spec": "R", "rnd": 15}
+{"wall": 388.8578529986262, "case": "alpha_png", "spec": "Q", "rnd": 15}
+{"wall": 388.60688700151513, "case": "alpha_png", "spec": "R", "rnd": 16}
+{"wall": 388.271211002575, "case": "alpha_png", "spec": "Rc", "rnd": 16}
+{"wall": 399.560581001424, "case": "alpha_png", "spec": "M", "rnd": 16}
+{"wall": 393.30930299911415, "case": "alpha_png", "spec": "Q", "rnd": 16}
+{"wall": 405.1082839978335, "case": "alpha_png", "spec": "R", "rnd": 17}
+{"wall": 393.8808450002398, "case": "alpha_png", "spec": "Q", "rnd": 17}
+{"wall": 407.7784269975382, "case": "alpha_png", "spec": "M", "rnd": 17}
+{"wall": 391.00109599894495, "case": "alpha_png", "spec": "Rc", "rnd": 17}
+{"wall": 393.8999749989307, "case": "alpha_png", "spec": "M", "rnd": 18}
+{"wall": 395.30954400106566, "case": "alpha_png", "spec": "Q", "rnd": 18}
+{"wall": 388.093386998662, "case": "alpha_png", "spec": "R", "rnd": 18}
+{"wall": 396.16065100199194, "case": "alpha_png", "spec": "Rc", "rnd": 18}
+{"wall": 397.88148600200657, "case": "alpha_png", "spec": "M", "rnd": 19}
+{"wall": 392.9434060009953, "case": "alpha_png", "spec": "Rc", "rnd": 19}
+{"wall": 388.125127999956, "case": "alpha_png", "spec": "R", "rnd": 19}
+{"wall": 402.7384559994971, "case": "alpha_png", "spec": "Q", "rnd": 19}
+{"wall": 388.1829879974248, "case": "alpha_png", "spec": "R", "rnd": 20}
+{"wall": 395.94941699760966, "case": "alpha_png", "spec": "Rc", "rnd": 20}
+{"wall": 392.3305239986803, "case": "alpha_png", "spec": "M", "rnd": 20}
+{"wall": 394.55136899778154, "case": "alpha_png", "spec": "Q", "rnd": 20}
+{"wall": 400.6561630012584, "case": "alpha_png", "spec": "R", "rnd": 21}
+{"wall": 396.5916489978554, "case": "alpha_png", "spec": "Q", "rnd": 21}
+{"wall": 398.2132029996137, "case": "alpha_png", "spec": "M", "rnd": 21}
+{"wall": 401.46241999900667, "case": "alpha_png", "spec": "Rc", "rnd": 21}
+{"wall": 390.6495500013989, "case": "alpha_png", "spec": "M", "rnd": 22}
+{"wall": 395.8880459977081, "case": "alpha_png", "spec": "Q", "rnd": 22}
+{"wall": 400.7713249993685, "case": "alpha_png", "spec": "R", "rnd": 22}
+{"wall": 389.2256199978874, "case": "alpha_png", "spec": "Rc", "rnd": 22}
+{"wall": 393.32518400260597, "case": "alpha_png", "spec": "M", "rnd": 23}
+{"wall": 396.65284100192366, "case": "alpha_png", "spec": "Rc", "rnd": 23}
+{"wall": 394.63112999874284, "case": "alpha_png", "spec": "R", "rnd": 23}
+{"wall": 387.79078099832986, "case": "alpha_png", "spec": "Q", "rnd": 23}
+{"wall": 595.7179520009959, "first": 419.4110850003199, "case": "batch_two", "spec": "R", "rnd": 0}
+{"wall": 589.0235989973007, "first": 419.5318479978596, "case": "batch_two", "spec": "Rc", "rnd": 0}
+{"wall": 582.0678009986295, "first": 395.40560800014646, "case": "batch_two", "spec": "M", "rnd": 0}
+{"wall": 590.4857719979191, "first": 425.34673000045586, "case": "batch_two", "spec": "Q", "rnd": 0}
+{"wall": 580.4804549989058, "first": 392.4853719981911, "case": "batch_two", "spec": "R", "rnd": 1}
+{"wall": 588.340853999398, "first": 419.65514099865686, "case": "batch_two", "spec": "Q", "rnd": 1}
+{"wall": 579.5600329984154, "first": 418.01774299892713, "case": "batch_two", "spec": "M", "rnd": 1}
+{"wall": 569.6758880003472, "first": 390.69700999971246, "case": "batch_two", "spec": "Rc", "rnd": 1}
+{"wall": 590.4886029966292, "first": 421.4511219979613, "case": "batch_two", "spec": "M", "rnd": 2}
+{"wall": 581.9283970013203, "first": 390.5660070013255, "case": "batch_two", "spec": "Q", "rnd": 2}
+{"wall": 576.8157610000344, "first": 396.5715949998412, "case": "batch_two", "spec": "R", "rnd": 2}
+{"wall": 573.092345999612, "first": 414.79013999924064, "case": "batch_two", "spec": "Rc", "rnd": 2}
+{"wall": 580.2558200011845, "first": 418.39429199899314, "case": "batch_two", "spec": "M", "rnd": 3}
+{"wall": 567.0241179977893, "first": 413.22204399693874, "case": "batch_two", "spec": "Rc", "rnd": 3}
+{"wall": 588.8062340018223, "first": 399.6332450005866, "case": "batch_two", "spec": "R", "rnd": 3}
+{"wall": 571.8663600018772, "first": 415.2688110007148, "case": "batch_two", "spec": "Q", "rnd": 3}
+{"wall": 585.4716479989293, "first": 425.5278589989757, "case": "batch_two", "spec": "R", "rnd": 4}
+{"wall": 571.3737130026857, "first": 414.34855300030904, "case": "batch_two", "spec": "Rc", "rnd": 4}
+{"wall": 579.2448920001334, "first": 390.84048600125243, "case": "batch_two", "spec": "M", "rnd": 4}
+{"wall": 593.2380060003197, "first": 399.05080199969234, "case": "batch_two", "spec": "Q", "rnd": 4}
+{"wall": 593.2484859986289, "first": 418.7249310016341, "case": "batch_two", "spec": "R", "rnd": 5}
+{"wall": 585.8334849981475, "first": 393.560840999271, "case": "batch_two", "spec": "Q", "rnd": 5}
+{"wall": 584.4318380004552, "first": 416.103268002189, "case": "batch_two", "spec": "M", "rnd": 5}
+{"wall": 570.2111389982747, "first": 413.28770099789836, "case": "batch_two", "spec": "Rc", "rnd": 5}
+{"wall": 578.5791390007944, "first": 422.7499029984756, "case": "batch_two", "spec": "M", "rnd": 6}
+{"wall": 575.6208489983692, "first": 390.36296300037066, "case": "batch_two", "spec": "Q", "rnd": 6}
+{"wall": 585.1624810020439, "first": 420.67850600142265, "case": "batch_two", "spec": "R", "rnd": 6}
+{"wall": 577.8197300023749, "first": 420.8500400018238, "case": "batch_two", "spec": "Rc", "rnd": 6}
+{"wall": 580.7198379989131, "first": 389.9927950005804, "case": "batch_two", "spec": "M", "rnd": 7}
+{"wall": 574.9257219977153, "first": 415.70266999769956, "case": "batch_two", "spec": "Rc", "rnd": 7}
+{"wall": 574.6695569978328, "first": 418.24895899844705, "case": "batch_two", "spec": "R", "rnd": 7}
+{"wall": 584.3729420012096, "first": 422.87452700111317, "case": "batch_two", "spec": "Q", "rnd": 7}
+{"wall": 579.6639330001199, "first": 392.6315959979547, "case": "batch_two", "spec": "R", "rnd": 8}
+{"wall": 572.9407769977115, "first": 418.94324500026414, "case": "batch_two", "spec": "Rc", "rnd": 8}
+{"wall": 575.0357960023393, "first": 420.99840300215874, "case": "batch_two", "spec": "M", "rnd": 8}
+{"wall": 577.496603000327, "first": 390.7022909988882, "case": "batch_two", "spec": "Q", "rnd": 8}
+{"wall": 565.8330830010527, "first": 413.8446479992126, "case": "batch_two", "spec": "R", "rnd": 9}
+{"wall": 567.5053109989676, "first": 415.5512869983795, "case": "batch_two", "spec": "Q", "rnd": 9}
+{"wall": 577.2750069991162, "first": 416.13494099874515, "case": "batch_two", "spec": "M", "rnd": 9}
+{"wall": 573.5729820007691, "first": 386.50995300122304, "case": "batch_two", "spec": "Rc", "rnd": 9}
+{"wall": 587.220718000026, "first": 423.52823200053535, "case": "batch_two", "spec": "M", "rnd": 10}
+{"wall": 584.7940319981717, "first": 423.31828699752805, "case": "batch_two", "spec": "Q", "rnd": 10}
+{"wall": 586.8411310002557, "first": 394.3590929993661, "case": "batch_two", "spec": "R", "rnd": 10}
+{"wall": 595.7343490008498, "first": 422.2428789980768, "case": "batch_two", "spec": "Rc", "rnd": 10}
+{"wall": 579.890945002262, "first": 417.0556730023236, "case": "batch_two", "spec": "M", "rnd": 11}
+{"wall": 580.1427000005788, "first": 418.470841999806, "case": "batch_two", "spec": "Rc", "rnd": 11}
+{"wall": 594.6536869996635, "first": 390.81225599875324, "case": "batch_two", "spec": "R", "rnd": 11}
+{"wall": 584.0034289976757, "first": 423.7583399990399, "case": "batch_two", "spec": "Q", "rnd": 11}
+{"wall": 581.3145840002107, "first": 415.6643749993236, "case": "batch_two", "spec": "R", "rnd": 12}
+{"wall": 574.299259998952, "first": 416.7554769992421, "case": "batch_two", "spec": "Rc", "rnd": 12}
+{"wall": 598.3533230028115, "first": 388.3079950028332, "case": "batch_two", "spec": "M", "rnd": 12}
+{"wall": 576.4838750001218, "first": 390.2172439993592, "case": "batch_two", "spec": "Q", "rnd": 12}
+{"wall": 587.5288110000838, "first": 414.8883890011348, "case": "batch_two", "spec": "R", "rnd": 13}
+{"wall": 579.2011730009108, "first": 416.68320700046024, "case": "batch_two", "spec": "Q", "rnd": 13}
+{"wall": 599.6822140004952, "first": 417.7986540016718, "case": "batch_two", "spec": "M", "rnd": 13}
+{"wall": 577.8466390001995, "first": 386.61592499920516, "case": "batch_two", "spec": "Rc", "rnd": 13}
+{"wall": 586.1609120001958, "first": 393.5171580014867, "case": "batch_two", "spec": "M", "rnd": 14}
+{"wall": 585.873175998131, "first": 397.52931199836894, "case": "batch_two", "spec": "Q", "rnd": 14}
+{"wall": 588.9546899998095, "first": 401.2671999989834, "case": "batch_two", "spec": "R", "rnd": 14}
+{"wall": 578.1255149995559, "first": 390.4770359986287, "case": "batch_two", "spec": "Rc", "rnd": 14}
+{"wall": 592.046923997259, "first": 399.6557760001451, "case": "batch_two", "spec": "M", "rnd": 15}
+{"wall": 589.9208599985286, "first": 399.7000669987756, "case": "batch_two", "spec": "Rc", "rnd": 15}
+{"wall": 577.6943560013024, "first": 391.5040570027486, "case": "batch_two", "spec": "R", "rnd": 15}
+{"wall": 579.2135970004892, "first": 398.7298159991042, "case": "batch_two", "spec": "Q", "rnd": 15}
+{"wall": 586.2989140005084, "first": 416.76116199960234, "case": "batch_two", "spec": "R", "rnd": 16}
+{"wall": 578.1232950030244, "first": 397.43258000089554, "case": "batch_two", "spec": "Rc", "rnd": 16}
+{"wall": 581.2868909997633, "first": 395.5057700004545, "case": "batch_two", "spec": "M", "rnd": 16}
+{"wall": 586.2972540016926, "first": 423.59612500149524, "case": "batch_two", "spec": "Q", "rnd": 16}
+{"wall": 574.8699459982163, "first": 417.13426999922376, "case": "batch_two", "spec": "R", "rnd": 17}
+{"wall": 592.1599670000433, "first": 420.3598980020615, "case": "batch_two", "spec": "Q", "rnd": 17}
+{"wall": 573.4086369993747, "first": 413.605407000432, "case": "batch_two", "spec": "M", "rnd": 17}
+{"wall": 562.4009570019552, "first": 413.5857860019314, "case": "batch_two", "spec": "Rc", "rnd": 17}
+{"wall": 580.8384709998791, "first": 418.65689199767075, "case": "batch_two", "spec": "M", "rnd": 18}
+{"wall": 569.5840570006112, "first": 390.08258700050646, "case": "batch_two", "spec": "Q", "rnd": 18}
+{"wall": 585.5761999991955, "first": 397.1205939997162, "case": "batch_two", "spec": "R", "rnd": 18}
+{"wall": 577.2438259991759, "first": 390.9968760017364, "case": "batch_two", "spec": "Rc", "rnd": 18}
+{"wall": 576.914659999602, "first": 419.3394369976886, "case": "batch_two", "spec": "M", "rnd": 19}
+{"wall": 584.0220569989469, "first": 421.1983749992214, "case": "batch_two", "spec": "Rc", "rnd": 19}
+{"wall": 584.89176600051, "first": 420.4465100010566, "case": "batch_two", "spec": "R", "rnd": 19}
+{"wall": 585.8627060006256, "first": 397.60450399990077, "case": "batch_two", "spec": "Q", "rnd": 19}
+{"wall": 580.1796979976643, "first": 422.1755549988302, "case": "batch_two", "spec": "R", "rnd": 20}
+{"wall": 577.8184720002173, "first": 389.4577629980631, "case": "batch_two", "spec": "Rc", "rnd": 20}
+{"wall": 588.2179689979239, "first": 395.85359699776745, "case": "batch_two", "spec": "M", "rnd": 20}
+{"wall": 582.2649949986953, "first": 422.3659700001008, "case": "batch_two", "spec": "Q", "rnd": 20}
+{"wall": 580.0399979998474, "first": 415.2662919987051, "case": "batch_two", "spec": "R", "rnd": 21}
+{"wall": 585.8238790024188, "first": 419.18456300118123, "case": "batch_two", "spec": "Q", "rnd": 21}
+{"wall": 578.6876309975924, "first": 389.63737699668854, "case": "batch_two", "spec": "M", "rnd": 21}
+{"wall": 585.7788289977179, "first": 415.8378840002115, "case": "batch_two", "spec": "Rc", "rnd": 21}
+{"wall": 582.6115920026496, "first": 394.5328290028556, "case": "batch_two", "spec": "M", "rnd": 22}
+{"wall": 587.226299001486, "first": 424.29180000181077, "case": "batch_two", "spec": "Q", "rnd": 22}
+{"wall": 578.6793799998122, "first": 392.5980489984795, "case": "batch_two", "spec": "R", "rnd": 22}
+{"wall": 588.2295289993635, "first": 390.93466399936005, "case": "batch_two", "spec": "Rc", "rnd": 22}
+{"wall": 590.5733780018636, "first": 429.48768900168943, "case": "batch_two", "spec": "M", "rnd": 23}
+{"wall": 587.8010999986145, "first": 388.7323480012128, "case": "batch_two", "spec": "Rc", "rnd": 23}
+{"wall": 601.5482869988773, "first": 394.3330850015627, "case": "batch_two", "spec": "R", "rnd": 23}
+{"wall": 606.4020689991594, "first": 402.8066319988284, "case": "batch_two", "spec": "Q", "rnd": 23}

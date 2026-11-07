@@ -1,0 +1,166 @@
+| bin | input | options | single rc | single file | batch rc | batch file | others kept | message |
+|---|---|---|---|---|---|---|---|---|
+| main | c64x65535.png |  | 0 | GOOD 64x65535 420 8b | 0 | GOOD 64x65535 420 8b | 2/2 |  |
+| fix3 | c64x65535.png |  | 0 | GOOD 64x65535 420 8b | 0 | GOOD 64x65535 420 8b | 2/2 |  |
+| main | c64x65536.png |  | 0 | GOOD 64x65536 420 8b | 0 | GOOD 64x65536 420 8b | 2/2 |  |
+| fix3 | c64x65536.png |  | 0 | GOOD 64x65536 420 8b | 0 | GOOD 64x65536 420 8b | 2/2 |  |
+| main | c64x65537.png |  | 0 | BROKEN: dav1d failed: Error parsing sequence header | 0 | BROKEN: dav1d failed: Error parsing sequence header | 2/2 |  |
+| fix3 | c64x65537.png |  | 3 | no file | 0 | no file | 2/2 | /dev/shm/lim/c64x65537.png: 64x65537 is larger than AV1 can code (65536 pixels per side) |
+| main | c65536x64.png |  | 0 | GOOD 65536x64 420 8b | 0 | GOOD 65536x64 420 8b | 2/2 |  |
+| fix3 | c65536x64.png |  | 0 | GOOD 65536x64 420 8b | 0 | GOOD 65536x64 420 8b | 2/2 |  |
+| main | c65537x64.png |  | 0 | BROKEN: dav1d failed: Error parsing sequence header | 0 | BROKEN: dav1d failed: Error parsing sequence header | 2/2 |  |
+| fix3 | c65537x64.png |  | 3 | no file | 0 | no file | 2/2 | /dev/shm/lim/c65537x64.png: 65537x64 is larger than AV1 can code (65536 pixels per side) |
+| main | c64x65472.png | --yuv 444 | 0 | GOOD 64x65472 444 8b | 0 | GOOD 64x65472 444 8b | 2/2 |  |
+| fix3 | c64x65472.png | --yuv 444 | 0 | GOOD 64x65472 444 8b | 0 | GOOD 64x65472 444 8b | 2/2 |  |
+| main | c64x65472.png | --depth 10 | 0 | GOOD 64x65472 420 10b | 0 | GOOD 64x65472 420 10b | 2/2 |  |
+| fix3 | c64x65472.png | --depth 10 | 0 | GOOD 64x65472 420 10b | 0 | GOOD 64x65472 420 10b | 2/2 |  |
+| main | c64x65472.png | --lossless | 0 | GOOD 64x65472 444 8b | 0 | GOOD 64x65472 444 8b | 2/2 |  |
+| fix3 | c64x65472.png | --lossless | 0 | GOOD 64x65472 444 8b | 0 | GOOD 64x65472 444 8b | 2/2 |  |
+| main | g64x65472.png |  | 0 | GOOD 64x65472 420 8b | 0 | GOOD 64x65472 420 8b | 2/2 |  |
+| fix3 | g64x65472.png |  | 0 | GOOD 64x65472 420 8b | 0 | GOOD 64x65472 420 8b | 2/2 |  |
+| main | c64x65473.png | --yuv 444 | 0 | GOOD 64x65473 444 8b | 0 | GOOD 64x65473 444 8b | 2/2 |  |
+| fix3 | c64x65473.png | --yuv 444 | 0 | GOOD 64x65473 444 8b | 0 | GOOD 64x65473 444 8b | 2/2 |  |
+| main | c64x65473.png | --depth 10 | 0 | GOOD 64x65473 420 10b | 0 | GOOD 64x65473 420 10b | 2/2 |  |
+| fix3 | c64x65473.png | --depth 10 | 0 | GOOD 64x65473 420 10b | 0 | GOOD 64x65473 420 10b | 2/2 |  |
+| main | c64x65473.png | --lossless | 0 | GOOD 64x65473 444 8b | 0 | GOOD 64x65473 444 8b | 2/2 |  |
+| fix3 | c64x65473.png | --lossless | 0 | GOOD 64x65473 444 8b | 0 | GOOD 64x65473 444 8b | 2/2 |  |
+| main | g64x65473.png |  | 0 | GOOD 64x65473 420 8b | 0 | GOOD 64x65473 420 8b | 2/2 |  |
+| fix3 | g64x65473.png |  | 0 | GOOD 64x65473 420 8b | 0 | GOOD 64x65473 420 8b | 2/2 |  |
+| main | c64x65535.png | --yuv 444 | 0 | GOOD 64x65535 444 8b | 0 | GOOD 64x65535 444 8b | 2/2 |  |
+| fix3 | c64x65535.png | --yuv 444 | 0 | GOOD 64x65535 444 8b | 0 | GOOD 64x65535 444 8b | 2/2 |  |
+| main | c64x65535.png | --depth 10 | 0 | GOOD 64x65535 420 10b | 0 | GOOD 64x65535 420 10b | 2/2 |  |
+| fix3 | c64x65535.png | --depth 10 | 0 | GOOD 64x65535 420 10b | 0 | GOOD 64x65535 420 10b | 2/2 |  |
+| main | c64x65535.png | --lossless | 0 | GOOD 64x65535 444 8b | 0 | GOOD 64x65535 444 8b | 2/2 |  |
+| fix3 | c64x65535.png | --lossless | 0 | GOOD 64x65535 444 8b | 0 | GOOD 64x65535 444 8b | 2/2 |  |
+| main | g64x65535.png |  | 0 | GOOD 64x65535 420 8b | 0 | GOOD 64x65535 420 8b | 2/2 |  |
+| fix3 | g64x65535.png |  | 0 | GOOD 64x65535 420 8b | 0 | GOOD 64x65535 420 8b | 2/2 |  |
+| main | c64x65536.png | --yuv 444 | 0 | GOOD 64x65536 444 8b | 0 | GOOD 64x65536 444 8b | 2/2 |  |
+| fix3 | c64x65536.png | --yuv 444 | 0 | GOOD 64x65536 444 8b | 0 | GOOD 64x65536 444 8b | 2/2 |  |
+| main | c64x65536.png | --depth 10 | 0 | GOOD 64x65536 420 10b | 0 | GOOD 64x65536 420 10b | 2/2 |  |
+| fix3 | c64x65536.png | --depth 10 | 0 | GOOD 64x65536 420 10b | 0 | GOOD 64x65536 420 10b | 2/2 |  |
+| main | c64x65536.png | --lossless | 0 | GOOD 64x65536 444 8b | 0 | GOOD 64x65536 444 8b | 2/2 |  |
+| fix3 | c64x65536.png | --lossless | 0 | GOOD 64x65536 444 8b | 0 | GOOD 64x65536 444 8b | 2/2 |  |
+| main | g64x65536.png |  | 0 | GOOD 64x65536 420 8b | 0 | GOOD 64x65536 420 8b | 2/2 |  |
+| fix3 | g64x65536.png |  | 0 | GOOD 64x65536 420 8b | 0 | GOOD 64x65536 420 8b | 2/2 |  |
+| main | c64x65537.png | --yuv 444 | 0 | BROKEN: dav1d failed: Error parsing sequence header | 0 | BROKEN: dav1d failed: Error parsing sequence header | 2/2 |  |
+| fix3 | c64x65537.png | --yuv 444 | 3 | no file | 0 | no file | 2/2 | /dev/shm/lim/c64x65537.png: 64x65537 is larger than AV1 can code (65536 pixels per side) |
+| main | c64x65537.png | --depth 10 | 0 | BROKEN: dav1d failed: Error parsing sequence header | 0 | BROKEN: dav1d failed: Error parsing sequence header | 2/2 |  |
+| fix3 | c64x65537.png | --depth 10 | 3 | no file | 0 | no file | 2/2 | /dev/shm/lim/c64x65537.png: 64x65537 is larger than AV1 can code (65536 pixels per side) |
+| main | c64x65537.png | --lossless | 0 | BROKEN: dav1d failed: Error parsing sequence header | 0 | BROKEN: dav1d failed: Error parsing sequence header | 2/2 |  |
+| fix3 | c64x65537.png | --lossless | 3 | no file | 0 | no file | 2/2 | /dev/shm/lim/c64x65537.png: 64x65537 is larger than AV1 can code (65536 pixels per side) |
+| main | g64x65537.png |  | 0 | BROKEN: dav1d failed: Error parsing sequence header | 0 | BROKEN: dav1d failed: Error parsing sequence header | 2/2 |  |
+| fix3 | g64x65537.png |  | 3 | no file | 0 | no file | 2/2 | /dev/shm/lim/g64x65537.png: 64x65537 is larger than AV1 can code (65536 pixels per side) |
+| main | c65535x64.png | --yuv 444 | 0 | GOOD 65535x64 444 8b | 0 | GOOD 65535x64 444 8b | 2/2 |  |
+| fix3 | c65535x64.png | --yuv 444 | 0 | GOOD 65535x64 444 8b | 0 | GOOD 65535x64 444 8b | 2/2 |  |
+| main | c65535x64.png | --depth 10 | 0 | GOOD 65535x64 420 10b | 0 | GOOD 65535x64 420 10b | 2/2 |  |
+| fix3 | c65535x64.png | --depth 10 | 0 | GOOD 65535x64 420 10b | 0 | GOOD 65535x64 420 10b | 2/2 |  |
+| main | c65535x64.png | --lossless | 0 | GOOD 65535x64 444 8b | 0 | GOOD 65535x64 444 8b | 2/2 |  |
+| fix3 | c65535x64.png | --lossless | 0 | GOOD 65535x64 444 8b | 0 | GOOD 65535x64 444 8b | 2/2 |  |
+| main | g65535x64.png |  | 0 | GOOD 65535x64 420 8b | 0 | GOOD 65535x64 420 8b | 2/2 |  |
+| fix3 | g65535x64.png |  | 0 | GOOD 65535x64 420 8b | 0 | GOOD 65535x64 420 8b | 2/2 |  |
+| main | c65536x64.png | --yuv 444 | 0 | GOOD 65536x64 444 8b | 0 | GOOD 65536x64 444 8b | 2/2 |  |
+| fix3 | c65536x64.png | --yuv 444 | 0 | GOOD 65536x64 444 8b | 0 | GOOD 65536x64 444 8b | 2/2 |  |
+| main | c65536x64.png | --depth 10 | 0 | GOOD 65536x64 420 10b | 0 | GOOD 65536x64 420 10b | 2/2 |  |
+| fix3 | c65536x64.png | --depth 10 | 0 | GOOD 65536x64 420 10b | 0 | GOOD 65536x64 420 10b | 2/2 |  |
+| main | c65536x64.png | --lossless | 0 | GOOD 65536x64 444 8b | 0 | GOOD 65536x64 444 8b | 2/2 |  |
+| fix3 | c65536x64.png | --lossless | 0 | GOOD 65536x64 444 8b | 0 | GOOD 65536x64 444 8b | 2/2 |  |
+| main | g65536x64.png |  | 0 | GOOD 65536x64 420 8b | 0 | GOOD 65536x64 420 8b | 2/2 |  |
+| fix3 | g65536x64.png |  | 0 | GOOD 65536x64 420 8b | 0 | GOOD 65536x64 420 8b | 2/2 |  |
+| main | c65537x64.png | --yuv 444 | 0 | BROKEN: dav1d failed: Error parsing sequence header | 0 | BROKEN: dav1d failed: Error parsing sequence header | 2/2 |  |
+| fix3 | c65537x64.png | --yuv 444 | 3 | no file | 0 | no file | 2/2 | /dev/shm/lim/c65537x64.png: 65537x64 is larger than AV1 can code (65536 pixels per side) |
+| main | c65537x64.png | --depth 10 | 0 | BROKEN: dav1d failed: Error parsing sequence header | 0 | BROKEN: dav1d failed: Error parsing sequence header | 2/2 |  |
+| fix3 | c65537x64.png | --depth 10 | 3 | no file | 0 | no file | 2/2 | /dev/shm/lim/c65537x64.png: 65537x64 is larger than AV1 can code (65536 pixels per side) |
+| main | c65537x64.png | --lossless | 0 | BROKEN: dav1d failed: Error parsing sequence header | 0 | BROKEN: dav1d failed: Error parsing sequence header | 2/2 |  |
+| fix3 | c65537x64.png | --lossless | 3 | no file | 0 | no file | 2/2 | /dev/shm/lim/c65537x64.png: 65537x64 is larger than AV1 can code (65536 pixels per side) |
+| main | g65537x64.png |  | 0 | BROKEN: dav1d failed: Error parsing sequence header | 0 | BROKEN: dav1d failed: Error parsing sequence header | 2/2 |  |
+| fix3 | g65537x64.png |  | 3 | no file | 0 | no file | 2/2 | /dev/shm/lim/g65537x64.png: 65537x64 is larger than AV1 can code (65536 pixels per side) |
+| main | c16x65536.png | --yuv 444 | 0 | GOOD 16x65536 444 8b | 0 | GOOD 16x65536 444 8b | 2/2 |  |
+| fix3 | c16x65536.png | --yuv 444 | 0 | GOOD 16x65536 444 8b | 0 | GOOD 16x65536 444 8b | 2/2 |  |
+| main | c16x65536.png | --depth 10 | 0 | GOOD 16x65536 420 10b | 0 | GOOD 16x65536 420 10b | 2/2 |  |
+| fix3 | c16x65536.png | --depth 10 | 0 | GOOD 16x65536 420 10b | 0 | GOOD 16x65536 420 10b | 2/2 |  |
+| main | c16x65536.png | --lossless | 0 | GOOD 16x65536 444 8b | 0 | GOOD 16x65536 444 8b | 2/2 |  |
+| fix3 | c16x65536.png | --lossless | 0 | GOOD 16x65536 444 8b | 0 | GOOD 16x65536 444 8b | 2/2 |  |
+| main | g16x65536.png |  | 0 | GOOD 16x65536 420 8b | 0 | GOOD 16x65536 420 8b | 2/2 |  |
+| fix3 | g16x65536.png |  | 0 | GOOD 16x65536 420 8b | 0 | GOOD 16x65536 420 8b | 2/2 |  |
+| main | c1x65536.png | --yuv 444 | 0 | GOOD 1x65536 444 8b | 0 | GOOD 1x65536 444 8b | 2/2 |  |
+| fix3 | c1x65536.png | --yuv 444 | 0 | GOOD 1x65536 444 8b | 0 | GOOD 1x65536 444 8b | 2/2 |  |
+| main | c1x65536.png | --depth 10 | 0 | GOOD 1x65536 420 10b | 0 | GOOD 1x65536 420 10b | 2/2 |  |
+| fix3 | c1x65536.png | --depth 10 | 0 | GOOD 1x65536 420 10b | 0 | GOOD 1x65536 420 10b | 2/2 |  |
+| main | c1x65536.png | --lossless | 0 | GOOD 1x65536 444 8b | 0 | GOOD 1x65536 444 8b | 2/2 |  |
+| fix3 | c1x65536.png | --lossless | 0 | GOOD 1x65536 444 8b | 0 | GOOD 1x65536 444 8b | 2/2 |  |
+| main | g1x65536.png |  | 0 | GOOD 1x65536 420 8b | 0 | GOOD 1x65536 420 8b | 2/2 |  |
+| fix3 | g1x65536.png |  | 0 | GOOD 1x65536 420 8b | 0 | GOOD 1x65536 420 8b | 2/2 |  |
+| main | c65536x1.png | --yuv 444 | 0 | GOOD 65536x1 444 8b | 0 | GOOD 65536x1 444 8b | 2/2 |  |
+| fix3 | c65536x1.png | --yuv 444 | 0 | GOOD 65536x1 444 8b | 0 | GOOD 65536x1 444 8b | 2/2 |  |
+| main | c65536x1.png | --depth 10 | 0 | GOOD 65536x1 420 10b | 0 | GOOD 65536x1 420 10b | 2/2 |  |
+| fix3 | c65536x1.png | --depth 10 | 0 | GOOD 65536x1 420 10b | 0 | GOOD 65536x1 420 10b | 2/2 |  |
+| main | c65536x1.png | --lossless | 0 | GOOD 65536x1 444 8b | 0 | GOOD 65536x1 444 8b | 2/2 |  |
+| fix3 | c65536x1.png | --lossless | 0 | GOOD 65536x1 444 8b | 0 | GOOD 65536x1 444 8b | 2/2 |  |
+| main | g65536x1.png |  | 0 | GOOD 65536x1 420 8b | 0 | GOOD 65536x1 420 8b | 2/2 |  |
+| fix3 | g65536x1.png |  | 0 | GOOD 65536x1 420 8b | 0 | GOOD 65536x1 420 8b | 2/2 |  |
+| fix3 | bar_mid_200x120.png | resize=1x65535! | 3 | no file | 0 | no file | 2/2 | /home/ubuntu/adv/trim/bar_mid_200x120.png: 1x65535 after crop / resize is taller than a resized picture c |
+| fix3 | bar_mid_200x120.png | resize=1x65536! | 3 | no file | 0 | no file | 2/2 | /home/ubuntu/adv/trim/bar_mid_200x120.png: 1x65536 after crop / resize is taller than a resized picture c |
+| fix3 | bar_mid_200x120.png | resize=1x65472! | 0 | GOOD 1x65472 420 8b | 0 | GOOD 1x65472 420 8b | 2/2 |  |
+| fix3 | bar_mid_200x120.png | resize=1x65473! | 3 | no file | 0 | no file | 2/2 | /home/ubuntu/adv/trim/bar_mid_200x120.png: 1x65473 after crop / resize is taller than a resized picture c |
+| fix3 | bar_mid_200x120.png | resize=64x65472! | 0 | GOOD 64x65472 420 8b | 0 | GOOD 64x65472 420 8b | 2/2 |  |
+| fix3 | bar_mid_200x120.png | resize=64x65473! | 3 | no file | 0 | no file | 2/2 | /home/ubuntu/adv/trim/bar_mid_200x120.png: 64x65473 after crop / resize is taller than a resized picture  |
+| fix3 | bar_mid_200x120.png | resize=64x65535! | 3 | no file | 0 | no file | 2/2 | /home/ubuntu/adv/trim/bar_mid_200x120.png: 64x65535 after crop / resize is taller than a resized picture  |
+| fix3 | bar_mid_200x120.png | resize=64x65536! | 3 | no file | 0 | no file | 2/2 | /home/ubuntu/adv/trim/bar_mid_200x120.png: 64x65536 after crop / resize is taller than a resized picture  |
+| fix3 | bar_mid_200x120.png | resize=64x65537! | 3 | no file | 0 | no file | 2/2 | /home/ubuntu/adv/trim/bar_mid_200x120.png: 64x65537 after crop / resize is larger than AV1 can code (6553 |
+| fix3 | bar_mid_200x120.png | resize=65535x1! | 0 | GOOD 65535x1 420 8b | 0 | GOOD 65535x1 420 8b | 2/2 |  |
+| fix3 | bar_mid_200x120.png | resize=65536x1! | 0 | GOOD 65536x1 420 8b | 0 | GOOD 65536x1 420 8b | 2/2 |  |
+| fix3 | bar_mid_200x120.png | resize=65537x1! | 3 | no file | 0 | no file | 2/2 | /home/ubuntu/adv/trim/bar_mid_200x120.png: 65537x1 after crop / resize is larger than AV1 can code (65536 |
+| fix3 | bar_mid_200x120.png | resize=65536x64! | 0 | GOOD 65536x64 420 8b | 0 | GOOD 65536x64 420 8b | 2/2 |  |
+| fix3 | bar_mid_200x120.png | resize=65537x64! | 3 | no file | 0 | no file | 2/2 | /home/ubuntu/adv/trim/bar_mid_200x120.png: 65537x64 after crop / resize is larger than AV1 can code (6553 |
+| fix3 | bar_mid_200x120.png | resize=70000x64! | 3 | no file | 0 | no file | 2/2 | /home/ubuntu/adv/trim/bar_mid_200x120.png: 70000x64 after crop / resize is larger than AV1 can code (6553 |
+| fix3 | bar_mid_200x120.png | resize=262144x1! | 3 | no file | 0 | no file | 2/2 | /home/ubuntu/adv/trim/bar_mid_200x120.png: 262144x1 after crop / resize is larger than AV1 can code (6553 |
+| fix3 | bar_mid_200x120.png | resize=262145x1! | 3 | no file | 0 | no file | 2/2 | /home/ubuntu/adv/trim/bar_mid_200x120.png: 262145x1 after crop / resize is larger than AV1 can code (6553 |
+| fix3 | bar_mid_200x120.png | resize=300000x1! | 3 | no file | 0 | no file | 2/2 | /home/ubuntu/adv/trim/bar_mid_200x120.png: 300000x1 after crop / resize is larger than AV1 can code (6553 |
+| fix3 | bar_mid_200x120.png | --yuv 444 resize=1x65472! | 0 | GOOD 1x65472 444 8b | 0 | GOOD 1x65472 444 8b | 2/2 |  |
+| fix3 | bar_mid_200x120.png | --depth 10 resize=1x65472! | 0 | GOOD 1x65472 420 10b | 0 | GOOD 1x65472 420 10b | 2/2 |  |
+| fix3 | bar_mid_200x120.png | --lossless resize=1x65472! | 0 | GOOD 1x65472 444 8b | 0 | GOOD 1x65472 444 8b | 2/2 |  |
+| fix3 | bar_mid_200x120.png | --yuv 444 resize=1x65473! | 3 | no file | 0 | no file | 2/2 | /home/ubuntu/adv/trim/bar_mid_200x120.png: 1x65473 after crop / resize is taller than a resized picture c |
+| fix3 | bar_mid_200x120.png | --depth 10 resize=1x65473! | 3 | no file | 0 | no file | 2/2 | /home/ubuntu/adv/trim/bar_mid_200x120.png: 1x65473 after crop / resize is taller than a resized picture c |
+| fix3 | bar_mid_200x120.png | --lossless resize=1x65473! | 3 | no file | 0 | no file | 2/2 | /home/ubuntu/adv/trim/bar_mid_200x120.png: 1x65473 after crop / resize is taller than a resized picture c |
+| fix3 | bar_mid_200x120.png | --yuv 444 resize=64x65472! | 0 | GOOD 64x65472 444 8b | 0 | GOOD 64x65472 444 8b | 2/2 |  |
+| fix3 | bar_mid_200x120.png | --depth 10 resize=64x65472! | 0 | GOOD 64x65472 420 10b | 0 | GOOD 64x65472 420 10b | 2/2 |  |
+| fix3 | bar_mid_200x120.png | --lossless resize=64x65472! | 0 | GOOD 64x65472 444 8b | 0 | GOOD 64x65472 444 8b | 2/2 |  |
+| fix3 | bar_mid_200x120.png | --yuv 444 resize=64x65473! | 3 | no file | 0 | no file | 2/2 | /home/ubuntu/adv/trim/bar_mid_200x120.png: 64x65473 after crop / resize is taller than a resized picture  |
+| fix3 | bar_mid_200x120.png | --depth 10 resize=64x65473! | 3 | no file | 0 | no file | 2/2 | /home/ubuntu/adv/trim/bar_mid_200x120.png: 64x65473 after crop / resize is taller than a resized picture  |
+| fix3 | bar_mid_200x120.png | --lossless resize=64x65473! | 3 | no file | 0 | no file | 2/2 | /home/ubuntu/adv/trim/bar_mid_200x120.png: 64x65473 after crop / resize is taller than a resized picture  |
+| fix3 | bar_mid_200x120.png | --yuv 444 resize=65536x64! | 0 | GOOD 65536x64 444 8b | 0 | GOOD 65536x64 444 8b | 2/2 |  |
+| fix3 | bar_mid_200x120.png | --depth 10 resize=65536x64! | 0 | GOOD 65536x64 420 10b | 0 | GOOD 65536x64 420 10b | 2/2 |  |
+| fix3 | bar_mid_200x120.png | --lossless resize=65536x64! | 0 | GOOD 65536x64 444 8b | 0 | GOOD 65536x64 444 8b | 2/2 |  |
+| main | c64x65535.png | --crop 64x65472+0+0 | 0 | GOOD 64x65472 420 8b | 0 | GOOD 64x65472 420 8b | 2/2 |  |
+| fix3 | c64x65535.png | --crop 64x65472+0+0 | 0 | GOOD 64x65472 420 8b | 0 | GOOD 64x65472 420 8b | 2/2 |  |
+| main | c64x65537.png | --crop 64x65472+0+0 | 0 | GOOD 64x65472 420 8b | 0 | GOOD 64x65472 420 8b | 2/2 |  |
+| fix3 | c64x65537.png | --crop 64x65472+0+0 | 0 | GOOD 64x65472 420 8b | 0 | GOOD 64x65472 420 8b | 2/2 |  |
+| main | c64x65535.png | --crop 64x65473+0+0 | 1 | no file | 1 | no file | 0/2 | crop / resize: CUDA: invalid argument at cudaGetLastError() (/home/ubuntu/main/encoder/src/pipeline.cpp:1 |
+| fix3 | c64x65535.png | --crop 64x65473+0+0 | 3 | no file | 0 | no file | 2/2 | /dev/shm/lim/c64x65535.png: 64x65473 after crop / resize is taller than a resized picture can be (65472 r |
+| main | c64x65537.png | --crop 64x65473+0+0 | 1 | no file | 1 | no file | 0/2 | crop / resize: CUDA: invalid argument at cudaGetLastError() (/home/ubuntu/main/encoder/src/pipeline.cpp:1 |
+| fix3 | c64x65537.png | --crop 64x65473+0+0 | 3 | no file | 0 | no file | 2/2 | /dev/shm/lim/c64x65537.png: 64x65473 after crop / resize is taller than a resized picture can be (65472 r |
+| main | c64x65535.png | --crop 64x65500+0+0 | 1 | no file | 1 | no file | 0/2 | crop / resize: CUDA: invalid argument at cudaGetLastError() (/home/ubuntu/main/encoder/src/pipeline.cpp:1 |
+| fix3 | c64x65535.png | --crop 64x65500+0+0 | 3 | no file | 0 | no file | 2/2 | /dev/shm/lim/c64x65535.png: 64x65500 after crop / resize is taller than a resized picture can be (65472 r |
+| main | c64x65537.png | --crop 64x65500+0+0 | 1 | no file | 1 | no file | 2/2 | crop / resize: CUDA: invalid argument at cudaGetLastError() (/home/ubuntu/main/encoder/src/pipeline.cpp:1 |
+| fix3 | c64x65537.png | --crop 64x65500+0+0 | 3 | no file | 0 | no file | 2/2 | /dev/shm/lim/c64x65537.png: 64x65500 after crop / resize is taller than a resized picture can be (65472 r |
+| main | c64x65535.png | --max-height 65472 | 0 | GOOD 64x65472 420 8b | 0 | GOOD 64x65472 420 8b | 2/2 |  |
+| fix3 | c64x65535.png | --max-height 65472 | 0 | GOOD 64x65472 420 8b | 0 | GOOD 64x65472 420 8b | 2/2 |  |
+| main | c64x65537.png | --max-height 65472 | 0 | GOOD 64x65472 420 8b | 0 | GOOD 64x65472 420 8b | 2/2 |  |
+| fix3 | c64x65537.png | --max-height 65472 | 0 | GOOD 64x65472 420 8b | 0 | GOOD 64x65472 420 8b | 2/2 |  |
+| main | c64x65535.png | --max-height 65473 | 1 | no file | 1 | no file | 0/2 | crop / resize: CUDA: invalid argument at cudaGetLastError() (/home/ubuntu/main/encoder/src/pipeline.cpp:1 |
+| fix3 | c64x65535.png | --max-height 65473 | 3 | no file | 0 | no file | 2/2 | /dev/shm/lim/c64x65535.png: 64x65473 after crop / resize is taller than a resized picture can be (65472 r |
+| main | c64x65537.png | --max-height 65473 | 1 | no file | 1 | no file | 0/2 | crop / resize: CUDA: invalid argument at cudaGetLastError() (/home/ubuntu/main/encoder/src/pipeline.cpp:1 |
+| fix3 | c64x65537.png | --max-height 65473 | 3 | no file | 0 | no file | 2/2 | /dev/shm/lim/c64x65537.png: 64x65473 after crop / resize is taller than a resized picture can be (65472 r |
+| main | c64x65535.png | --max-height 65500 | 1 | no file | 1 | no file | 2/2 | crop / resize: CUDA: invalid argument at cudaGetLastError() (/home/ubuntu/main/encoder/src/pipeline.cpp:1 |
+| fix3 | c64x65535.png | --max-height 65500 | 3 | no file | 0 | no file | 2/2 | /dev/shm/lim/c64x65535.png: 64x65500 after crop / resize is taller than a resized picture can be (65472 r |
+| main | c64x65537.png | --max-height 65500 | 1 | no file | 1 | no file | 0/2 | crop / resize: CUDA: invalid argument at cudaGetLastError() (/home/ubuntu/main/encoder/src/pipeline.cpp:1 |
+| fix3 | c64x65537.png | --max-height 65500 | 3 | no file | 0 | no file | 2/2 | /dev/shm/lim/c64x65537.png: 64x65500 after crop / resize is taller than a resized picture can be (65472 r |
+| main | c64x65536.png | --cpu-entropy | 1 | no file | 1 | no file | 2/2 | entropy: av1g_encode: bad size 64x65536 |
+| fix3 | c64x65536.png | --cpu-entropy | 0 | GOOD 64x65536 420 8b | 0 | GOOD 64x65536 420 8b | 2/2 |  |
+| main | c65536x64.png | --cpu-entropy | 1 | no file | 1 | no file | 2/2 | entropy: av1g_encode: bad size 65536x64 |
+| fix3 | c65536x64.png | --cpu-entropy | 0 | GOOD 65536x64 420 8b | 0 | GOOD 65536x64 420 8b | 2/2 |  |
+| main | c64x65535.png | --crop 64x65000+0+0 --resize 64x65535! | 2 | no file | 2 | no file | 0/2 |   both default to one per CPU the process may use), GP_INGEST_DECODER=1 (no nvJPEG) |
+| fix3 | c64x65535.png | --crop 64x65000+0+0 --resize 64x65535! | 3 | no file | 0 | no file | 0/2 | /dev/shm/lim/c64x65535.png: 64x65535 after crop / resize is taller than a resized picture can be (65472 r |
+| main | c64x65535.png | --crop 64x65472+0+1 --resize 64x65472! | 2 | no file | 2 | no file | 0/2 |   both default to one per CPU the process may use), GP_INGEST_DECODER=1 (no nvJPEG) |
+| fix3 | c64x65535.png | --crop 64x65472+0+1 --resize 64x65472! | 0 | GOOD 64x65472 420 8b | 0 | GOOD 64x65472 420 8b | 2/2 |  |
+LIMITS_DONE

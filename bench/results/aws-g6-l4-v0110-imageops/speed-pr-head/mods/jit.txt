@@ -1,0 +1,30 @@
+ls: cannot access 'k_imageops.sm_89.ptx': No such file or directory
+context 137.2 ms (CUDA_MODULE_LOADING=EAGER)
+pass 0 k_imageops.sm_89.ptx                     137424500785.6 KB   0 functions load      0.0 ms functions      0.0 ms LOAD FAILED
+pass 0 k_imageops.sm_89.ptx                     137424500785.6 KB   0 functions load      0.0 ms functions      0.0 ms LOAD FAILED
+pass 0 k_imageops.sm_89.ptx                     137424500785.6 KB   0 functions load      0.0 ms functions      0.0 ms LOAD FAILED
+pass 0 total 402610842.1 MB load 0.0 ms functions 0.0 ms
+pass 1 k_imageops.sm_89.ptx                     137424500785.6 KB   0 functions load      0.0 ms functions      0.0 ms LOAD FAILED
+pass 1 k_imageops.sm_89.ptx                     137424500785.6 KB   0 functions load      0.0 ms functions      0.0 ms LOAD FAILED
+pass 1 k_imageops.sm_89.ptx                     137424500785.6 KB   0 functions load      0.0 ms functions      0.0 ms LOAD FAILED
+pass 1 total 402610842.1 MB load 0.0 ms functions 0.0 ms
+ls: cannot access 'k_misc.sm_89.ptx': No such file or directory
+context 135.6 ms (CUDA_MODULE_LOADING=EAGER)
+pass 0 k_misc.sm_89.ptx                         137424716329.0 KB   0 functions load      0.0 ms functions      0.0 ms LOAD FAILED
+pass 0 k_misc.sm_89.ptx                         137424716329.0 KB   0 functions load      0.0 ms functions      0.0 ms LOAD FAILED
+pass 0 k_misc.sm_89.ptx                         137424716329.0 KB   0 functions load      0.0 ms functions      0.0 ms LOAD FAILED
+pass 0 total 402611473.6 MB load 0.0 ms functions 0.0 ms
+pass 1 k_misc.sm_89.ptx                         137424716329.0 KB   0 functions load      0.0 ms functions      0.0 ms LOAD FAILED
+pass 1 k_misc.sm_89.ptx                         137424716329.0 KB   0 functions load      0.0 ms functions      0.0 ms LOAD FAILED
+pass 1 k_misc.sm_89.ptx                         137424716329.0 KB   0 functions load      0.0 ms functions      0.0 ms LOAD FAILED
+pass 1 total 402611473.6 MB load 0.0 ms functions 0.0 ms
+ls: cannot access 'k_lossless.sm_89.ptx': No such file or directory
+context 135.2 ms (CUDA_MODULE_LOADING=EAGER)
+pass 0 k_lossless.sm_89.ptx                     137438084704.9 KB   0 functions load      0.0 ms functions      0.0 ms LOAD FAILED
+pass 0 k_lossless.sm_89.ptx                     137438084704.9 KB   0 functions load      0.0 ms functions      0.0 ms LOAD FAILED
+pass 0 k_lossless.sm_89.ptx                     137438084704.9 KB   0 functions load      0.0 ms functions      0.0 ms LOAD FAILED
+pass 0 total 402650638.8 MB load 0.0 ms functions 0.0 ms
+pass 1 k_lossless.sm_89.ptx                     137438084704.9 KB   0 functions load      0.0 ms functions      0.0 ms LOAD FAILED
+pass 1 k_lossless.sm_89.ptx                     137438084704.9 KB   0 functions load      0.0 ms functions      0.0 ms LOAD FAILED
+pass 1 k_lossless.sm_89.ptx                     137438084704.9 KB   0 functions load      0.0 ms functions      0.0 ms LOAD FAILED
+pass 1 total 402650638.8 MB load 0.0 ms functions 0.0 ms

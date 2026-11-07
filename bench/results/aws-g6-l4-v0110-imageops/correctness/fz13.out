@@ -1,0 +1,16 @@
+-- 200 iterations, 60 s, rc {('single', 0): 100, ('batch', 0): 63, ('single', 3): 32, ('batch', 2): 3, ('single', 2): 2}, signatures 0
+-- 400 iterations, 119 s, rc {('single', 0): 202, ('batch', 0): 130, ('single', 3): 59, ('batch', 2): 3, ('single', 2): 6}, signatures 0
+-- 600 iterations, 179 s, rc {('single', 0): 307, ('batch', 0): 196, ('single', 3): 83, ('batch', 2): 4, ('single', 2): 10}, signatures 0
+-- 800 iterations, 242 s, rc {('single', 0): 410, ('batch', 0): 261, ('single', 3): 111, ('batch', 2): 5, ('single', 2): 13}, signatures 0
+-- 1000 iterations, 304 s, rc {('single', 0): 510, ('batch', 0): 327, ('single', 3): 142, ('batch', 2): 6, ('single', 2): 15}, signatures 0
+-- 1200 iterations, 366 s, rc {('single', 0): 616, ('batch', 0): 391, ('single', 3): 164, ('batch', 2): 9, ('single', 2): 20}, signatures 0
+-- 1400 iterations, 429 s, rc {('single', 0): 713, ('batch', 0): 457, ('single', 3): 199, ('batch', 2): 9, ('single', 2): 22}, signatures 0
+-- 1600 iterations, 489 s, rc {('single', 0): 819, ('batch', 0): 523, ('single', 3): 225, ('batch', 2): 10, ('single', 2): 23}, signatures 0
+-- 1800 iterations, 559 s, rc {('single', 0): 923, ('batch', 0): 589, ('single', 3): 252, ('batch', 2): 11, ('single', 2): 25}, signatures 0
+-- 2000 iterations, 615 s, rc {('single', 0): 1023, ('batch', 0): 654, ('single', 3): 282, ('batch', 2): 12, ('single', 2): 29}, signatures 0
+-- 2200 iterations, 673 s, rc {('single', 0): 1127, ('batch', 0): 720, ('single', 3): 309, ('batch', 2): 13, ('single', 2): 31}, signatures 0
+-- 2400 iterations, 736 s, rc {('single', 0): 1227, ('batch', 0): 787, ('single', 3): 340, ('batch', 2): 13, ('single', 2): 33}, signatures 0
+-- 2600 iterations, 800 s, rc {('single', 0): 1337, ('batch', 0): 852, ('single', 3): 363, ('batch', 2): 14, ('single', 2): 34}, signatures 0
+-- 2800 iterations, 859 s, rc {('single', 0): 1441, ('batch', 0): 918, ('single', 3): 390, ('batch', 2): 15, ('single', 2): 36}, signatures 0
+-- 3000 iterations, 922 s, rc {('single', 0): 1547, ('batch', 0): 982, ('single', 3): 415, ('batch', 2): 18, ('single', 2): 38}, signatures 0
+DONE {('single', 0): 1547, ('batch', 0): 982, ('single', 3): 415, ('batch', 2): 18, ('single', 2): 38} signatures:

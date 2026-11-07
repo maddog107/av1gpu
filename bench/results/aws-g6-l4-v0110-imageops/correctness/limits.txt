@@ -1,0 +1,158 @@
+| bin | input | options | single rc | single file | batch rc | batch file | others kept | message |
+|---|---|---|---|---|---|---|---|---|
+| main | c64x65535.png |  | 0 | GOOD 64x65535 420 8b | 0 | GOOD 64x65535 420 8b | 2/2 |  |
+| pr | c64x65535.png |  | 0 | GOOD 64x65535 420 8b | 0 | GOOD 64x65535 420 8b | 2/2 |  |
+| main | c64x65536.png |  | 0 | GOOD 64x65536 420 8b | 0 | GOOD 64x65536 420 8b | 2/2 |  |
+| pr | c64x65536.png |  | 0 | GOOD 64x65536 420 8b | 0 | GOOD 64x65536 420 8b | 2/2 |  |
+| main | c64x65537.png |  | 0 | BROKEN: dav1d failed: Error parsing sequence header | 0 | BROKEN: dav1d failed: Error parsing sequence header | 2/2 |  |
+| pr | c64x65537.png |  | 0 | BROKEN: dav1d failed: Error parsing sequence header | 0 | BROKEN: dav1d failed: Error parsing sequence header | 2/2 |  |
+| main | c65536x64.png |  | 0 | GOOD 65536x64 420 8b | 0 | GOOD 65536x64 420 8b | 2/2 |  |
+| pr | c65536x64.png |  | 0 | GOOD 65536x64 420 8b | 0 | GOOD 65536x64 420 8b | 2/2 |  |
+| main | c65537x64.png |  | 0 | BROKEN: dav1d failed: Error parsing sequence header | 0 | BROKEN: dav1d failed: Error parsing sequence header | 2/2 |  |
+| pr | c65537x64.png |  | 0 | BROKEN: dav1d failed: Error parsing sequence header | 0 | BROKEN: dav1d failed: Error parsing sequence header | 2/2 |  |
+| main | c64x65472.png | --yuv 444 | 0 | GOOD 64x65472 444 8b | 0 | GOOD 64x65472 444 8b | 2/2 |  |
+| pr | c64x65472.png | --yuv 444 | 0 | GOOD 64x65472 444 8b | 0 | GOOD 64x65472 444 8b | 2/2 |  |
+| main | c64x65472.png | --depth 10 | 0 | GOOD 64x65472 420 10b | 0 | GOOD 64x65472 420 10b | 2/2 |  |
+| pr | c64x65472.png | --depth 10 | 0 | GOOD 64x65472 420 10b | 0 | GOOD 64x65472 420 10b | 2/2 |  |
+| main | c64x65472.png | --lossless | 0 | GOOD 64x65472 444 8b | 0 | GOOD 64x65472 444 8b | 2/2 |  |
+| pr | c64x65472.png | --lossless | 0 | GOOD 64x65472 444 8b | 0 | GOOD 64x65472 444 8b | 2/2 |  |
+| main | g64x65472.png |  | 0 | GOOD 64x65472 420 8b | 0 | GOOD 64x65472 420 8b | 2/2 |  |
+| pr | g64x65472.png |  | 0 | GOOD 64x65472 420 8b | 0 | GOOD 64x65472 420 8b | 2/2 |  |
+| main | c64x65473.png | --yuv 444 | 0 | GOOD 64x65473 444 8b | 0 | GOOD 64x65473 444 8b | 2/2 |  |
+| pr | c64x65473.png | --yuv 444 | 0 | GOOD 64x65473 444 8b | 0 | GOOD 64x65473 444 8b | 2/2 |  |
+| main | c64x65473.png | --depth 10 | 0 | GOOD 64x65473 420 10b | 0 | GOOD 64x65473 420 10b | 2/2 |  |
+| pr | c64x65473.png | --depth 10 | 0 | GOOD 64x65473 420 10b | 0 | GOOD 64x65473 420 10b | 2/2 |  |
+| main | c64x65473.png | --lossless | 0 | GOOD 64x65473 444 8b | 0 | GOOD 64x65473 444 8b | 2/2 |  |
+| pr | c64x65473.png | --lossless | 0 | GOOD 64x65473 444 8b | 0 | GOOD 64x65473 444 8b | 2/2 |  |
+| main | g64x65473.png |  | 0 | GOOD 64x65473 420 8b | 0 | GOOD 64x65473 420 8b | 2/2 |  |
+| pr | g64x65473.png |  | 0 | GOOD 64x65473 420 8b | 0 | GOOD 64x65473 420 8b | 2/2 |  |
+| main | c64x65535.png | --yuv 444 | 0 | GOOD 64x65535 444 8b | 0 | GOOD 64x65535 444 8b | 2/2 |  |
+| pr | c64x65535.png | --yuv 444 | 0 | GOOD 64x65535 444 8b | 0 | GOOD 64x65535 444 8b | 2/2 |  |
+| main | c64x65535.png | --depth 10 | 0 | GOOD 64x65535 420 10b | 0 | GOOD 64x65535 420 10b | 2/2 |  |
+| pr | c64x65535.png | --depth 10 | 0 | GOOD 64x65535 420 10b | 0 | GOOD 64x65535 420 10b | 2/2 |  |
+| main | c64x65535.png | --lossless | 0 | GOOD 64x65535 444 8b | 0 | GOOD 64x65535 444 8b | 2/2 |  |
+| pr | c64x65535.png | --lossless | 0 | GOOD 64x65535 444 8b | 0 | GOOD 64x65535 444 8b | 2/2 |  |
+| main | g64x65535.png |  | 0 | GOOD 64x65535 420 8b | 0 | GOOD 64x65535 420 8b | 2/2 |  |
+| pr | g64x65535.png |  | 0 | GOOD 64x65535 420 8b | 0 | GOOD 64x65535 420 8b | 2/2 |  |
+| main | c64x65536.png | --yuv 444 | 0 | GOOD 64x65536 444 8b | 0 | GOOD 64x65536 444 8b | 2/2 |  |
+| pr | c64x65536.png | --yuv 444 | 0 | GOOD 64x65536 444 8b | 0 | GOOD 64x65536 444 8b | 2/2 |  |
+| main | c64x65536.png | --depth 10 | 0 | GOOD 64x65536 420 10b | 0 | GOOD 64x65536 420 10b | 2/2 |  |
+| pr | c64x65536.png | --depth 10 | 0 | GOOD 64x65536 420 10b | 0 | GOOD 64x65536 420 10b | 2/2 |  |
+| main | c64x65536.png | --lossless | 0 | GOOD 64x65536 444 8b | 0 | GOOD 64x65536 444 8b | 2/2 |  |
+| pr | c64x65536.png | --lossless | 0 | GOOD 64x65536 444 8b | 0 | GOOD 64x65536 444 8b | 2/2 |  |
+| main | g64x65536.png |  | 0 | GOOD 64x65536 420 8b | 0 | GOOD 64x65536 420 8b | 2/2 |  |
+| pr | g64x65536.png |  | 0 | GOOD 64x65536 420 8b | 0 | GOOD 64x65536 420 8b | 2/2 |  |
+| main | c64x65537.png | --yuv 444 | 0 | BROKEN: dav1d failed: Error parsing sequence header | 0 | BROKEN: dav1d failed: Error parsing sequence header | 2/2 |  |
+| pr | c64x65537.png | --yuv 444 | 0 | BROKEN: dav1d failed: Error parsing sequence header | 0 | BROKEN: dav1d failed: Error parsing sequence header | 2/2 |  |
+| main | c64x65537.png | --depth 10 | 0 | BROKEN: dav1d failed: Error parsing sequence header | 0 | BROKEN: dav1d failed: Error parsing sequence header | 2/2 |  |
+| pr | c64x65537.png | --depth 10 | 0 | BROKEN: dav1d failed: Error parsing sequence header | 0 | BROKEN: dav1d failed: Error parsing sequence header | 2/2 |  |
+| main | c64x65537.png | --lossless | 0 | BROKEN: dav1d failed: Error parsing sequence header | 0 | BROKEN: dav1d failed: Error parsing sequence header | 2/2 |  |
+| pr | c64x65537.png | --lossless | 0 | BROKEN: dav1d failed: Error parsing sequence header | 0 | BROKEN: dav1d failed: Error parsing sequence header | 2/2 |  |
+| main | g64x65537.png |  | 0 | BROKEN: dav1d failed: Error parsing sequence header | 0 | BROKEN: dav1d failed: Error parsing sequence header | 2/2 |  |
+| pr | g64x65537.png |  | 0 | BROKEN: dav1d failed: Error parsing sequence header | 0 | BROKEN: dav1d failed: Error parsing sequence header | 2/2 |  |
+| main | c65535x64.png | --yuv 444 | 0 | GOOD 65535x64 444 8b | 0 | GOOD 65535x64 444 8b | 2/2 |  |
+| pr | c65535x64.png | --yuv 444 | 0 | GOOD 65535x64 444 8b | 0 | GOOD 65535x64 444 8b | 2/2 |  |
+| main | c65535x64.png | --depth 10 | 0 | GOOD 65535x64 420 10b | 0 | GOOD 65535x64 420 10b | 2/2 |  |
+| pr | c65535x64.png | --depth 10 | 0 | GOOD 65535x64 420 10b | 0 | GOOD 65535x64 420 10b | 2/2 |  |
+| main | c65535x64.png | --lossless | 0 | GOOD 65535x64 444 8b | 0 | GOOD 65535x64 444 8b | 2/2 |  |
+| pr | c65535x64.png | --lossless | 0 | GOOD 65535x64 444 8b | 0 | GOOD 65535x64 444 8b | 2/2 |  |
+| main | g65535x64.png |  | 0 | GOOD 65535x64 420 8b | 0 | GOOD 65535x64 420 8b | 2/2 |  |
+| pr | g65535x64.png |  | 0 | GOOD 65535x64 420 8b | 0 | GOOD 65535x64 420 8b | 2/2 |  |
+| main | c65536x64.png | --yuv 444 | 0 | GOOD 65536x64 444 8b | 0 | GOOD 65536x64 444 8b | 2/2 |  |
+| pr | c65536x64.png | --yuv 444 | 0 | GOOD 65536x64 444 8b | 0 | GOOD 65536x64 444 8b | 2/2 |  |
+| main | c65536x64.png | --depth 10 | 0 | GOOD 65536x64 420 10b | 0 | GOOD 65536x64 420 10b | 2/2 |  |
+| pr | c65536x64.png | --depth 10 | 0 | GOOD 65536x64 420 10b | 0 | GOOD 65536x64 420 10b | 2/2 |  |
+| main | c65536x64.png | --lossless | 0 | GOOD 65536x64 444 8b | 0 | GOOD 65536x64 444 8b | 2/2 |  |
+| pr | c65536x64.png | --lossless | 0 | GOOD 65536x64 444 8b | 0 | GOOD 65536x64 444 8b | 2/2 |  |
+| main | g65536x64.png |  | 0 | GOOD 65536x64 420 8b | 0 | GOOD 65536x64 420 8b | 2/2 |  |
+| pr | g65536x64.png |  | 0 | GOOD 65536x64 420 8b | 0 | GOOD 65536x64 420 8b | 2/2 |  |
+| main | c65537x64.png | --yuv 444 | 0 | BROKEN: dav1d failed: Error parsing sequence header | 0 | BROKEN: dav1d failed: Error parsing sequence header | 2/2 |  |
+| pr | c65537x64.png | --yuv 444 | 0 | BROKEN: dav1d failed: Error parsing sequence header | 0 | BROKEN: dav1d failed: Error parsing sequence header | 2/2 |  |
+| main | c65537x64.png | --depth 10 | 0 | BROKEN: dav1d failed: Error parsing sequence header | 0 | BROKEN: dav1d failed: Error parsing sequence header | 2/2 |  |
+| pr | c65537x64.png | --depth 10 | 0 | BROKEN: dav1d failed: Error parsing sequence header | 0 | BROKEN: dav1d failed: Error parsing sequence header | 2/2 |  |
+| main | c65537x64.png | --lossless | 0 | BROKEN: dav1d failed: Error parsing sequence header | 0 | BROKEN: dav1d failed: Error parsing sequence header | 2/2 |  |
+| pr | c65537x64.png | --lossless | 0 | BROKEN: dav1d failed: Error parsing sequence header | 0 | BROKEN: dav1d failed: Error parsing sequence header | 2/2 |  |
+| main | g65537x64.png |  | 0 | BROKEN: dav1d failed: Error parsing sequence header | 0 | BROKEN: dav1d failed: Error parsing sequence header | 2/2 |  |
+| pr | g65537x64.png |  | 0 | BROKEN: dav1d failed: Error parsing sequence header | 0 | BROKEN: dav1d failed: Error parsing sequence header | 2/2 |  |
+| main | c16x65536.png | --yuv 444 | 0 | GOOD 16x65536 444 8b | 0 | GOOD 16x65536 444 8b | 2/2 |  |
+| pr | c16x65536.png | --yuv 444 | 0 | GOOD 16x65536 444 8b | 0 | GOOD 16x65536 444 8b | 2/2 |  |
+| main | c16x65536.png | --depth 10 | 0 | GOOD 16x65536 420 10b | 0 | GOOD 16x65536 420 10b | 2/2 |  |
+| pr | c16x65536.png | --depth 10 | 0 | GOOD 16x65536 420 10b | 0 | GOOD 16x65536 420 10b | 2/2 |  |
+| main | c16x65536.png | --lossless | 0 | GOOD 16x65536 444 8b | 0 | GOOD 16x65536 444 8b | 2/2 |  |
+| pr | c16x65536.png | --lossless | 0 | GOOD 16x65536 444 8b | 0 | GOOD 16x65536 444 8b | 2/2 |  |
+| main | g16x65536.png |  | 0 | GOOD 16x65536 420 8b | 0 | GOOD 16x65536 420 8b | 2/2 |  |
+| pr | g16x65536.png |  | 0 | GOOD 16x65536 420 8b | 0 | GOOD 16x65536 420 8b | 2/2 |  |
+| main | c1x65536.png | --yuv 444 | 0 | GOOD 1x65536 444 8b | 0 | GOOD 1x65536 444 8b | 2/2 |  |
+| pr | c1x65536.png | --yuv 444 | 0 | GOOD 1x65536 444 8b | 0 | GOOD 1x65536 444 8b | 2/2 |  |
+| main | c1x65536.png | --depth 10 | 0 | GOOD 1x65536 420 10b | 0 | GOOD 1x65536 420 10b | 2/2 |  |
+| pr | c1x65536.png | --depth 10 | 0 | GOOD 1x65536 420 10b | 0 | GOOD 1x65536 420 10b | 2/2 |  |
+| main | c1x65536.png | --lossless | 0 | GOOD 1x65536 444 8b | 0 | GOOD 1x65536 444 8b | 2/2 |  |
+| pr | c1x65536.png | --lossless | 0 | GOOD 1x65536 444 8b | 0 | GOOD 1x65536 444 8b | 2/2 |  |
+| main | g1x65536.png |  | 0 | GOOD 1x65536 420 8b | 0 | GOOD 1x65536 420 8b | 2/2 |  |
+| pr | g1x65536.png |  | 0 | GOOD 1x65536 420 8b | 0 | GOOD 1x65536 420 8b | 2/2 |  |
+| main | c65536x1.png | --yuv 444 | 0 | GOOD 65536x1 444 8b | 0 | GOOD 65536x1 444 8b | 2/2 |  |
+| pr | c65536x1.png | --yuv 444 | 0 | GOOD 65536x1 444 8b | 0 | GOOD 65536x1 444 8b | 2/2 |  |
+| main | c65536x1.png | --depth 10 | 0 | GOOD 65536x1 420 10b | 0 | GOOD 65536x1 420 10b | 2/2 |  |
+| pr | c65536x1.png | --depth 10 | 0 | GOOD 65536x1 420 10b | 0 | GOOD 65536x1 420 10b | 2/2 |  |
+| main | c65536x1.png | --lossless | 0 | GOOD 65536x1 444 8b | 0 | GOOD 65536x1 444 8b | 2/2 |  |
+| pr | c65536x1.png | --lossless | 0 | GOOD 65536x1 444 8b | 0 | GOOD 65536x1 444 8b | 2/2 |  |
+| main | g65536x1.png |  | 0 | GOOD 65536x1 420 8b | 0 | GOOD 65536x1 420 8b | 2/2 |  |
+| pr | g65536x1.png |  | 0 | GOOD 65536x1 420 8b | 0 | GOOD 65536x1 420 8b | 2/2 |  |
+| pr | bar_mid_200x120.png | resize=1x65535! | 1 | no file | 1 | no file | 0/2 | crop / resize: CUDA: invalid argument at cudaGetLastError() (/home/ubuntu/pr/encoder/src/pipeline.cpp:126 |
+| pr | bar_mid_200x120.png | resize=1x65536! | 1 | no file | 1 | no file | 0/2 | crop / resize: CUDA: invalid argument at cudaGetLastError() (/home/ubuntu/pr/encoder/src/pipeline.cpp:126 |
+| pr | bar_mid_200x120.png | resize=1x65472! | 0 | GOOD 1x65472 420 8b | 0 | GOOD 1x65472 420 8b | 2/2 |  |
+| pr | bar_mid_200x120.png | resize=1x65473! | 1 | no file | 1 | no file | 0/2 | crop / resize: CUDA: invalid argument at cudaGetLastError() (/home/ubuntu/pr/encoder/src/pipeline.cpp:126 |
+| pr | bar_mid_200x120.png | resize=64x65472! | 0 | GOOD 64x65472 420 8b | 0 | GOOD 64x65472 420 8b | 2/2 |  |
+| pr | bar_mid_200x120.png | resize=64x65473! | 1 | no file | 1 | no file | 0/2 | crop / resize: CUDA: invalid argument at cudaGetLastError() (/home/ubuntu/pr/encoder/src/pipeline.cpp:126 |
+| pr | bar_mid_200x120.png | resize=64x65535! | 1 | no file | 1 | no file | 0/2 | crop / resize: CUDA: invalid argument at cudaGetLastError() (/home/ubuntu/pr/encoder/src/pipeline.cpp:126 |
+| pr | bar_mid_200x120.png | resize=64x65536! | 1 | no file | 1 | no file | 0/2 | crop / resize: CUDA: invalid argument at cudaGetLastError() (/home/ubuntu/pr/encoder/src/pipeline.cpp:126 |
+| pr | bar_mid_200x120.png | resize=64x65537! | 1 | no file | 1 | no file | 0/2 | crop / resize: CUDA: invalid argument at cudaGetLastError() (/home/ubuntu/pr/encoder/src/pipeline.cpp:126 |
+| pr | bar_mid_200x120.png | resize=65535x1! | 0 | GOOD 65535x1 420 8b | 0 | GOOD 65535x1 420 8b | 2/2 |  |
+| pr | bar_mid_200x120.png | resize=65536x1! | 0 | GOOD 65536x1 420 8b | 0 | GOOD 65536x1 420 8b | 2/2 |  |
+| pr | bar_mid_200x120.png | resize=65537x1! | 0 | BROKEN: dav1d failed: Error parsing sequence header | 0 | BROKEN: dav1d failed: Error parsing sequence header | 2/2 |  |
+| pr | bar_mid_200x120.png | resize=65536x64! | 0 | GOOD 65536x64 420 8b | 0 | GOOD 65536x64 420 8b | 2/2 |  |
+| pr | bar_mid_200x120.png | resize=65537x64! | 0 | BROKEN: dav1d failed: Error parsing sequence header | 0 | BROKEN: dav1d failed: Error parsing sequence header | 2/2 |  |
+| pr | bar_mid_200x120.png | resize=70000x64! | 0 | BROKEN: dav1d failed: Error parsing sequence header | 0 | BROKEN: dav1d failed: Error parsing sequence header | 2/2 |  |
+| pr | bar_mid_200x120.png | resize=262144x1! | 0 | BROKEN: dav1d failed: Error parsing sequence header | 0 | BROKEN: dav1d failed: Error parsing sequence header | 2/2 |  |
+| pr | bar_mid_200x120.png | resize=262145x1! | 1 | no file | 1 | no file | 0/2 | encode: tile layout |
+| pr | bar_mid_200x120.png | resize=300000x1! | 1 | no file | 1 | no file | 0/2 | encode: tile layout |
+| pr | bar_mid_200x120.png | --yuv 444 resize=1x65472! | 0 | GOOD 1x65472 444 8b | 0 | GOOD 1x65472 444 8b | 2/2 |  |
+| pr | bar_mid_200x120.png | --depth 10 resize=1x65472! | 0 | GOOD 1x65472 420 10b | 0 | GOOD 1x65472 420 10b | 2/2 |  |
+| pr | bar_mid_200x120.png | --lossless resize=1x65472! | 0 | GOOD 1x65472 444 8b | 0 | GOOD 1x65472 444 8b | 2/2 |  |
+| pr | bar_mid_200x120.png | --yuv 444 resize=1x65473! | 1 | no file | 1 | no file | 0/2 | crop / resize: CUDA: invalid argument at cudaGetLastError() (/home/ubuntu/pr/encoder/src/pipeline.cpp:126 |
+| pr | bar_mid_200x120.png | --depth 10 resize=1x65473! | 1 | no file | 1 | no file | 0/2 | crop / resize: CUDA: invalid argument at cudaGetLastError() (/home/ubuntu/pr/encoder/src/pipeline.cpp:126 |
+| pr | bar_mid_200x120.png | --lossless resize=1x65473! | 1 | no file | 1 | no file | 0/2 | crop / resize: CUDA: invalid argument at cudaGetLastError() (/home/ubuntu/pr/encoder/src/pipeline.cpp:126 |
+| pr | bar_mid_200x120.png | --yuv 444 resize=64x65472! | 0 | GOOD 64x65472 444 8b | 0 | GOOD 64x65472 444 8b | 2/2 |  |
+| pr | bar_mid_200x120.png | --depth 10 resize=64x65472! | 0 | GOOD 64x65472 420 10b | 0 | GOOD 64x65472 420 10b | 2/2 |  |
+| pr | bar_mid_200x120.png | --lossless resize=64x65472! | 0 | GOOD 64x65472 444 8b | 0 | GOOD 64x65472 444 8b | 2/2 |  |
+| pr | bar_mid_200x120.png | --yuv 444 resize=64x65473! | 1 | no file | 1 | no file | 0/2 | crop / resize: CUDA: invalid argument at cudaGetLastError() (/home/ubuntu/pr/encoder/src/pipeline.cpp:126 |
+| pr | bar_mid_200x120.png | --depth 10 resize=64x65473! | 1 | no file | 1 | no file | 0/2 | crop / resize: CUDA: invalid argument at cudaGetLastError() (/home/ubuntu/pr/encoder/src/pipeline.cpp:126 |
+| pr | bar_mid_200x120.png | --lossless resize=64x65473! | 1 | no file | 1 | no file | 2/2 | crop / resize: CUDA: invalid argument at cudaGetLastError() (/home/ubuntu/pr/encoder/src/pipeline.cpp:126 |
+| pr | bar_mid_200x120.png | --yuv 444 resize=65536x64! | 0 | GOOD 65536x64 444 8b | 0 | GOOD 65536x64 444 8b | 2/2 |  |
+| pr | bar_mid_200x120.png | --depth 10 resize=65536x64! | 0 | GOOD 65536x64 420 10b | 0 | GOOD 65536x64 420 10b | 2/2 |  |
+| pr | bar_mid_200x120.png | --lossless resize=65536x64! | 0 | GOOD 65536x64 444 8b | 0 | GOOD 65536x64 444 8b | 2/2 |  |
+| main | c64x65535.png | --crop 64x65472+0+0 | 0 | GOOD 64x65472 420 8b | 0 | GOOD 64x65472 420 8b | 2/2 |  |
+| pr | c64x65535.png | --crop 64x65472+0+0 | 0 | GOOD 64x65472 420 8b | 0 | GOOD 64x65472 420 8b | 2/2 |  |
+| main | c64x65537.png | --crop 64x65472+0+0 | 0 | GOOD 64x65472 420 8b | 0 | GOOD 64x65472 420 8b | 2/2 |  |
+| pr | c64x65537.png | --crop 64x65472+0+0 | 0 | GOOD 64x65472 420 8b | 0 | GOOD 64x65472 420 8b | 2/2 |  |
+| main | c64x65535.png | --crop 64x65473+0+0 | 1 | no file | 1 | no file | 2/2 | crop / resize: CUDA: invalid argument at cudaGetLastError() (/home/ubuntu/main/encoder/src/pipeline.cpp:1 |
+| pr | c64x65535.png | --crop 64x65473+0+0 | 1 | no file | 1 | no file | 2/2 | crop / resize: CUDA: invalid argument at cudaGetLastError() (/home/ubuntu/pr/encoder/src/pipeline.cpp:126 |
+| main | c64x65537.png | --crop 64x65473+0+0 | 1 | no file | 1 | no file | 2/2 | crop / resize: CUDA: invalid argument at cudaGetLastError() (/home/ubuntu/main/encoder/src/pipeline.cpp:1 |
+| pr | c64x65537.png | --crop 64x65473+0+0 | 1 | no file | 1 | no file | 2/2 | crop / resize: CUDA: invalid argument at cudaGetLastError() (/home/ubuntu/pr/encoder/src/pipeline.cpp:126 |
+| main | c64x65535.png | --crop 64x65500+0+0 | 1 | no file | 1 | no file | 2/2 | crop / resize: CUDA: invalid argument at cudaGetLastError() (/home/ubuntu/main/encoder/src/pipeline.cpp:1 |
+| pr | c64x65535.png | --crop 64x65500+0+0 | 1 | no file | 1 | no file | 2/2 | crop / resize: CUDA: invalid argument at cudaGetLastError() (/home/ubuntu/pr/encoder/src/pipeline.cpp:126 |
+| main | c64x65537.png | --crop 64x65500+0+0 | 1 | no file | 1 | no file | 2/2 | crop / resize: CUDA: invalid argument at cudaGetLastError() (/home/ubuntu/main/encoder/src/pipeline.cpp:1 |
+| pr | c64x65537.png | --crop 64x65500+0+0 | 1 | no file | 1 | no file | 2/2 | crop / resize: CUDA: invalid argument at cudaGetLastError() (/home/ubuntu/pr/encoder/src/pipeline.cpp:126 |
+| main | c64x65535.png | --max-height 65472 | 0 | GOOD 64x65472 420 8b | 0 | GOOD 64x65472 420 8b | 2/2 |  |
+| pr | c64x65535.png | --max-height 65472 | 0 | GOOD 64x65472 420 8b | 0 | GOOD 64x65472 420 8b | 2/2 |  |
+| main | c64x65537.png | --max-height 65472 | 0 | GOOD 64x65472 420 8b | 0 | GOOD 64x65472 420 8b | 2/2 |  |
+| pr | c64x65537.png | --max-height 65472 | 0 | GOOD 64x65472 420 8b | 0 | GOOD 64x65472 420 8b | 2/2 |  |
+| main | c64x65535.png | --max-height 65473 | 1 | no file | 1 | no file | 2/2 | crop / resize: CUDA: invalid argument at cudaGetLastError() (/home/ubuntu/main/encoder/src/pipeline.cpp:1 |
+| pr | c64x65535.png | --max-height 65473 | 1 | no file | 1 | no file | 2/2 | crop / resize: CUDA: invalid argument at cudaGetLastError() (/home/ubuntu/pr/encoder/src/pipeline.cpp:126 |
+| main | c64x65537.png | --max-height 65473 | 1 | no file | 1 | no file | 2/2 | crop / resize: CUDA: invalid argument at cudaGetLastError() (/home/ubuntu/main/encoder/src/pipeline.cpp:1 |
+| pr | c64x65537.png | --max-height 65473 | 1 | no file | 1 | no file | 2/2 | crop / resize: CUDA: invalid argument at cudaGetLastError() (/home/ubuntu/pr/encoder/src/pipeline.cpp:126 |
+| main | c64x65535.png | --max-height 65500 | 1 | no file | 1 | no file | 2/2 | crop / resize: CUDA: invalid argument at cudaGetLastError() (/home/ubuntu/main/encoder/src/pipeline.cpp:1 |
+| pr | c64x65535.png | --max-height 65500 | 1 | no file | 1 | no file | 2/2 | crop / resize: CUDA: invalid argument at cudaGetLastError() (/home/ubuntu/pr/encoder/src/pipeline.cpp:126 |
+| main | c64x65537.png | --max-height 65500 | 1 | no file | 1 | no file | 2/2 | crop / resize: CUDA: invalid argument at cudaGetLastError() (/home/ubuntu/main/encoder/src/pipeline.cpp:1 |
+| pr | c64x65537.png | --max-height 65500 | 1 | no file | 1 | no file | 2/2 | crop / resize: CUDA: invalid argument at cudaGetLastError() (/home/ubuntu/pr/encoder/src/pipeline.cpp:126 |
+LIMITS_DONE

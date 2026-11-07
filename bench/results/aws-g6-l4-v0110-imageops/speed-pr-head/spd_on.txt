@@ -1,0 +1,125 @@
+== on comics: 1034 MP, 6 rounds, mp_s
+  plain        mp_s med    188.21 min    184.21 max    190.01 | wall   6.453 s | rss    1926 MB | peak dev   1077 MB | plain/plain med ratio of rounds 1.0000 [1.0000, 1.0000] ratio of medians 1.0000
+  plain2       mp_s med    188.39 min    184.76 max    189.81 | wall   6.445 s | rss    1929 MB | peak dev   1020 MB | plain2/plain med ratio of rounds 0.9993 [0.9940, 1.0082] ratio of medians 1.0010
+  never        mp_s med    186.11 min    182.54 max    187.60 | wall   6.505 s | rss    1939 MB | peak dev   1044 MB | never/plain med ratio of rounds 0.9872 [0.9834, 0.9965] ratio of medians 0.9889
+  trim0        mp_s med    185.31 min    182.92 max    186.38 | wall   6.527 s | rss    1937 MB | peak dev   1098 MB | trim0/plain med ratio of rounds 0.9840 [0.9793, 0.9955] ratio of medians 0.9846
+  trim10       mp_s med    187.27 min    185.18 max    188.01 | wall   6.457 s | rss    1932 MB | peak dev   1019 MB | trim10/plain med ratio of rounds 0.9924 [0.9842, 1.0114] ratio of medians 0.9950
+  conv         mp_s med    186.44 min    183.59 max    187.12 | wall   6.502 s | rss    1922 MB | peak dev   1019 MB | conv/plain med ratio of rounds 0.9891 [0.9757, 1.0065] ratio of medians 0.9906
+  level        mp_s med    178.59 min    176.38 max    179.38 | wall   6.746 s | rss    1934 MB | peak dev   1021 MB | level/plain med ratio of rounds 0.9490 [0.9374, 0.9679] ratio of medians 0.9489
+  levelnog     mp_s med    177.34 min    175.76 max    178.12 | wall   6.788 s | rss    1934 MB | peak dev   1021 MB | levelnog/plain med ratio of rounds 0.9398 [0.9354, 0.9669] ratio of medians 0.9423
+  gamma        mp_s med    189.30 min    188.47 max    189.99 | wall   6.418 s | rss    1934 MB | peak dev   1028 MB | gamma/plain med ratio of rounds 1.0061 [0.9959, 1.0280] ratio of medians 1.0058
+  negate       mp_s med    187.67 min    186.88 max    188.97 | wall   6.471 s | rss    1944 MB | peak dev   1055 MB | negate/plain med ratio of rounds 0.9971 [0.9945, 1.0163] ratio of medians 0.9971
+  auto         mp_s med    185.81 min    183.36 max    186.65 | wall   6.524 s | rss    1930 MB | peak dev   1099 MB | auto/plain med ratio of rounds 0.9889 [0.9747, 1.0092] ratio of medians 0.9873
+  gray709      mp_s med    262.97 min    259.61 max    264.20 | wall   4.884 s | rss    1929 MB | peak dev   1007 MB | gray709/plain med ratio of rounds 1.3965 [1.3781, 1.4342] ratio of medians 1.3972
+  gray601      mp_s med    265.63 min    262.41 max    267.61 | wall   4.842 s | rss    1932 MB | peak dev    950 MB | gray601/plain med ratio of rounds 1.4121 [1.3997, 1.4302] ratio of medians 1.4114
+  rs50         mp_s med     72.71 min     67.50 max     74.41 | wall   4.498 s | rss    1903 MB | peak dev    302 MB | rs50/plain med ratio of rounds 0.3920 [0.3586, 0.3948] ratio of medians 0.3863
+  rs2960       mp_s med    218.24 min    216.55 max    220.18 | wall   5.272 s | rss    1935 MB | peak dev   1170 MB | rs2960/plain med ratio of rounds 1.1620 [1.1459, 1.1882] ratio of medians 1.1595
+== on c444: 1034 MP, 6 rounds, mp_s
+  plain        mp_s med    143.53 min    142.26 max    144.79 | wall   8.167 s | rss    2278 MB | peak dev   1795 MB | plain/plain med ratio of rounds 1.0000 [1.0000, 1.0000] ratio of medians 1.0000
+  plain2       mp_s med    143.98 min    141.92 max    144.80 | wall   8.161 s | rss    2284 MB | peak dev   1781 MB | plain2/plain med ratio of rounds 0.9993 [0.9859, 1.0125] ratio of medians 1.0031
+  never        mp_s med    141.73 min    139.61 max    142.89 | wall   8.270 s | rss    2296 MB | peak dev   1739 MB | never/plain med ratio of rounds 0.9874 [0.9678, 0.9918] ratio of medians 0.9875
+  trim0        mp_s med    141.52 min    139.09 max    142.64 | wall   8.276 s | rss    2304 MB | peak dev   1750 MB | trim0/plain med ratio of rounds 0.9832 [0.9618, 0.9930] ratio of medians 0.9860
+  trim10       mp_s med    141.96 min    139.19 max    142.93 | wall   8.231 s | rss    2283 MB | peak dev   1764 MB | trim10/plain med ratio of rounds 0.9894 [0.9626, 0.9956] ratio of medians 0.9890
+  conv         mp_s med    140.92 min    139.03 max    142.03 | wall   8.299 s | rss    2291 MB | peak dev   1772 MB | conv/plain med ratio of rounds 0.9858 [0.9603, 0.9925] ratio of medians 0.9818
+  level        mp_s med    135.75 min    132.56 max    136.53 | wall   8.588 s | rss    2285 MB | peak dev   1795 MB | level/plain med ratio of rounds 0.9461 [0.9167, 0.9597] ratio of medians 0.9458
+  levelnog     mp_s med    135.54 min    133.85 max    137.06 | wall   8.596 s | rss    2304 MB | peak dev   1727 MB | levelnog/plain med ratio of rounds 0.9446 [0.9256, 0.9634] ratio of medians 0.9443
+  gamma        mp_s med    142.90 min    141.08 max    144.16 | wall   8.200 s | rss    2290 MB | peak dev   1752 MB | gamma/plain med ratio of rounds 0.9960 [0.9756, 1.0133] ratio of medians 0.9956
+  negate       mp_s med    143.06 min    142.74 max    143.99 | wall   8.193 s | rss    2288 MB | peak dev   1748 MB | negate/plain med ratio of rounds 0.9959 [0.9864, 1.0122] ratio of medians 0.9967
+  auto         mp_s med    142.16 min    141.10 max    142.58 | wall   8.236 s | rss    2284 MB | peak dev   1745 MB | auto/plain med ratio of rounds 0.9860 [0.9807, 1.0023] ratio of medians 0.9904
+  gray709      mp_s med    254.42 min    251.19 max    255.64 | wall   5.019 s | rss    2291 MB | peak dev   1054 MB | gray709/plain med ratio of rounds 1.7649 [1.7449, 1.7898] ratio of medians 1.7726
+  gray601      mp_s med    255.87 min    253.49 max    256.99 | wall   4.999 s | rss    2284 MB | peak dev   1070 MB | gray601/plain med ratio of rounds 1.7759 [1.7540, 1.7992] ratio of medians 1.7826
+  rs50         mp_s med     52.58 min     50.51 max     55.50 | wall   5.874 s | rss    2268 MB | peak dev    522 MB | rs50/plain med ratio of rounds 0.3634 [0.3508, 0.3902] ratio of medians 0.3663
+  rs2960       mp_s med    160.45 min    160.09 max    162.02 | wall   6.824 s | rss    2312 MB | peak dev   1822 MB | rs2960/plain med ratio of rounds 1.1178 [1.1109, 1.1389] ratio of medians 1.1178
+== on sr: 1434 MP, 6 rounds, mp_s
+  plain        mp_s med    248.61 min    245.22 max    250.30 | wall   6.715 s | rss    1591 MB | peak dev   1021 MB | plain/plain med ratio of rounds 1.0000 [1.0000, 1.0000] ratio of medians 1.0000
+  plain2       mp_s med    246.37 min    245.21 max    247.60 | wall   6.747 s | rss    1591 MB | peak dev   1019 MB | plain2/plain med ratio of rounds 0.9933 [0.9837, 1.0000] ratio of medians 0.9910
+  never        mp_s med    244.76 min    243.34 max    246.42 | wall   6.784 s | rss    1592 MB | peak dev   1030 MB | never/plain med ratio of rounds 0.9880 [0.9772, 0.9923] ratio of medians 0.9845
+  trim0        mp_s med    246.60 min    243.75 max    248.61 | wall   6.739 s | rss    1590 MB | peak dev   1021 MB | trim0/plain med ratio of rounds 0.9948 [0.9808, 1.0065] ratio of medians 0.9919
+  trim10       mp_s med    241.67 min    239.46 max    245.34 | wall   6.732 s | rss    1590 MB | peak dev   1001 MB | trim10/plain med ratio of rounds 0.9704 [0.9660, 0.9855] ratio of medians 0.9721
+  conv         mp_s med    245.38 min    243.42 max    248.15 | wall   6.766 s | rss    1589 MB | peak dev    997 MB | conv/plain med ratio of rounds 0.9937 [0.9745, 0.9988] ratio of medians 0.9870
+  level        mp_s med    237.71 min    235.57 max    239.37 | wall   6.960 s | rss    1589 MB | peak dev   1018 MB | level/plain med ratio of rounds 0.9574 [0.9445, 0.9687] ratio of medians 0.9562
+  levelnog     mp_s med    239.67 min    237.76 max    243.25 | wall   6.899 s | rss    1589 MB | peak dev   1029 MB | levelnog/plain med ratio of rounds 0.9671 [0.9560, 0.9920] ratio of medians 0.9641
+  gamma        mp_s med    246.48 min    244.33 max    249.22 | wall   6.745 s | rss    1590 MB | peak dev   1000 MB | gamma/plain med ratio of rounds 0.9946 [0.9826, 1.0021] ratio of medians 0.9914
+  negate       mp_s med    248.89 min    245.30 max    251.03 | wall   6.681 s | rss    1590 MB | peak dev   1017 MB | negate/plain med ratio of rounds 0.9979 [0.9871, 1.0187] ratio of medians 1.0011
+  auto         mp_s med    246.62 min    243.19 max    249.04 | wall   6.736 s | rss    1589 MB | peak dev   1023 MB | auto/plain med ratio of rounds 0.9914 [0.9783, 1.0079] ratio of medians 0.9920
+  gray709      mp_s med    333.79 min    325.68 max    337.81 | wall   5.210 s | rss    1586 MB | peak dev    959 MB | gray709/plain med ratio of rounds 1.3384 [1.3180, 1.3544] ratio of medians 1.3426
+  gray601      mp_s med    334.58 min    325.07 max    339.76 | wall   5.206 s | rss    1590 MB | peak dev    955 MB | gray601/plain med ratio of rounds 1.3477 [1.3257, 1.3574] ratio of medians 1.3458
+  rs50         mp_s med     90.20 min     89.27 max     91.22 | wall   4.909 s | rss    1590 MB | peak dev    350 MB | rs50/plain med ratio of rounds 0.3640 [0.3584, 0.3670] ratio of medians 0.3628
+  rs2960       mp_s med    424.52 min    415.36 max    429.22 | wall   9.173 s | rss    1610 MB | peak dev   6601 MB | rs2960/plain med ratio of rounds 1.7123 [1.6933, 1.7166] ratio of medians 1.7076
+== on std: 1023 MP, 6 rounds, mp_s
+  plain        mp_s med     79.45 min     78.31 max     80.32 | wall  13.825 s | rss    1626 MB | peak dev   1088 MB | plain/plain med ratio of rounds 1.0000 [1.0000, 1.0000] ratio of medians 1.0000
+  plain2       mp_s med     79.27 min     78.32 max     80.69 | wall  13.832 s | rss    1630 MB | peak dev   1085 MB | plain2/plain med ratio of rounds 0.9982 [0.9866, 1.0110] ratio of medians 0.9977
+  never        mp_s med     79.37 min     77.97 max     80.44 | wall  13.823 s | rss    1636 MB | peak dev   1092 MB | never/plain med ratio of rounds 0.9958 [0.9822, 1.0117] ratio of medians 0.9991
+  trim0        mp_s med     77.00 min     75.89 max     78.18 | wall  14.027 s | rss    1628 MB | peak dev   1085 MB | trim0/plain med ratio of rounds 0.9690 [0.9624, 0.9832] ratio of medians 0.9692
+  trim10       mp_s med     75.61 min     75.13 max     76.70 | wall  13.931 s | rss    1627 MB | peak dev   1070 MB | trim10/plain med ratio of rounds 0.9524 [0.9414, 0.9667] ratio of medians 0.9517
+  conv         mp_s med     78.30 min     76.86 max     79.67 | wall  13.976 s | rss    1627 MB | peak dev   1092 MB | conv/plain med ratio of rounds 0.9877 [0.9630, 1.0028] ratio of medians 0.9855
+  level        mp_s med     66.12 min     65.64 max     67.39 | wall  16.396 s | rss    1626 MB | peak dev   1088 MB | level/plain med ratio of rounds 0.8322 [0.8226, 0.8498] ratio of medians 0.8322
+  levelnog     mp_s med     76.82 min     76.22 max     78.53 | wall  14.247 s | rss    1624 MB | peak dev   1089 MB | levelnog/plain med ratio of rounds 0.9643 [0.9609, 0.9843] ratio of medians 0.9669
+  gamma        mp_s med     78.57 min     78.08 max     79.35 | wall  13.951 s | rss    1628 MB | peak dev   1083 MB | gamma/plain med ratio of rounds 0.9883 [0.9836, 0.9977] ratio of medians 0.9890
+  negate       mp_s med     79.03 min     78.42 max     79.69 | wall  13.872 s | rss    1625 MB | peak dev   1090 MB | negate/plain med ratio of rounds 0.9972 [0.9782, 1.0023] ratio of medians 0.9948
+  auto         mp_s med     78.85 min     77.88 max     79.96 | wall  13.898 s | rss    1626 MB | peak dev   1092 MB | auto/plain med ratio of rounds 0.9968 [0.9696, 1.0057] ratio of medians 0.9925
+  gray709      mp_s med     93.97 min     92.02 max     95.63 | wall  11.807 s | rss    1606 MB | peak dev   1014 MB | gray709/plain med ratio of rounds 1.1923 [1.1456, 1.2027] ratio of medians 1.1828
+  gray601      mp_s med     94.46 min     92.29 max     95.75 | wall  11.751 s | rss    1606 MB | peak dev   1015 MB | gray601/plain med ratio of rounds 1.1971 [1.1564, 1.2042] ratio of medians 1.1889
+  rs50         mp_s med     53.75 min     52.70 max     54.14 | wall   5.729 s | rss    1675 MB | peak dev    448 MB | rs50/plain med ratio of rounds 0.6792 [0.6604, 0.6809] ratio of medians 0.6766
+  rs2960       mp_s med    507.94 min    500.29 max    510.86 | wall  29.297 s | rss    1685 MB | peak dev   4093 MB | rs2960/plain med ratio of rounds 6.3898 [6.2985, 6.4250] ratio of medians 6.3935
+FAILED thumbs rs2960 1 crop / resize: CUDA: out of memory (crop / resize planes)
+encode: CUDA: out of memory at A.get(B.leaves, (size_t)nSb * GP_MAX_LEAVES) (/home/ubuntu/pr/encoder/src/pipeline.cpp:439)
+encode: CUDA: out of memory at cudaMallocAsync((void **)&pool, poolBytes, st) (/home/ubuntu/pr/encoder/src/pipeline.cpp:652)
+
+FAILED thumbs rs2960 1 encode: CUDA: out of memory at A.get(B.leaves, (size_t)nSb * GP_MAX_LEAVES) (/home/ubuntu/pr/encoder/src/pipeline.cpp:439)
+crop / resize: CUDA: out of memory (crop / resize planes)
+encode: CUDA: out of memory at cudaMallocAsync((void **)&pool, poolBytes, st) (/home/ubuntu/pr/encoder/src/pipeline.cpp:652)
+
+FAILED thumbs rs2960 1 encode: CUDA: out of memory at A.get(B.blk, blkTotal) (/home/ubuntu/pr/encoder/src/pipeline.cpp:435)
+crop / resize: CUDA: out of memory (crop / resize planes)
+ingest: cudaMallocAsync((void **)&b->d_pool, b->pool_bytes, s): out of memory
+
+FAILED thumbs rs2960 1 encode: CUDA: out of memory at A.get(B.blk, blkTotal) (/home/ubuntu/pr/encoder/src/pipeline.cpp:435)
+crop / resize: CUDA: out of memory (crop / resize planes)
+encode: CUDA: out of memory at A.get(B.oTxb, (size_t)nSb * B.sbTxbCap) (/home/ubuntu/pr/encoder/src/pipeline.cpp:444)
+
+FAILED thumbs rs2960 1 encode: CUDA: out of memory at A.get(B.leaves, (size_t)nSb * GP_MAX_LEAVES) (/home/ubuntu/pr/encoder/src/pipeline.cpp:439)
+crop / resize: CUDA: out of memory (crop / resize planes)
+encode: CUDA: out of memory at cudaMallocAsync((void **)&pool, poolBytes, st) (/home/ubuntu/pr/encoder/src/pipeline.cpp:652)
+
+FAILED thumbs rs2960 1 encode: CUDA: out of memory at A.get(B.blk, blkTotal) (/home/ubuntu/pr/encoder/src/pipeline.cpp:435)
+crop / resize: CUDA: out of memory (crop / resize planes)
+encode: CUDA: out of memory at A.get(pscr[i], av1g_gpu_pf_scratch_size(&out[i].fp)) (/home/ubuntu/pr/encoder/src/pipeline.cpp:774)
+
+FAILED thumbs rs2960 1 encode: CUDA: out of memory at A.get(B.blk, blkTotal) (/home/ubuntu/pr/encoder/src/pipeline.cpp:435)
+crop / resize: CUDA: out of memory (crop / resize planes)
+encode: CUDA: out of memory at cudaMallocAsync((void **)&pool, poolBytes, st) (/home/ubuntu/pr/encoder/src/pipeline.cpp:652)
+
+== on thumbs: 1016 MP, 6 rounds, img_s
+  plain        img_s med    440.54 min    431.50 max    454.75 | wall  18.166 s | rss    1436 MB | peak dev    628 MB | plain/plain med ratio of rounds 1.0000 [1.0000, 1.0000] ratio of medians 1.0000
+  plain2       img_s med    441.85 min    427.82 max    443.23 | wall  18.128 s | rss    1436 MB | peak dev    627 MB | plain2/plain med ratio of rounds 0.9997 [0.9688, 1.0099] ratio of medians 1.0030
+  never        img_s med    439.99 min    430.23 max    442.05 | wall  18.189 s | rss    1436 MB | peak dev    626 MB | never/plain med ratio of rounds 0.9984 [0.9538, 1.0046] ratio of medians 0.9987
+  trim0        img_s med    437.82 min    427.23 max    441.53 | wall  18.271 s | rss    1436 MB | peak dev    626 MB | trim0/plain med ratio of rounds 0.9987 [0.9395, 1.0107] ratio of medians 0.9938
+  trim10       img_s med    440.30 min    436.01 max    445.29 | wall  18.170 s | rss    1439 MB | peak dev    616 MB | trim10/plain med ratio of rounds 1.0027 [0.9588, 1.0255] ratio of medians 0.9995
+  conv         img_s med    435.30 min    429.89 max    441.41 | wall  18.380 s | rss    1435 MB | peak dev    627 MB | conv/plain med ratio of rounds 0.9889 [0.9587, 1.0072] ratio of medians 0.9881
+  level        img_s med    429.49 min    426.04 max    436.63 | wall  18.610 s | rss    1437 MB | peak dev    628 MB | level/plain med ratio of rounds 0.9770 [0.9474, 0.9968] ratio of medians 0.9749
+  levelnog     img_s med    426.66 min    421.67 max    434.92 | wall  18.729 s | rss    1436 MB | peak dev    628 MB | levelnog/plain med ratio of rounds 0.9690 [0.9434, 0.9929] ratio of medians 0.9685
+  gamma        img_s med    434.97 min    428.51 max    441.40 | wall  18.395 s | rss    1435 MB | peak dev    627 MB | gamma/plain med ratio of rounds 0.9871 [0.9653, 1.0077] ratio of medians 0.9873
+  negate       img_s med    437.02 min    428.57 max    444.15 | wall  18.302 s | rss    1436 MB | peak dev    628 MB | negate/plain med ratio of rounds 0.9841 [0.9661, 1.0293] ratio of medians 0.9920
+  auto         img_s med    436.96 min    427.33 max    448.48 | wall  18.339 s | rss    1436 MB | peak dev    626 MB | auto/plain med ratio of rounds 0.9870 [0.9673, 1.0394] ratio of medians 0.9919
+  gray709      img_s med    540.09 min    526.82 max    556.50 | wall  14.977 s | rss    1432 MB | peak dev    585 MB | gray709/plain med ratio of rounds 1.2128 [1.1968, 1.2897] ratio of medians 1.2260
+  gray601      img_s med    543.47 min    526.90 max    556.21 | wall  14.900 s | rss    1432 MB | peak dev    586 MB | gray601/plain med ratio of rounds 1.2237 [1.2028, 1.2873] ratio of medians 1.2336
+  rs50         img_s med   1307.01 min   1253.24 max   1336.56 | wall   6.790 s | rss    1488 MB | peak dev    196 MB | rs50/plain med ratio of rounds 2.9360 [2.8610, 3.0611] ratio of medians 2.9668
+  rs2960       img_s med      0.00 min      0.00 max      0.00 | wall   2.806 s | rss    1539 MB | peak dev      0 MB | rs2960/plain med ratio of rounds 0.0000 [0.0000, 0.0000] ratio of medians 0.0000
+== on pngwebp: 1434 MP, 6 rounds, mp_s
+  plain        mp_s med    228.78 min    227.25 max    232.49 | wall   7.210 s | rss    2640 MB | peak dev   1052 MB | plain/plain med ratio of rounds 1.0000 [1.0000, 1.0000] ratio of medians 1.0000
+  plain2       mp_s med    229.84 min    223.72 max    233.45 | wall   7.181 s | rss    2650 MB | peak dev   1046 MB | plain2/plain med ratio of rounds 0.9972 [0.9796, 1.0204] ratio of medians 1.0046
+  never        mp_s med    228.50 min    225.77 max    230.62 | wall   7.245 s | rss    2658 MB | peak dev   1036 MB | never/plain med ratio of rounds 0.9957 [0.9803, 1.0087] ratio of medians 0.9988
+  trim0        mp_s med    227.55 min    224.57 max    228.22 | wall   7.239 s | rss    2651 MB | peak dev   1026 MB | trim0/plain med ratio of rounds 0.9848 [0.9803, 1.0011] ratio of medians 0.9946
+  trim10       mp_s med    222.43 min    214.42 max    227.52 | wall   7.257 s | rss    2645 MB | peak dev   1015 MB | trim10/plain med ratio of rounds 0.9734 [0.9366, 1.0004] ratio of medians 0.9723
+  conv         mp_s med    223.38 min    221.48 max    228.56 | wall   7.375 s | rss    2654 MB | peak dev   1032 MB | conv/plain med ratio of rounds 0.9753 [0.9574, 0.9997] ratio of medians 0.9764
+  level        mp_s med    217.17 min    215.65 max    220.80 | wall   7.556 s | rss    2630 MB | peak dev   1052 MB | level/plain med ratio of rounds 0.9460 [0.9369, 0.9658] ratio of medians 0.9492
+  levelnog     mp_s med    218.73 min    215.87 max    220.59 | wall   7.508 s | rss    2677 MB | peak dev   1024 MB | levelnog/plain med ratio of rounds 0.9527 [0.9312, 0.9627] ratio of medians 0.9561
+  gamma        mp_s med    225.63 min    221.97 max    228.84 | wall   7.299 s | rss    2598 MB | peak dev   1014 MB | gamma/plain med ratio of rounds 0.9888 [0.9548, 0.9996] ratio of medians 0.9862
+  negate       mp_s med    227.65 min    219.85 max    231.24 | wall   7.242 s | rss    2624 MB | peak dev   1037 MB | negate/plain med ratio of rounds 0.9826 [0.9627, 1.0101] ratio of medians 0.9951
+  auto         mp_s med    225.11 min    221.94 max    228.35 | wall   7.311 s | rss    2646 MB | peak dev   1087 MB | auto/plain med ratio of rounds 0.9771 [0.9607, 1.0048] ratio of medians 0.9839
+  gray709      mp_s med    301.11 min    298.84 max    306.74 | wall   5.703 s | rss    2658 MB | peak dev    935 MB | gray709/plain med ratio of rounds 1.3195 [1.2872, 1.3261] ratio of medians 1.3162
+  gray601      mp_s med    302.35 min    299.45 max    307.90 | wall   5.689 s | rss    2675 MB | peak dev    932 MB | gray601/plain med ratio of rounds 1.3232 [1.2922, 1.3467] ratio of medians 1.3216
+  rs50         mp_s med     79.20 min     78.87 max     79.97 | wall   5.478 s | rss    2653 MB | peak dev    361 MB | rs50/plain med ratio of rounds 0.3456 [0.3405, 0.3497] ratio of medians 0.3462
+  rs2960       mp_s med    421.35 min    414.88 max    429.63 | wall   9.233 s | rss    2680 MB | peak dev    963 MB | rs2960/plain med ratio of rounds 1.8443 [1.7870, 1.8766] ratio of medians 1.8417
+SPD_DONE on

@@ -1,0 +1,9 @@
+context 135.6 ms (CUDA_MODULE_LOADING=LAZY)
+pass 0 x_pr89/k_imageops.sm_89.cubin                228.3 KB   8 functions load      0.3 ms functions      0.1 ms
+pass 0 x_pr89/k_imageops.sm_89.cubin                228.3 KB   8 functions load      0.2 ms functions      0.1 ms
+pass 0 x_pr89/k_imageops.sm_89.cubin                228.3 KB   8 functions load      0.1 ms functions      0.1 ms
+pass 0 total 0.7 MB load 0.6 ms functions 0.3 ms
+pass 1 x_pr89/k_imageops.sm_89.cubin                228.3 KB   8 functions load      0.1 ms functions      0.1 ms
+pass 1 x_pr89/k_imageops.sm_89.cubin                228.3 KB   8 functions load      0.1 ms functions      0.1 ms
+pass 1 x_pr89/k_imageops.sm_89.cubin                228.3 KB   8 functions load      0.1 ms functions      0.1 ms
+pass 1 total 0.7 MB load 0.2 ms functions 0.3 ms

@@ -1,0 +1,8 @@
+batch rc 0 ['[av1gpu] 880 images (212.7 MP) in 1566.5 ms: 561.77 img/s, 135.76 MP/s; 8 batches; out 9.01 MB (0.339 bpp); CPU 1934 ms = 1.23 cores; skipped (unsupported): 0; WebP/PNG via CPU decode: 880; write failures 0', '[av1gpu] stage ms: ingest wait 0.0 | gpu setup 10.7 analysis 633.1 dp 1.7 recon 1728.7 pack 9.0 postfilter 81.9 download 0.0 (gpu total 2998.4, encode wall 3018.6) | entropy wall 927.9 (gpu 819.5) | write 44.7 | peak dev 767 MB']
+870/880 sizes equal; geometries with a difference: 5
+  '@1': 4/11  e.g. (1000, 37): IM None av1gpu (5, 1); (37, 1000): IM None av1gpu (1, 5); (1, 50): IM None av1gpu (1, 7)
+  '33.3%': 2/11  e.g. (1, 50): IM None av1gpu (1, 17); (50, 1): IM None av1gpu (17, 1)
+  '25%x50%': 1/11  e.g. (1, 50): IM None av1gpu (1, 25)
+  '@10': 2/11  e.g. (1, 50): IM None av1gpu (1, 22); (50, 1): IM None av1gpu (22, 1)
+  '50%x25%': 1/11  e.g. (50, 1): IM None av1gpu (25, 1)
+/home/ubuntu/geom_et_fij_t

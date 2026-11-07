@@ -1213,3 +1213,128 @@ desktop meanwhile). Scripts and raw results: `bench/results/rtx5090-trim-imageop
   rows), warm cache, two runs each: 54.4 and 53.9 s with the trim measured on the CPU, 48.3 and 46.0 s with
   `--trim`; every page the same size, 0.05 % more bytes. The CPU no longer decodes each page to sort it (about
   60 ms of a core per page), so the card is fed from the first book on.
+
+### Trim, resize, tone and gray: checked on an L4
+
+The review of #65 for v0.11.0 tested the options on an AWS g6.4xlarge on 2026-11-07, then tested them again after
+each round of fixes:
+- NVIDIA L4, driver 595.112.07, CUDA 13.2, built for sm_89 with the tests on;
+- ImageMagick 7.1.2-18 Q16-HDRI, built from its tag without OpenMP, so its scan order is the sequential one;
+- dav1d 1.4.1 and aomdec 3.8.2.
+
+The figures are for the released code (b08c856, merged as v0.11.0), against `main` 4721191, which writes the same files
+as v0.10.0. "magick" is ImageMagick with the same operation on the same source. Raw results:
+`bench/results/aws-g6-l4-v0110-imageops/`.
+
+**Without the options, nothing changes:**
+- **Same files:** 999 comparisons of `main` and v0.11.0 (22,231 outputs). They cover 9 batch sets with 25 option sets each
+  and 93 files in single-file mode. Where `main` writes a good file, v0.11.0 writes the same bytes, with the same exit
+  status and messages.
+- **The differences are all at the size limits:**
+  - images over 65,536 pixels per side, which `main` wrote as files no decoder reads, are now refused;
+  - crops and shrinks taller than 65,472 rows, where `main` stopped with a CUDA error and lost the whole batch, are now
+    refused for that image only;
+  - `--cpu-entropy` now accepts 65,536 per side, with the same bytes as the GPU coder;
+  - the `--max-mp` message adds the value to use.
+- **Same speed:** on an L4 with nothing else running, 24 interleaved rounds per set:
+  - batch throughput is within 0.4 % of `main`'s on the six sets (photos of every size, the standard set, thumbnails,
+    comic pages, PNG and WebP, and comic pages at 4:4:4 10-bit) and with `--crop` or `--max-size`;
+  - every 95 % interval contains 1, as it does for a byte copy of `main` timed in the same rounds (−0.5 to +0.2 %);
+  - single-image cold start moved by −3.7 to +2.4 ms, inside the copy's −2.6 to +4.1 ms;
+  - process and GPU memory are unchanged.
+
+**`--trim` against `magick -fuzz F -trim`**, the size of the kept box:
+
+| Source | 4:4:4 | default 4:2:0 |
+|---|---|---|
+| 185 real comic pages and photos, at 0, 3 and 10 % fuzz | 0 of 555 differ | 8 of 555 differ, up to 14 columns (a 4:4:4 comic page) |
+| JPEGs coded 4:2:0 (PIL, progressive, arithmetic, restart markers) | — | 0 of 144 differ (the PR: 72 of 144, up to 21) |
+| JPEGs with other samplings (4:4:4, 4:2:2, 4:1:1 …) | — | 95 of 361 differ, up to 3 pixels |
+| synthetic PNGs where magick finds a box | 31 of 785 differ | 74 of 785 differ |
+
+- **4:2:0 JPEGs agree with magick at 4:2:0 too:** a 4:2:0 JPEG's chroma is read upsampled as libjpeg-turbo does,
+  which is what ImageMagick decodes. Other sources at 4:2:0 hold only av1gpu's 2 × 2 mean of the chroma, which shifts
+  colour edges by a pixel or two. `--yuv 444` avoids that.
+- **On the synthetic PNGs**, most of the differences at 4:4:4 and all 30 at `--lossless` come from one ImageMagick
+  behaviour: when the content lies only in the first row or column, it finds an empty box and makes the image 1 × 1.
+  av1gpu keeps that line.
+- **The kernel is exact:** on the planes, a Python copy of the documented rule matched the GPU on every run (5,328 runs
+  at 4:2:0, 4:4:4 and lossless). `--lossless` decodes to exactly the source crop at magick's box.
+- **The conditions** (`--trim-margin`, `--trim-limits`, `--trim-lightness`, `--skip-blank`): 2,000 random combinations
+  gave the same decision and pixels as an independent model.
+  - A page split into two flat colours is kept; on the PR it was skipped as blank.
+  - A page with a gradient across it can still be skipped as blank at a high `--fuzz` (60 % on a black-to-white ramp).
+
+**`--resize`:**
+- **Sizes:** 870 of 880 output sizes (80 geometries on 11 images) equal `magick -resize`'s. In the other 10, magick
+  itself fails ("negative or zero image size") and av1gpu writes 1 pixel.
+- **EXIF:** with EXIF rotations, the displayed size equals `magick -auto-orient -resize` in 224 of 224 cases.
+- **Pixels:** against magick, luma differs by 0.25–0.31 of a step on average, over 12 geometries on 9 JPEG photos and
+  2 PNGs.
+- **Alpha:** images with alpha take Mitchell, as ImageMagick does. On an RGBA PNG at `50%` the luma difference went
+  from 1.83 to 0.15.
+- **Gray and palette images:** ImageMagick also takes Mitchell for these; av1gpu still uses Lanczos.
+
+**Tone and gray against magick**, decoded luma in 8-bit steps, mean (largest), at the default 4:2:0 and with `--yuv 444`.
+Sources: one line-art PNG, the same picture as a 4:2:0 and a 4:4:4 JPEG, 25 comic JPEG pages, 6 comic PNG pages and 30
+photos:
+
+| Operation | Line art PNG | JPEG 4:2:0 | JPEG 4:4:4 | Comic JPEG | Comic PNG | Photos |
+|---|---|---|---|---|---|---|
+| `--colorspace Gray`, 4:2:0 | 0.78 (35) | 0.07 (1) | 0.97 (37) | 0.34 (17) | 0.52 (9) | 0.21 (17) |
+| `--colorspace Gray`, 4:4:4 | 0.03 (1) | 0.07 (1) | 0.05 (1) | 0.17 (1) | 0.23 (1) | 0.16 (1) |
+| `--grayscale Lightness`, 4:2:0 | 2.02 (68) | 0.17 (1) | 2.35 (77) | 1.08 (42) | 1.51 (31) | 0.50 (46) |
+| `--grayscale Lightness`, 4:4:4 | 0.00 (0) | 0.17 (1) | 0.10 (1) | 0.24 (1) | 0.34 (2) | 0.21 (1) |
+| `--level 10%,90%`, 4:2:0 | 0.76 (34) | 0.50 (21) | 0.83 (35) | 0.45 (27) | 0.38 (12) | 0.33 (37) |
+| `--level 10%,90%`, 4:4:4 | 0.01 (0) | 0.03 (1) | 0.02 (1) | 0.31 (1) | 0.38 (1) | 0.27 (1) |
+| `--gamma 2`, 4:2:0 | 1.01 (26) | 0.33 (12) | 1.02 (37) | 0.36 (41) | 0.37 (13) | 0.39 (47) |
+| `--gamma 2`, 4:4:4 | 0.02 (1) | 0.16 (1) | 0.09 (3) | 0.31 (8) | 0.32 (3) | 0.33 (10) |
+| `--negate`, 4:2:0 | 0.74 (24) | 0.08 (1) | 0.69 (23) | 0.17 (12) | 0.24 (1) | 0.16 (18) |
+| `--negate`, 4:4:4 | 0.01 (0) | 0.07 (0) | 0.05 (0) | 0.16 (0) | 0.24 (0) | 0.15 (0) |
+| `--auto-level`, 4:2:0 | 1.55 (24) | 0.07 (0) | 0.69 (23) | 0.89 (12) | **4.62 (18)** | 0.21 (18) |
+| `--auto-level`, 4:4:4 | 0.05 (2) | 0.07 (0) | 0.05 (0) | 0.21 (2) | 0.58 (2) | 0.18 (2) |
+
+- **4:4:4 and 4:2:0 JPEGs are close:** at 4:4:4 every operation is within a step or two of magick, and at 4:2:0
+  so are JPEGs coded 4:2:0.
+- **At 4:2:0, other sources** (PNG, WebP, JPEGs coded 4:4:4) differ at saturated colour edges, where a 2 × 2 block
+  shares one chroma sample.
+- **`--auto-level` at 4:2:0 from PNG and WebP** can also shift the whole picture: one colour edge rebuilt from shared
+  chroma can set the range it stretches. Over the 6 comic PNG pages the mean shift was 4.6 steps, up to 9.7 on one
+  page; at `--yuv 444`, 0.6. Use `--yuv 444` with `--auto-level` on PNG and WebP.
+- **Lossless:** with 8-bit `--lossless`, all 22 operations and gray methods equal magick's output exactly, on 9
+  images. From 16-bit PNGs with 10 significant bits, at 10 bits, every sample is within one 10-bit step of magick's
+  output rounded to 10 bits. `--negate` and `--auto-level` are exact. In the others, up to 0.5 % of samples are off
+  by one.
+- **10-bit:** with `--yuv 444 --depth 10`, the line-art PNG is within one 10-bit step of magick for every operation.
+- **Two more checks:**
+  - Alpha is unchanged by every operator, as with ImageMagick's `-channel RGB`.
+  - Batch mode gives the same bytes as single-file mode for 11 option sets.
+
+**Crop then gray on a 4:2:0 JPEG** at even offsets differs from magick only along the crop's outer rows and columns, by up
+to 16. Inside, the largest difference is 1. At the crop's edge av1gpu replicates the edge chroma sample, where
+ImageMagick, decoding the whole page, has the neighbour outside the crop.
+
+**Robustness:**
+- **compute-sanitizer:**
+  - memcheck: 0 errors in 88 runs;
+  - synccheck: 0 errors in 27 runs;
+  - racecheck: 60 runs, reporting only the entropy kernels it also reports on `main`.
+- **What those runs covered:** 20 awkward sizes from 1 × 1 to 129 × 1, as PNG, 4:2:0 JPEG, RGBA and 16-bit PNG; crops
+  touching every edge; 10-bit; mixed batches.
+- **Fuzzing:** 6,000 seeded iterations on the final code (two seeds), a third of them in `--batch`, and 16,600 over the earlier rounds.
+  They covered every geometry form and sources of 65,472 to 65,536 rows, with each displayed size checked against magick.
+  On the final code there was no crash, hang, decoder mismatch, undecodable file or wrong size.
+  - The one failure was a 128 × 9 PNG with `--lossless --resize 65535x1^`: 302 MP, out of GPU memory, a clean status 1.
+    Single PNG and WebP images have no default `--max-mp`; add one to get a refusal instead.
+- **Decoders:** every output of every run decoded identically in dav1d and aomdec.
+
+**Speed with the options**, on an L4, measured on the PR as submitted (c466e88), before the review fixes. Batch wall
+time against no options, 6 rounds; two runs without options differed by up to 0.9 %:
+- **`--trim`:** measuring every frame costs 0 to 1.4 %. Cutting saves about as much as measuring costs, because the
+  border removed is the cheapest part to code: on pages with 17.7 % border, −2.7 to +1.1 %.
+- **`--negate`, `--gamma 1.2`, `--auto-level`:** up to 1.9 %.
+- **`--level`:** +3 to +6 %, because the stretched picture takes more bytes to code. On the standard photo set,
+  `--level 5%,95%,1.1` costs 20 %: the curve makes some small photos look like screen content, so the palette search
+  runs for them (`--palette off` removes the excess).
+- **`--grayscale`:** takes 16 to 44 % less time, since only one plane is coded.
+- **Single-image start** is within a few milliseconds with any option, and faster with `--grayscale`.

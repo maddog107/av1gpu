@@ -1,0 +1,111 @@
+ok   A bjpeg at 0: rc 0, 8 files, all match their inputs: rc 0 [] 0 
+ok   A bjpeg at 1: rc 0, 8 files, all match their inputs: rc 0 [] 0 
+ok   A bjpeg at 2: rc 0, 8 files, all match their inputs: rc 0 [] 0 
+ok   A bjpeg at 3: rc 0, 8 files, all match their inputs: rc 0 [] 0 
+ok   A bjpeg at 4: rc 0, 8 files, all match their inputs: rc 0 [] 0 
+ok   A bjpeg at 5: rc 0, 8 files, all match their inputs: rc 0 [] 0 
+ok   A bjpeg at 6: rc 0, 8 files, all match their inputs: rc 0 [] 0 
+ok   A bjpeg at 7: rc 0, 8 files, all match their inputs: rc 0 [] 0 
+ok   A bjpeg at 8: rc 0, 8 files, all match their inputs: rc 0 [] 0 
+ok   A bpng at 0: rc 0, 8 files, all match their inputs: rc 0 [] 0 
+ok   A bpng at 1: rc 0, 8 files, all match their inputs: rc 0 [] 0 
+ok   A bpng at 2: rc 0, 8 files, all match their inputs: rc 0 [] 0 
+ok   A bpng at 3: rc 0, 8 files, all match their inputs: rc 0 [] 0 
+ok   A bpng at 4: rc 0, 8 files, all match their inputs: rc 0 [] 0 
+ok   A bpng at 5: rc 0, 8 files, all match their inputs: rc 0 [] 0 
+ok   A bpng at 6: rc 0, 8 files, all match their inputs: rc 0 [] 0 
+ok   A bpng at 7: rc 0, 8 files, all match their inputs: rc 0 [] 0 
+ok   A bpng at 8: rc 0, 8 files, all match their inputs: rc 0 [] 0 
+ok   A bwebp at 0: rc 0, 8 files, all match their inputs: rc 0 [] 0 
+ok   A bwebp at 1: rc 0, 8 files, all match their inputs: rc 0 [] 0 
+ok   A bwebp at 2: rc 0, 8 files, all match their inputs: rc 0 [] 0 
+ok   A bwebp at 3: rc 0, 8 files, all match their inputs: rc 0 [] 0 
+ok   A bwebp at 4: rc 0, 8 files, all match their inputs: rc 0 [] 0 
+ok   A bwebp at 5: rc 0, 8 files, all match their inputs: rc 0 [] 0 
+ok   A bwebp at 6: rc 0, 8 files, all match their inputs: rc 0 [] 0 
+ok   A bwebp at 7: rc 0, 8 files, all match their inputs: rc 0 [] 0 
+ok   A bwebp at 8: rc 0, 8 files, all match their inputs: rc 0 [] 0 
+ok   A brgba at 0: rc 0, 8 files, all match their inputs: rc 0 [] 0 
+ok   A brgba at 1: rc 0, 8 files, all match their inputs: rc 0 [] 0 
+ok   A brgba at 2: rc 0, 8 files, all match their inputs: rc 0 [] 0 
+ok   A brgba at 3: rc 0, 8 files, all match their inputs: rc 0 [] 0 
+ok   A brgba at 4: rc 0, 8 files, all match their inputs: rc 0 [] 0 
+ok   A brgba at 5: rc 0, 8 files, all match their inputs: rc 0 [] 0 
+ok   A brgba at 6: rc 0, 8 files, all match their inputs: rc 0 [] 0 
+ok   A brgba at 7: rc 0, 8 files, all match their inputs: rc 0 [] 0 
+ok   A brgba at 8: rc 0, 8 files, all match their inputs: rc 0 [] 0 
+ok   B bjpeg x1 {}: rc 0, no files, count: rc 0 files 0 blank 1 1.2s 
+ok   B bjpeg x1 {'GP_ENCODE_IMGS': '1'}: rc 0, no files, count: rc 0 files 0 blank 1 1.3s 
+ok   B bjpeg x2 {}: rc 0, no files, count: rc 0 files 0 blank 2 1.5s 
+ok   B bjpeg x2 {'GP_ENCODE_IMGS': '1'}: rc 0, no files, count: rc 0 files 0 blank 2 1.4s 
+ok   B bjpeg x3 {}: rc 0, no files, count: rc 0 files 0 blank 3 1.2s 
+ok   B bjpeg x3 {'GP_ENCODE_IMGS': '1'}: rc 0, no files, count: rc 0 files 0 blank 3 1.3s 
+ok   B bjpeg x7 {}: rc 0, no files, count: rc 0 files 0 blank 7 1.5s 
+ok   B bjpeg x7 {'GP_ENCODE_IMGS': '1'}: rc 0, no files, count: rc 0 files 0 blank 7 1.1s 
+ok   B bjpeg x48 {}: rc 0, no files, count: rc 0 files 0 blank 48 2.4s 
+ok   B bjpeg x48 {'GP_ENCODE_IMGS': '1'}: rc 0, no files, count: rc 0 files 0 blank 48 2.3s 
+ok   B bjpeg x200 {}: rc 0, no files, count: rc 0 files 0 blank 200 2.3s 
+ok   B bjpeg x200 {'GP_ENCODE_IMGS': '1'}: rc 0, no files, count: rc 0 files 0 blank 200 2.4s 
+ok   B bjpeg x1000 {}: rc 0, no files, count: rc 0 files 0 blank 1000 2.5s 
+ok   B bjpeg x1000 {'GP_ENCODE_IMGS': '1'}: rc 0, no files, count: rc 0 files 0 blank 1000 2.4s 
+ok   B bpng x1 {}: rc 0, no files, count: rc 0 files 0 blank 1 1.1s 
+ok   B bpng x1 {'GP_ENCODE_IMGS': '1'}: rc 0, no files, count: rc 0 files 0 blank 1 1.4s 
+ok   B bpng x2 {}: rc 0, no files, count: rc 0 files 0 blank 2 1.4s 
+ok   B bpng x2 {'GP_ENCODE_IMGS': '1'}: rc 0, no files, count: rc 0 files 0 blank 2 1.2s 
+ok   B bpng x3 {}: rc 0, no files, count: rc 0 files 0 blank 3 1.3s 
+ok   B bpng x3 {'GP_ENCODE_IMGS': '1'}: rc 0, no files, count: rc 0 files 0 blank 3 1.4s 
+ok   B bpng x7 {}: rc 0, no files, count: rc 0 files 0 blank 7 1.3s 
+ok   B bpng x7 {'GP_ENCODE_IMGS': '1'}: rc 0, no files, count: rc 0 files 0 blank 7 1.2s 
+ok   B bpng x48 {}: rc 0, no files, count: rc 0 files 0 blank 48 2.2s 
+ok   B bpng x48 {'GP_ENCODE_IMGS': '1'}: rc 0, no files, count: rc 0 files 0 blank 48 2.4s 
+ok   B bpng x200 {}: rc 0, no files, count: rc 0 files 0 blank 200 2.2s 
+ok   B bpng x200 {'GP_ENCODE_IMGS': '1'}: rc 0, no files, count: rc 0 files 0 blank 200 2.6s 
+ok   B bpng x1000 {}: rc 0, no files, count: rc 0 files 0 blank 1000 2.2s 
+ok   B bpng x1000 {'GP_ENCODE_IMGS': '1'}: rc 0, no files, count: rc 0 files 0 blank 1000 3.9s 
+ok   B bwebp x1 {}: rc 0, no files, count: rc 0 files 0 blank 1 1.1s 
+ok   B bwebp x1 {'GP_ENCODE_IMGS': '1'}: rc 0, no files, count: rc 0 files 0 blank 1 1.3s 
+ok   B bwebp x2 {}: rc 0, no files, count: rc 0 files 0 blank 2 1.4s 
+ok   B bwebp x2 {'GP_ENCODE_IMGS': '1'}: rc 0, no files, count: rc 0 files 0 blank 2 1.5s 
+ok   B bwebp x3 {}: rc 0, no files, count: rc 0 files 0 blank 3 1.3s 
+ok   B bwebp x3 {'GP_ENCODE_IMGS': '1'}: rc 0, no files, count: rc 0 files 0 blank 3 1.2s 
+ok   B bwebp x7 {}: rc 0, no files, count: rc 0 files 0 blank 7 1.3s 
+ok   B bwebp x7 {'GP_ENCODE_IMGS': '1'}: rc 0, no files, count: rc 0 files 0 blank 7 1.5s 
+ok   B bwebp x48 {}: rc 0, no files, count: rc 0 files 0 blank 48 2.1s 
+ok   B bwebp x48 {'GP_ENCODE_IMGS': '1'}: rc 0, no files, count: rc 0 files 0 blank 48 2.3s 
+ok   B bwebp x200 {}: rc 0, no files, count: rc 0 files 0 blank 200 2.3s 
+ok   B bwebp x200 {'GP_ENCODE_IMGS': '1'}: rc 0, no files, count: rc 0 files 0 blank 200 2.7s 
+ok   B bwebp x1000 {}: rc 0, no files, count: rc 0 files 0 blank 1000 2.3s 
+ok   B bwebp x1000 {'GP_ENCODE_IMGS': '1'}: rc 0, no files, count: rc 0 files 0 blank 1000 4.0s 
+ok   B brgba x1 {}: rc 0, no files, count: rc 0 files 0 blank 1 1.3s 
+ok   B brgba x1 {'GP_ENCODE_IMGS': '1'}: rc 0, no files, count: rc 0 files 0 blank 1 1.2s 
+ok   B brgba x2 {}: rc 0, no files, count: rc 0 files 0 blank 2 1.2s 
+ok   B brgba x2 {'GP_ENCODE_IMGS': '1'}: rc 0, no files, count: rc 0 files 0 blank 2 1.4s 
+ok   B brgba x3 {}: rc 0, no files, count: rc 0 files 0 blank 3 1.1s 
+ok   B brgba x3 {'GP_ENCODE_IMGS': '1'}: rc 0, no files, count: rc 0 files 0 blank 3 1.1s 
+ok   B brgba x7 {}: rc 0, no files, count: rc 0 files 0 blank 7 0.8s 
+ok   B brgba x7 {'GP_ENCODE_IMGS': '1'}: rc 0, no files, count: rc 0 files 0 blank 7 0.7s 
+ok   B brgba x48 {}: rc 0, no files, count: rc 0 files 0 blank 48 1.8s 
+ok   B brgba x48 {'GP_ENCODE_IMGS': '1'}: rc 0, no files, count: rc 0 files 0 blank 48 1.8s 
+ok   B brgba x200 {}: rc 0, no files, count: rc 0 files 0 blank 200 1.8s 
+ok   B brgba x200 {'GP_ENCODE_IMGS': '1'}: rc 0, no files, count: rc 0 files 0 blank 200 2.0s 
+ok   B brgba x1000 {}: rc 0, no files, count: rc 0 files 0 blank 1000 1.7s 
+ok   B brgba x1000 {'GP_ENCODE_IMGS': '1'}: rc 0, no files, count: rc 0 files 0 blank 1000 3.5s 
+ok   B mixed blanks x400: rc 0 1.8s
+ok   E mixed 420: rc 0, 300 files, all match their inputs: rc 0 [] 0 
+ok   E mixed 444: rc 0, 300 files, all match their inputs: rc 0 [] 0 
+ok   E mixed 10: rc 0, 300 files, all match their inputs: rc 0 [] 0 
+ok   E mixed 444_10: rc 0, 300 files, all match their inputs: rc 0 [] 0 
+ok   E mixed skip: rc 0, 225 files, all match their inputs: rc 0 [] 0 
+ok   E mixed skip 1img: rc 0, 225 files, all match their inputs: rc 0 [] 0 
+ok   E mixed skip smallq: rc 0, 225 files, all match their inputs: rc 0 [] 0 
+ok   E mixed skip cpuj: rc 0, 225 files, all match their inputs: rc 0 [] 0 
+ok   E mixed skip10: rc 0, 225 files, all match their inputs: rc 0 [] 0 
+ok   E mixed skip10 1img: rc 0, 225 files, all match their inputs: rc 0 [] 0 
+ok   E mixed skip10 smallq: rc 0, 225 files, all match their inputs: rc 0 [] 0 
+ok   E mixed skip10 cpuj: rc 0, 225 files, all match their inputs: rc 0 [] 0 
+ok   E mixed tone: rc 0, 225 files, all match their inputs: rc 0 [] 0 
+ok   E mixed gray: rc 0, 225 files, all match their inputs: rc 0 [] 0 
+ok   E mixed margin: rc 0, 300 files, all match their inputs: rc 0 [] 0 
+FAIL F broken files: skipped with a message: rc 0 not reported ['/home/ubuntu/adv/broken/trunc.jpg'] 
+ok   G one line with an unusable geometry does not cost the rest of the list: rc 0 files 12/15: ['[av1gpu] skipped /home/ubuntu/bp/e/00018.png: 100000x1 after crop / resize is larger than AV1 can code (65536 pixels per side)', '[av1gpu] skipped /home/ubuntu/bp/e/00015.png: 1x100000 after crop / resize is larger than AV1 can code (65536 pixels per side)', '[av1gpu] 12 images (0.3 MP) in 273.2 ms: 43.93 img/s, 0.96 MP/s; 0 batches; out 0.01 MB (0.241 bpp); CPU 282 ms = 1.03 cores; skipped (unsupported): 3', '[av1gpu] alpha: 2 images with an alpha item (0.1 MP of alpha frames, qindex 100)']
+FAILS 1 ['F broken files: skipped with a message']

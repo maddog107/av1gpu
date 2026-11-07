@@ -1,0 +1,13 @@
+== off2 std: 1023 MP, 24 rounds, mp_s
+  A            mp_s med     78.79 min     77.98 max     81.44 | wall  13.918 s | rss    1626 MB | peak dev   1083 MB | A/A med ratio of rounds 1.0000 [1.0000, 1.0000] ratio of medians 1.0000
+  C            mp_s med     78.56 min     78.03 max     81.39 | wall  13.955 s | rss    1625 MB | peak dev   1083 MB | C/A med ratio of rounds 1.0001 [0.9828, 1.0103] ratio of medians 0.9971
+  B            mp_s med     78.60 min     77.98 max     81.33 | wall  13.947 s | rss    1627 MB | peak dev   1090 MB | B/A med ratio of rounds 1.0010 [0.9886, 1.0213] ratio of medians 0.9976
+== off2 thumbs: 1016 MP, 24 rounds, img_s
+  A            img_s med    436.84 min    428.24 max    445.78 | wall  18.317 s | rss    1434 MB | peak dev    627 MB | A/A med ratio of rounds 1.0000 [1.0000, 1.0000] ratio of medians 1.0000
+  C            img_s med    435.92 min    428.05 max    446.45 | wall  18.357 s | rss    1433 MB | peak dev    627 MB | C/A med ratio of rounds 1.0003 [0.9757, 1.0378] ratio of medians 0.9979
+  B            img_s med    436.75 min    428.06 max    447.29 | wall  18.327 s | rss    1436 MB | peak dev    627 MB | B/A med ratio of rounds 0.9985 [0.9792, 1.0253] ratio of medians 0.9998
+== off2 pngwebp: 1434 MP, 24 rounds, mp_s
+  A            mp_s med    228.60 min    223.94 max    233.31 | wall   7.223 s | rss    2657 MB | peak dev   1013 MB | A/A med ratio of rounds 1.0000 [1.0000, 1.0000] ratio of medians 1.0000
+  C            mp_s med    229.13 min    223.59 max    234.33 | wall   7.216 s | rss    2635 MB | peak dev   1019 MB | C/A med ratio of rounds 1.0014 [0.9733, 1.0264] ratio of medians 1.0023
+  B            mp_s med    229.19 min    224.78 max    234.24 | wall   7.224 s | rss    2643 MB | peak dev   1032 MB | B/A med ratio of rounds 1.0027 [0.9820, 1.0252] ratio of medians 1.0026
+SPD_DONE off2

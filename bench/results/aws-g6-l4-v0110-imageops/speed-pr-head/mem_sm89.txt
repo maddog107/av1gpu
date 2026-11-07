@@ -1,0 +1,9 @@
+sr       | A: gpu used   6525 MiB (max 6621) peak_dev    1026 rss   1588 | C: gpu used   6461 MiB (max 7037) peak_dev    1021 rss   1588 | B: gpu used   6493 MiB (max 6749) peak_dev    1021 rss   1590
+std      | A: gpu used   5949 MiB (max 6205) peak_dev    1092 rss   1626 | C: gpu used   5917 MiB (max 6045) peak_dev    1082 rss   1623 | B: gpu used   5853 MiB (max 5949) peak_dev    1087 rss   1625
+thumbs   | A: gpu used   5437 MiB (max 5437) peak_dev     628 rss   1434 | C: gpu used   5405 MiB (max 5437) peak_dev     627 rss   1433 | B: gpu used   5501 MiB (max 5533) peak_dev     627 rss   1435
+comics   | A: gpu used   6781 MiB (max 6845) peak_dev    1018 rss   1925 | C: gpu used   6781 MiB (max 6973) peak_dev    1036 rss   1930 | B: gpu used   6845 MiB (max 6877) peak_dev    1098 rss   1931
+pngwebp  | A: gpu used   6625 MiB (max 6753) peak_dev    1050 rss   2626 | C: gpu used   6561 MiB (max 6881) peak_dev    1048 rss   2599 | B: gpu used   6369 MiB (max 6433) peak_dev    1005 rss   2656
+c444     | A: gpu used  10815 MiB (max 11135) peak_dev    1737 rss   2301 | C: gpu used  10975 MiB (max 11071) peak_dev    1744 rss   2304 | B: gpu used  11007 MiB (max 11039) peak_dev    1736 rss   2293
+photo    | A: gpu used   2295 MiB (max 2295) peak_dev       0 rss    306 | C: gpu used   2295 MiB (max 2295) peak_dev       0 rss    306 | B: gpu used   2295 MiB (max 2295) peak_dev       0 rss    307
+comic    | A: gpu used   2541 MiB (max 2541) peak_dev       0 rss    656 | C: gpu used   2541 MiB (max 2541) peak_dev       0 rss    654 | B: gpu used   2541 MiB (max 2541) peak_dev       0 rss    656
+MEM_DONE sm89
