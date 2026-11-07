@@ -1,0 +1,17 @@
+1656 jobs
+200
+400
+600
+800
+1000
+1200
+1400
+1600
+1656 jobs
+95 ('420', 'size differs from magick: avNgpu NxN, magick (N, N, N, N)') ('ex6_422_161x97.jpg', 3, 'size differs from magick: av1gpu 138x73, magick (11, 12, 140, 73)')
+12 ('444', 'plain rc N: /home/ubuntu/adv/jpeg/rgbjpeg_NxNjpg: unsupported JPEG col') ('rgbjpeg_48x64.jpg', 0, 'plain rc 3: /home/ubuntu/adv/jpeg/rgbjpeg_48x64.jpg: unsupported JPEG colour space\n')
+12 ('444_10', 'plain rc N: /home/ubuntu/adv/jpeg/rgbjpeg_NxNjpg: unsupported JPEG col') ('rgbjpeg_161x97.jpg', 10, 'plain rc 3: /home/ubuntu/adv/jpeg/rgbjpeg_161x97.jpg: unsupported JPEG colour space\n')
+12 ('420', 'plain rc N: /home/ubuntu/adv/jpeg/rgbjpeg_NxNjpg: unsupported JPEG col') ('rgbjpeg_48x64.jpg', 10, 'plain rc 3: /home/ubuntu/adv/jpeg/rgbjpeg_48x64.jpg: unsupported JPEG colour space\n')
+10 ('444_10', 'size differs from the documented algorithm on the planes: NxN vs NxN (') ('restart_64x48.jpg', 3, 'size differs from the documented algorithm on the planes: 61x48 vs 61x44 (box (0, 4, 60, 47))')
+2 ('444', 'size differs from magick: avNgpu NxN, magick (N, N, N, N)') ('noisyblank_1x30.jpg', 0, 'size differs from magick: av1gpu 1x28, magick (0, 1, 2, 28)')
+2 ('444_10', 'size differs from magick: avNgpu NxN, magick (N, N, N, N)') ('noisyblank_30x1.jpg', 0, 'size differs from magick: av1gpu 28x1, magick (1, 0, 28, 2)')

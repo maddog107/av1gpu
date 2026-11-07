@@ -1,0 +1,44 @@
+context 137.0 ms (CUDA_MODULE_LOADING=EAGER)
+pass 0 entropy_dev.sm_89.ptx                          0.1 KB   0 functions load      9.7 ms functions      0.0 ms
+pass 0 gpu_entropy.sm_89.ptx                       4004.2 KB  32 functions load   5295.5 ms functions      0.0 ms
+pass 0 gpu_postfilter.sm_89.ptx                     963.2 KB   9 functions load    377.6 ms functions      0.0 ms
+pass 0 k_an_a.sm_89.ptx                           10146.4 KB  24 functions load  12512.0 ms functions      0.0 ms
+pass 0 k_an_b.sm_89.ptx                            4343.5 KB  10 functions load   4971.4 ms functions      0.0 ms
+pass 0 k_an_c.sm_89.ptx                            2776.2 KB   6 functions load   3065.3 ms functions      0.0 ms
+pass 0 k_an_d.sm_89.ptx                            4306.1 KB  10 functions load   5232.7 ms functions      0.0 ms
+pass 0 k_an_uv.sm_89.ptx                          13286.3 KB  76 functions load  16262.5 ms functions      0.0 ms
+pass 0 k_imageops.sm_89.ptx                         137.7 KB   8 functions load    221.9 ms functions      0.0 ms
+pass 0 k_lossless.sm_89.ptx                        4150.8 KB  14 functions load   5768.1 ms functions      0.0 ms
+pass 0 k_misc.sm_89.ptx                             914.1 KB  16 functions load    550.2 ms functions      0.0 ms
+pass 0 k_pal.sm_89.ptx                             1320.0 KB   2 functions load   1090.9 ms functions      0.0 ms
+pass 0 k_recon.sm_89.ptx                           8108.2 KB   1 functions load  38802.7 ms functions      0.0 ms
+pass 0 k_recon_420_10.sm_89.ptx                    8153.2 KB   1 functions load  40115.8 ms functions      0.0 ms
+pass 0 k_recon_444_10.sm_89.ptx                    6944.3 KB   1 functions load  31698.2 ms functions      0.0 ms
+pass 0 k_recon_444_8.sm_89.ptx                     6898.8 KB   1 functions load  31536.6 ms functions      0.0 ms
+pass 0 kernels.sm_89.ptx                            326.4 KB   4 functions load    322.9 ms functions      0.0 ms
+pass 0 lfsearch.sm_89.ptx                          5798.8 KB  44 functions load   4236.1 ms functions      0.0 ms
+pass 0 pipeline.sm_89.ptx                             0.1 KB   0 functions load      7.4 ms functions      0.0 ms
+pass 0 varboost.sm_89.ptx                          1342.8 KB   4 functions load    180.7 ms functions      0.0 ms
+pass 0 total 82.0 MB load 202258.3 ms functions 0.0 ms
+pass 1 entropy_dev.sm_89.ptx                          0.1 KB   0 functions load      3.8 ms functions      0.0 ms
+pass 1 gpu_entropy.sm_89.ptx                       4004.2 KB  32 functions load   5148.9 ms functions      0.0 ms
+pass 1 gpu_postfilter.sm_89.ptx                     963.2 KB   9 functions load    378.4 ms functions      0.0 ms
+pass 1 k_an_a.sm_89.ptx                           10146.4 KB  24 functions load  12344.7 ms functions      0.0 ms
+pass 1 k_an_b.sm_89.ptx                            4343.5 KB  10 functions load   4962.0 ms functions      0.0 ms
+pass 1 k_an_c.sm_89.ptx                            2776.2 KB   6 functions load   3058.3 ms functions      0.0 ms
+pass 1 k_an_d.sm_89.ptx                            4306.1 KB  10 functions load   5234.6 ms functions      0.0 ms
+pass 1 k_an_uv.sm_89.ptx                          13286.3 KB  76 functions load  16267.3 ms functions      0.0 ms
+pass 1 k_imageops.sm_89.ptx                         137.7 KB   8 functions load    228.0 ms functions      0.0 ms
+pass 1 k_lossless.sm_89.ptx                        4150.8 KB  14 functions load   5774.6 ms functions      0.0 ms
+pass 1 k_misc.sm_89.ptx                             914.1 KB  16 functions load    553.3 ms functions      0.0 ms
+pass 1 k_pal.sm_89.ptx                             1320.0 KB   2 functions load   1094.3 ms functions      0.0 ms
+pass 1 k_recon.sm_89.ptx                           8108.2 KB   1 functions load  38776.1 ms functions      0.0 ms
+pass 1 k_recon_420_10.sm_89.ptx                    8153.2 KB   1 functions load  40062.5 ms functions      0.0 ms
+pass 1 k_recon_444_10.sm_89.ptx                    6944.3 KB   1 functions load  31849.3 ms functions      0.0 ms
+pass 1 k_recon_444_8.sm_89.ptx                     6898.8 KB   1 functions load  31634.8 ms functions      0.0 ms
+pass 1 kernels.sm_89.ptx                            326.4 KB   4 functions load    327.1 ms functions      0.0 ms
+pass 1 lfsearch.sm_89.ptx                          5798.8 KB  44 functions load   4230.0 ms functions      0.0 ms
+pass 1 pipeline.sm_89.ptx                             0.1 KB   0 functions load      4.0 ms functions      0.0 ms
+pass 1 varboost.sm_89.ptx                          1342.8 KB   4 functions load    180.9 ms functions      0.0 ms
+pass 1 total 82.0 MB load 202113.0 ms functions 0.0 ms
+JIT_DONE

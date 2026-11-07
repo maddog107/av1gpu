@@ -1,0 +1,41 @@
+5328 jobs
+200
+400
+600
+800
+1000
+1200
+1400
+1600
+1800
+2000
+2200
+2400
+2600
+2800
+3000
+3200
+3400
+3600
+3800
+4000
+4200
+4400
+4600
+4800
+5000
+5200
+5328 jobs
+418 ('ll', 'my python model differs from magick: None vs (N, N, N, N)') ('white_1x128.png', 100, 'my python model differs from magick: None vs (1, 128, 1, 0)')
+380 ('420', 'size differs from magick: avNgpu NxN, magick (N, N, N, N)') ('bar_col0_200x120.png', 30, 'size differs from magick: av1gpu 1x100, magick (0, 10, 0, 109)')
+338 ('444', 'size differs from magick: avNgpu NxN, magick (N, N, N, N)') ('pix_tl_9x7.png', 0, 'size differs from magick: av1gpu 1x1, magick (0, 0, 0, 0)')
+336 ('ll', 'size differs from magick: avNgpu NxN, magick (N, N, N, N)') ('pix_l_8x8.png', 10, 'size differs from magick: av1gpu 1x1, magick (0, 4, 0, 4)')
+12 ('ll', 'pixels are not the source crop at (N, N, N, N)') ('black_1x1.png', 30, 'pixels are not the source crop at (1, 1, 1, 1)')
+3 ('420', 'trim rc N: trim: CUDA: out of memory (--trim)\n') ('bar_mid_201x121.png', 100, 'trim rc 1: trim: CUDA: out of memory (--trim)\n')
+2 ('420', 'plain rc N: encode: CUDA: out of memory at ANget(dRec, planeBytes) (/h') ('pix_tl_2x2.png', 30, 'plain rc 1: encode: CUDA: out of memory at A.get(dRec, planeBytes) (/home/ubuntu/fix3/encoder/src/pipeline.cpp:313)\n')
+2 ('ll', 'trim rc N: trim: CUDA: out of memory (--trim)\n') ('pix_c_3x3.png', 0, 'trim rc 1: trim: CUDA: out of memory (--trim)\n')
+1 ('ll', 'trim rc N: ropy: CUDA: invalid device ordinal at cub::DeviceScan::Excl') ('gray_17x33.png', 1, 'trim rc 1: ropy: CUDA: invalid device ordinal at cub::DeviceScan::ExclusiveSum(dCub, cubBytes, dCount, dOff, (int)(nItems + 1), s)\n')
+1 ('444', 'plain rc N: (uintN_t)sbqTotal, vbLuts_, cfg_NvbOrder, nullptr, nullptr') ('white_129x17.png', 10, 'plain rc 1: (uint32_t)sbqTotal, vbLuts_, cfg_.vbOrder, nullptr, nullptr, dSbq, st) (/home/ubuntu/fix3/encoder/src/pipeline.cpp:417)\n')
+1 ('ll', 'plain rc N: lineNcpp:N)\nout of GPU memory: lossless frames need severa') ('pix_br_40x1.png', 0, 'plain rc 1: line.cpp:559)\nout of GPU memory: lossless frames need several times the GPU memory of lossy ones (this GPU has 23.7 GB)\n')
+1 ('444', 'trim rc N: trim: CUDA: out of memory (--trim)\n') ('ring_red63.png', 3, 'trim rc 1: trim: CUDA: out of memory (--trim)\n')
+1 ('420', 'plain rc N: encode: CUDA: out of memory at cudaGetLastError() (/home/u') ('bar_rowonly_64x64.png', 30, 'plain rc 1: encode: CUDA: out of memory at cudaGetLastError() (/home/ubuntu/fix3/encoder/src/pipeline.cpp:577)\n')

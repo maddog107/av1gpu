@@ -196,9 +196,9 @@ endif()
 
 # encoder: analysis, partition DP, wavefront reconstruction, batching
 add_library(av1gpu_encoder STATIC
-  encoder/src/k_misc.cu encoder/src/k_an_a.cu encoder/src/k_an_b.cu encoder/src/k_an_c.cu encoder/src/k_an_d.cu
+  encoder/src/k_misc.cu encoder/src/k_imageops.cu encoder/src/k_an_a.cu encoder/src/k_an_b.cu encoder/src/k_an_c.cu encoder/src/k_an_d.cu
   encoder/src/k_an_uv.cu ${_av1gpu_recon_objects} encoder/src/k_lossless.cu encoder/src/k_pal.cu encoder/src/pipeline.cpp
-  encoder/src/imageio.cpp encoder/src/entropy_gpu.cpp encoder/src/entropy_dev.cu encoder/src/batch.cpp)
+  encoder/src/imageio.cpp encoder/src/imageops.cpp encoder/src/entropy_gpu.cpp encoder/src/entropy_dev.cu encoder/src/batch.cpp)
 target_include_directories(av1gpu_encoder PUBLIC encoder/src)
 target_compile_options(av1gpu_encoder PRIVATE
   ${AV1GPU_CUDA_OPTIONS}
@@ -251,6 +251,28 @@ if(AV1GPU_TESTS)
     add_test(NAME gate_crop_resize COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/decoder_gate.py
              --bin $<TARGET_FILE:av1gpu> --images ${PROJECT_SOURCE_DIR}/tests/gate_images --q 60,120
              -- --crop 171x120+19+13 --max-size 97x97 --small-preset none)
+    # --trim / --fuzz and the trim conditions: boxes (4:2:0 / 4:4:4, 8 / 10-bit, exact with --lossless), ImageMagick's
+    # fuzz threshold, identities, margin / limits / lightness / --skip-blank, the order with --crop / --max-size, alpha,
+    # errors and a --batch run; then decoder identity on trimmed frames
+    add_test(NAME trim COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/trim_test.py --bin $<TARGET_FILE:av1gpu>)
+    add_test(NAME gate_trim COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/decoder_gate.py
+             --bin $<TARGET_FILE:av1gpu> --images ${PROJECT_SOURCE_DIR}/tests/gate_images --q 60,120
+             -- --trim --fuzz 5% --trim-margin 3 --small-preset none)
+    # --resize (ImageMagick's geometry, Mitchell when enlarging), --grayscale / --colorspace Gray, --auto-level / --level /
+    # --gamma / --negate: sizes, identities, known samples, errors (and ImageMagick's own output when it is installed);
+    # then decoder identity on enlarged, grayscaled and tone-mapped frames
+    add_test(NAME imageops COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/imageops_test.py
+             --bin $<TARGET_FILE:av1gpu> --image ${PROJECT_SOURCE_DIR}/tests/gate_images/cfl_edge_211x149.png)
+    add_test(NAME gate_imageops COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/decoder_gate.py
+             --bin $<TARGET_FILE:av1gpu> --images ${PROJECT_SOURCE_DIR}/tests/gate_images --q 60,120
+             -- --resize 173% --level 5%,90%,1.3 --grayscale Rec709Luma --small-preset none)
+    # the same operations on JPEGs (the batch path that starts from the ingest): EXIF-turned geometries, the box, blank
+    # pages, --negate exact at 4:2:0, the size refusals and their --max-mp hint, one bad list line among good ones
+    add_test(NAME imageops_jpeg COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/imageops_jpeg_test.py
+             --bin $<TARGET_FILE:av1gpu> --gen $<TARGET_FILE:jpeg_gray_gen>)
+    # --help prints every option the parser takes
+    add_test(NAME help_lists_options COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/help_test.py
+             --bin $<TARGET_FILE:av1gpu> --source ${PROJECT_SOURCE_DIR}/encoder/apps/av1gpu.cpp)
     # #44: a gray JPEG's sampling factors (2x2, 2x1, 1x2) do not change its planes, on the nvJPEG and the CPU route
     add_test(NAME jpeg_gray_sampling COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/jpeg_gray_sampling_test.py
              --bin $<TARGET_FILE:av1gpu> --gen $<TARGET_FILE:jpeg_gray_gen>)

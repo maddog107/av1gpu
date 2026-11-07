@@ -970,6 +970,39 @@ bool rz_ch(const char *&s, char c) {
 bool gp_xform_size(const GpXform &x, int W, int H, int *ow, int *oh) {
     int cx, cy, w, h;
     if (!rz_crop(x, W, H, &cx, &cy, &w, &h)) return false;
+    if (x.rsFlags) {   // --resize: ImageMagick's ParseMetaGeometry (each side floor(v + 0.5), here at least 1)
+        const int f = x.rsFlags;
+        auto rnd = [](double v) { return (int)std::min(std::max(1.0, std::floor(v + 0.5)), 1073741824.0); };
+        int tw = w, th = h;
+        if (f & GpXform::RS_PCT) {   // (the parser sets both numbers)
+            tw = rnd(w * x.rsW / 100);
+            th = rnd(h * x.rsH / 100);
+        } else if (f & GpXform::RS_AREA) {
+            const double k = std::sqrt(x.rsW / ((double)w * h));
+            tw = rnd(w * k);
+            th = rnd(h * k);
+        } else if (f & GpXform::RS_EXACT) {   // a side not given stays
+            if (f & GpXform::RS_W) tw = (int)x.rsW;
+            if (f & GpXform::RS_H) th = (int)x.rsH;
+        } else if ((f & GpXform::RS_W) && (f & GpXform::RS_H)) {
+            const double sw = x.rsW / w, sh = x.rsH / h, k = (f & GpXform::RS_FILL) ? std::max(sw, sh) : std::min(sw, sh);
+            tw = rnd(w * k);
+            th = rnd(h * k);
+        } else {   // one side; ^: the number is the smaller side's
+            const bool gw = f & GpXform::RS_W;
+            const double n = gw ? x.rsW : x.rsH, s = n / (gw ? w : h);
+            const double k = (f & GpXform::RS_FILL) ? std::max(s, n / (gw ? h : w)) : s;
+            tw = gw && !(f & GpXform::RS_FILL) ? (int)n : rnd(w * k);
+            th = !gw && !(f & GpXform::RS_FILL) ? (int)n : rnd(h * k);
+        }
+        if (!(f & GpXform::RS_PCT)) {   // (ImageMagick: a percentage is already the size that > and < compare with)
+            if (f & GpXform::RS_SHRINK) { tw = std::min(tw, w); th = std::min(th, h); }
+            if ((f & GpXform::RS_ENLARGE) && !(f & GpXform::RS_AREA)) { tw = std::max(tw, w); th = std::max(th, h); }
+        }
+        *ow = tw;
+        *oh = th;
+        return true;
+    }
     double s = 1.0;
     if (x.maxW > 0) s = std::min(s, (double)x.maxW / w);
     if (x.maxH > 0) s = std::min(s, (double)x.maxH / h);
@@ -980,6 +1013,60 @@ bool gp_xform_size(const GpXform &x, int W, int H, int *ow, int *oh) {
         *oh = std::max(1, (int)std::floor(h * s + 0.5));
     }
     return true;
+}
+
+std::string gp_size_refusal(int w, int h, double maxMp, const char *after) {
+    char b[200];
+    if (w > GP_MAX_SIDE || h > GP_MAX_SIDE) {
+        snprintf(b, sizeof b, "%dx%d%s is larger than AV1 can code (%d pixels per side)", w, h, after, GP_MAX_SIDE);
+        return b;
+    }
+    if (*after && h > GP_MAX_RESIZED_H) {
+        snprintf(b, sizeof b, "%dx%d%s is taller than a resized picture can be (%d rows)", w, h, after, GP_MAX_RESIZED_H);
+        return b;
+    }
+    const double mp = (double)w * h / 1e6;
+    if (maxMp <= 0 || mp <= maxMp) return "";
+    const int need = (int)std::ceil(mp);
+    if (need <= 1000) snprintf(b, sizeof b, "%dx%d%s is larger than %.1f megapixels (--max-mp); add --max-mp %d to encode it anyway", w, h, after, maxMp, need);
+    else snprintf(b, sizeof b, "%dx%d%s is larger than %.1f megapixels (--max-mp, 1000 at most)", w, h, after, maxMp);
+    return b;
+}
+
+bool gp_xform_runs(const GpXform &x, int W, int H, int ow, int oh) {
+    int cx, cy, cw, ch;
+    if (!x.active() || !rz_crop(x, W, H, &cx, &cy, &cw, &ch)) return false;
+    return !(cx == 0 && cy == 0 && cw == W && ch == H && ow == W && oh == H);   // (gp_frames_transform's identity)
+}
+
+std::string gp_source_refusal(int w, int h, double decMp, const GpXform *x, bool inputLimit) {
+    char b[240];
+    if (w <= 0 || h <= 0) {
+        snprintf(b, sizeof b, "larger than %.1f megapixels; %s raises the limit", decMp, inputLimit ? "--max-input-mp" : "--max-mp");
+        return b;
+    }
+    // what --max-mp must allow: the source, and what its crop / resize makes of it (either way up: EXIF may turn it)
+    double mp = (double)w * h / 1e6;
+    if (x && x->active() && !inputLimit) {
+        GpXform t = *x;
+        for (int k = 0; k < 2; k++, t.turn()) {
+            int ow, oh;
+            if (!gp_xform_size(t, w, h, &ow, &oh)) continue;
+            if (ow > GP_MAX_SIDE || oh > GP_MAX_SIDE) {   // (no --max-mp would help)
+                snprintf(b, sizeof b, "larger than %.1f megapixels, and its crop / resize, %dx%d, is larger than AV1 can code (%d pixels "
+                         "per side)", decMp, ow, oh, GP_MAX_SIDE);
+                return b;
+            }
+            mp = std::max(mp, (double)ow * oh / 1e6);
+        }
+    }
+    const int need = (int)std::ceil(mp);
+    const char *opt = inputLimit ? "--max-input-mp" : "--max-mp";
+    if (need <= 1000)
+        snprintf(b, sizeof b, "larger than %.1f megapixels; add %s %d to %s", decMp, opt, need, inputLimit ? "decode it" : "encode it anyway");
+    else
+        snprintf(b, sizeof b, "larger than %.1f megapixels, and above the 1000 that %s allows", decMp, opt);
+    return b;
 }
 
 std::string gp_crop_str(const GpXform &x) {
@@ -1012,6 +1099,76 @@ bool gp_parse_crop(const char *v, GpXform &x, std::string *why) {
     return true;
 }
 
+bool gp_parse_resize(const char *v, GpXform &x, std::string *why) {
+    // W[%][x[H[%]]] or @A or A@, followed by any of ! > < ^ (and %, also after the numbers)
+    const char *s = v;
+    int f = GpXform::RS_ON;
+    double w = 0, h = 0;
+    auto num = [&](double &d, double most) {
+        const char *b = s;
+        while ((*s >= '0' && *s <= '9') || *s == '.') s++;
+        if (s == b) return false;
+        char *e = nullptr;
+        d = strtod(std::string(b, s).c_str(), &e);
+        return e && !*e && d > 0 && d <= most;
+    };
+    auto flags = [&]() {
+        for (;; s++) {
+            if (*s == '%') f |= GpXform::RS_PCT;
+            else if (*s == '!') f |= GpXform::RS_EXACT;
+            else if (*s == '>') f |= GpXform::RS_SHRINK;
+            else if (*s == '<') f |= GpXform::RS_ENLARGE;
+            else if (*s == '^') f |= GpXform::RS_FILL;
+            else return;
+        }
+    };
+    constexpr double kSide = 1 << 20, kArea = 1e12;
+    bool ok = true;
+    if (strchr(s, '@')) {
+        const bool before = *s == '@';
+        if (before) s++;
+        f |= GpXform::RS_AREA;
+        ok = num(w, kArea);
+        if (ok && !before && *s == '@') s++;
+        flags();
+    } else {
+        if (*s != 'x') { ok = num(w, kSide); f |= GpXform::RS_W; }
+        flags();
+        if (ok && *s == 'x') {
+            s++;
+            if (*s && !strchr("%!<>^", *s)) { ok = num(h, kSide); f |= GpXform::RS_H; }
+            flags();
+        }
+        ok = ok && (f & (GpXform::RS_W | GpXform::RS_H));
+    }
+    if (!ok || *s) {
+        if (why) *why = *s == '+' || *s == '-' ? "--resize takes no offset" : "expected ImageMagick's -resize geometry: W, xH, WxH, WxH^, WxH!, "
+                                                                            "with > or <; N% or N%xM%; @AREA or AREA@";
+        return false;
+    }
+    if ((f & GpXform::RS_PCT) && (f & GpXform::RS_AREA)) {
+        if (why) *why = "@AREA cannot be a percentage";
+        return false;
+    }
+    if (f & GpXform::RS_PCT) {   // ParseMetaGeometry: no height: the width's percentage; no width: 100 %
+        if (!(f & GpXform::RS_W)) w = 100;
+        else if (!(f & GpXform::RS_H)) h = w;
+        f |= GpXform::RS_W | GpXform::RS_H;
+    } else if (!(f & GpXform::RS_AREA)) {   // GetGeometry rounds the numbers; a side must be at least 1
+        w = std::floor(w + 0.5);
+        h = std::floor(h + 0.5);
+        if (((f & GpXform::RS_W) && w < 1) || ((f & GpXform::RS_H) && h < 1)) {
+            if (why) *why = "a side of the geometry rounds to 0";
+            return false;
+        }
+    }
+    x.rsFlags = f;
+    x.rsW = w;
+    x.rsH = h;
+    x.maxW = x.maxH = 0;   // (the last of --resize / --max-size counts)
+    return true;
+}
+
 bool gp_parse_max_size(const char *v, GpXform &x, std::string *why) {
     const char *s = v;
     int w = 0, h = 0;
@@ -1029,6 +1186,7 @@ bool gp_parse_max_size(const char *v, GpXform &x, std::string *why) {
     }
     x.maxW = w;
     x.maxH = h;
+    x.rsFlags = 0;   // (the last of --resize / --max-size counts)
     return true;
 }
 
@@ -1041,13 +1199,23 @@ double rz_lanczos(double x) {
     const double a = M_PI * x, b = a / 3.0;
     return std::sin(a) / a * std::sin(b) / b;
 }
+// ImageMagick's default filter for enlarging (resize.c: Mitchell-Netravali cubic, B = C = 1/3, support 2)
+double rz_mitchell(double x) {
+    x = std::fabs(x);
+    const double B = 1.0 / 3, C = 1.0 / 3;
+    if (x < 1.0) return ((12 - 9 * B - 6 * C) * x * x * x + (-18 + 12 * B + 6 * C) * x * x + (6 - 2 * B)) / 6;
+    if (x < 2.0) return ((-B - 6 * C) * x * x * x + (6 * B + 30 * C) * x * x + (-12 * B - 48 * C) * x + (8 * B + 24 * C)) / 6;
+    return 0.0;
+}
 // Filter taps of one axis, as resize.c's HorizontalFilter / VerticalFilter: n output samples at scale f (output samples
 // per source sample: the luma scale, also for subsampled chroma) from the source window starting at lo (plane samples;
 // fractional for 4:2:0 chroma at an odd crop offset), clipped to whole samples [wlo, whi) and renormalised.  Taps of
 // zero weight at the ends are dropped (a crop without a resize copies).  Each row is shifted so that start + taps <= whi
 // (the kernels read `taps` samples unconditionally).
-void rz_taps(double lo, double f, int n, int wlo, int whi, std::vector<int> &start, std::vector<float> &w, int &taps) {
-    const double support = 3.0 * std::max(1.0 / f, 1.0), sc = std::min(f, 1.0);
+void rz_taps(double lo, double f, int n, int wlo, int whi, std::vector<int> &start, std::vector<float> &w, int &taps,
+             bool mitchell = false) {
+    double (*const filt)(double) = mitchell ? rz_mitchell : rz_lanczos;
+    const double support = (mitchell ? 2.0 : 3.0) * std::max(1.0 / f, 1.0), sc = std::min(f, 1.0);
     std::vector<int> s0(n), cnt(n);
     std::vector<size_t> at(n);
     std::vector<double> wd;   // the weights of output o: wd[at[o] ..], cnt[o] of them from source sample s0[o]
@@ -1059,7 +1227,7 @@ void rz_taps(double lo, double f, int n, int wlo, int whi, std::vector<int> &sta
         const size_t k0 = wd.size();
         double sum = 0;
         for (int k = a; k < b; k++) {
-            wd.push_back(rz_lanczos(sc * (k + 0.5 - c)));
+            wd.push_back(filt(sc * (k + 0.5 - c)));
             sum += wd.back();
         }
         for (size_t k = k0; k < wd.size(); k++) wd[k] = sum != 0 ? wd[k] / sum : k == k0;
@@ -1098,6 +1266,7 @@ int gp_frames_transform(std::vector<GpFrameIn> &frames, const std::vector<GpXfor
     };
     size_t outBytes = 0, tmpMax = 0;
     std::vector<int> newW(frames.size()), newH(frames.size());
+    std::vector<char> keepJpeg(frames.size(), 0);   // a crop alone at even offsets keeps a JPEG's 4:2:0 chroma as it was
     for (size_t i = 0; i < frames.size() && i < xf.size(); i++) {
         const GpFrameIn &f = frames[i];
         if (f.W <= 0 || !xf[i].active()) continue;
@@ -1110,8 +1279,11 @@ int gp_frames_transform(std::vector<GpFrameIn> &frames, const std::vector<GpXfor
         const GpFrameIn *a = alpha && i < alpha->size() && (*alpha)[i].W == f.W && (*alpha)[i].H == f.H ? &(*alpha)[i] : nullptr;
         newW[i] = ow;
         newH[i] = oh;
+        keepJpeg[i] = f.jpegChroma && ow == cw && oh == ch && !(cx & 1) && !(cy & 1);
         const int aw = (ow + 63) & ~63, ah = (oh + 63) & ~63, out10 = outDepth == 10 || f.bitDepth == 10;
         const double fx = (double)ow / cw, fy = (double)oh / ch;
+        // --resize, as ImageMagick: Mitchell to enlarge and for anything with alpha, Lanczos to shrink (--max-size: Lanczos)
+        const bool mitchell = xf[i].rsFlags && (a || f.colorMatrix == -2 || (double)ow * oh > (double)cw * ch);
         for (int p = 0; p < (f.mono ? 1 : 3); p++) {
             Pl q{};
             q.fi = (int)i;
@@ -1129,10 +1301,10 @@ int gp_frames_transform(std::vector<GpFrameIn> &frames, const std::vector<GpXfor
             const int ylo = (int)std::floor(cy / d), yhi = std::min(ph, (int)std::ceil((cy + ch) / d));
             std::vector<int> s;
             std::vector<float> w;
-            rz_taps(cy / d, fy, q.oh, ylo, yhi, s, w, q.yt);
+            rz_taps(cy / d, fy, q.oh, ylo, yhi, s, w, q.yt, mitchell);
             q.ys = put(s.data(), s.size() * 4);
             q.yw = put(w.data(), w.size() * 4);
-            rz_taps(cx / d, fx, q.ow, xlo, xhi, s, w, q.xt);
+            rz_taps(cx / d, fx, q.ow, xlo, xhi, s, w, q.xt, mitchell);
             q.xs = put(s.data(), s.size() * 4);
             q.xw = put(w.data(), w.size() * 4);
             q.wlo = xlo;
@@ -1174,11 +1346,148 @@ int gp_frames_transform(std::vector<GpFrameIn> &frames, const std::vector<GpXfor
             f.bitDepth = outDepth == 10 || f.bitDepth == 10 ? 10 : 8;
             f.W = newW[q.fi];
             f.H = newH[q.fi];
+            f.jpegChroma = keepJpeg[q.fi];
             f.aw = (f.W + 63) & ~63;
             f.ah = (f.H + 63) & ~63;
         }
     }
     *buf = d;
+    return 0;
+}
+
+namespace {
+// the measurement / kernel view of a frame: its planes, how to read RGB from them, and the window (luma pixels)
+GpTrimFrame rgb_view(const GpFrameIn &f, int x0 = 0, int y0 = 0, int w = 0, int h = 0) {
+    GpTrimFrame g{};
+    for (int p = 0; p < 3; p++) {
+        g.p[p] = f.dsrc[p];
+        g.pitch[p] = f.spitch[p];
+    }
+    g.mono = f.mono;
+    g.yuv444 = f.yuv444;
+    g.in10 = f.bitDepth == 10;
+    g.cw = (f.W + 1) >> 1;
+    g.ch = (f.H + 1) >> 1;
+    g.up = f.jpegChroma && !f.mono && !f.yuv444 && g.cw > 2;   // (libjpeg-turbo upsamples chroma only wider than 2)
+    g.matrix = f.colorMatrix == 0 ? 1 : f.colorMatrix == 16 ? 2 : 0;
+    g.scale = g.matrix == 2 ? 255.f : g.in10 ? 1023.f : 255.f;
+    g.x0 = x0; g.y0 = y0; g.w = w; g.h = h;
+    return g;
+}
+}  // namespace
+
+int gp_frames_tone(std::vector<GpFrameIn> &frames, const std::vector<GpXform> &xf, const GpTone &t, cudaStream_t st,
+                   std::string &err) {
+    std::vector<GpToneMap> maps(frames.size(), gp_tone_map(t));
+    if (t.autoLevel) {
+        std::vector<int> init(2 * frames.size());
+        for (size_t i = 0; i < frames.size(); i++) { init[2 * i] = 0x7f7fffff; init[2 * i + 1] = 0; }
+        int *d = nullptr;
+        cudaError_t e = cudaMallocAsync((void **)&d, init.size() * sizeof(int), st);
+        if (e == cudaSuccess) e = cudaMemcpyAsync(d, init.data(), init.size() * sizeof(int), cudaMemcpyHostToDevice, st);
+        for (size_t i = 0; e == cudaSuccess && i < frames.size(); i++) {
+            const GpFrameIn &f = frames[i];
+            int cx = 0, cy = 0, cw = f.W, ch = f.H;
+            if (f.W <= 0 || (i < xf.size() && !rz_crop(xf[i], f.W, f.H, &cx, &cy, &cw, &ch))) continue;
+            gp_launch_tone_range(rgb_view(f, cx, cy, cw, ch), d + 2 * i, st);
+        }
+        if (e == cudaSuccess) e = cudaGetLastError();
+        if (e == cudaSuccess) e = cudaMemcpyAsync(init.data(), d, init.size() * sizeof(int), cudaMemcpyDeviceToHost, st);
+        if (d) cudaFreeAsync(d, st);
+        if (e == cudaSuccess) e = cudaStreamSynchronize(st);
+        if (e != cudaSuccess) {
+            cudaGetLastError();
+            err = std::string("CUDA: ") + cudaGetErrorString(e) + " (--auto-level)";
+            return -1;
+        }
+        for (size_t i = 0; i < frames.size(); i++) {
+            float lo, hi;
+            memcpy(&lo, &init[2 * i], 4);
+            memcpy(&hi, &init[2 * i + 1], 4);
+            if (hi > lo) maps[i] = gp_tone_map(t, lo, hi);
+        }
+    }
+    // the frames to change (an identity leaves the planes as they are), and for 4:2:0 a copy of the chroma to read
+    auto runs = [&](size_t i) {
+        const GpToneMap &m = maps[i];
+        return frames[i].W > 0 && (m.s != 1.f || m.o != 0.f || m.e != 1.f || m.negate);
+    };
+    auto chromaBytes = [&](const GpFrameIn &f) {   // one plane, padding included
+        return (size_t)f.spitch[1] * (f.ah >> 1) * (f.bitDepth == 10 ? 2 : 1);
+    };
+    size_t copyBytes = 0;   // (only upsampled chroma reads neighbouring samples; the nearest one is the block's own)
+    for (size_t i = 0; i < frames.size(); i++)
+        if (runs(i) && rgb_view(frames[i]).up) copyBytes += 2 * chromaBytes(frames[i]);
+    uint8_t *copy = nullptr;
+    cudaError_t e = copyBytes ? cudaMallocAsync((void **)&copy, copyBytes, st) : cudaSuccess;
+    size_t at = 0;
+    for (size_t i = 0; e == cudaSuccess && i < frames.size(); i++) {
+        if (!runs(i)) continue;
+        const GpFrameIn &f = frames[i];
+        GpTrimFrame g = rgb_view(f);
+        void *du = (void *)f.dsrc[1], *dv = (void *)f.dsrc[2];
+        if (g.up) {
+            const size_t n = chromaBytes(f);
+            e = cudaMemcpyAsync(copy + at, f.dsrc[1], n, cudaMemcpyDeviceToDevice, st);
+            if (e == cudaSuccess) e = cudaMemcpyAsync(copy + at + n, f.dsrc[2], n, cudaMemcpyDeviceToDevice, st);
+            if (e != cudaSuccess) break;
+            g.p[1] = copy + at;
+            g.p[2] = copy + at + n;
+            at += 2 * n;
+        }
+        gp_launch_tone(g, f.aw, f.ah, maps[i], du, dv, st);
+    }
+    if (e == cudaSuccess) e = cudaGetLastError();
+    if (copy) cudaFreeAsync(copy, st);
+    if (e != cudaSuccess) {
+        cudaGetLastError();
+        err = std::string("CUDA: ") + cudaGetErrorString(e) + " (tone)";
+        return -1;
+    }
+    return 0;
+}
+
+void gp_frames_gray(std::vector<GpFrameIn> &frames, int method, cudaStream_t st) {
+    for (GpFrameIn &f : frames) {
+        if (f.W <= 0 || f.mono) continue;
+        const int matrix = f.colorMatrix == 0 ? 1 : f.colorMatrix == 16 ? 2 : 0;
+        if (!(method == GP_GRAY_REC601 && matrix == 0)) gp_launch_gray(rgb_view(f), f.aw, f.ah, method, st);
+        f.mono = 1;
+        f.yuv444 = 0;
+        f.dsrc[1] = f.dsrc[2] = nullptr;
+        f.colorMatrix = -1;   // (identity / YCgCo are RGB matrices; AV1 allows identity only without subsampling)
+    }
+}
+
+int gp_frames_trim(const std::vector<GpFrameIn> &frames, std::vector<GpXform> &xf, const GpTrim &t, cudaStream_t st,
+                   std::vector<int> &verdict, std::string &err, const std::vector<GpFrameIn> *alpha) {
+    verdict.assign(frames.size(), GP_TRIM_WHOLE);
+    std::vector<GpTrimFrame> tf;
+    std::vector<size_t> at;   // frame of each tf entry
+    for (size_t i = 0; i < frames.size() && i < xf.size(); i++) {
+        const GpFrameIn &f = frames[i];
+        if (f.W <= 0) continue;
+        int cx, cy, cw, ch;
+        if (!rz_crop(xf[i], f.W, f.H, &cx, &cy, &cw, &ch)) continue;   // (gp_frames_transform reports it)
+        const GpFrameIn *a = alpha && i < alpha->size() && (*alpha)[i].W == f.W && (*alpha)[i].H == f.H ? &(*alpha)[i] : nullptr;
+        GpTrimFrame g = rgb_view(f, cx, cy, cw, ch);
+        g.alpha = a ? a->dsrc[0] : nullptr;
+        g.apitch = a ? a->spitch[0] : 0;
+        tf.push_back(g);
+        at.push_back(i);
+    }
+    std::vector<GpTrimBox> boxes;
+    if (gp_trim_measure(tf, t, st, boxes, err)) return -1;
+    for (size_t k = 0; k < tf.size(); k++) {
+        int kx, ky, kw, kh;
+        const size_t i = at[k];
+        verdict[i] = gp_trim_decide(t, tf[k].w, tf[k].h, boxes[k], &kx, &ky, &kw, &kh);
+        if (verdict[i] != GP_TRIM_CUT) continue;
+        xf[i].cx = tf[k].x0 + kx;
+        xf[i].cy = tf[k].y0 + ky;
+        xf[i].cw = kw;
+        xf[i].ch = kh;
+    }
     return 0;
 }
 

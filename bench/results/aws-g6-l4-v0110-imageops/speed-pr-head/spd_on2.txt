@@ -1,0 +1,15 @@
+== on2 border: 1047 MP, 8 rounds, mp_s
+  plain        mp_s med    227.58 min    224.53 max    229.47 | wall   5.523 s | rss    1491 MB | peak dev    965 MB | plain/plain med ratio of rounds 1.0000 [1.0000, 1.0000] ratio of medians 1.0000
+  plain2       mp_s med    226.49 min    224.19 max    228.81 | wall   5.549 s | rss    1490 MB | peak dev    993 MB | plain2/plain med ratio of rounds 0.9970 [0.9876, 1.0041] ratio of medians 0.9952
+  never        mp_s med    224.59 min    222.36 max    226.02 | wall   5.576 s | rss    1491 MB | peak dev    993 MB | never/plain med ratio of rounds 0.9891 [0.9799, 0.9962] ratio of medians 0.9869
+  trim0        mp_s med    211.09 min    209.37 max    211.75 | wall   5.471 s | rss    1491 MB | peak dev    920 MB | trim0/plain med ratio of rounds 0.9276 [0.9124, 0.9431] ratio of medians 0.9275
+  trim10       mp_s med    184.90 min    184.16 max    186.24 | wall   5.582 s | rss    1490 MB | peak dev    841 MB | trim10/plain med ratio of rounds 0.8137 [0.8073, 0.8215] ratio of medians 0.8125
+  conv         mp_s med    197.60 min    196.61 max    198.32 | wall   5.452 s | rss    1491 MB | peak dev    858 MB | conv/plain med ratio of rounds 0.8698 [0.8606, 0.8784] ratio of medians 0.8682
+== on2 b444: 1047 MP, 8 rounds, mp_s
+  plain        mp_s med    169.09 min    166.79 max    173.49 | wall   7.130 s | rss    1823 MB | peak dev   1690 MB | plain/plain med ratio of rounds 1.0000 [1.0000, 1.0000] ratio of medians 1.0000
+  plain2       mp_s med    167.93 min    165.49 max    173.55 | wall   7.173 s | rss    1824 MB | peak dev   1686 MB | plain2/plain med ratio of rounds 0.9993 [0.9820, 1.0056] ratio of medians 0.9931
+  never        mp_s med    167.09 min    163.80 max    171.17 | wall   7.210 s | rss    1822 MB | peak dev   1696 MB | never/plain med ratio of rounds 0.9854 [0.9718, 1.0029] ratio of medians 0.9882
+  trim0        mp_s med    157.26 min    153.44 max    159.56 | wall   7.054 s | rss    1823 MB | peak dev   1584 MB | trim0/plain med ratio of rounds 0.9259 [0.9080, 0.9446] ratio of medians 0.9300
+  trim10       mp_s med    140.78 min    138.88 max    145.01 | wall   7.064 s | rss    1823 MB | peak dev   1421 MB | trim10/plain med ratio of rounds 0.8364 [0.8191, 0.8514] ratio of medians 0.8325
+  conv         mp_s med    147.97 min    146.67 max    151.19 | wall   6.999 s | rss    1823 MB | peak dev   1469 MB | conv/plain med ratio of rounds 0.8767 [0.8660, 0.8839] ratio of medians 0.8751
+SPD_DONE on2

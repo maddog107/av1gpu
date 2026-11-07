@@ -1,0 +1,1 @@
+384/384 displayed pictures match magick -auto-orient

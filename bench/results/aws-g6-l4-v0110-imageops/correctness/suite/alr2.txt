@@ -1,0 +1,19 @@
+image | sampling | magick decode range | planes nearest | planes fancy | mean |dY| vs magick: pr / fix
+comics_americasgreatest1941_p1 1x1,1x1,1x1  magick 0..240  nearest 0.0..240.4  fancy 0.0..232.6  pr 0.30 fix 3.64 fix3 0.30
+comics_americasgreatest1941_p1 1x1,1x1,1x1  magick 0..255  nearest 0.0..241.6  fancy 3.4..236.3  pr 7.25 fix 8.73 fix3 7.25
+comics_americasgreatest1941_p1 1x1,1x1,1x1  magick 0..245  nearest 0.0..241.9  fancy 0.0..242.3  pr 1.53 fix 1.36 fix3 1.53
+comics_americasgreatest1941_p1 1x1,1x1,1x1  magick 0..241  nearest 0.0..237.2  fancy 0.0..235.4  pr 2.08 fix 3.04 fix3 2.08
+comics_americasgreatest1941_p1 1x1,1x1,1x1  magick 0..241  nearest 0.0..238.8  fancy 0.0..238.8  pr 1.24 fix 1.24 fix3 1.24
+comics_americasgreatest1941_p1 1x1,1x1,1x1  magick 0..237  nearest 1.8..238.9  fancy 0.0..227.6  pr 1.98 fix 5.25 fix3 1.98
+comics_americasgreatest1941_p1 1x1,1x1,1x1  magick 0..246  nearest 0.0..240.6  fancy 0.7..234.1  pr 2.66 fix 5.67 fix3 2.66
+comics_americasgreatest1941_p1 1x1,1x1,1x1  magick 0..246  nearest 0.0..241.6  fancy 0.0..236.5  pr 2.27 fix 5.07 fix3 2.27
+magick: delegate library support not built-in `/home/ubuntu/comics/comics_flaminglove1949_p110.jpg' (XML) @ warning/profile.c/ValidateXMPProfile/1956.
+comics_flaminglove1949_p110.jp 1x1,1x1,1x1  magick 0..255  nearest 0.0..255.0  fancy 0.0..255.0  pr 0.03 fix 0.03 fix3 0.03
+magick: delegate library support not built-in `/home/ubuntu/comics/comics_flaminglove1949_p119.jpg' (XML) @ warning/profile.c/ValidateXMPProfile/1956.
+comics_flaminglove1949_p119.jp 1x1,1x1,1x1  magick 0..255  nearest 0.0..255.0  fancy 0.0..255.0  pr 0.05 fix 0.05 fix3 0.05
+magick: delegate library support not built-in `/home/ubuntu/comics/comics_flaminglove1949_p128.jpg' (XML) @ warning/profile.c/ValidateXMPProfile/1956.
+comics_flaminglove1949_p128.jp 1x1,1x1,1x1  magick 0..255  nearest 0.0..255.0  fancy 0.0..255.0  pr 0.02 fix 0.02 fix3 0.02
+magick: delegate library support not built-in `/home/ubuntu/comics/comics_mysecretmarriage1954_p010.jpg' (XML) @ warning/profile.c/ValidateXMPProfile/1956.
+comics_mysecretmarriage1954_p0 1x1,1x1,1x1  magick 0..255  nearest 0.0..255.0  fancy 0.0..255.0  pr 0.01 fix 0.01 fix3 0.01
+lineart_q90_420.jpg            2x2,1x1,1x1  magick 0..255  nearest 0.0..255.0  fancy 0.0..255.0  pr 0.96 fix 0.96 fix3 0.96
+lineart_q90_444.jpg            1x1,1x1,1x1  magick 0..255  nearest 0.0..255.0  fancy 0.2..255.0  pr 0.46 fix 0.68 fix3 0.46

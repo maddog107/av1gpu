@@ -149,9 +149,10 @@ bool make_dirs(const std::string &dir) {
 #endif
 }
 // LIST is a text file with one path per line, or a directory (its JPEG/PNG/WebP files, sorted).  A line may add
-// TAB-separated options for its image: crop=WxH+X+Y (or X,Y,W,H) and max-size=WxH (xH, Wx); they replace the
-// command line's --crop / --max-size for that image.  A line that names an existing file as a whole is a path.  A line
-// with a bad option is not encoded: bad gets its message (the rest of the list is, as with unreadable files).
+// TAB-separated options for its image: crop=WxH+X+Y (or X,Y,W,H), max-size=WxH (xH, Wx) and resize=GEOMETRY; they
+// replace the command line's --crop / --max-size / --resize for that image.  A line that names an existing file as a
+// whole is a path.  A line with a bad option is not encoded: bad gets its message (the rest of the list is, as with
+// unreadable files).
 bool list_inputs(const std::string &list, std::vector<std::string> &paths, std::vector<GpXform> &xf, const GpXform &def,
                  std::vector<std::string> &bad) {
     auto exists = [](const std::string &p) {
@@ -176,10 +177,12 @@ bool list_inputs(const std::string &list, std::vector<std::string> &paths, std::
                 } else if (!o.compare(0, 5, "crop=") && gp_parse_crop(o.c_str() + 5, t, &why)) {
                     x.cx = t.cx; x.cy = t.cy; x.cw = t.cw; x.ch = t.ch;
                 } else if (!o.compare(0, 9, "max-size=") && gp_parse_max_size(o.c_str() + 9, t, &why)) {
-                    x.maxW = t.maxW; x.maxH = t.maxH;
+                    x.maxW = t.maxW; x.maxH = t.maxH; x.rsFlags = 0;
+                } else if (!o.compare(0, 7, "resize=") && gp_parse_resize(o.c_str() + 7, t, &why)) {
+                    x.rsFlags = t.rsFlags; x.rsW = t.rsW; x.rsH = t.rsH; x.maxW = x.maxH = 0;
                 } else {
                     bad.push_back(l.substr(0, tab) + " (" + list + " line " + std::to_string(line) + "): bad option '" + o + "'" +
-                                  (why.empty() ? " (crop=WxH+X+Y or X,Y,W,H, max-size=WxH, Wx or xH)" : ": " + why));
+                                  (why.empty() ? " (crop=WxH+X+Y or X,Y,W,H, max-size=WxH, Wx or xH, resize=GEOMETRY)" : ": " + why));
                     return;
                 }
                 at = nx;
@@ -314,10 +317,11 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
     std::vector<GpXform> xforms;   // per input: crop / fit-inside (command line, or the list line's options)
     if (!list_inputs(list, paths, xforms, cfg.xform, bad)) { fprintf(stderr, "cannot read %s\n", list.c_str()); return 2; }
     for (auto &b : bad) fprintf(stderr, "[av1gpu] skipped %s\n", b.c_str());
-    const bool anyXform = std::any_of(xforms.begin(), xforms.end(), [](const GpXform &x) { return x.active(); });
+    const bool anyXform = cfg.trim.on || std::any_of(xforms.begin(), xforms.end(), [](const GpXform &x) { return x.active(); });
     // the largest picture encoded (--max-mp) and source decoded (--max-input-mp: sources that a crop / max-size brings
     // under --max-mp)
     const double encMaxMp = gp_enc_max_mp(cfg, 35.6), decMaxMp = gp_dec_max_mp(cfg, 35.6);
+    const bool inputLimit = decMaxMp > encMaxMp;   // (--max-input-mp refuses sources, not --max-mp)
     if (paths.empty()) { fprintf(stderr, "no input files in %s\n", list.c_str()); return 2; }
     const bool write = !outdir.empty();
     if (write && !make_dirs(outdir)) { fprintf(stderr, "cannot create %s: %s\n", outdir.c_str(), strerror(errno)); return 2; }
@@ -356,16 +360,13 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
     // the box is what is displayed) and output size; "" or why it is skipped
     auto prepare = [&](int i, int W, int H, int orient, GpXform &x, int *ow, int *oh) -> std::string {
         x = xforms[i];
-        if (orient >= 5) std::swap(x.maxW, x.maxH);
+        if (orient >= 5) x.turn();
         *ow = W;
         *oh = H;
         if (x.active() && !gp_xform_size(x, W, H, ow, oh))
             return "the crop " + gp_crop_str(x) + " is outside the " + std::to_string(W) + "x" + std::to_string(H) + " image";
-        if ((double)*ow * *oh <= encMaxMp * 1e6) return "";
-        char b[160];
-        snprintf(b, sizeof b, "%dx%d%s is larger than %.1f megapixels (--max-mp)", *ow, *oh, *ow != W || *oh != H ? " after crop / resize" : "",
-                 encMaxMp);
-        return b;
+        if (cfg.trim.on) return "";   // (the size that counts is known after the trim: the encoder threads check it)
+        return gp_size_refusal(*ow, *oh, encMaxMp, gp_xform_runs(x, W, H, *ow, *oh) ? " after crop / resize" : "");
     };
     char eb[256] = {0};
     const double t0 = now_ms(), c0 = cpu_ms();
@@ -559,13 +560,14 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
     // ingest images (GPU entropy, overlapped).  The rest (giant, CMYK, ...) -> CPU avifenc (not done here).
     // (Before: serial CPU decode + single-image encode + host-path entropy after the main loop, ~0.45 s per
     // image with the GPU mostly idle.)
-    struct FbFrame { GpFrameIn f, a; uint8_t *d = nullptr; std::string name; GpXform x; };   // a: alpha frame (W = 0: none)
+    struct FbFrame { GpFrameIn f, a; uint8_t *d = nullptr; std::string name, path; GpXform x; };   // a: alpha frame (W = 0: none)
     std::mutex fbMu;
     std::condition_variable fbCv;   // an encoder took frames out of fbReady, or an encoder thread ended
     std::deque<FbFrame> fbReady;
     int64_t fbQueuedPx = 0;         // luma pixels of the frames in fbReady (their planes are on the GPU)
     std::atomic<bool> ingestDrained{false}, fbDone{false};
     std::atomic<int> cpuFallbackA{(int)bad.size()}, gpuFallbackA{0};   // skipped (list lines with a bad option too), via CPU decode
+    std::atomic<int> trimCutA{0}, trimBlankA{0};   // --trim: images encoded trimmed, images skipped as blank
     std::atomic<int> encLive{0};    // encoder threads running; 0 with ingestDrained = no encoder will take frames any more
     // GP_FALLBACK_WORKERS (default: one per CPU) threads decode + upload fallback images as soon as ingest reports them.
     // Decoded frames wait on the GPU for an encoder: at most GP_FALLBACK_QUEUE_MP megapixels of them (default
@@ -582,10 +584,10 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
             if (ingestDrained && encLive == 0) return;   // the encoders stopped (error)
             const std::string &p = paths[fe.index];
             const GpFileKind kind = gp_sniff(p);
-            char big[64];   // (--max-input-mp; 35.6 by default)
-            snprintf(big, sizeof big, "larger than %.1f megapixels", decMaxMp);
             if (kind != GP_FILE_WEBP && kind != GP_FILE_PNG) {
-                fprintf(stderr, "[av1gpu] skipped %s: %s\n", p.c_str(), fe.reason == INGEST_FB_GIANT ? big : gp_fallback_reason(fe.reason));
+                fprintf(stderr, "[av1gpu] skipped %s: %s\n", p.c_str(),
+                        fe.reason == INGEST_FB_GIANT ? gp_source_refusal(fe.width, fe.height, decMaxMp, &xforms[fe.index], inputLimit).c_str()
+                                                     : gp_fallback_reason(fe.reason));
                 cpuFallbackA++;
                 return;
             }
@@ -598,7 +600,7 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
             if (dec && !note.empty()) fprintf(stderr, "[av1gpu] %s: %s\n", p.c_str(), note.c_str());
             GpXform fx;
             int ow, oh;
-            if (dec && (double)hp.W * hp.H > decMaxMp * 1e6) e2 = big;
+            if (dec && (double)hp.W * hp.H > decMaxMp * 1e6) e2 = gp_source_refusal(hp.W, hp.H, decMaxMp, &xforms[fe.index], inputLimit);
             else if (dec) e2 = prepare(fe.index, hp.W, hp.H, 1, fx, &ow, &oh);
             if (!dec || !e2.empty()) {
                 fprintf(stderr, "[av1gpu] skipped %s: %s\n", p.c_str(), e2.c_str());
@@ -642,6 +644,7 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
             FbFrame F;
             F.d = d;
             F.name = base_name(p);
+            F.path = p;
             F.x = fx;
             F.f.W = hp.W; F.f.H = hp.H; F.f.aw = hp.aw; F.f.ah = hp.ah; F.f.yuv444 = hp.yuv444; F.f.bitDepth = hp.bitDepth;
             F.f.mono = hp.mono; F.f.colorMatrix = matrix;
@@ -734,6 +737,7 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
             double mpAcc = 0;   // megapixels encoded (after crop / resize)
             std::vector<uint8_t *> fbHeld;
             std::vector<GpXform> xfin;   // per fin entry
+            std::vector<std::string> srcs;   // per fin entry: its input path (messages)
             int fbConv = 0;   // how many of fbHeld are conversion buffers (10-bit, crop / resize), not fallback images
             // ingest batches up to timeoutMs (-1: wait for one), until the batch has GP_ENCODE_MP
             auto takeIngest = [&](int timeoutMs) {
@@ -768,12 +772,14 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
                         xfin.push_back(x);
                         GpFrameIn f;
                         f.W = im.width; f.H = im.height; f.mono = im.mono; f.aw = im.aw; f.ah = im.ah; f.yuv444 = im.chroma_full;
+                        f.jpegChroma = !im.mono && !im.chroma_full && im.src_sub == INGEST_SUB_420;
                         f.dsrc[0] = b.pool + im.y_off; f.spitch[0] = im.y_pitch;
                         if (!im.mono) { f.dsrc[1] = b.pool + im.cb_off; f.dsrc[2] = b.pool + im.cr_off; f.spitch[1] = f.spitch[2] = im.c_pitch; }
                         fin.push_back(f);
                         job->iccs.emplace_back(im.icc_size > 0 ? std::vector<uint8_t>(im.icc, im.icc + im.icc_size) : std::vector<uint8_t>());
                         job->orients.push_back(im.oriented ? 1 : im.orientation);
                         job->names.push_back(base_name(paths[im.index]));
+                        srcs.push_back(paths[im.index]);
                         job->afin.emplace_back();   // (JPEG: no alpha)
                         mpAcc += ow * (double)oh / 1e6;
                     }
@@ -794,6 +800,7 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
                     job->iccs.emplace_back();
                     job->orients.push_back(1);
                     job->names.push_back(F.name);
+                    srcs.push_back(F.path);
                     job->afin.push_back(F.a);
                     fbHeld.push_back(F.d);
                     xfin.push_back(F.x);
@@ -804,6 +811,40 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
             }
             if (!fbHeld.empty()) fbCv.notify_all();   // room in the fallback queue
             takeIngest(-1);
+            if (!fin.empty() && cfg.trim.on) {
+                // --trim: the box of each frame (one launch, then a wait for this stream), the kept crop in xfin; blank
+                // frames (--skip-blank) leave the batch here
+                std::vector<int> verdict;
+                if (gp_frames_trim(fin, xfin, cfg.trim, s, verdict, eerr, &job->afin)) { fprintf(stderr, "trim: %s\n", eerr.c_str()); encFail++; delete job; return; }
+                size_t k = 0;
+                for (size_t i = 0; i < fin.size(); i++) {
+                    if (verdict[i] == GP_TRIM_BLANK) {
+                        fprintf(stderr, "[av1gpu] skipped %s: blank (--trim would remove more than %g%% of its width or height, "
+                                "--skip-blank)\n", srcs[i].c_str(), cfg.trim.blankPct);
+                        trimBlankA++;
+                        continue;
+                    }
+                    int ow = fin[i].W, oh = fin[i].H;
+                    gp_xform_size(xfin[i], fin[i].W, fin[i].H, &ow, &oh);
+                    const std::string why = gp_size_refusal(ow, oh, encMaxMp, gp_xform_runs(xfin[i], fin[i].W, fin[i].H, ow, oh) ? " after trim / resize" : "");
+                    if (!why.empty()) {
+                        fprintf(stderr, "[av1gpu] skipped %s: %s\n", srcs[i].c_str(), why.c_str());
+                        cpuFallbackA++;
+                        continue;
+                    }
+                    if (verdict[i] == GP_TRIM_CUT) trimCutA++;
+                    if (k != i) {
+                        fin[k] = fin[i]; xfin[k] = xfin[i]; srcs[k] = srcs[i]; job->iccs[k].swap(job->iccs[i]);
+                        job->orients[k] = job->orients[i]; job->names[k].swap(job->names[i]); job->afin[k] = job->afin[i];
+                    }
+                    k++;
+                }
+                fin.resize(k); xfin.resize(k); srcs.resize(k); job->iccs.resize(k); job->orients.resize(k); job->names.resize(k);
+                job->afin.resize(k);
+            }
+            if (!fin.empty() && cfg.tone.on() && gp_frames_tone(fin, xfin, cfg.tone, s, eerr)) {   // in place, before the resize
+                fprintf(stderr, "tone: %s\n", eerr.c_str()); encFail++; delete job; return;
+            }
             if (!fin.empty() && anyXform) {
                 // crop / shrink (straight to 10 bits with --depth 10; colour with alpha-weighted taps where it has alpha),
                 // then the alpha frames (PNG / WebP transparency) the same way: monochrome, already at the colour's depth.
@@ -814,6 +855,7 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
                 if (gp_frames_transform(job->afin, xfin, cfg.depth, s, &cb, eerr)) { fprintf(stderr, "crop / resize: %s\n", eerr.c_str()); oomHint(eerr); encFail++; delete job; return; }
                 if (cb) { fbHeld.push_back(cb); fbConv++; }
             }
+            if (!fin.empty() && cfg.gray) gp_frames_gray(fin, cfg.gray, s);   // --grayscale: in place, after the resize
             if (!fin.empty() && cfg.depth == 10 && !cfg.lossless) {
                 // --depth 10: ingest frames (8-bit JPEG samples) -> 10-bit planes; freed with the fallback planes
                 uint8_t *cb = nullptr;
@@ -824,6 +866,7 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
                 // --lossless: ingest batches whose JPEGs were all skipped; holding them filled ingest's in-flight limit
                 // and stalled the list (100 JPEGs: hung after about 75 skips)
                 for (auto &b : held) ingest_release_batch(ictx, b.batch_id, s);
+                for (uint8_t *d : fbHeld) cudaFreeAsync(d, s);   // (--trim: fallback frames that were all blank)
                 delete job;
                 bool idle;
                 {
@@ -1014,6 +1057,7 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
             "CPU %.0f ms = %.2f cores; skipped (unsupported): %d; WebP/PNG via CPU decode: %d; write failures %d\n",
             (unsigned long long)A.images, mp, wall, A.images * 1e3 / wall, mp * 1e3 / wall, (unsigned long long)A.batches,
             A.bytes / 1e6, A.pixels ? A.bytes * 8.0 / A.pixels : 0.0, cpu, cpu / wall, cpuFallback, gpuFallback, failures);
+    if (cfg.trim.on) fprintf(stderr, "[av1gpu] trim: %d images trimmed, %d skipped as blank\n", trimCutA.load(), trimBlankA.load());
     fprintf(stderr,
             "[av1gpu] stage ms: ingest wait %.1f | gpu setup %.1f analysis %.1f dp %.1f recon %.1f pack %.1f postfilter %.1f download %.1f "
             "(gpu total %.1f, encode wall %.1f) | entropy wall %.1f (gpu %.1f) | write %.1f | peak dev %.0f MB\n",
@@ -1042,9 +1086,10 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
         printf("{\"images\":%llu,\"mp\":%.3f,\"wall_ms\":%.1f,\"img_s\":%.3f,\"mp_s\":%.3f,\"cpu_cores\":%.3f,\"bytes\":%llu,"
                "\"ingest_wait_ms\":%.1f,\"analysis_ms\":%.1f,\"dp_ms\":%.1f,\"recon_ms\":%.1f,\"pack_ms\":%.1f,\"postfilter_ms\":%.1f,\"download_ms\":%.1f,"
                "\"gpu_total_ms\":%.1f,\"encode_wall_ms\":%.1f,\"entropy_wall_ms\":%.1f,\"entropy_gpu_ms\":%.1f,\"write_ms\":%.1f,"
-               "\"peak_dev_mb\":%.1f,\"fallback_cpu\":%d,\"cpus\":%d,\"ingest_workers\":%d,\"fallback_workers\":%d}\n",
+               "\"peak_dev_mb\":%.1f,\"fallback_cpu\":%d,\"cpus\":%d,\"ingest_workers\":%d,\"fallback_workers\":%d%s}\n",
                (unsigned long long)A.images, mp, wall, A.images * 1e3 / wall, mp * 1e3 / wall, cpu / wall,
                (unsigned long long)A.bytes, A.ingestWait, A.analysis, A.dp, A.recon, A.pack, A.postfilter, A.download, A.gpuTotal,
-               A.encodeWall, A.entropyWall, A.entropyGpu, A.writeWall, A.peakDev / 1048576.0, cpuFallback, nCpu, ic.n_workers, nfw);
+               A.encodeWall, A.entropyWall, A.entropyGpu, A.writeWall, A.peakDev / 1048576.0, cpuFallback, nCpu, ic.n_workers, nfw,
+               cfg.trim.on ? (",\"trimmed\":" + std::to_string(trimCutA.load()) + ",\"blank\":" + std::to_string(trimBlankA.load())).c_str() : "");
     return failures ? 1 : 0;
 }

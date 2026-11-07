@@ -1,0 +1,16 @@
+== --trim --fuzz 10% --trim-margin 1%
+[gate] q60: 10/10 identical in dav1d and aomdec (420 10; 789324 bytes); alpha items 1/1 identical (alpha qindex 60), 0 not encoded (unsupported input), rc=0 PASS
+[gate] q120: 10/10 identical in dav1d and aomdec (420 10; 498245 bytes); alpha items 1/1 identical (alpha qindex 120), 0 not encoded (unsupported input), rc=0 PASS
+== --yuv 444 --depth 10 --trim --fuzz 5% --level 5%,95%,1.2 --negate --resize 150%
+[gate] q60: 10/10 identical in dav1d and aomdec (444 10-bit 10; 1149480 bytes); alpha items 1/1 identical (alpha qindex 60), 0 not encoded (unsupported input), rc=0 PASS
+[gate] q120: 10/10 identical in dav1d and aomdec (444 10-bit 10; 671956 bytes); alpha items 1/1 identical (alpha qindex 120), 0 not encoded (unsupported input), rc=0 PASS
+== --auto-level --grayscale Lightness --resize x200
+[gate] q60: 10/10 identical in dav1d and aomdec (mono 10; 73364 bytes); alpha items 1/1 identical (alpha qindex 60), 0 not encoded (unsupported input), rc=0 PASS
+[gate] q120: 10/10 identical in dav1d and aomdec (mono 10; 44989 bytes); alpha items 1/1 identical (alpha qindex 120), 0 not encoded (unsupported input), rc=0 PASS
+== --depth 10 --colorspace Gray --resize 33%
+[gate] q60: 10/10 identical in dav1d and aomdec (mono 10-bit 10; 118147 bytes); alpha items 1/1 identical (alpha qindex 60), 0 not encoded (unsupported input), rc=0 PASS
+[gate] q120: 10/10 identical in dav1d and aomdec (mono 10-bit 10; 72196 bytes); alpha items 1/1 identical (alpha qindex 120), 0 not encoded (unsupported input), rc=0 PASS
+== --lossless --trim --auto-level --resize 50%
+[gate] lossless: 4/4 identical in dav1d and aomdec (444 4; 666846 bytes); alpha items 1/1 identical (alpha qindex 0), 6 not encoded (unsupported input), rc=0 PASS
+== --lossless --ycgco-re --gamma 1.4 --colorspace Gray
+[gate] lossless: 4/4 identical in dav1d and aomdec (mono 10-bit 4; 1290982 bytes); alpha items 1/1 identical (alpha qindex 0), 6 not encoded (unsupported input), rc=0 PASS

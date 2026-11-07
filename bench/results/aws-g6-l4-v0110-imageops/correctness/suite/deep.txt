@@ -1,0 +1,6 @@
+lossless 10-bit neg: ('444', 120, 80, 10, 0) vs formula mean 0.000 max 0.00; vs magick (16 bit) mean 0.004 max 0.01 (10-bit steps)
+lossless 10-bit g: ('444', 120, 80, 10, 0) vs formula mean 0.248 max 0.50; vs magick (16 bit) mean 0.248 max 0.52 (10-bit steps)
+lossless 10-bit l: ('444', 120, 80, 10, 0) vs formula mean 0.200 max 0.50; vs magick (16 bit) mean 0.201 max 0.50 (10-bit steps)
+rgb16_120x80 depth10 neg rc 0: dump 28800 |dY| mean 0.250 max 0.50 (10-bit steps)
+rgb16_120x80 depth10 g rc 0: dump 28800 |dY| mean 0.364 max 11.02 (10-bit steps)
+rgb16_120x80 depth10 l rc 0: dump 28800 |dY| mean 0.352 max 2.37 (10-bit steps)

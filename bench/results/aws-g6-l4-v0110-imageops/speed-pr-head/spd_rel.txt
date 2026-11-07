@@ -1,0 +1,21 @@
+== rel sr: 1434 MP, 8 rounds, mp_s
+  R            mp_s med    253.12 min    247.25 max    253.83 | wall   6.607 s | rss    1594 MB | peak dev   1006 MB | R/R med ratio of rounds 1.0000 [1.0000, 1.0000] ratio of medians 1.0000
+  Rc           mp_s med    252.12 min    248.88 max    255.99 | wall   6.618 s | rss    1603 MB | peak dev   1005 MB | Rc/R med ratio of rounds 1.0064 [0.9842, 1.0105] ratio of medians 0.9960
+  M            mp_s med    250.45 min    247.83 max    254.69 | wall   6.670 s | rss    1595 MB | peak dev   1021 MB | M/R med ratio of rounds 0.9967 [0.9848, 1.0090] ratio of medians 0.9894
+  Q            mp_s med    251.55 min    248.44 max    254.68 | wall   6.643 s | rss    1595 MB | peak dev   1005 MB | Q/R med ratio of rounds 0.9997 [0.9864, 1.0194] ratio of medians 0.9938
+== rel comics: 1034 MP, 8 rounds, mp_s
+  R            mp_s med    188.33 min    184.45 max    190.56 | wall   6.467 s | rss    1943 MB | peak dev   1016 MB | R/R med ratio of rounds 1.0000 [1.0000, 1.0000] ratio of medians 1.0000
+  Rc           mp_s med    188.38 min    184.34 max    189.54 | wall   6.467 s | rss    1941 MB | peak dev   1097 MB | Rc/R med ratio of rounds 0.9987 [0.9919, 1.0012] ratio of medians 1.0002
+  M            mp_s med    188.76 min    186.11 max    189.89 | wall   6.450 s | rss    1943 MB | peak dev   1019 MB | M/R med ratio of rounds 1.0015 [0.9965, 1.0116] ratio of medians 1.0023
+  Q            mp_s med    188.68 min    184.40 max    190.49 | wall   6.458 s | rss    1936 MB | peak dev   1061 MB | Q/R med ratio of rounds 1.0010 [0.9915, 1.0129] ratio of medians 1.0018
+== rel c444: 1034 MP, 8 rounds, mp_s
+  R            mp_s med    141.97 min    140.11 max    144.58 | wall   8.271 s | rss    2301 MB | peak dev   1748 MB | R/R med ratio of rounds 1.0000 [1.0000, 1.0000] ratio of medians 1.0000
+  Rc           mp_s med    141.38 min    139.96 max    144.54 | wall   8.297 s | rss    2307 MB | peak dev   1735 MB | Rc/R med ratio of rounds 0.9949 [0.9915, 1.0110] ratio of medians 0.9958
+  M            mp_s med    142.68 min    139.75 max    144.52 | wall   8.232 s | rss    2297 MB | peak dev   1736 MB | M/R med ratio of rounds 1.0035 [0.9932, 1.0099] ratio of medians 1.0050
+  Q            mp_s med    141.91 min    139.73 max    145.26 | wall   8.274 s | rss    2300 MB | peak dev   1798 MB | Q/R med ratio of rounds 1.0029 [0.9962, 1.0091] ratio of medians 0.9996
+== rel thumbs: 1016 MP, 8 rounds, img_s
+  R            img_s med    431.49 min    424.81 max    445.47 | wall  18.542 s | rss    1439 MB | peak dev    628 MB | R/R med ratio of rounds 1.0000 [1.0000, 1.0000] ratio of medians 1.0000
+  Rc           img_s med    430.59 min    423.50 max    447.21 | wall  18.585 s | rss    1448 MB | peak dev    627 MB | Rc/R med ratio of rounds 0.9998 [0.9916, 1.0093] ratio of medians 0.9979
+  M            img_s med    430.81 min    422.49 max    448.02 | wall  18.571 s | rss    1440 MB | peak dev    627 MB | M/R med ratio of rounds 1.0016 [0.9550, 1.0094] ratio of medians 0.9984
+  Q            img_s med    431.31 min    426.88 max    442.58 | wall  18.556 s | rss    1440 MB | peak dev    627 MB | Q/R med ratio of rounds 1.0018 [0.9898, 1.0063] ratio of medians 0.9996
+SPD_DONE rel

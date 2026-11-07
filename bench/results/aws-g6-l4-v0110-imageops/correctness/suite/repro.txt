@@ -1,0 +1,46 @@
+== 1. --resize N% on EXIF-rotated JPEGs: 400x300 stored; want ispe 200x150 for 50%, 100x75 for 25%
+single orientation 1 --resize 50%: rc=0 ispe 200x150 
+single orientation 1 --resize 25%: rc=0 ispe 100x75 
+single orientation 6 --resize 50%: rc=0 ispe 200x150 
+single orientation 6 --resize 25%: rc=0 ispe 100x75 
+single orientation 8 --resize 50%: rc=0 ispe 200x150 
+single orientation 8 --resize 25%: rc=0 ispe 100x75 
+[av1gpu] 1 images (0.0 MP) in 228.7 ms: 4.37 img/s, 0.13 MP/s; 0 batches; out 0.01 MB (1.870 bpp); CPU 190 ms 
+[av1gpu] stage ms: ingest wait 8.8 | gpu setup 0.0 analysis 4.0 dp 0.0 recon 15.1 pack 0.0 postfilter 0.0 down
+batch orientation 6 --resize 50%: ispe 200x150
+== 2. geometry: magick against --resize on the same 211x149 PNG
+x50%         magick 211x75         av1gpu 211x75
+50%x         magick 106x75         av1gpu 106x75
+150%>        magick 317x224        av1gpu 317x224
+50%<         magick 106x75         av1gpu 106x75
+100x!        magick 100x149        av1gpu 100x149
+x100!        magick 211x100        av1gpu 211x100
+100!         magick 100x149        av1gpu 100x149
+100^         magick 142x100        av1gpu 142x100
+100x^        magick 142x100        av1gpu 142x100
+5000@        magick 84x59          av1gpu 84x59
+@2000000     magick 1683x1188      av1gpu 1683x1188
+@5000<       magick 84x59          av1gpu 84x59
+100.6x       magick 101x71         av1gpu 101x71
+100X100      magick 100x71         av1gpu rc=2   both default to one per CPU the process may use), GP_INGES
+4:3          magick 199x149        av1gpu rc=2   both default to one per CPU the process may use), GP_INGES
+50%          magick 106x75         av1gpu 106x75
+@5000        magick 84x59          av1gpu 84x59
+100x100^     magick 142x100        av1gpu 142x100
+100x100<     magick 211x149        av1gpu 211x149
+== 3. two-tone pages with --skip-blank: not blank, but IM's box has no width or height
+two_lr rc=0   magick box: 0x300+200+0
+two_tb rc=0   magick box: 400x0+0+150
+== 4. --level 10,90% (ImageMagick: % applies to both numbers)
+same as 10%,90%
+== 5. default 4:2:0 against ImageMagick on coloured line art (the PR measured only 4:4:4): mean / max luma difference
+-colorspace Gray   4:2:0      luma mean 0.783 max 35
+-colorspace Gray   --yuv 444  luma mean 0.033 max 1
+-level 0%,99%      4:2:0      luma mean 0.539 max 30
+-level 0%,99%      --yuv 444  luma mean 0.000 max 0
+-level 10%,90%     4:2:0      luma mean 0.310 max 16
+-level 10%,90%     --yuv 444  luma mean 0.000 max 0
+-gamma 0.7         4:2:0      luma mean 1.165 max 43
+-gamma 0.7         --yuv 444  luma mean 0.000 max 0
+-negate            4:2:0      luma mean 0.000 max 0
+-negate            --yuv 444  luma mean 0.000 max 0

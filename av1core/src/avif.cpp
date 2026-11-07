@@ -136,7 +136,7 @@ extern "C" int av1g_mux_avif_alpha(const uint8_t *obus, size_t obu_size, const u
                                    uint32_t width, uint32_t height, const av1g_avif_meta *md, uint8_t **avif,
                                    size_t *avif_size) {
     Cfg cfg;
-    if (!parse_seq(obus, obu_size, cfg)) return AV1G_ERR_INVALID;
+    if (!parse_seq(obus, obu_size, cfg) || cfg.w != width || cfg.h != height) return AV1G_ERR_INVALID;
     const bool alpha = alpha_obus != nullptr;
     Cfg acfg;
     if (alpha) {

@@ -1,0 +1,6 @@
+{'pix': 1139, 'size': 55, 'magickfail': 6} mean diff percentiles [8.00e-02 8.10e-01 2.16e+00 2.55e+02]
+magickfail OTHER vgrad_1024x16.png --yuv 444 --qindex 12 --small-preset none --crop 916x15+140+3 --trim --fuzz 30% magick: width or height exceeds limit `/home/ubuntu/adv/trim/vgrad_1024x16.png' (884x18446744073709551616) > (3602879701
+magickfail OTHER vgrad_257x65.png --lossless --crop 75x50+33+18 --trim --fuzz 30% --gamma 1.4 --resize 40x256> magick: width or height exceeds limit `/home/ubuntu/adv/trim/vgrad_257x65.png' (75x18446744073709551616) > (360287970189
+magickfail OTHER bar_rowL_200x120.png --lossless --trim --fuzz 3% --level 5%,95%,1.2 --gamma 0.7 --resize 25% magick: negative or zero image size `/home/ubuntu/adv/trim/bar_rowL_200x120.png' @ error/resize.c/ResizeImage/3800.
+
+{('size', "magick's box is empty"): 55, ('pix', "magick's box is empty"): 10, ('magickfail', "magick's box is empty"): 3, ('magickfail', 'OTHER'): 3}

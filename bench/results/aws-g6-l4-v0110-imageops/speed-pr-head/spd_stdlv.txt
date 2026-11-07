@@ -1,0 +1,12 @@
+== stdlv std: 1023 MP, 5 rounds, mp_s
+  plain        mp_s med     80.75 min     78.14 max     81.01 | wall  13.584 s | rss    1627 MB | peak dev   1082 MB | plain/plain med ratio of rounds 1.0000 [1.0000, 1.0000] ratio of medians 1.0000
+  plain2       mp_s med     79.38 min     78.14 max     80.63 | wall  13.815 s | rss    1630 MB | peak dev   1092 MB | plain2/plain med ratio of rounds 0.9977 [0.9827, 1.0010] ratio of medians 0.9831
+  level        mp_s med     66.43 min     65.82 max     67.06 | wall  16.314 s | rss    1628 MB | peak dev   1086 MB | level/plain med ratio of rounds 0.8278 [0.8176, 0.8485] ratio of medians 0.8227
+  levelnog     mp_s med     77.28 min     76.47 max     78.29 | wall  14.164 s | rss    1632 MB | peak dev   1096 MB | levelnog/plain med ratio of rounds 0.9696 [0.9468, 0.9859] ratio of medians 0.9571
+  levelP0      mp_s med     77.97 min     76.78 max     78.66 | wall  14.044 s | rss    1627 MB | peak dev    911 MB | levelP0/plain med ratio of rounds 0.9710 [0.9506, 0.9978] ratio of medians 0.9656
+  nogP0        mp_s med     78.52 min     77.70 max     78.74 | wall  13.950 s | rss    1629 MB | peak dev    906 MB | nogP0/plain med ratio of rounds 0.9720 [0.9620, 1.0073] ratio of medians 0.9725
+  plainP0      mp_s med     80.18 min     79.77 max     80.58 | wall  13.668 s | rss    1630 MB | peak dev    898 MB | plainP0/plain med ratio of rounds 0.9972 [0.9847, 1.0312] ratio of medians 0.9930
+  lv105        mp_s med     78.68 min     78.17 max     78.95 | wall  13.939 s | rss    1635 MB | peak dev   1084 MB | lv105/plain med ratio of rounds 0.9778 [0.9713, 1.0053] ratio of medians 0.9744
+  lv130        mp_s med     67.66 min     67.01 max     67.99 | wall  16.044 s | rss    1632 MB | peak dev   1093 MB | lv130/plain med ratio of rounds 0.8393 [0.8379, 0.8610] ratio of medians 0.8379
+  lvb          mp_s med     79.71 min     78.36 max     80.57 | wall  13.756 s | rss    1635 MB | peak dev   1083 MB | lvb/plain med ratio of rounds 0.9946 [0.9872, 1.0112] ratio of medians 0.9872
+SPD_DONE stdlv

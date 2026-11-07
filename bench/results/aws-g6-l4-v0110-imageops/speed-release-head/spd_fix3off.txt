@@ -1,0 +1,33 @@
+== fix3off sr: 1434 MP, 24 rounds, mp_s
+  A            mp_s med    246.25 min    241.03 max    256.19 | wall   6.736 s | rss    1590 MB | peak dev   1021 MB | A/A med ratio of rounds 1.0000 [1.0000, 1.0000] ratio of medians 1.0000
+  C            mp_s med    246.17 min    242.03 max    253.87 | wall   6.742 s | rss    1588 MB | peak dev   1018 MB | C/A med ratio of rounds 1.0021 [0.9909, 1.0156] ratio of medians 0.9997
+  F            mp_s med    245.56 min    242.07 max    256.20 | wall   6.761 s | rss    1590 MB | peak dev   1006 MB | F/A med ratio of rounds 1.0026 [0.9808, 1.0198] ratio of medians 0.9972
+== fix3off std: 1023 MP, 24 rounds, mp_s
+  A            mp_s med     78.12 min     76.08 max     78.50 | wall  14.028 s | rss    1628 MB | peak dev   1084 MB | A/A med ratio of rounds 1.0000 [1.0000, 1.0000] ratio of medians 1.0000
+  C            mp_s med     78.07 min     76.23 max     78.56 | wall  14.030 s | rss    1629 MB | peak dev   1089 MB | C/A med ratio of rounds 0.9999 [0.9820, 1.0227] ratio of medians 0.9994
+  F            mp_s med     77.95 min     76.30 max     78.66 | wall  14.050 s | rss    1626 MB | peak dev   1089 MB | F/A med ratio of rounds 1.0007 [0.9877, 1.0152] ratio of medians 0.9979
+== fix3off thumbs: 1016 MP, 24 rounds, img_s
+  A            img_s med    421.81 min    416.42 max    436.65 | wall  18.931 s | rss    1435 MB | peak dev    627 MB | A/A med ratio of rounds 1.0000 [1.0000, 1.0000] ratio of medians 1.0000
+  C            img_s med    422.70 min    415.35 max    436.83 | wall  18.896 s | rss    1433 MB | peak dev    627 MB | C/A med ratio of rounds 1.0008 [0.9749, 1.0202] ratio of medians 1.0021
+  F            img_s med    422.59 min    415.92 max    435.05 | wall  18.886 s | rss    1436 MB | peak dev    627 MB | F/A med ratio of rounds 1.0013 [0.9857, 1.0228] ratio of medians 1.0019
+== fix3off comics: 1034 MP, 24 rounds, mp_s
+  A            mp_s med    183.73 min    179.91 max    187.29 | wall   6.569 s | rss    1934 MB | peak dev   1020 MB | A/A med ratio of rounds 1.0000 [1.0000, 1.0000] ratio of medians 1.0000
+  C            mp_s med    183.87 min    179.98 max    186.82 | wall   6.575 s | rss    1933 MB | peak dev   1024 MB | C/A med ratio of rounds 0.9990 [0.9808, 1.0035] ratio of medians 1.0008
+  F            mp_s med    183.56 min    180.26 max    187.69 | wall   6.579 s | rss    1937 MB | peak dev   1023 MB | F/A med ratio of rounds 1.0008 [0.9909, 1.0097] ratio of medians 0.9991
+== fix3off pngwebp: 1434 MP, 24 rounds, mp_s
+  A            mp_s med    224.49 min    217.92 max    229.13 | wall   7.322 s | rss    2646 MB | peak dev   1029 MB | A/A med ratio of rounds 1.0000 [1.0000, 1.0000] ratio of medians 1.0000
+  C            mp_s med    223.31 min    216.64 max    228.59 | wall   7.350 s | rss    2634 MB | peak dev   1026 MB | C/A med ratio of rounds 1.0000 [0.9594, 1.0384] ratio of medians 0.9947
+  F            mp_s med    224.21 min    217.75 max    227.67 | wall   7.330 s | rss    2649 MB | peak dev   1015 MB | F/A med ratio of rounds 1.0007 [0.9764, 1.0427] ratio of medians 0.9987
+== fix3off c444: 1034 MP, 24 rounds, mp_s
+  A            mp_s med    140.08 min    137.32 max    142.14 | wall   8.343 s | rss    2293 MB | peak dev   1739 MB | A/A med ratio of rounds 1.0000 [1.0000, 1.0000] ratio of medians 1.0000
+  C            mp_s med    139.54 min    136.93 max    142.09 | wall   8.367 s | rss    2293 MB | peak dev   1738 MB | C/A med ratio of rounds 0.9974 [0.9845, 1.0079] ratio of medians 0.9962
+  F            mp_s med    139.54 min    136.94 max    141.52 | wall   8.372 s | rss    2291 MB | peak dev   1794 MB | F/A med ratio of rounds 0.9962 [0.9811, 1.0092] ratio of medians 0.9962
+== fix3off crop: 1434 MP, 24 rounds, mp_s
+  A            mp_s med    165.19 min    160.41 max    170.04 | wall   4.223 s | rss    1588 MB | peak dev    648 MB | A/A med ratio of rounds 1.0000 [1.0000, 1.0000] ratio of medians 1.0000
+  C            mp_s med    164.99 min    159.70 max    170.15 | wall   4.226 s | rss    1588 MB | peak dev    647 MB | C/A med ratio of rounds 0.9964 [0.9569, 1.0451] ratio of medians 0.9988
+  F            mp_s med    165.54 min    161.90 max    172.95 | wall   4.215 s | rss    1590 MB | peak dev    645 MB | F/A med ratio of rounds 1.0036 [0.9645, 1.0341] ratio of medians 1.0022
+== fix3off maxsize: 1434 MP, 24 rounds, mp_s
+  A            mp_s med    143.81 min    140.30 max    146.66 | wall   4.579 s | rss    1589 MB | peak dev    638 MB | A/A med ratio of rounds 1.0000 [1.0000, 1.0000] ratio of medians 1.0000
+  C            mp_s med    143.08 min    140.44 max    145.46 | wall   4.599 s | rss    1588 MB | peak dev    646 MB | C/A med ratio of rounds 0.9973 [0.9674, 1.0205] ratio of medians 0.9950
+  F            mp_s med    143.75 min    140.38 max    146.48 | wall   4.574 s | rss    1590 MB | peak dev    647 MB | F/A med ratio of rounds 0.9985 [0.9681, 1.0250] ratio of medians 0.9996
+SPD_DONE fix3off

@@ -1,0 +1,12 @@
+pr --negate ('444', 120, 80, 10) samples that differ from magick (16-bit) rounded to 10 bits: 0 of 28800 max 0
+pr --gamma 1.7 ('444', 120, 80, 10) samples that differ from magick (16-bit) rounded to 10 bits: 126 of 28800 max 1
+pr --level 10%,90%,1.3 ('444', 120, 80, 10) samples that differ from magick (16-bit) rounded to 10 bits: 42 of 28800 max 1
+pr --auto-level ('444', 120, 80, 10) samples that differ from magick (16-bit) rounded to 10 bits: 0 of 28800 max 0
+pr --grayscale Rec709Luma ('mono', 120, 80, 10) samples that differ from magick (16-bit) rounded to 10 bits: 46 of 9600 max 1
+pr --colorspace Gray ('mono', 120, 80, 10) samples that differ from magick (16-bit) rounded to 10 bits: 46 of 9600 max 1
+fix3 --negate ('444', 120, 80, 10) samples that differ from magick (16-bit) rounded to 10 bits: 0 of 28800 max 0
+fix3 --gamma 1.7 ('444', 120, 80, 10) samples that differ from magick (16-bit) rounded to 10 bits: 126 of 28800 max 1
+fix3 --level 10%,90%,1.3 ('444', 120, 80, 10) samples that differ from magick (16-bit) rounded to 10 bits: 42 of 28800 max 1
+fix3 --auto-level ('444', 120, 80, 10) samples that differ from magick (16-bit) rounded to 10 bits: 0 of 28800 max 0
+fix3 --grayscale Rec709Luma ('mono', 120, 80, 10) samples that differ from magick (16-bit) rounded to 10 bits: 46 of 9600 max 1
+fix3 --colorspace Gray ('mono', 120, 80, 10) samples that differ from magick (16-bit) rounded to 10 bits: 46 of 9600 max 1

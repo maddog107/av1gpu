@@ -17,6 +17,7 @@
 #endif
 
 #include <algorithm>
+#include <cctype>
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
@@ -42,10 +43,11 @@ extern "C" __declspec(dllimport) void *__stdcall LoadLibraryA(const char *name);
 static const char *const kDefaultArgs[] = {"--quality", "60", "--tune", "iq", "--edge-filter", "--preset", "turbo",
                                            "--small-preset", "base", "--gpu-entropy"};
 
-static void usage() {
-    fprintf(stderr,
+static void usage(FILE *to = stderr) {
+    fprintf(to,
             "usage: av1gpu IN OUT.avif [options]\n"
             "       av1gpu --batch LIST|DIR --outdir DIR [options]\n"
+            "       av1gpu --help\n"
             "\n"
             "Input: JPEG (GPU decode), PNG (8 or 16 bits per sample) or WebP (CPU decode).  Output: 8-bit 4:2:0\n"
             "(or monochrome) AVIF, 4:4:4 with --yuv 444, 10-bit with --depth 10, mathematically lossless with --lossless;\n"
@@ -113,35 +115,108 @@ static void usage() {
             "                          The box is the displayed size (turned for EXIF rotations by 90 degrees).  With\n"
             "                          --lossless the shrunk image is coded losslessly\n"
             "  --max-height H          same as --max-size xH\n"
-            "  --max-mp MP             largest picture encoded, after crop / resize (default 35.6 = AV1 level 6.3, the most\n"
-            "                          AVIF's Advanced profile allows; single PNG / WebP images: no limit); larger ones are\n"
-            "                          skipped.  Above 35.6 the stream says level 31 (no limits): dav1d and libavif decode\n"
-            "                          it, decoders that enforce levels may not\n"
-            "  --max-input-mp MP       largest source decoded (default and at least: the --max-mp limit); with --crop /\n"
-            "                          --max-size, a larger source is decoded at full size and encoded once it fits --max-mp\n"
+            "  --resize GEOMETRY       resize after the crop / trim, with ImageMagick's -resize geometry: W, xH, WxH (fit\n"
+            "                          inside), W^, xH^, WxH^ (fill), W!, xH!, WxH! (exactly; a side not given stays), with\n"
+            "                          > (only shrink) or < (only enlarge); N%%, xN%%, N%%xM%%; @AREA or AREA@ (pixels).\n"
+            "                          Filters as ImageMagick chooses them: Lanczos to shrink (as --max-size), Mitchell\n"
+            "                          (B = C = 1/3) to enlarge and for images with alpha; ImageMagick also takes Mitchell\n"
+            "                          for palette and gray images, av1gpu does not.  The geometry is for the displayed image\n"
+            "                          (EXIF rotations by 90 degrees turn it).  The last of --resize / --max-size counts.\n"
+            "                          A batch LIST line may add resize=GEOMETRY\n"
+            "  --max-mp MP             largest picture encoded, after crop / trim / resize (default 35.6 = AV1 level 6.3, the\n"
+            "                          most AVIF's Advanced profile allows; single PNG / WebP images: no limit); larger ones\n"
+            "                          are refused, and the message gives the value to use.  Above 35.6 the stream says level\n"
+            "                          31 (no limits): dav1d and libavif decode it, decoders that enforce levels may not\n"
+            "                          (libavif's default limits: 32768 pixels per side, 268 MP).  Whatever the limit, AV1\n"
+            "                          codes at most 65536 pixels per side\n"
+            "  --max-input-mp MP       largest source decoded (default and at least: the --max-mp limit); with --crop,\n"
+            "                          --trim, --max-size or --resize, a larger source is decoded at full size and encoded\n"
+            "                          once it fits --max-mp\n"
+            "  --trim                  remove the border, on the GPU after --crop and before --max-size: the box of\n"
+            "                          ImageMagick's -trim (the bounding box of the pixels that differ from the corners by\n"
+            "                          more than --fuzz: left and top edges against the top-left corner, right against the\n"
+            "                          top-right, bottom against the bottom-left and, left of the right edge, the\n"
+            "                          bottom-right), measured on the decoded planes as whole RGB samples.  An image that is\n"
+            "                          all border is encoded whole (ImageMagick makes it 1x1; see --skip-blank).  The options\n"
+            "                          below only apply with --trim\n"
+            "  --fuzz D%%               how far a colour may be from the corner and still count as the border, as ImageMagick's\n"
+            "                          -fuzz: the summed squared RGB differences (0..1 each) are at most 6 (D / 100)^2, so a\n"
+            "                          gray within 1.41 D percent passes (--fuzz 10%%: 36 steps of 255).  Also D in Q16 units,\n"
+            "                          0..65535; default 0: exactly the corner colour.  With alpha the colour distance is\n"
+            "                          weighted by both alphas and alphas must be equal\n"
+            "  --trim-margin N|N%%      keep N pixels (N%%: percent of the shorter side) of the border around what --trim keeps\n"
+            "  --trim-limits MIN%%,MAX%% trim only when that removes MIN..MAX percent of the width and MIN..MAX percent of the\n"
+            "                          height (each rounded down to whole pixels); otherwise the image is encoded whole\n"
+            "  --trim-lightness L      trim only when the border is light: 3 of the 4 corners at HSL lightness L%% or more\n"
+            "                          (paper, not a dark frame or a picture running off the edge)\n"
+            "  --skip-blank P          an image whose trim would remove more than P percent of its width or height is not\n"
+            "                          encoded: skipped with a message (exit status 3 for a single image).  A page split\n"
+            "                          into two flat colours (its edges meet: no box) is kept\n"
+            "  --auto-level            stretch the smallest..largest R, G or B sample of the (cropped, trimmed) image to the\n"
+            "                          full range (ImageMagick's -auto-level: channels together).  At 4:2:0 from PNG / WebP\n"
+            "                          the range is read through the shared chroma, and one colour edge can set it, which\n"
+            "                          shifts the whole picture: use --yuv 444 with it there\n"
+            "  --level B[,W[,G]]       ImageMagick's -level on each RGB channel: ((v - B) / (W - B)) ^ (1 / G), clipped.  B and\n"
+            "                          W are Q16 units (0..65535), or percentages if either has a %%; W defaults to 100%% - B\n"
+            "  --gamma G               ImageMagick's -gamma: v ^ (1 / G) on each RGB channel; 0 < G <= 100\n"
+            "  --negate                ImageMagick's -negate: 1 - v\n"
+            "                          (these four run on the GPU after --trim and before the resize, in this order, on the\n"
+            "                          gamma-encoded RGB of each pixel, with 4:2:0 JPEG chroma upsampled as their decoders do\n"
+            "                          and 4:2:0 chroma written as the mean of its 2x2 pixels'; at 4:2:0 from PNG / WebP, or\n"
+            "                          from a JPEG not coded 4:2:0, colour edges can differ from ImageMagick's, which works on\n"
+            "                          full RGB: --yuv 444 matches it closely.  Alpha is left alone, as ImageMagick's\n"
+            "                          -channel RGB)\n"
+            "  --grayscale METHOD      monochrome output, on the GPU after the resize: ImageMagick's -grayscale on the\n"
+            "                          gamma-encoded RGB: Rec601Luma (on JPEG / PNG / WebP planes: their own luma, no\n"
+            "                          work), Rec709Luma, Average, Brightness (max), Lightness ((max + min) / 2) or RMS\n"
+            "  --colorspace Gray       same as --grayscale Rec709Luma (ImageMagick 7's -colorspace Gray; any case)\n"
             "  --cpu-entropy           entropy-code on the CPU instead of the GPU (identical bytes)\n"
             "  --batch LIST|DIR        encode every file in LIST (one path per line) or DIR; outputs <name>.avif.  A LIST line\n"
-            "                          may add TAB-separated crop=WxH+X+Y and max-size=WxH for its image (they replace\n"
-            "                          --crop / --max-size for it; a line that names an existing file is a path; a line\n"
-            "                          with a bad option is skipped)\n"
+            "                          may add TAB-separated crop=WxH+X+Y, max-size=WxH and resize=GEOMETRY for its image\n"
+            "                          (they replace --crop / --max-size / --resize for it; a line that names an existing\n"
+            "                          file is a path; a line with a bad option is skipped)\n"
             "  --outdir DIR            batch output directory (outputs are named <input file name>.avif)\n"
+            "  --name-q                batch: add .q<Q> to the output names even for one --qindex (several always do)\n"
             "  --stats                 print one JSON line with timings / counts\n"
             "  --debug-outputs         also write <out>.obu and <out>.recon.yuv (decoder identity tests)\n"
             "  --no-defaults           do not apply the defaults above (expert / research use)\n"
+            "  --verbose               reserved\n"
+            "  -h, --help              print this list\n"
             "\n"
             "expert options:\n"
             "  --q Q                   alias of --qindex\n"
             "  --small-mp X            --small-preset threshold in megapixels (default 1)\n"
-            "  --lambda M              lambda multiplier (default 1.0)\n"
+            "  --lambda M --lambda-c M lambda multiplier (default 1.0); chroma lambda relative to luma\n"
             "  --K k --Krecheck k      analysis top-K, closed-loop re-check count\n"
             "  --no-txsearch --no-txsearch-cl --no-deltas --no-cfl --uvK k\n"
             "  --shapes HEX --part8 HEX --partN HEX --maxpart N\n"
             "  --rnd R --zbin Z --rndc R --zbinc Z --satd-lambda S --uv-overhead B --split-bias S\n"
-            "  --qm L|auto --qm-uv L --edge-filter --lf q|LEVEL --lf-mul M --cdef ypri,ysec,uvpri,uvsec,damp-3\n"
+            "  --qm L|auto --qm-uv L --edge-filter --no-edge-filter --lf q|LEVEL --lf-mul M\n"
+            "  --cdef ypri,ysec,uvpri,uvsec,damp-3\n"
             "  --vb 0|1 --vb-order tile|row|nearest --vb-strength PCT --f-lf off|q|search --f-cdef off|aom|search\n"
+            "  --f-dist 0|1            av1f distortion: 0 SSE, 1 variance-weighted\n"
+            "  --tuneiq-frame 0|1      frame-level tune=iq decisions alone\n"
+            "  --ssim-lambda 0|1       tune=iq per-16x16 SSIM scaling of lambda\n"
+            "  --qm-dist 0|1           weight coefficient errors by the QM (libaom dist-metric=qm-psnr)\n"
+            "  --qm-rnd 0|1            scale the rounding offset by the QM (libaom's FP quantizer with QM)\n"
+            "  --small-kernel 0|1      thread-per-block analysis for shapes of up to 64 pixels\n"
+            "  --prune-var V --prune-area A   skip blocks of at least A pixels with variance above V step^2\n"
+            "  --prune-flat V          skip shapes below 16x16 in 16x16 regions whose 8x8 variances are all below V step^2\n"
+            "  --screen-sub 2          checkerboard-subsampled SATD screening for blocks of 256 pixels or more\n"
+            "  --filter-intra          filter-intra candidates in the closed loop\n"
+            "  --tx-all                closed loop evaluates every transform type of every re-checked candidate\n"
+            "  --tx-size               closed-loop transform size search (largest against one split)\n"
+            "  --uv-deltas 0|1         chroma angle deltas in the closed loop\n"
+            "  --uv-in-dp              add an open-loop chroma term to the analysis (chroma-aware partitioning)\n"
+            "  --k-large K             analysis top-K for shapes of 1024 pixels or more\n"
+            "  --deltas-max-area A     angle-delta screening only for shapes up to A pixels (0: all)\n"
+            "  --no-lossless-cfl       with --lossless: no CfL on 4x4 chroma blocks\n"
+            "  --prof                  per-phase cycle accounting in k_recon\n"
             "  --check                 compare the reconstruction with av1core's CPU decode of the record\n"
             "  --dump-source F         (single image) write the encoder's input planes (visible Y, U, V, then alpha) to F\n"
             "  --gpu-entropy           GPU symbolization + entropy coding (default)\n"
+            "  --dev-entropy           (single image) the batch mode's device-resident entropy path\n"
+            "  --check-entropy         (single image) compare that path's bytes with the CPU writer's\n"
             "\n"
             "environment (batch mode): GP_ENCODERS (concurrent encoders, default 3), GP_ENCODE_MP (MP per GPU batch,\n"
             "  default 48), GP_INGEST_WORKERS (JPEG parse/decode threads) and GP_FALLBACK_WORKERS (PNG/WebP decode threads;\n"
@@ -159,6 +234,7 @@ struct Opts {
     bool tilesSet = false;    // --tiles (the last one): applied after all options, so a --preset after it keeps it
     float tileMinMp = 0;
     int tileColsLog2 = 0, tileRowsLog2 = 0;
+    bool trimOpts = false;    // --fuzz / --trim-margin / --trim-limits / --trim-lightness / --skip-blank (need --trim)
 };
 
 // alpha quality -> qindex as libavif codes alpha with libaom (tune=psnr: quantizer ((100 - Q) * 63 + 50) / 100, libaom's
@@ -329,14 +405,53 @@ static bool parse(int argc, char **argv, GpConfig &cfg, Opts &o) {
             else if (!strcmp(v, "on")) cfg.palette = 2;
             else { fprintf(stderr, "unknown --palette %s (auto, on, off)\n", v); return false; }
         }
-        else if (a == "--crop" || a == "--max-size" || a == "--max-height") {
+        else if (a == "--crop" || a == "--max-size" || a == "--max-height" || a == "--resize") {
             const std::string v = a == "--max-height" ? std::string("x") + nxt() : nxt();
             std::string why;
-            if (!(a == "--crop" ? gp_parse_crop(v.c_str(), cfg.xform, &why) : gp_parse_max_size(v.c_str(), cfg.xform, &why))) {
+            if (!(a == "--crop" ? gp_parse_crop(v.c_str(), cfg.xform, &why)
+                  : a == "--resize" ? gp_parse_resize(v.c_str(), cfg.xform, &why)
+                                    : gp_parse_max_size(v.c_str(), cfg.xform, &why))) {
                 fprintf(stderr, "bad %s %s: %s\n", a.c_str(), a == "--max-height" ? v.c_str() + 1 : v.c_str(),
                         a == "--max-height" ? "expected a height in whole pixels, at least 1" : why.c_str());
                 return false;
             }
+        }
+        else if (a == "--trim") cfg.trim.on = true;
+        else if (a == "--auto-level") cfg.tone.autoLevel = true;
+        else if (a == "--negate") cfg.tone.negate = true;
+        else if (a == "--level") {
+            const char *v = nxt();
+            std::string why;
+            if (!gp_parse_level(v, cfg.tone, &why)) { fprintf(stderr, "bad --level %s: %s\n", v, why.c_str()); return false; }
+        }
+        else if (a == "--gamma") {
+            const char *v = nxt();
+            char *end = nullptr;
+            const double g = strtod(v, &end);
+            if (end == v || *end || !(g > 0 && g <= 100)) { fprintf(stderr, "bad --gamma %s: expected a number above 0, up to 100 (ImageMagick's -gamma)\n", v); return false; }
+            cfg.tone.gamma = g;
+        }
+        else if (a == "--grayscale" || a == "--colorspace") {
+            const char *v = nxt();
+            std::string lower(v);
+            for (char &c : lower) c = (char)tolower((unsigned char)c);
+            cfg.gray = a == "--colorspace" ? (lower == "gray" ? (int)GP_GRAY_REC709 : 0) : gp_parse_gray(v);
+            if (!cfg.gray) {
+                fprintf(stderr, "bad %s %s: %s\n", a.c_str(), v,
+                        a == "--colorspace" ? "only Gray (Rec709Luma, as ImageMagick's -colorspace Gray)"
+                                            : "Rec601Luma, Rec709Luma, Average, Brightness, Lightness or RMS");
+                return false;
+            }
+        }
+        else if (a == "--fuzz" || a == "--trim-margin" || a == "--trim-limits" || a == "--trim-lightness" || a == "--skip-blank") {
+            const char *v = nxt();
+            std::string why;
+            const bool ok = a == "--fuzz"          ? gp_parse_fuzz(v, cfg.trim, &why)
+                            : a == "--trim-margin" ? gp_parse_trim_margin(v, cfg.trim, &why)
+                            : a == "--trim-limits" ? gp_parse_trim_limits(v, cfg.trim, &why)
+                                                   : gp_parse_percent(v, a == "--skip-blank" ? &cfg.trim.blankPct : &cfg.trim.lightness, &why);
+            if (!ok) { fprintf(stderr, "bad %s %s: %s\n", a.c_str(), v, why.c_str()); return false; }
+            o.trimOpts = true;
         }
         else if (a == "--max-mp" || a == "--max-input-mp") {
             const char *v = nxt();
@@ -392,7 +507,7 @@ static bool parse(int argc, char **argv, GpConfig &cfg, Opts &o) {
         else if (a == "--verbose") cfg.verbose = true;
         else if (a == "--batch") o.batch = nxt();
         else if (a == "--outdir") o.outdir = nxt();
-        else if (a == "-h" || a == "--help") { usage(); exit(0); }
+        else if (a == "-h" || a == "--help") { usage(stdout); exit(0); }
         else if (a.size() > 1 && a[0] == '-' && a[1] == '-') { fprintf(stderr, "unknown option %s\n", a.c_str()); return false; }
         else pos.push_back(a);
     }
@@ -414,6 +529,10 @@ static bool parse(int argc, char **argv, GpConfig &cfg, Opts &o) {
         cfg.smallMp = 0;
     }
     if (cfg.ycgcoRe && !cfg.lossless) { fprintf(stderr, "--ycgco-re needs --lossless\n"); return false; }
+    if (o.trimOpts && !cfg.trim.on) {
+        fprintf(stderr, "--fuzz, --trim-margin, --trim-limits, --trim-lightness and --skip-blank need --trim\n");
+        return false;
+    }
     if (cfg.lossless && (o.yuvSet || o.depthSet)) {
         fprintf(stderr, "--yuv / --depth cannot be combined with --lossless (the format follows the input; --ycgco-re for 10-bit 4:4:4)\n");
         return false;
@@ -451,8 +570,6 @@ static int run_single(const GpConfig &cfg0, const Opts &o) {
     if (kind == GP_FILE_JPEG && cfg.lossless) { fprintf(stderr, "%s: %s\n", o.in.c_str(), gp_lossless_jpeg_refusal); return 3; }
     // the largest picture encoded and source decoded (megapixels, 0: none): JPEGs 35.6, PNG / WebP none without the options
     const double dfltMp = kind == GP_FILE_JPEG ? 35.6 : 0, encMaxMp = gp_enc_max_mp(cfg, dfltMp), decMaxMp = gp_dec_max_mp(cfg, dfltMp);
-    char big[64];
-    snprintf(big, sizeof big, "larger than %.1f megapixels", decMaxMp);
     GpEncoder enc;
     GpFrameIn fin, afin;   // afin: the alpha frame (W = 0: none)
     std::vector<uint8_t> icc;
@@ -499,12 +616,13 @@ static int run_single(const GpConfig &cfg0, const Opts &o) {
         if (ir != 1) {
             ingest_fallback fb;
             int nf = ingest_get_fallbacks(ictx, &fb, 1);
-            fprintf(stderr, "%s: %s\n", o.in.c_str(), !nf ? "decode failed" : fb.reason == INGEST_FB_GIANT ? big : gp_fallback_reason(fb.reason));
+            fprintf(stderr, "%s: %s\n", o.in.c_str(), !nf ? "decode failed" : fb.reason == INGEST_FB_GIANT ? gp_source_refusal(fb.width, fb.height, decMaxMp, &cfg.xform, decMaxMp > encMaxMp).c_str() : gp_fallback_reason(fb.reason));
             ingest_destroy(ictx);
             return 3;
         }
         const ingest_image &im = ib.images[0];
         fin.W = im.width; fin.H = im.height; fin.mono = im.mono; fin.yuv444 = im.chroma_full;
+        fin.jpegChroma = !im.mono && !im.chroma_full && im.src_sub == INGEST_SUB_420;
         fin.aw = im.aw; fin.ah = im.ah;
         fin.dsrc[0] = ib.pool + im.y_off; fin.spitch[0] = im.y_pitch;
         if (!im.mono) {
@@ -524,7 +642,7 @@ static int run_single(const GpConfig &cfg0, const Opts &o) {
             return 3;
         }
         if (!note.empty()) fprintf(stderr, "%s: %s\n", o.in.c_str(), note.c_str());
-        if (decMaxMp > 0 && (double)hp.W * hp.H > decMaxMp * 1e6) { fprintf(stderr, "%s: %s\n", o.in.c_str(), big); return 3; }
+        if (decMaxMp > 0 && (double)hp.W * hp.H > decMaxMp * 1e6) { fprintf(stderr, "%s: %s\n", o.in.c_str(), gp_source_refusal(hp.W, hp.H, decMaxMp, &cfg.xform, decMaxMp > encMaxMp).c_str()); return 3; }
         const size_t ys = hp.bytes(0), cs = hp.bytes(1), as = hp.abytes();   // bytes (10-bit: uint16_t samples)
         if (cudaMalloc(&dplanes, ys + 2 * cs + as) != cudaSuccess) { fprintf(stderr, "cudaMalloc failed\n"); return 1; }
         cudaMemcpy(dplanes, hp.data(0), ys, cudaMemcpyHostToDevice);
@@ -543,15 +661,34 @@ static int run_single(const GpConfig &cfg0, const Opts &o) {
             afin.spitch[0] = hp.aw;
         }
     }
-    if (cfg.xform.active()) {
+    if (cfg.xform.active() || cfg.trim.on || cfg.tone.on()) {
         // crop / shrink, straight to 10 bits with --depth 10; the alpha frame the same way and the colour with alpha-weighted
         // taps.  An EXIF orientation that swaps the sides turns the box (the box is what is displayed)
         GpXform x = cfg.xform;
-        if (orientation >= 5) std::swap(x.maxW, x.maxH);
+        if (orientation >= 5) x.turn();
         int ow, oh;
+        if (cfg.trim.on && gp_xform_size(x, fin.W, fin.H, &ow, &oh)) {   // --trim: the kept crop replaces x's
+            std::vector<GpXform> tx = {x};
+            std::vector<int> verdict;
+            const std::vector<GpFrameIn> al = {afin};
+            if (gp_frames_trim({fin}, tx, cfg.trim, 0, verdict, err, &al)) { fprintf(stderr, "trim: %s\n", err.c_str()); return 1; }
+            if (verdict[0] == GP_TRIM_BLANK) {
+                fprintf(stderr, "%s: blank (--trim would remove more than %g%% of its width or height, --skip-blank)\n", o.in.c_str(),
+                        cfg.trim.blankPct);
+                return 3;
+            }
+            x = tx[0];
+        }
         if (!gp_xform_size(x, fin.W, fin.H, &ow, &oh)) {
             fprintf(stderr, "%s: the crop %s is outside the %dx%d image\n", o.in.c_str(), gp_crop_str(x).c_str(), fin.W, fin.H);
             return 3;
+        }
+        const std::string why = gp_size_refusal(ow, oh, encMaxMp, !gp_xform_runs(x, fin.W, fin.H, ow, oh) ? ""
+                                                : cfg.trim.on ? " after trim / resize" : " after crop / resize");
+        if (!why.empty()) { fprintf(stderr, "%s: %s\n", o.in.c_str(), why.c_str()); return 3; }   // (before any more GPU work)
+        if (cfg.tone.on()) {   // --auto-level / --level / --gamma / --negate: in place, before the resize
+            std::vector<GpFrameIn> v = {fin};
+            if (gp_frames_tone(v, {x}, cfg.tone, 0, err)) { fprintf(stderr, "tone: %s\n", err.c_str()); return 1; }
         }
         std::vector<GpFrameIn> v = {fin}, al = {afin};
         if (afin.W > 0) v.push_back(afin);
@@ -562,10 +699,14 @@ static int run_single(const GpConfig &cfg0, const Opts &o) {
         fin = v[0];
         if (afin.W > 0) afin = v[1];
     }
-    if (encMaxMp > 0 && (double)fin.W * fin.H > encMaxMp * 1e6) {
-        fprintf(stderr, "%s: %dx%d is larger than %.1f megapixels (--max-mp)\n", o.in.c_str(), fin.W, fin.H, encMaxMp);
-        return 3;
+    if (cfg.gray) {   // --grayscale: in place, after the resize
+        std::vector<GpFrameIn> v = {fin};
+        gp_frames_gray(v, cfg.gray, 0);
+        if (cudaDeviceSynchronize() != cudaSuccess) { fprintf(stderr, "grayscale: %s\n", cudaGetErrorString(cudaGetLastError())); return 1; }
+        fin = v[0];
     }
+    const std::string tooBig = gp_size_refusal(fin.W, fin.H, encMaxMp);
+    if (!tooBig.empty()) { fprintf(stderr, "%s: %s\n", o.in.c_str(), tooBig.c_str()); return 3; }
     if (kind == GP_FILE_JPEG && cfg.depth == 10 && !cfg.lossless) {   // 8-bit JPEG samples -> 10-bit planes (libavif's full-range rescaling)
         std::vector<GpFrameIn> v = {fin};
         if (gp_frames_to_10bit(v, 0, &dconv, err) || cudaDeviceSynchronize() != cudaSuccess) {

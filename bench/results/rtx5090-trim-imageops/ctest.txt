@@ -1,0 +1,15 @@
+ 1/13 Test  #1: fuzz_dav1d_aomdec ................   Passed   12.91 sec
+ 2/13 Test  #2: fuzz_lossless ....................   Passed    7.25 sec
+ 3/13 Test  #3: avif_alpha .......................   Passed    0.78 sec
+ 4/13 Test  #4: gate_cfl_edge ....................   Passed    1.37 sec
+ 5/13 Test  #5: batch_skip_unreadable ............   Passed    1.57 sec
+ 6/13 Test  #6: crop_resize ......................   Passed    5.84 sec
+ 7/13 Test  #7: gate_crop_resize .................   Passed    1.42 sec
+ 8/13 Test  #8: trim .............................   Passed   10.57 sec
+ 9/13 Test  #9: gate_trim ........................   Passed    1.33 sec
+10/13 Test #10: imageops .........................   Passed   21.67 sec
+11/13 Test #11: gate_imageops ....................   Passed    1.39 sec
+12/13 Test #12: jpeg_gray_sampling ...............   Passed   24.08 sec
+13/13 Test #13: jpeg_inverted_sampling ...........   Passed   39.02 sec
+100% tests passed, 0 tests failed out of 13
+Total Test time (real) = 129.18 sec

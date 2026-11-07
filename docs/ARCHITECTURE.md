@@ -29,6 +29,17 @@ A finalize kernel converts the native sampling to 4:2:0 or monochrome and replic
 multiple of 64. Images are packed into size-classed batches. The JPEG's YCbCr planes are used directly
 (BT.601, full range, as JPEG defines them), so there is no RGB round trip.
 
+## Image operations (`encoder/src/k_imageops.cu`, `imageops.cpp`, `pipeline.cpp`)
+
+Optional stages between the decode and the encoder, on the decoded planes, always in this order:
+`--crop`, `--trim`, the tone operators, `--resize` / `--max-size`, `--grayscale`, then the 10-bit
+conversion. Without these options none of them runs. `--trim` measures every frame of a batch in one
+launch per sample size and waits for them once; the host decides each frame's crop (or skips it as
+blank), and the crop and resize run as one transform. The tone operators (per pixel, so they can run
+before the transform) and the gray conversion rewrite the planes; at 4:2:0 they read a 4:2:0 JPEG's
+chroma upsampled as libjpeg-turbo does, and other chroma as its nearest sample. The rules follow
+ImageMagick 7 (README, Options).
+
 ## Analysis (`encoder/src/k_analysis*.cuh`, `k_an_*.cu`)
 
 For every block shape from 4×4 to 64×64 at every aligned position, a warp predicts the block from
@@ -112,6 +123,7 @@ On the L4's size-range photos (40 of the 100 below 1 MP), v0.6's default runs 14
 | `encoder/apps/av1gpu.cpp` | CLI, presets, single-image path |
 | `encoder/src/batch.cpp` | batch mode: ingest ↔ encoders ↔ entropy threads |
 | `encoder/src/pipeline.cpp` | one GPU batch: allocation, kernel sequence, record packing |
+| `encoder/src/imageops.cpp`, `k_imageops.cu` | `--trim`, tone and gray: option parsing, the trim decision, kernels |
 | `encoder/src/gp.h` | shared host/device structures and tunables |
 | `encoder/src/k_pal.cu`, `pal_dev.cuh` | palette candidates of screen-content images (analysis and closed loop) |
 | `av1core/include/av1g/decisions.h` | the DecisionRecord: every coding decision of a frame |

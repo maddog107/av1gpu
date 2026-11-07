@@ -1,0 +1,31 @@
+48 JPEGs
+memcheck [--negate] rc=0 files=48: ========= ERROR SUMMARY: 0 errors
+memcheck [--level 10%,90%,1.3 --gamma 0.8] rc=0 files=48: ========= ERROR SUMMARY: 0 errors
+memcheck [--auto-level] rc=0 files=48: ========= ERROR SUMMARY: 0 errors
+memcheck [--grayscale Lightness] rc=0 files=48: ========= ERROR SUMMARY: 0 errors
+memcheck [--colorspace Gray] rc=0 files=48: ========= ERROR SUMMARY: 0 errors
+memcheck [--trim --fuzz 3%] rc=0 files=48: ========= ERROR SUMMARY: 0 errors
+memcheck [--depth 10 --negate --grayscale Average] rc=0 files=48: ========= ERROR SUMMARY: 0 errors
+memcheck [--crop 4x4+0+0 --grayscale RMS] rc=0 files=48: ========= ERROR SUMMARY: 0 errors
+memcheck [--crop 3x3+1+1 --colorspace Gray] rc=0 files=35: ========= ERROR SUMMARY: 0 errors
+racecheck [--negate] rc=99 files=48: ========= RACECHECK SUMMARY: 10 hazards displayed (14 errors, 0 warnings)
+racecheck [--level 10%,90%,1.3 --gamma 0.8] rc=99 files=48: ========= RACECHECK SUMMARY: 10 hazards displayed (14 errors, 0 warnings)
+racecheck [--auto-level] rc=99 files=48: ========= RACECHECK SUMMARY: 10 hazards displayed (14 errors, 0 warnings)
+racecheck [--grayscale Lightness] rc=99 files=48: ========= RACECHECK SUMMARY: 10 hazards displayed (14 errors, 0 warnings)
+racecheck [--colorspace Gray] rc=99 files=48: ========= RACECHECK SUMMARY: 10 hazards displayed (14 errors, 0 warnings)
+racecheck [--trim --fuzz 3%] rc=99 files=48: ========= RACECHECK SUMMARY: 10 hazards displayed (14 errors, 0 warnings)
+racecheck [--depth 10 --negate --grayscale Average] rc=99 files=48: ========= RACECHECK SUMMARY: 10 hazards displayed (13 errors, 0 warnings)
+racecheck [--crop 4x4+0+0 --grayscale RMS] rc=99 files=48: ========= RACECHECK SUMMARY: 10 hazards displayed (10 errors, 0 warnings)
+racecheck [--crop 3x3+1+1 --colorspace Gray] rc=99 files=35: ========= RACECHECK SUMMARY: 10 hazards displayed (10 errors, 0 warnings)
+synccheck [--negate] rc=0 files=48: ========= ERROR SUMMARY: 0 errors
+synccheck [--level 10%,90%,1.3 --gamma 0.8] rc=0 files=48: ========= ERROR SUMMARY: 0 errors
+synccheck [--auto-level] rc=0 files=48: ========= ERROR SUMMARY: 0 errors
+synccheck [--grayscale Lightness] rc=0 files=48: ========= ERROR SUMMARY: 0 errors
+synccheck [--colorspace Gray] rc=0 files=48: ========= ERROR SUMMARY: 0 errors
+synccheck [--trim --fuzz 3%] rc=0 files=48: ========= ERROR SUMMARY: 0 errors
+synccheck [--depth 10 --negate --grayscale Average] rc=0 files=48: ========= ERROR SUMMARY: 0 errors
+synccheck [--crop 4x4+0+0 --grayscale RMS] rc=0 files=48: ========= ERROR SUMMARY: 0 errors
+synccheck [--crop 3x3+1+1 --colorspace Gray] rc=0 files=35: ========= ERROR SUMMARY: 0 errors
+    262 k_entropy_win<
+     18 win_group<
+CWEDGE_DONE

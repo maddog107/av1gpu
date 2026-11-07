@@ -1,0 +1,51 @@
+== wpd border: 1047 MP, 12 rounds, mp_s
+  plain        mp_s med    228.09 min    224.82 max    236.72 | wall   5.520 s | rss    1491 MB | peak dev    976 MB | plain/plain med ratio of rounds 1.0000 [1.0000, 1.0000] ratio of medians 1.0000
+  neverPR      mp_s med    224.88 min    222.93 max    234.24 | wall   5.583 s | rss    1491 MB | peak dev    984 MB | neverPR/plain med ratio of rounds 0.9877 [0.9746, 0.9984] ratio of medians 0.9859
+  neverPD      mp_s med    229.44 min    224.79 max    233.74 | wall   5.495 s | rss    1490 MB | peak dev    987 MB | neverPD/plain med ratio of rounds 0.9968 [0.9863, 1.0131] ratio of medians 1.0059
+  t10PR        mp_s med    186.95 min    185.13 max    190.76 | wall   5.540 s | rss    1491 MB | peak dev    835 MB | t10PR/plain med ratio of rounds 0.8152 [0.8059, 0.8283] ratio of medians 0.8196
+  t10PD        mp_s med    189.32 min    187.69 max    196.29 | wall   5.489 s | rss    1490 MB | peak dev    836 MB | t10PD/plain med ratio of rounds 0.8286 [0.8205, 0.8419] ratio of medians 0.8300
+  convPR       mp_s med    198.81 min    196.69 max    203.34 | wall   5.436 s | rss    1491 MB | peak dev    865 MB | convPR/plain med ratio of rounds 0.8691 [0.8590, 0.8862] ratio of medians 0.8716
+  convPD       mp_s med    202.16 min    200.48 max    207.02 | wall   5.360 s | rss    1490 MB | peak dev    877 MB | convPD/plain med ratio of rounds 0.8857 [0.8745, 0.8953] ratio of medians 0.8863
+  autoPR       mp_s med    227.09 min    224.76 max    232.00 | wall   5.541 s | rss    1491 MB | peak dev    975 MB | autoPR/plain med ratio of rounds 0.9929 [0.9800, 1.0080] ratio of medians 0.9956
+  autoPD       mp_s med    227.38 min    225.70 max    235.03 | wall   5.537 s | rss    1490 MB | peak dev    990 MB | autoPD/plain med ratio of rounds 0.9930 [0.9857, 1.0163] ratio of medians 0.9969
+== wpd b444: 1047 MP, 12 rounds, mp_s
+  plain        mp_s med    171.04 min    167.85 max    171.78 | wall   7.073 s | rss    1823 MB | peak dev   1665 MB | plain/plain med ratio of rounds 1.0000 [1.0000, 1.0000] ratio of medians 1.0000
+  neverPR      mp_s med    169.50 min    167.06 max    171.64 | wall   7.130 s | rss    1823 MB | peak dev   1694 MB | neverPR/plain med ratio of rounds 0.9885 [0.9786, 1.0113] ratio of medians 0.9910
+  neverPD      mp_s med    169.90 min    168.70 max    173.36 | wall   7.114 s | rss    1822 MB | peak dev   1683 MB | neverPD/plain med ratio of rounds 0.9940 [0.9820, 1.0223] ratio of medians 0.9933
+  t10PR        mp_s med    141.95 min    140.79 max    144.00 | wall   7.024 s | rss    1823 MB | peak dev   1401 MB | t10PR/plain med ratio of rounds 0.8320 [0.8223, 0.8568] ratio of medians 0.8299
+  t10PD        mp_s med    145.01 min    144.03 max    147.02 | wall   6.891 s | rss    1823 MB | peak dev   1409 MB | t10PD/plain med ratio of rounds 0.8490 [0.8398, 0.8708] ratio of medians 0.8478
+  convPR       mp_s med    148.62 min    146.85 max    150.49 | wall   6.966 s | rss    1823 MB | peak dev   1474 MB | convPR/plain med ratio of rounds 0.8706 [0.8551, 0.8866] ratio of medians 0.8689
+  convPD       mp_s med    151.42 min    149.66 max    153.68 | wall   6.850 s | rss    1823 MB | peak dev   1479 MB | convPD/plain med ratio of rounds 0.8874 [0.8749, 0.9028] ratio of medians 0.8853
+  autoPR       mp_s med    168.94 min    166.90 max    172.04 | wall   7.147 s | rss    1823 MB | peak dev   1695 MB | autoPR/plain med ratio of rounds 0.9898 [0.9737, 1.0074] ratio of medians 0.9877
+  autoPD       mp_s med    170.65 min    168.31 max    171.90 | wall   7.088 s | rss    1823 MB | peak dev   1660 MB | autoPD/plain med ratio of rounds 0.9996 [0.9820, 1.0144] ratio of medians 0.9977
+== wpd comics: 1034 MP, 12 rounds, mp_s
+  plain        mp_s med    188.20 min    186.58 max    189.24 | wall   6.461 s | rss    1938 MB | peak dev   1022 MB | plain/plain med ratio of rounds 1.0000 [1.0000, 1.0000] ratio of medians 1.0000
+  neverPR      mp_s med    186.04 min    184.59 max    187.20 | wall   6.521 s | rss    1936 MB | peak dev   1023 MB | neverPR/plain med ratio of rounds 0.9895 [0.9836, 0.9945] ratio of medians 0.9885
+  neverPD      mp_s med    188.08 min    186.66 max    189.18 | wall   6.466 s | rss    1937 MB | peak dev   1076 MB | neverPD/plain med ratio of rounds 0.9998 [0.9929, 1.0068] ratio of medians 0.9994
+  t10PR        mp_s med    186.81 min    186.08 max    188.03 | wall   6.479 s | rss    1932 MB | peak dev   1022 MB | t10PR/plain med ratio of rounds 0.9937 [0.9860, 0.9979] ratio of medians 0.9926
+  t10PD        mp_s med    189.75 min    188.62 max    190.38 | wall   6.394 s | rss    1935 MB | peak dev   1015 MB | t10PD/plain med ratio of rounds 1.0072 [1.0035, 1.0179] ratio of medians 1.0082
+  convPR       mp_s med    186.32 min    184.48 max    187.82 | wall   6.515 s | rss    1931 MB | peak dev   1019 MB | convPR/plain med ratio of rounds 0.9901 [0.9780, 0.9987] ratio of medians 0.9900
+  convPD       mp_s med    188.71 min    187.52 max    190.46 | wall   6.450 s | rss    1936 MB | peak dev   1017 MB | convPD/plain med ratio of rounds 1.0034 [0.9909, 1.0095] ratio of medians 1.0027
+  autoPR       mp_s med    185.40 min    184.54 max    187.43 | wall   6.537 s | rss    1938 MB | peak dev   1018 MB | autoPR/plain med ratio of rounds 0.9868 [0.9788, 0.9934] ratio of medians 0.9851
+  autoPD       mp_s med    186.39 min    185.49 max    187.78 | wall   6.512 s | rss    1938 MB | peak dev   1021 MB | autoPD/plain med ratio of rounds 0.9923 [0.9868, 0.9964] ratio of medians 0.9904
+== wpd sr: 1434 MP, 12 rounds, mp_s
+  plain        mp_s med    247.42 min    245.06 max    252.42 | wall   6.728 s | rss    1591 MB | peak dev   1021 MB | plain/plain med ratio of rounds 1.0000 [1.0000, 1.0000] ratio of medians 1.0000
+  neverPR      mp_s med    247.04 min    241.82 max    248.71 | wall   6.736 s | rss    1591 MB | peak dev   1008 MB | neverPR/plain med ratio of rounds 0.9914 [0.9827, 1.0094] ratio of medians 0.9985
+  neverPD      mp_s med    247.83 min    245.53 max    251.71 | wall   6.713 s | rss    1590 MB | peak dev   1006 MB | neverPD/plain med ratio of rounds 1.0044 [0.9727, 1.0208] ratio of medians 1.0016
+  t10PR        mp_s med    243.28 min    238.45 max    244.91 | wall   6.716 s | rss    1590 MB | peak dev    989 MB | t10PR/plain med ratio of rounds 0.9807 [0.9486, 0.9990] ratio of medians 0.9833
+  t10PD        mp_s med    243.98 min    242.47 max    246.80 | wall   6.688 s | rss    1590 MB | peak dev   1004 MB | t10PD/plain med ratio of rounds 0.9862 [0.9629, 1.0017] ratio of medians 0.9861
+  convPR       mp_s med    245.13 min    242.32 max    248.37 | wall   6.779 s | rss    1591 MB | peak dev   1013 MB | convPR/plain med ratio of rounds 0.9882 [0.9618, 1.0073] ratio of medians 0.9907
+  convPD       mp_s med    248.22 min    243.52 max    252.00 | wall   6.710 s | rss    1590 MB | peak dev   1021 MB | convPD/plain med ratio of rounds 1.0042 [0.9804, 1.0218] ratio of medians 1.0032
+  autoPR       mp_s med    245.58 min    243.99 max    249.17 | wall   6.763 s | rss    1590 MB | peak dev   1021 MB | autoPR/plain med ratio of rounds 0.9919 [0.9689, 1.0113] ratio of medians 0.9926
+  autoPD       mp_s med    246.66 min    243.93 max    251.64 | wall   6.748 s | rss    1590 MB | peak dev   1016 MB | autoPD/plain med ratio of rounds 0.9979 [0.9740, 1.0185] ratio of medians 0.9969
+== wpd thumbs: 1016 MP, 12 rounds, img_s
+  plain        img_s med    430.62 min    427.98 max    440.16 | wall  18.569 s | rss    1436 MB | peak dev    627 MB | plain/plain med ratio of rounds 1.0000 [1.0000, 1.0000] ratio of medians 1.0000
+  neverPR      img_s med    429.93 min    426.09 max    439.37 | wall  18.594 s | rss    1436 MB | peak dev    627 MB | neverPR/plain med ratio of rounds 0.9966 [0.9750, 1.0041] ratio of medians 0.9984
+  neverPD      img_s med    433.30 min    429.43 max    439.29 | wall  18.469 s | rss    1436 MB | peak dev    627 MB | neverPD/plain med ratio of rounds 1.0004 [0.9847, 1.0196] ratio of medians 1.0062
+  t10PR        img_s med    434.99 min    432.98 max    444.51 | wall  18.400 s | rss    1439 MB | peak dev    617 MB | t10PR/plain med ratio of rounds 1.0074 [0.9844, 1.0303] ratio of medians 1.0101
+  t10PD        img_s med    435.24 min    432.50 max    444.66 | wall  18.388 s | rss    1436 MB | peak dev    616 MB | t10PD/plain med ratio of rounds 1.0101 [0.9875, 1.0306] ratio of medians 1.0107
+  convPR       img_s med    428.91 min    425.76 max    437.38 | wall  18.636 s | rss    1435 MB | peak dev    627 MB | convPR/plain med ratio of rounds 0.9977 [0.9680, 1.0145] ratio of medians 0.9960
+  convPD       img_s med    430.74 min    428.58 max    441.59 | wall  18.567 s | rss    1435 MB | peak dev    627 MB | convPD/plain med ratio of rounds 1.0009 [0.9763, 1.0265] ratio of medians 1.0003
+  autoPR       img_s med    430.75 min    427.79 max    442.31 | wall  18.564 s | rss    1436 MB | peak dev    627 MB | autoPR/plain med ratio of rounds 0.9997 [0.9726, 1.0178] ratio of medians 1.0003
+  autoPD       img_s med    430.22 min    428.01 max    440.99 | wall  18.578 s | rss    1436 MB | peak dev    627 MB | autoPD/plain med ratio of rounds 0.9988 [0.9848, 1.0091] ratio of medians 0.9991
+SPD_DONE wpd

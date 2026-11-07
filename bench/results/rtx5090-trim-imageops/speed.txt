@@ -1,0 +1,30 @@
+# speed.sh on 287 pages (one album, 1,832 MP), --yuv 444 --depth 10 --tiles 2,2,2; 3 rounds, interleaved
+auto-level                       round 1:   7490 ms   244.6 MP/s  1832 MP
+auto-level                       round 2:   7540 ms   243.0 MP/s  1832 MP
+auto-level                       round 3:   7674 ms   238.7 MP/s  1832 MP
+grayscale Rec709Luma             round 1:   3022 ms   606.1 MP/s  1832 MP
+grayscale Rec709Luma             round 2:   3009 ms   608.8 MP/s  1832 MP
+grayscale Rec709Luma             round 3:   3210 ms   570.6 MP/s  1832 MP
+level 5%,95%,1.1                 round 1:   7807 ms   234.7 MP/s  1832 MP
+level 5%,95%,1.1                 round 2:   7688 ms   238.3 MP/s  1832 MP
+level 5%,95%,1.1                 round 3:   7745 ms   236.5 MP/s  1832 MP
+plain                            round 1:   7378 ms   248.3 MP/s  1832 MP
+plain                            round 2:   7420 ms   246.9 MP/s  1832 MP
+plain                            round 3:   7434 ms   246.4 MP/s  1832 MP
+resize x2960                     round 1:   7091 ms   252.3 MP/s  1789 MP
+resize x2960                     round 2:   7066 ms   253.2 MP/s  1789 MP
+resize x2960                     round 3:   7550 ms   236.9 MP/s  1789 MP
+trim --fuzz 0%                   round 1:   7069 ms   204.1 MP/s  1443 MP
+trim as convert-comics asks      round 1:   7270 ms   210.5 MP/s  1531 MP
+trim --fuzz 0%                   round 2:   6939 ms   207.9 MP/s  1443 MP
+trim as convert-comics asks      round 2:   7194 ms   212.8 MP/s  1531 MP
+trim --fuzz 0%                   round 3:   6988 ms   206.5 MP/s  1443 MP
+trim as convert-comics asks      round 3:   7372 ms   207.6 MP/s  1531 MP
+
+# 120 phone photos (1,442 MP), defaults, with and without --trim --fuzz 10%
+photos plain                round 1:   2117 ms  681.0 MP/s 1442 MP
+photos --trim --fuzz 10%    round 1:   2074 ms  679.6 MP/s 1409 MP   (trim: 25 images trimmed)
+photos plain                round 2:   2028 ms  710.9 MP/s 1442 MP
+photos --trim --fuzz 10%    round 2:   1989 ms  708.4 MP/s 1409 MP
+photos plain                round 3:   1990 ms  724.5 MP/s 1442 MP
+photos --trim --fuzz 10%    round 3:   1979 ms  712.3 MP/s 1409 MP

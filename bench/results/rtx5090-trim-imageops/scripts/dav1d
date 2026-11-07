@@ -1,0 +1,4 @@
+#!/bin/sh
+# dav1d -q -i IN --demuxer section5 -o OUT, through ffmpeg's libdav1d
+while [ $# -gt 0 ]; do case "$1" in -i) in=$2; shift;; -o) out=$2; shift;; esac; shift; done
+exec ffmpeg -v error -nostdin -c:v libdav1d -f obu -i "$in" -f rawvideo -y "$out"

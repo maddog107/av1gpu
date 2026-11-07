@@ -5,17 +5,31 @@
 #include <cuda_runtime.h>
 #include <stdint.h>
 #include <string>
+#include <utility>
 #include <vector>
 #include "av1g/decisions.h"
 #include "gp.h"
 #include "entropy_dev.h"
+#include "imageops.h"
 
 // Front ends (--crop / --max-size, per-line batch options): a crop rectangle and a box to fit in, applied to the
 // decoded planes on the GPU before the encode.
 struct GpXform {
     int cx = 0, cy = 0, cw = 0, ch = 0;   // crop rectangle in source pixels (stored orientation); cw = 0: no crop
     int maxW = 0, maxH = 0;               // fit inside maxW x maxH (0: unbounded), aspect kept, never enlarged
-    bool active() const { return cw > 0 || maxW > 0 || maxH > 0; }
+    // --resize: ImageMagick's -resize geometry (displayed orientation, like the max-size box); rsFlags 0: none
+    enum { RS_ON = 1, RS_W = 2, RS_H = 4, RS_PCT = 8, RS_AREA = 16, RS_EXACT = 32, RS_SHRINK = 64, RS_ENLARGE = 128, RS_FILL = 256 };
+    int rsFlags = 0;
+    double rsW = 0, rsH = 0;              // the geometry's numbers (percent with RS_PCT, pixels with RS_AREA in rsW)
+    bool active() const { return cw > 0 || maxW > 0 || maxH > 0 || rsFlags; }
+    // the box and the geometry for an image displayed turned by 90 degrees (EXIF orientation 5..8)
+    void turn() {
+        std::swap(maxW, maxH);
+        if (rsFlags & RS_AREA) return;
+        std::swap(rsW, rsH);
+        const int w = rsFlags & RS_W, h = rsFlags & RS_H;
+        rsFlags = (rsFlags & ~(RS_W | RS_H)) | (w ? RS_H : 0) | (h ? RS_W : 0);
+    }
 };
 
 struct GpConfig {
@@ -68,6 +82,9 @@ struct GpConfig {
     int palette = 1;          // palette mode (allow_screen_content_tools): 0 off, 1 frames that pass the screen-content
                               // detection (gp_launch_sc_detect), 2 every frame.  Frames without palettes code 0.
     GpXform xform;           // front ends: crop / fit-inside for every image (batch lines may override it)
+    GpTrim trim;              // front ends: --trim (after the crop, before the resize) and its conditions
+    int gray = 0;             // front ends: --grayscale / --colorspace Gray (GpGray): monochrome frames, after the resize
+    GpTone tone;              // front ends: --auto-level / --level / --gamma / --negate, after the trim, before the resize
     double maxMp = 0;         // front ends: largest picture encoded, after crop / resize (--max-mp; 0: the front end's
                               // default, gp_enc_max_mp).  Pictures above 35.65 MP (AV1 level 6.3, the most AVIF's
                               // Advanced profile allows) are written with seq_level_idx 31 (no level limits)
@@ -87,6 +104,20 @@ inline double gp_dec_max_mp(const GpConfig &c, double dflt) {
     const double e = gp_enc_max_mp(c, dflt);
     return e > 0 && c.maxInputMp < e ? e : c.maxInputMp;
 }
+// The largest side a stream can have: its sequence header gives each 16 bits (frame_width_minus_1)
+constexpr int GP_MAX_SIDE = 65536;
+// The tallest output of gp_frames_transform: k_rz_h has one block per row of the padded plane, and a grid dimension
+// holds at most 65535
+constexpr int GP_MAX_RESIZED_H = 65472;
+// Why a picture of w x h is not encoded ("": it is): a side above GP_MAX_SIDE, a crop / resize taller than
+// GP_MAX_RESIZED_H, or more than maxMp megapixels (0: no limit).  after: what the size comes from, as " after crop /
+// resize", when gp_frames_transform will run (gp_xform_runs); empty when the picture is the source as decoded
+std::string gp_size_refusal(int w, int h, double maxMp, const char *after = "");
+// Whether gp_frames_transform changes a W x H frame with x, whose output is ow x oh
+bool gp_xform_runs(const GpXform &x, int W, int H, int ow, int oh);
+// The message for a source of w x h above the largest source decoded, decMp (w = 0: size not known).  x (may be NULL):
+// its crop / resize, for the value to suggest; inputLimit: decMp is --max-input-mp, above the --max-mp limit
+std::string gp_source_refusal(int w, int h, double decMp, const GpXform *x, bool inputLimit);
 // The ingest's pinned staging arena for sources up to decMp megapixels: JPEGs the CPU route decodes (sides above 6000
 // px) stage their coefficients there, up to 6 bytes per pixel (4:4:4); 256 MiB for the default 35.6 MP
 inline int64_t gp_ingest_pinned_bytes(double decMp) {
@@ -113,6 +144,8 @@ struct GpFrameIn {
     int spitch[3] = {0, 0, 0};
     int aw = 0, ah = 0;
     std::vector<uint8_t> sbQ;  // optional per-SB qindex target map (raster, sbRows x sbCols); legalized here
+    int jpegChroma = 0;        // 1: 4:2:0 chroma as a 4:2:0 JPEG coded it, which its decoders upsample (and so --trim,
+                               // the tone operators and --grayscale do); 0 after a crop / resize
     int colorMatrix = -1;      // CICP matrix_coefficients of the planes (0 identity / GBR, 6 BT.601, 16 YCgCo-Re; written
                                // with BT.709 primaries and sRGB transfer, full range); -1: av1core's default (1/13/6);
                                // -2: unspecified 2/2/2 (no colour description in the sequence header: AVIF alpha frames)
@@ -178,6 +211,9 @@ std::string gp_crop_str(const GpXform &x);
 // "xH" or "Wx" (sides >= 1).  false: *why says what is wrong.
 bool gp_parse_crop(const char *v, GpXform &x, std::string *why = nullptr);
 bool gp_parse_max_size(const char *v, GpXform &x, std::string *why = nullptr);
+// --resize: ImageMagick's -resize geometry: W, xH, WxH (fit inside), WxH^ (fill), WxH! (exactly), any of them with > (only
+// shrink) or < (only enlarge); N% or N%xM% (scale); @A (A pixels).  No offsets.  false: *why says what is wrong.
+bool gp_parse_resize(const char *v, GpXform &x, std::string *why = nullptr);
 // Apply xf[i] to frames[i] (frames whose transform is not active, or is an identity, are left alone): crop, then
 // shrink with ImageMagick's default -resize filter for shrinking (Lanczos, 3 lobes, support stretched by the shrink
 // factor, taps clipped to the crop and renormalised, in the planes' own (YCbCr, gamma-encoded) samples), written at
@@ -190,6 +226,21 @@ bool gp_parse_max_size(const char *v, GpXform &x, std::string *why = nullptr);
 // is an error.
 int gp_frames_transform(std::vector<GpFrameIn> &frames, const std::vector<GpXform> &xf, int outDepth, cudaStream_t st,
                         uint8_t **buf, std::string &err, const std::vector<GpFrameIn> *alpha = nullptr);
+
+// --trim: measure frames[i] inside its crop xf[i] (frames with W = 0 are left alone; alpha: optional, per frame its alpha
+// frame, W = 0: none) on st, wait for it, and decide (gp_trim_decide): verdict[i] is a GpTrimVerdict, and for GP_TRIM_CUT
+// xf[i]'s crop becomes the kept rectangle (source pixels), so gp_frames_transform cuts it.
+int gp_frames_trim(const std::vector<GpFrameIn> &frames, std::vector<GpXform> &xf, const GpTrim &t, cudaStream_t st,
+                   std::vector<int> &verdict, std::string &err, const std::vector<GpFrameIn> *alpha = nullptr);
+
+// --auto-level / --level / --gamma / --negate: frames[i] changed in place on st (--auto-level measures inside xf[i]'s
+// crop, then waits for st).  -1: a CUDA error (err).
+int gp_frames_tone(std::vector<GpFrameIn> &frames, const std::vector<GpXform> &xf, const GpTone &t, cudaStream_t st,
+                   std::string &err);
+
+// --grayscale: colour frames of `frames` made monochrome in place on st (the Y plane rewritten with the gray of each
+// pixel, GpGray method; Rec601Luma on BT.601 YCbCr planes keeps the Y plane as it is).  Monochrome frames are left alone.
+void gp_frames_gray(std::vector<GpFrameIn> &frames, int method, cudaStream_t st);
 
 // Entropy coding.  CPU: av1core's writer (av1g_encode, bitstream only).  GPU: av1core GPU entropy
 // (symbolize + od_ec on the GPU) + OBU assembly.  Both produce identical bytes.
