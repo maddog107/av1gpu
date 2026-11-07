@@ -595,6 +595,10 @@ tests/decoder_gate.py --bin build/av1gpu --images bench/images --q 60,120,180
 # GPU entropy coder and GPU loop filters against the CPU reference
 build/gpu_fuzz_test --count 2000
 build/gpu_postfilter_test
+
+# quick check before a release (about 100 s): 311 outputs against stored SHA-256s, and speed against the last release
+bench/fetch_images.py --manifest bench/openimages_v4_gamut.csv --out bench/images_gamut
+tools/sanity.py build/av1gpu --ref path/to/last-release/av1gpu
 ```
 
 The fuzzers and gates cover 4:2:0, 4:4:4 and monochrome at 8 and 10 bits (pass the av1gpu options after
