@@ -120,14 +120,15 @@ static void usage(FILE *to = stderr) {
             "                          > (only shrink) or < (only enlarge); N%%, xN%%, N%%xM%%; @AREA or AREA@ (pixels).\n"
             "                          Filters as ImageMagick chooses them: Lanczos to shrink (as --max-size), Mitchell\n"
             "                          (B = C = 1/3) to enlarge and for images with alpha; ImageMagick also takes Mitchell\n"
-            "                          for palette and gray PNGs, av1gpu does not.  The geometry is for the displayed image\n"
+            "                          for palette and gray images, av1gpu does not.  The geometry is for the displayed image\n"
             "                          (EXIF rotations by 90 degrees turn it).  The last of --resize / --max-size counts.\n"
             "                          A batch LIST line may add resize=GEOMETRY\n"
             "  --max-mp MP             largest picture encoded, after crop / trim / resize (default 35.6 = AV1 level 6.3, the\n"
             "                          most AVIF's Advanced profile allows; single PNG / WebP images: no limit); larger ones\n"
             "                          are refused, and the message gives the value to use.  Above 35.6 the stream says level\n"
-            "                          31 (no limits): dav1d and libavif decode it, decoders that enforce levels may not.\n"
-            "                          (Whatever the limit, AV1 codes at most 65536 pixels per side)\n"
+            "                          31 (no limits): dav1d and libavif decode it, decoders that enforce levels may not\n"
+            "                          (libavif's default limits: 32768 pixels per side, 268 MP).  Whatever the limit, AV1\n"
+            "                          codes at most 65536 pixels per side\n"
             "  --max-input-mp MP       largest source decoded (default and at least: the --max-mp limit); with --crop,\n"
             "                          --trim, --max-size or --resize, a larger source is decoded at full size and encoded\n"
             "                          once it fits --max-mp\n"
@@ -149,8 +150,8 @@ static void usage(FILE *to = stderr) {
             "  --trim-lightness L      trim only when the border is light: 3 of the 4 corners at HSL lightness L%% or more\n"
             "                          (paper, not a dark frame or a picture running off the edge)\n"
             "  --skip-blank P          an image whose trim would remove more than P percent of its width or height is not\n"
-            "                          encoded: skipped with a message (exit status 3 for a single image).  A page of two\n"
-            "                          colours and nothing else has no box, and is kept\n"
+            "                          encoded: skipped with a message (exit status 3 for a single image).  A page split\n"
+            "                          into two flat colours (its edges meet: no box) is kept\n"
             "  --auto-level            stretch the smallest..largest R, G or B sample of the (cropped, trimmed) image to the\n"
             "                          full range (ImageMagick's -auto-level: channels together)\n"
             "  --level B[,W[,G]]       ImageMagick's -level on each RGB channel: ((v - B) / (W - B)) ^ (1 / G), clipped.  B and\n"
@@ -158,9 +159,10 @@ static void usage(FILE *to = stderr) {
             "  --gamma G               ImageMagick's -gamma: v ^ (1 / G) on each RGB channel; 0 < G <= 100\n"
             "  --negate                ImageMagick's -negate: 1 - v\n"
             "                          (these four run on the GPU after --trim and before the resize, in this order, on the\n"
-            "                          gamma-encoded RGB of each pixel; 4:2:0 chroma gets the mean of its 2x2 pixels', so at\n"
-            "                          saturated colour edges 4:2:0 output can differ from ImageMagick's, which works on full\n"
-            "                          RGB; alpha is left alone)\n"
+            "                          gamma-encoded RGB of each pixel, with 4:2:0 JPEG chroma upsampled as their decoders do\n"
+            "                          and 4:2:0 chroma written as the mean of its 2x2 pixels'; at 4:2:0 from PNG / WebP, colour\n"
+            "                          edges can differ from ImageMagick's, which works on full RGB: --yuv 444 matches it\n"
+            "                          closely.  Alpha is left alone, as ImageMagick's -channel RGB)\n"
             "  --grayscale METHOD      monochrome output, on the GPU after the resize: ImageMagick's -grayscale on the\n"
             "                          gamma-encoded RGB: Rec601Luma (on JPEG / PNG / WebP planes: their own luma, no\n"
             "                          work), Rec709Luma, Average, Brightness (max), Lightness ((max + min) / 2) or RMS\n"
@@ -201,7 +203,7 @@ static void usage(FILE *to = stderr) {
             "  --filter-intra          filter-intra candidates in the closed loop\n"
             "  --tx-all                closed loop evaluates every transform type of every re-checked candidate\n"
             "  --tx-size               closed-loop transform size search (largest against one split)\n"
-            "  --uv-deltas N           reserved\n"
+            "  --uv-deltas 0|1         chroma angle deltas in the closed loop\n"
             "  --uv-in-dp              add an open-loop chroma term to the analysis (chroma-aware partitioning)\n"
             "  --k-large K             analysis top-K for shapes of 1024 pixels or more\n"
             "  --deltas-max-area A     angle-delta screening only for shapes up to A pixels (0: all)\n"
@@ -611,12 +613,13 @@ static int run_single(const GpConfig &cfg0, const Opts &o) {
         if (ir != 1) {
             ingest_fallback fb;
             int nf = ingest_get_fallbacks(ictx, &fb, 1);
-            fprintf(stderr, "%s: %s\n", o.in.c_str(), !nf ? "decode failed" : fb.reason == INGEST_FB_GIANT ? gp_source_refusal(fb.width, fb.height, decMaxMp).c_str() : gp_fallback_reason(fb.reason));
+            fprintf(stderr, "%s: %s\n", o.in.c_str(), !nf ? "decode failed" : fb.reason == INGEST_FB_GIANT ? gp_source_refusal(fb.width, fb.height, decMaxMp, &cfg.xform, decMaxMp > encMaxMp).c_str() : gp_fallback_reason(fb.reason));
             ingest_destroy(ictx);
             return 3;
         }
         const ingest_image &im = ib.images[0];
         fin.W = im.width; fin.H = im.height; fin.mono = im.mono; fin.yuv444 = im.chroma_full;
+        fin.jpegChroma = !im.mono && !im.chroma_full && im.src_sub == INGEST_SUB_420;
         fin.aw = im.aw; fin.ah = im.ah;
         fin.dsrc[0] = ib.pool + im.y_off; fin.spitch[0] = im.y_pitch;
         if (!im.mono) {
@@ -636,7 +639,7 @@ static int run_single(const GpConfig &cfg0, const Opts &o) {
             return 3;
         }
         if (!note.empty()) fprintf(stderr, "%s: %s\n", o.in.c_str(), note.c_str());
-        if (decMaxMp > 0 && (double)hp.W * hp.H > decMaxMp * 1e6) { fprintf(stderr, "%s: %s\n", o.in.c_str(), gp_source_refusal(hp.W, hp.H, decMaxMp).c_str()); return 3; }
+        if (decMaxMp > 0 && (double)hp.W * hp.H > decMaxMp * 1e6) { fprintf(stderr, "%s: %s\n", o.in.c_str(), gp_source_refusal(hp.W, hp.H, decMaxMp, &cfg.xform, decMaxMp > encMaxMp).c_str()); return 3; }
         const size_t ys = hp.bytes(0), cs = hp.bytes(1), as = hp.abytes();   // bytes (10-bit: uint16_t samples)
         if (cudaMalloc(&dplanes, ys + 2 * cs + as) != cudaSuccess) { fprintf(stderr, "cudaMalloc failed\n"); return 1; }
         cudaMemcpy(dplanes, hp.data(0), ys, cudaMemcpyHostToDevice);
@@ -677,7 +680,8 @@ static int run_single(const GpConfig &cfg0, const Opts &o) {
             fprintf(stderr, "%s: the crop %s is outside the %dx%d image\n", o.in.c_str(), gp_crop_str(x).c_str(), fin.W, fin.H);
             return 3;
         }
-        const std::string why = gp_size_refusal(ow, oh, encMaxMp, ow != fin.W || oh != fin.H ? " after crop / resize" : "");
+        const std::string why = gp_size_refusal(ow, oh, encMaxMp, !gp_xform_runs(x, fin.W, fin.H, ow, oh) ? ""
+                                                : cfg.trim.on ? " after trim / resize" : " after crop / resize");
         if (!why.empty()) { fprintf(stderr, "%s: %s\n", o.in.c_str(), why.c_str()); return 3; }   // (before any more GPU work)
         if (cfg.tone.on()) {   // --auto-level / --level / --gamma / --negate: in place, before the resize
             std::vector<GpFrameIn> v = {fin};

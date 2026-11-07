@@ -20,7 +20,8 @@
 //
 // jpeg_gray_gen --pages OUTDIR: 4:2:0 JPEGs for imageops_jpeg_test.py, quality 90: page.jpg, 640x480 white with a
 // 320x240 picture (a coloured checker pattern) at +64+48, aligned to the 16x16 MCUs so that no ringing crosses into the
-// paper, and blank.jpg, 640x480 white.
+// paper, with a white field inside it crossed by 1-pixel red lines (chroma shared across a colour edge), and
+// blank.jpg, 640x480 white.
 //
 // One line per name on stdout: "<name> <W> <H>".
 //
@@ -238,6 +239,10 @@ static int pages_main(const std::string &dir) {
         for (int x = 64; x < 384; x++) {
             static const uint8_t colours[4][3] = {{200, 30, 30}, {30, 160, 60}, {40, 60, 200}, {90, 90, 90}};
             memcpy(&page[((size_t)y * w + x) * 3], colours[((x - 64) / 16 + 2 * ((y - 48) / 16)) & 3], 3);
+            if (x >= 128 && x < 256 && y >= 112 && y < 224) {
+                static const uint8_t white[3] = {255, 255, 255}, red[3] = {230, 20, 20};
+                memcpy(&page[((size_t)y * w + x) * 3], x % 4 == 1 ? red : white, 3);
+            }
         }
     if (!write_file(dir + "/page.jpg", compress(page, w, h, 0, false, 3, hv)) ||
         !write_file(dir + "/blank.jpg", compress(blank, w, h, 0, false, 3, hv)))

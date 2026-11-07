@@ -111,10 +111,13 @@ constexpr int GP_MAX_SIDE = 65536;
 constexpr int GP_MAX_RESIZED_H = 65472;
 // Why a picture of w x h is not encoded ("": it is): a side above GP_MAX_SIDE, a crop / resize taller than
 // GP_MAX_RESIZED_H, or more than maxMp megapixels (0: no limit).  after: what the size comes from, as " after crop /
-// resize"; empty when it is the source's (no crop or resize runs)
+// resize", when gp_frames_transform will run (gp_xform_runs); empty when the picture is the source as decoded
 std::string gp_size_refusal(int w, int h, double maxMp, const char *after = "");
-// The message for a source of w x h above the largest source decoded, maxMp (w = 0: size not known)
-std::string gp_source_refusal(int w, int h, double maxMp);
+// Whether gp_frames_transform changes a W x H frame with x, whose output is ow x oh
+bool gp_xform_runs(const GpXform &x, int W, int H, int ow, int oh);
+// The message for a source of w x h above the largest source decoded, decMp (w = 0: size not known).  x (may be NULL):
+// its crop / resize, for the value to suggest; inputLimit: decMp is --max-input-mp, above the --max-mp limit
+std::string gp_source_refusal(int w, int h, double decMp, const GpXform *x, bool inputLimit);
 // The ingest's pinned staging arena for sources up to decMp megapixels: JPEGs the CPU route decodes (sides above 6000
 // px) stage their coefficients there, up to 6 bytes per pixel (4:4:4); 256 MiB for the default 35.6 MP
 inline int64_t gp_ingest_pinned_bytes(double decMp) {
@@ -141,6 +144,8 @@ struct GpFrameIn {
     int spitch[3] = {0, 0, 0};
     int aw = 0, ah = 0;
     std::vector<uint8_t> sbQ;  // optional per-SB qindex target map (raster, sbRows x sbCols); legalized here
+    int jpegChroma = 0;        // 1: 4:2:0 chroma as a 4:2:0 JPEG coded it, which its decoders upsample (and so --trim,
+                               // the tone operators and --grayscale do); 0 after a crop / resize
     int colorMatrix = -1;      // CICP matrix_coefficients of the planes (0 identity / GBR, 6 BT.601, 16 YCgCo-Re; written
                                // with BT.709 primaries and sRGB transfer, full range); -1: av1core's default (1/13/6);
                                // -2: unspecified 2/2/2 (no colour description in the sequence header: AVIF alpha frames)

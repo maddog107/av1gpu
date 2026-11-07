@@ -1152,7 +1152,10 @@ measurement). It calls `av1gpu --batch` with `--crop` / `--max-size` per line, `
 ### Trim, resize, tone and gray (contributed by pickae)
 
 `--trim` / `--fuzz` with `--trim-margin`, `--trim-limits`, `--trim-lightness` and `--skip-blank`; `--resize` with
-ImageMagick's full geometry; `--auto-level`, `--level`, `--gamma`, `--negate`; `--grayscale` / `--colorspace Gray`.
+ImageMagick's geometry; `--auto-level`, `--level`, `--gamma`, `--negate`; `--grayscale` / `--colorspace Gray`. These
+are pickae's measurements of their version of the options; the review for v0.11.0 corrected that version in several
+places and measured it again on an L4 ([below](#trim-resize-tone-and-gray-checked-on-an-l4)). Where the two disagree,
+the L4 section is the current one.
 The trim is the comic converter's page sorting from the run above, moved onto the card: until now an ImageMagick
 decode per page on the CPU found the margin, and av1gpu was handed the crop. Measured on the same machine
 (2026-11-06, av1gpu `main` 4721191 for the reference; ImageMagick 7.1.2-18 Q16; a media server transcoding on the
@@ -1162,9 +1165,9 @@ desktop meanwhile). Scripts and raw results: `bench/results/rtx5090-trim-imageop
   (default, 4:4:4 10-bit, `turbo3 --max-height 2960`, `--crop`), 60 photos (default, `fast`, the CPU JPEG route),
   PNG / WebP (default, 4:4:4 10-bit, `--lossless`, `--ycgco-re`, `--max-size`) and 16 single-image runs. No
   existing `.cu` file changed; the new kernels are in `encoder/src/k_imageops.cu`.
-- **`--trim` is ImageMagick's `-trim`:** on 1,621 JPEG pages of six digital comic albums and 120 phone photos, the
-  trimmed size equalled `magick IMG -fuzz F -format %@` for every image at `--fuzz` 10 %, 3 % and 0 % (4:4:4, so
-  4:2:0 chroma does not widen boxes). Two details of ImageMagick's GetImageBoundingBox matter on real pages and are
+- **`--trim` is ImageMagick's `-trim`:** on 1,621 JPEG pages of six digital comic albums at `--fuzz` 10 %, 3 % and
+  0 %, and on 120 phone photos at 10 % and 0 %, the trimmed size equalled `magick IMG -fuzz F -format %@` for every
+  image (at 4:4:4; at 4:2:0 this version read the nearest chroma sample, and boxes could differ). Two details of ImageMagick's GetImageBoundingBox matter on real pages and are
   reproduced: the pixels are compared as the decoder's whole RGB samples (comparing the unrounded RGB of the YCbCr
   planes moved a dark page's box by 56 pixels), and a pixel left of the right edge that differs from the
   bottom-right corner extends the bottom too (a page whose bottom-left corner is light gray moved by 218 rows
@@ -1172,8 +1175,10 @@ desktop meanwhile). Scripts and raw results: `bench/results/rtx5090-trim-imageop
   differences exceeds 6 × fuzz² (grey 37 steps from white differs at 10 %, 36 does not).
 - **The conditions decide as the converter's CPU road:** `--trim --fuzz 10% --trim-margin 1% --trim-limits 1%,20%
   --trim-lightness 80 --skip-blank 99` against that road (ImageMagick's box and corners, then its rules) on the
-  1,621 pages: the same decision (1,461 trimmed, 160 whole) and the same kept size on every page.
-- **`--resize`:** the output size equalled ImageMagick's for all 17 geometries tried (`100x`, `x100`, `100x100`,
+  1,621 pages: the same decision (1,461 trimmed, 160 whole) and the same kept size on every page. (pickae's figures:
+  the converter and this comparison's raw output are not in the repository.)
+- **`--resize`:** the output size equalled ImageMagick's for all 17 geometries tried (against a model of
+  ImageMagick's rules; forms outside these 17 differed, and were fixed for v0.11.0) (`100x`, `x100`, `100x100`,
   `!`, `^`, `<`, `>`, `50%`, `50%x25%`, `150%`, `@5000`, `@100000`, `100x50%`, `100x100>!` …). Enlarging uses
   Mitchell (B = C = 1/3, support 2), ImageMagick's default for enlarging; against `magick -resize`, 8-bit 4:4:4:
 
@@ -1186,11 +1191,12 @@ desktop meanwhile). Scripts and raw results: `bench/results/rtx5090-trim-imageop
   YCbCr.)
 - **Tone and gray**, against ImageMagick's output for the same operation (a 211 × 149 PNG and a 1050 × 1500 page;
   mean abs. difference of the luma in 8-bit steps, largest in brackets): `-level 10%,90%` 0.20 (1), page 0.18 (2);
-  `-level 20%,80%,0.5` 0.01 (1); `-gamma 0.7` 0.30 (1); `-negate` 0 (0); `-auto-level` on the page 0.00 (1);
-  `-colorspace Gray` 0.50 (2), page 0.22 (2); the other `-grayscale` methods 0.28–0.50 (1–2). Steep curves
-  magnify the rounding of the 8-bit planes: `-gamma 2` 1.83 (5), `-auto-level` on the small PNG 2.2 (5). From a
-  16-bit PNG at `--depth 10`: within one 10-bit step for `--level` and `--gamma 0.6`, 1.9 steps (4) for
-  `--gamma 2`.
+  `-level 20%,80%,0.5` 0.01 (1); `-gamma 0.7` 0.30 (1); `-negate` 0 (0); `-colorspace Gray` 0.50 (2), page 0.22
+  (2); the other `-grayscale` methods 0.28–0.50 (1–2). Steep curves magnify the rounding of the 8-bit planes:
+  `-gamma 2` 1.83 (5), page 0.43 (10); `-auto-level` on the small PNG 2.2 (5). (`-auto-level` on the page changes
+  nothing: the page already spans the whole range.) From a 16-bit PNG at `--depth 10`: within one 10-bit step for
+  `--level` and `--gamma 0.6`, 1.9 steps (4) for `--gamma 2` and 1.8 (4) for `-auto-level`. All at 4:4:4. A rerun of
+  the same script on an L4 gave other figures for some rows (below).
 - **Decoder gate** (libdav1d and libaom through ffmpeg; the machine has no dav1d / aomdec binaries), all N/N at
   qindex 60 and 120: 6 small pages, PNG, RGBA (alpha items too) and WebP with `--trim --fuzz 10% --trim-margin
   1%`; 4:4:4 10-bit with trim, level, negate and an enlargement; `--auto-level --grayscale Lightness --resize
@@ -1200,7 +1206,8 @@ desktop meanwhile). Scripts and raw results: `bench/results/rtx5090-trim-imageop
 - **Speed** (287 pages of 6.4 MP, 4:4:4 10-bit, `--tiles 2,2,2`, median of 3, interleaved): 7.42 s without
   options; `--level 5%,95%,1.1` +4 %, `--auto-level` +2 % (it waits for its measurement); `--grayscale` 3.0 s, as
   one plane is coded instead of three; `--trim` as the converter asks it 7.27 s, less than without, as fewer
-  pixels are coded. On 120 photos `--trim --fuzz 10%` (it trimmed 25) ran within 1 % of the plain run. The
+  pixels are coded. On 120 photos `--trim --fuzz 10%` (it trimmed 25) ran within 1 % of the plain run's MP/s. These
+  were runs of the PR's own binary with and without the options; the comparison with `main` is in the L4 section. The
   measurement is two reads of the planes and a wait for the encoder's stream before the crop.
 - **The converter with the trim on the card**, 6 albums (1,621 pages, 4:4:4 10-bit `turbo`, shrunk to 2,960
   rows), warm cache, two runs each: 54.4 and 53.9 s with the trim measured on the CPU, 48.3 and 46.0 s with

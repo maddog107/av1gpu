@@ -253,7 +253,7 @@ typedef struct av1g_txb {
 
 typedef struct av1g_frame_params {
     uint32_t version;        /* AV1G_DECISIONS_VERSION (1 is accepted too) */
-    uint32_t width, height;  /* output picture size, 1..65535 */
+    uint32_t width, height;  /* output picture size, 1..65536 */
     uint8_t  monochrome;     /* 1: Y only (grayscale JPEG); chroma_format must be 0 */
     uint8_t  base_q_idx;     /* 1..255; 0 = lossless (v4, see "Lossless") */
     uint8_t  tx_mode_select; /* 0: TX_MODE_LARGEST (lossless: ONLY_4X4), 1: TX_MODE_SELECT */

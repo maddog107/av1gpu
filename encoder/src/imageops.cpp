@@ -187,8 +187,9 @@ int gp_trim_decide(const GpTrim &t, int w, int h, const GpTrimBox &b, int *kx, i
     const int left = b.left == INT_MAX ? w : b.left, top = b.top == INT_MAX ? h : b.top;
     const int right = std::max(b.right, 0), bottom = std::max(b.bottom, 0);
     int bw = right - left + 1, bh = bottom - top + 1;
-    // edges that cross: pixels differ from the corners, but no box holds them, as on an empty page of two colours
-    const bool crossed = b.left != INT_MAX && (bw <= 0 || bh <= 0);
+    // edges that meet: pixels differ from the corners, but no box holds them, as on an empty page split into two flat
+    // colours (a blank page with a gradient across it crosses further, and stays blank)
+    const bool crossed = b.left != INT_MAX && ((bw == 0 && bh > 0) || (bh == 0 && bw > 0));
     if ((b.right < 0 && b.bottom < 0 && b.left == INT_MAX) || bw <= 0 || bh <= 0) bw = bh = 0;
     const int cutW = w - bw, cutH = h - bh;
     auto share = [](int side, double pct) { return (int)std::floor(side * pct / 100.0 + 1e-9); };

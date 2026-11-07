@@ -21,13 +21,18 @@ import tempfile
 
 
 def ispe(path):
+    """(width, height) of the first ispe box of an AVIF; None without the file"""
+    if not os.path.exists(path):
+        return None
     d = open(path, "rb").read()
     i = d.find(b"ispe")
     return struct.unpack(">II", d[i + 8:i + 16]) if i >= 0 else None
 
 
 def irot(path):
-    """the irot property's angle (in steps of 90 degrees), None without one"""
+    """the irot property's angle (in steps of 90 degrees), None without one (or without the file)"""
+    if not os.path.exists(path):
+        return None
     d = open(path, "rb").read()
     i = d.find(b"irot")
     return d[i + 4] & 3 if i >= 0 else None

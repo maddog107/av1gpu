@@ -186,14 +186,23 @@ def main():
         got, _ = size_of(img, "--trim", "--max-size", "75x")
         check("--trim then --max-size", got == (75, math.floor(bh * 75 / bw + 0.5)), f"{got}")
         # ---- which corner each edge is measured against ----
-        brc = os.path.join(t, "br.png")   # the bottom row is the bottom-left's colour, but for the bottom-right corner
-        write_png(brc, 40, 40, lambda x, y: (0, 0, 0) if (x, y) == (39, 39) else (255, 255, 255) if y < 39 or x < 39 else (0, 0, 0))
-        got, _ = size_of(brc, "--trim", "--yuv", "444")
+        # ImageMagick's fourth rule: a band near the bottom within --fuzz of the bottom-left corner (paper, 230) but not of
+        # the bottom-right one (255) extends the bottom, left of the right edge.  Grays 25 apart are within 10 %, 50 not
+        def br_px(x, y):
+            if (x, y) == (79, 59):
+                return (255, 255, 255)
+            if 20 <= x < 50 and 10 <= y < 30:
+                return (0, 0, 0)
+            if y >= 55 and 1 <= x < 49:
+                return (205, 205, 205)
+            return (230, 230, 230)
+        brc = os.path.join(t, "br.png")
+        write_png(brc, 80, 60, br_px)
+        got, _ = size_of(brc, "--trim", "--fuzz", "10%", "--yuv", "444")
+        check("bottom-right corner rule", got == (30, 50), f"{got} (want (30, 50); without the rule (30, 20))")
         if magick:
-            want = im_box(brc, "0%")
+            want = im_box(brc, "10%")
             check("bottom-right corner rule: ImageMagick's size", want is not None and got == want[:2], f"{got} (ImageMagick {want})")
-        else:
-            check("bottom-right corner rule", got == (39, 40), f"{got}")
         # ---- transparency ----
         rgba = os.path.join(t, "rgba.png")
         write_png(rgba, 64, 48, lambda x, y: (200, 10, 10, 255) if 9 <= x < 41 and 5 <= y < 30 else (0, 0, 0, 0), alpha=True)

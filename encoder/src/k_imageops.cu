@@ -22,7 +22,7 @@ __device__ int chroma_up(const T *p, int pitch, int w, int h, int x, int y) {
 }
 
 // The pixel at (x, y) of f (luma coordinates) as normalised RGB, alpha 1 without an alpha plane.  4:2:0 chroma:
-// upsampled, or with nearest the sample covering the pixel.  clip: YCbCr can leave RGB's range where chroma is shared at a
+// upsampled with f.up, else (or with nearest) the sample covering the pixel.  clip: YCbCr can leave RGB's range where chroma is shared at a
 // colour edge; false keeps that, so that a linear operation stays exact.
 template <typename T>
 __device__ Rgba trim_px(const GpTrimFrame &f, int x, int y, bool clip = true, bool nearest = false) {
@@ -36,8 +36,9 @@ __device__ Rgba trim_px(const GpTrimFrame &f, int x, int y, bool clip = true, bo
     }
     const int s = f.yuv444 ? 0 : 1;
     const T *P1 = (const T *)f.p[1], *P2 = (const T *)f.p[2];
-    const float U = s && !nearest ? (float)chroma_up(P1, f.pitch[1], f.cw, f.ch, x, y) : (float)P1[(size_t)(y >> s) * f.pitch[1] + (x >> s)];
-    const float V = s && !nearest ? (float)chroma_up(P2, f.pitch[2], f.cw, f.ch, x, y) : (float)P2[(size_t)(y >> s) * f.pitch[2] + (x >> s)];
+    const bool up = s && f.up && !nearest;
+    const float U = up ? (float)chroma_up(P1, f.pitch[1], f.cw, f.ch, x, y) : (float)P1[(size_t)(y >> s) * f.pitch[1] + (x >> s)];
+    const float V = up ? (float)chroma_up(P2, f.pitch[2], f.cw, f.ch, x, y) : (float)P2[(size_t)(y >> s) * f.pitch[2] + (x >> s)];
     if (f.matrix == 1) {   // identity: Y = G, U = B, V = R
         o.g = Y / f.scale; o.b = U / f.scale; o.r = V / f.scale;
         return o;
@@ -207,7 +208,7 @@ __device__ void tone_store(const GpTrimFrame &f, int x, int y, const Rgba &p, fl
 }
 // in place over the padded aw x ah planes: one thread per pixel (4:4:4, monochrome) or per 2x2 block (4:2:0: its four
 // pixels share one chroma sample).  f.p[1], f.p[2] are what to read: at 4:2:0 a copy, as a block reads its neighbours'
-// samples while they are written; du, dv what to write.  At 4:2:0 each luma comes from the pixel's upsampled RGB, as a
+// samples while they are written; du, dv what to write.  With f.up each luma comes from the pixel's upsampled RGB, as a
 // decoder sees it; the block's chroma gets the mean of its pixels' new chroma from the block's own sample, so that an
 // operation that leaves a colour alone leaves its sample alone
 template <typename T>
@@ -219,14 +220,15 @@ __global__ void k_tone(GpTrimFrame f, int aw, int ah, GpToneMap m, T *du, T *dv)
     for (int k = 0; k < (1 << (2 * s)); k++) {
         const int x = (cx << s) + (k & 1), y = (cy << s) + (k >> 1);
         Rgba p = trim_px<T>(f, x, y, false, true);
+        const bool up = s && f.up;
         Rgba u = p;
-        if (s) u = trim_px<T>(f, x, y, false);   // (before Y is written)
+        if (up) u = trim_px<T>(f, x, y, false);   // (before Y is written)
         p.r = tone_v(p.r, m); p.g = tone_v(p.g, m); p.b = tone_v(p.b, m);
         float b1 = 0.f, r1 = 0.f;
         tone_store<T>(f, x, y, p, &b1, &r1);
         cb += b1;
         cr += r1;
-        if (s) {
+        if (up) {
             u.r = tone_v(u.r, m); u.g = tone_v(u.g, m); u.b = tone_v(u.b, m);
             tone_store<T>(f, x, y, u, &b1, &r1);
         }

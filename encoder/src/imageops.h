@@ -49,6 +49,8 @@ struct GpTrimFrame {
     int pitch[3];
     int mono, yuv444, in10;
     int cw, ch;                 // 4:2:0: size of the chroma planes without their padding
+    int up;                     // 4:2:0: read chroma upsampled as libjpeg-turbo does (a 4:2:0 JPEG's own chroma), else
+                                //   the sample covering the pixel (PNG / WebP planes: av1gpu's 2x2 mean)
     int matrix;                 // 0: BT.601 full-range YCbCr (lossy planes), 1: identity / GBR, 2: YCgCo-Re (lossless)
     float scale;                // RGB = samples / scale (255 or 1023; YCgCo-Re: 255)
     int x0, y0, w, h;           // window

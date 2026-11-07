@@ -37,7 +37,7 @@ struct GpParams {
     int txSearch;        // 1: tx-type search (luma); 0: DCT_DCT only
     int txSearchCL;      // tx-type search again in the closed loop (real residual)
     int deltas;          // 0: no angle deltas, 1: +-1..3 around the best 2 directional modes
-    int uvDeltas;        // reserved
+    int uvDeltas;        // 1: chroma angle deltas in the closed loop (blocks of 8x8 and up)
     int cfl;             // 1: try CfL
     int uvK;             // chroma modes fully evaluated after SATD screening (>= 1)
     int shapeMask;       // bit per bsize (AV1G_BLOCK_*): shapes the analysis evaluates

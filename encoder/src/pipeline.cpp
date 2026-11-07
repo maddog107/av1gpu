@@ -1033,11 +1033,33 @@ std::string gp_size_refusal(int w, int h, double maxMp, const char *after) {
     return b;
 }
 
-std::string gp_source_refusal(int w, int h, double maxMp) {
-    char b[200];
-    const int need = (int)std::ceil((double)w * h / 1e6);
-    if (w > 0 && h > 0 && need <= 1000) snprintf(b, sizeof b, "larger than %.1f megapixels; add --max-mp %d to encode it anyway", maxMp, need);
-    else snprintf(b, sizeof b, "larger than %.1f megapixels; --max-mp raises the limit", maxMp);
+bool gp_xform_runs(const GpXform &x, int W, int H, int ow, int oh) {
+    int cx, cy, cw, ch;
+    if (!x.active() || !rz_crop(x, W, H, &cx, &cy, &cw, &ch)) return false;
+    return !(cx == 0 && cy == 0 && cw == W && ch == H && ow == W && oh == H);   // (gp_frames_transform's identity)
+}
+
+std::string gp_source_refusal(int w, int h, double decMp, const GpXform *x, bool inputLimit) {
+    char b[240];
+    if (w <= 0 || h <= 0) {
+        snprintf(b, sizeof b, "larger than %.1f megapixels; %s raises the limit", decMp, inputLimit ? "--max-input-mp" : "--max-mp");
+        return b;
+    }
+    // what --max-mp must allow: the source, and what its crop / resize makes of it (either way up: EXIF may turn it)
+    double mp = (double)w * h / 1e6;
+    if (x && x->active() && !inputLimit) {
+        GpXform t = *x;
+        for (int k = 0; k < 2; k++, t.turn()) {
+            int ow, oh;
+            if (gp_xform_size(t, w, h, &ow, &oh)) mp = std::max(mp, (double)ow * oh / 1e6);
+        }
+    }
+    const int need = (int)std::ceil(mp);
+    const char *opt = inputLimit ? "--max-input-mp" : "--max-mp";
+    if (need <= 1000)
+        snprintf(b, sizeof b, "larger than %.1f megapixels; add %s %d to %s", decMp, opt, need, inputLimit ? "decode it" : "encode it anyway");
+    else
+        snprintf(b, sizeof b, "larger than %.1f megapixels, and above the 1000 that %s allows", decMp, opt);
     return b;
 }
 
@@ -1316,6 +1338,7 @@ int gp_frames_transform(std::vector<GpFrameIn> &frames, const std::vector<GpXfor
             f.bitDepth = outDepth == 10 || f.bitDepth == 10 ? 10 : 8;
             f.W = newW[q.fi];
             f.H = newH[q.fi];
+            f.jpegChroma = 0;
             f.aw = (f.W + 63) & ~63;
             f.ah = (f.H + 63) & ~63;
         }
@@ -1337,6 +1360,7 @@ GpTrimFrame rgb_view(const GpFrameIn &f, int x0 = 0, int y0 = 0, int w = 0, int 
     g.in10 = f.bitDepth == 10;
     g.cw = (f.W + 1) >> 1;
     g.ch = (f.H + 1) >> 1;
+    g.up = f.jpegChroma && !f.mono && !f.yuv444 && g.cw > 2;   // (libjpeg-turbo upsamples chroma only wider than 2)
     g.matrix = f.colorMatrix == 0 ? 1 : f.colorMatrix == 16 ? 2 : 0;
     g.scale = g.matrix == 2 ? 255.f : g.in10 ? 1023.f : 255.f;
     g.x0 = x0; g.y0 = y0; g.w = w; g.h = h;

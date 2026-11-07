@@ -1483,7 +1483,7 @@ void Encoder::run(av1g_output *out) {
     if (fp->chroma_format > AV1G_CHROMA_444 || (fp->chroma_format && (fp->monochrome || fp->version < 2)))
         throw Error(AV1G_ERR_INVALID, "chroma_format %d: must be 0 (4:2:0) or 1 (4:4:4), 0 for monochrome / version 1 records",
                     fp->chroma_format);
-    if (fp->width < 1 || fp->height < 1 || fp->width > 65535 || fp->height > 65535)
+    if (fp->width < 1 || fp->height < 1 || fp->width > 65536 || fp->height > 65536)   // (16 bits: frame_width_minus_1)
         throw Error(AV1G_ERR_INVALID, "bad size %ux%u", fp->width, fp->height);
     if (fp->base_q_idx == 0) {   // lossless (v4): CodedLossless, so nothing of the lossy-only syntax may be set
         if (fp->delta_q_y_dc || fp->delta_q_u_dc || fp->delta_q_u_ac || fp->delta_q_v_dc || fp->delta_q_v_ac)

@@ -321,6 +321,7 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
     // the largest picture encoded (--max-mp) and source decoded (--max-input-mp: sources that a crop / max-size brings
     // under --max-mp)
     const double encMaxMp = gp_enc_max_mp(cfg, 35.6), decMaxMp = gp_dec_max_mp(cfg, 35.6);
+    const bool inputLimit = decMaxMp > encMaxMp;   // (--max-input-mp refuses sources, not --max-mp)
     if (paths.empty()) { fprintf(stderr, "no input files in %s\n", list.c_str()); return 2; }
     const bool write = !outdir.empty();
     if (write && !make_dirs(outdir)) { fprintf(stderr, "cannot create %s: %s\n", outdir.c_str(), strerror(errno)); return 2; }
@@ -365,7 +366,7 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
         if (x.active() && !gp_xform_size(x, W, H, ow, oh))
             return "the crop " + gp_crop_str(x) + " is outside the " + std::to_string(W) + "x" + std::to_string(H) + " image";
         if (cfg.trim.on) return "";   // (the size that counts is known after the trim: the encoder threads check it)
-        return gp_size_refusal(*ow, *oh, encMaxMp, *ow != W || *oh != H ? " after crop / resize" : "");
+        return gp_size_refusal(*ow, *oh, encMaxMp, gp_xform_runs(x, W, H, *ow, *oh) ? " after crop / resize" : "");
     };
     char eb[256] = {0};
     const double t0 = now_ms(), c0 = cpu_ms();
@@ -585,7 +586,8 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
             const GpFileKind kind = gp_sniff(p);
             if (kind != GP_FILE_WEBP && kind != GP_FILE_PNG) {
                 fprintf(stderr, "[av1gpu] skipped %s: %s\n", p.c_str(),
-                        fe.reason == INGEST_FB_GIANT ? gp_source_refusal(fe.width, fe.height, decMaxMp).c_str() : gp_fallback_reason(fe.reason));
+                        fe.reason == INGEST_FB_GIANT ? gp_source_refusal(fe.width, fe.height, decMaxMp, &xforms[fe.index], inputLimit).c_str()
+                                                     : gp_fallback_reason(fe.reason));
                 cpuFallbackA++;
                 return;
             }
@@ -598,7 +600,7 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
             if (dec && !note.empty()) fprintf(stderr, "[av1gpu] %s: %s\n", p.c_str(), note.c_str());
             GpXform fx;
             int ow, oh;
-            if (dec && (double)hp.W * hp.H > decMaxMp * 1e6) e2 = gp_source_refusal(hp.W, hp.H, decMaxMp);
+            if (dec && (double)hp.W * hp.H > decMaxMp * 1e6) e2 = gp_source_refusal(hp.W, hp.H, decMaxMp, &xforms[fe.index], inputLimit);
             else if (dec) e2 = prepare(fe.index, hp.W, hp.H, 1, fx, &ow, &oh);
             if (!dec || !e2.empty()) {
                 fprintf(stderr, "[av1gpu] skipped %s: %s\n", p.c_str(), e2.c_str());
@@ -770,6 +772,7 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
                         xfin.push_back(x);
                         GpFrameIn f;
                         f.W = im.width; f.H = im.height; f.mono = im.mono; f.aw = im.aw; f.ah = im.ah; f.yuv444 = im.chroma_full;
+                        f.jpegChroma = !im.mono && !im.chroma_full && im.src_sub == INGEST_SUB_420;
                         f.dsrc[0] = b.pool + im.y_off; f.spitch[0] = im.y_pitch;
                         if (!im.mono) { f.dsrc[1] = b.pool + im.cb_off; f.dsrc[2] = b.pool + im.cr_off; f.spitch[1] = f.spitch[2] = im.c_pitch; }
                         fin.push_back(f);
@@ -823,7 +826,7 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
                     }
                     int ow = fin[i].W, oh = fin[i].H;
                     gp_xform_size(xfin[i], fin[i].W, fin[i].H, &ow, &oh);
-                    const std::string why = gp_size_refusal(ow, oh, encMaxMp, ow != fin[i].W || oh != fin[i].H ? " after trim / resize" : "");
+                    const std::string why = gp_size_refusal(ow, oh, encMaxMp, gp_xform_runs(xfin[i], fin[i].W, fin[i].H, ow, oh) ? " after trim / resize" : "");
                     if (!why.empty()) {
                         fprintf(stderr, "[av1gpu] skipped %s: %s\n", srcs[i].c_str(), why.c_str());
                         cpuFallbackA++;
