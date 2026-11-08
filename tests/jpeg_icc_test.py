@@ -101,7 +101,7 @@ def main():
                                env=dict(os.environ, **env))
             if r.returncode:
                 fails.append(f"{label}: exit {r.returncode}: {r.stderr.strip()[-300:]}")
-            runs.append((label, {n: os.path.join(out, n + ".avif") for n in names}))
+            runs.append((label, {n: os.path.join(out, n + ".jpg.avif") for n in names}))   # batch keeps the extension
         single = os.path.join(t, "out_single")
         os.makedirs(single)
         for n in names:
