@@ -11,7 +11,10 @@ About 100 s on an L4.
 
 - Output: av1gpu's output is deterministic (the same bytes from the CUDA 12 and 13 builds and across GPUs), so a
   matching hash means the same file as the golden run.  A hash that differs is reported; tests/decoder_gate.py then
-  checks the new files in dav1d and aomdec.
+  checks the new files in dav1d and aomdec.  A binary built elsewhere (another host compiler or CUDA flags) can
+  differ on a few files: a native build on AlmaLinux with an RTX PRO 2000 differed on 2 of 311 (--level/--gamma and
+  --negate on the generated RGB PNG), and main built the same way differed identically.  For such a build, build
+  main the same way and compare the two with --work (the outputs are under WORK/out).
 - Speed: the 100 photos three times over in one batch run, best of 5.  With --ref (say, the last release's binary) its
   runs alternate with the reference's on the same machine; otherwise it is compared with the golden figure for the same
   GPU.  More than 5 % slower is reported as SLOWER (a warning: the exit status is for the outputs only).
@@ -107,7 +110,7 @@ def main():
     ap.add_argument("--ref", help="a reference binary (e.g. the last release) to time alternately with this one")
     ap.add_argument("--work", default=None)
     a = ap.parse_args()
-    photos = sorted(glob.glob(os.path.join(a.images, "*.jpg")))
+    photos = sorted(glob.glob(os.path.join(os.path.abspath(a.images), "*.jpg")))   # absolute: the speed set links to them
     if len(photos) != 100:
         sys.exit(f"expected the 100 photos in {a.images} (bench/fetch_images.py --manifest bench/openimages_v4_gamut.csv --out {a.images}), found {len(photos)}")
     work = a.work or tempfile.mkdtemp(prefix="av1gpu-sanity-")

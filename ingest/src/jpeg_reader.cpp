@@ -199,23 +199,20 @@ int CoefReader::header(const uint8_t *data, size_t size, double max_mp, bool wan
 
   // markers: EXIF orientation, ICC (APP2 "ICC_PROFILE\0" seq cnt data)
   if (want_markers) {
-    std::vector<std::pair<int, const jpeg_marker_struct *>> icc_parts;
     for (jpeg_saved_marker_ptr m = cinfo_.marker_list; m; m = m->next) {
       if (m->marker == JPEG_APP0 + 1 && m->data_length > 6 && !std::memcmp(m->data, "Exif\0\0", 6) &&
           info.exif.empty()) {
         info.exif.assign(m->data + 6, m->data + m->data_length);
         info.orientation = parse_exif_orientation(info.exif.data(), info.exif.size());
-      } else if (m->marker == JPEG_APP0 + 2 && m->data_length > 14 &&
-                 !std::memcmp(m->data, "ICC_PROFILE\0", 12)) {
-        icc_parts.emplace_back(m->data[12], m);
       }
     }
-    if (!icc_parts.empty()) {
-      std::stable_sort(icc_parts.begin(), icc_parts.end(),
-                       [](auto &a, auto &b) { return a.first < b.first; });
-      for (auto &p : icc_parts) info.icc.insert(info.icc.end(), p.second->data + 14,
-                                                p.second->data + p.second->data_length);
-    }
+    // The ICC segments as libjpeg-turbo assembles them, like the CPU route (av1core/src/jpeg_in.cpp), djpeg and avifenc:
+    // every segment must give the same count N and the numbers 1..N must each appear once, in any order.  Otherwise
+    // (a segment repeated or missing) there is no profile, rather than a doubled or truncated one (#67).
+    JOCTET *icc = nullptr;
+    unsigned int icc_len = 0;
+    if (jpeg_read_icc_profile(&cinfo_, &icc, &icc_len) && icc) info.icc.assign(icc, icc + icc_len);
+    free(icc);
   }
   grab_qt(info);
 
