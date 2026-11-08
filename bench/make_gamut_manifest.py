@@ -23,6 +23,8 @@ import urllib.request
 
 from PIL import Image, JpegImagePlugin
 
+from fetch_images import content_sha256   # the hash without APP13 (Flickr stamps every download)
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 META = "https://storage.googleapis.com/openimages/2018_04/validation/validation-images-with-rotation.csv"
 S3 = "https://open-images-dataset.s3.amazonaws.com/validation/{}.jpg"
@@ -66,7 +68,7 @@ def candidate(row, kind):
     if cls not in ALLOWED[kind]:
         return None
     return dict(image_id=row["ImageID"], file=f"{row['ImageID']}_{cls}.jpg", size_class=cls, url=url,
-                sha256=hashlib.sha256(data).hexdigest(), bytes=len(data), **p, author=row["Author"],
+                sha256=hashlib.sha256(data).hexdigest(), content_sha256=content_sha256(data), bytes=len(data), **p, author=row["Author"],
                 title=row["Title"], landing_url=row["OriginalLandingURL"], license=row["License"])
 
 
@@ -94,7 +96,7 @@ def main():
         if f and len(keep[f["size_class"]]) < a.per_class:
             keep[f["size_class"]].append(f)
     out = [f for c, _, _ in CLASSES for f in keep[c]]
-    cols = ["file", "image_id", "size_class", "url", "sha256", "width", "height", "bytes", "subsampling", "icc",
+    cols = ["file", "image_id", "size_class", "url", "sha256", "content_sha256", "width", "height", "bytes", "subsampling", "icc",
             "progressive", "orientation", "author", "title", "landing_url", "license"]
     with open(a.out, "w", newline="") as fh:
         w = csv.DictWriter(fh, cols, extrasaction="ignore")

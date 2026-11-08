@@ -6,7 +6,7 @@ and one speed figure.  Meant for a release or a PR that shouldn't change output:
 
 Inputs: the 100 photos of bench/openimages_v4_gamut.csv, 0.2 to 24 MP, 4:2:0 / 4:2:2 / 4:4:4, with ICC profiles and
 EXIF rotations (bench/fetch_images.py --manifest bench/openimages_v4_gamut.csv --out bench/images_gamut fetches them and checks
-their SHA-256), tests/gate_images, and a few PNGs this script writes itself (RGB, RGBA, 16-bit, a page with a border).
+their SHA-256, ignoring the APP13 block Flickr stamps on each download), tests/gate_images, and a few PNGs this script writes itself (RGB, RGBA, 16-bit, a page with a border).
 About 100 s on an L4.
 
 - Output: av1gpu's output is deterministic (the same bytes from the CUDA 12 and 13 builds and across GPUs), so a
