@@ -8,6 +8,11 @@ title and source page per image are in the CSV), served by the dataset's public 
 https://open-images-dataset.s3.amazonaws.com/validation/<image_id>.jpg.  A manifest may also give
 `file` (local name) and `url` columns, as bench/openimages_v4_gamut.csv does.  Files already present
 with the right hash are skipped.
+
+Flickr writes a Photoshop / IPTC APP13 segment with a per-download link (https://flickr.com/e/...) into the
+files it serves, so a photo's bytes can change from one download to the next while its picture and the metadata
+av1gpu reads (EXIF, ICC) stay the same.  A manifest's `content_sha256` column is the hash without APP13
+segments: a file that matches it is accepted too.
 """
 import argparse
 import concurrent.futures as cf
@@ -21,24 +26,37 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 URL = "https://open-images-dataset.s3.amazonaws.com/validation/{}.jpg"
 
 
-def sha256(path):
-    h = hashlib.sha256()
-    with open(path, "rb") as f:
-        for chunk in iter(lambda: f.read(1 << 20), b""):
-            h.update(chunk)
+def content_sha256(data):
+    """SHA-256 of a JPEG without its APP13 segments (the whole file if it isn't a JPEG)."""
+    if data[:2] != b"\xff\xd8":
+        return hashlib.sha256(data).hexdigest()
+    h, i = hashlib.sha256(data[:2]), 2
+    while i + 4 <= len(data) and data[i] == 0xFF and 0xC0 <= data[i + 1] <= 0xFE and data[i + 1] not in (0xD8, 0xD9, 0xDA):
+        end = i + 2 + int.from_bytes(data[i + 2:i + 4], "big")
+        if data[i + 1] != 0xED:
+            h.update(data[i:end])
+        i = end
+    h.update(data[i:])   # from the first scan (or anything unexpected) on, as is
     return h.hexdigest()
+
+
+def matches(data, row):
+    return hashlib.sha256(data).hexdigest() == row["sha256"] or \
+        bool(row.get("content_sha256")) and content_sha256(data) == row["content_sha256"]
 
 
 def fetch(row, out):
     path = os.path.join(out, row.get("file") or row["image_id"] + ".jpg")
-    if os.path.exists(path) and sha256(path) == row["sha256"]:
+    if os.path.exists(path) and matches(open(path, "rb").read(), row):
         return path, "cached"
     tmp = path + ".part"
     urllib.request.urlretrieve(row.get("url") or URL.format(row["image_id"]), tmp)
-    got = sha256(tmp)
-    if got != row["sha256"]:
+    data = open(tmp, "rb").read()
+    if not matches(data, row):
         os.remove(tmp)
-        raise RuntimeError(f"{row['image_id']}: sha256 {got} != {row['sha256']}")
+        raise RuntimeError(f"{row['image_id']}: sha256 {hashlib.sha256(data).hexdigest()} != {row['sha256']}"
+                           + (f", without APP13 {content_sha256(data)} != {row['content_sha256']}"
+                              if row.get("content_sha256") else ""))
     os.replace(tmp, path)
     return path, "downloaded"
 
