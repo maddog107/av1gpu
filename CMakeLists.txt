@@ -279,5 +279,8 @@ if(AV1GPU_TESTS)
     # luma with smaller sampling factors than chroma (Y 1x1, Cb / Cr 2x2, ...): libjpeg-turbo's planes, 4:2:0 and 4:4:4
     add_test(NAME jpeg_inverted_sampling COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/jpeg_inverted_sampling_test.py
              --bin $<TARGET_FILE:av1gpu> --gen $<TARGET_FILE:jpeg_gray_gen>)
+    # #67: a JPEG's ICC profile only when its APP2 segments are numbered 1..N once each (libjpeg-turbo's rule), else none
+    add_test(NAME jpeg_icc_segments COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/jpeg_icc_test.py
+             --bin $<TARGET_FILE:av1gpu> --gen $<TARGET_FILE:jpeg_gray_gen>)
   endif()
 endif()

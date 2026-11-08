@@ -574,8 +574,9 @@ before. They follow ImageMagick's rules, reimplemented: no ImageMagick code is u
   shift the whole picture by a few steps, because one rebuilt colour edge can set the range; use `--yuv 444` with it.
   Details and figures are in [the results](docs/RESULTS.md#trim-resize-tone-and-gray-checked-on-an-l4).
 
-AVIF files made from JPEGs carry the source's ICC profile (PNG and WebP profiles are not read yet). EXIF orientation is signalled with `irot`/`imir` rather
-than by rotating pixels.
+AVIF files made from JPEGs carry the source's ICC profile (PNG and WebP profiles are not read yet). As in libjpeg-turbo,
+a profile whose APP2 segments are repeated or missing is left out. EXIF orientation is signalled with `irot`/`imir`
+rather than by rotating pixels.
 
 [examples/](examples/) has a directory converter with an avifenc fallback for skipped files, and an
 nginx configuration that serves `image.jpg.avif` to browsers that accept AVIF.
