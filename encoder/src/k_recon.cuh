@@ -433,13 +433,15 @@ __device__ void rc_residual_half(int W, int H, RcShared<BD> &S, int plane, int c
     L.sync();
 }
 
-// warp: residual of (plane, cand/cfl) for a W x H tx block into res; returns sum r^2
+// warp: residual of (plane, cand/cfl) for a W x H tx block into res; returns sum r^2 for 64-point sizes (the only ones
+// whose distortion reads it, EvalIn::resEnergy), else 0
 template <int BD>
 __device__ float rc_residual(int W, int H, RcShared<BD> &S, int plane, int c, bool cfl, int alpha, const av1g_pixel_t(BD) *src, int sp,
                              int16_t *res, av1g_pixel_t(BD) *fiBuf = nullptr) {
     const TxR T(W, H);
     const int lane = threadIdx.x & 31;
     const int slot = threadIdx.x >> 5;
+    const bool en = W == 64 || H == 64;
     float e = 0.f;
     if (plane == 0 && is_fi(c)) {
         // recursive filter-intra prediction (spec 7.11.2.3), lane 0, into fiBuf (stride W)
@@ -450,30 +452,30 @@ __device__ float rc_residual(int W, int H, RcShared<BD> &S, int plane, int c, bo
             const int i = p >> T.lw, j = p & (W - 1);
             const int r = (int)src[i * sp + j] - (int)fiBuf[p];
             res[p] = (int16_t)r;
-            e += (float)(r * r);
+            if (en) e += (float)(r * r);
         }
         __syncwarp();
-        return warp_sum(e);
+        return en ? warp_sum(e) : 0.f;
     }
     if (plane == 0 && pal_cand(c)) {   // luma palette (one tx block of the block's size): the colours of the map
         for (int p = lane; p < W * H; p += 32) {
             const int i = p >> T.lw, j = p & (W - 1);
             const int r = (int)src[i * sp + j] - (int)S.palCol[S.palMap[p]];
             res[p] = (int16_t)r;
-            e += (float)(r * r);
+            if (en) e += (float)(r * r);
         }
         __syncwarp();
-        return warp_sum(e);
+        return en ? warp_sum(e) : 0.f;
     }
     rc_prepare_edges(S, plane, c, cfl, T.lw, T.lh);
     for (int p = lane; p < W * H; p += 32) {
         const int i = p >> T.lw, j = p & (W - 1);
         const int r = (int)src[i * sp + j] - rc_pred(S, plane, c, cfl, alpha, i, j, T.lw, T.lh, W, slot);
         res[p] = (int16_t)r;
-        e += (float)(r * r);
+        if (en) e += (float)(r * r);
     }
     __syncwarp();
-    return warp_sum(e);
+    return en ? warp_sum(e) : 0.f;
 }
 
 // final quantization of (plane, cand, txType) into S.qfin by warp 0 with distortion and rate (S.finEob, S.finD, S.finR):
@@ -759,11 +761,14 @@ __device__ __forceinline__ void rc_edges(RcShared<BD> &S, const GpImage &I, int 
     else if (plane == 0) asm volatile("bar.sync 1, %0;" ::"r"(nt));
     else if (plane == 1) asm volatile("bar.sync 2, %0;" ::"r"(nt));
     else asm volatile("bar.sync 3, %0;" ::"r"(nt));
-    if (t == 0) {
-        S.dcv[plane] = av1g_dc_value<BD>(A, L, haveL, haveA, lw, lh);
-        S.hvL[plane] = haveL; S.hvA[plane] = haveA; S.px[plane] = px; S.py[plane] = py; S.mx[plane] = maxX; S.my[plane] = maxY;
-        S.ft[plane] = I.edgeFilter ? av1g_get_filter_type(plane, mi_row, mi_col, blkA >= 0 ? blkA : haveA, blkL >= 0 ? blkL : haveL,
-                                                          I.mYMode, I.mUVMode, I.MiCols, SS, SS) : 0;
+    if (t < 32) {   // F6: the DC sums over the group's first warp (warp_dc_value: av1g_dc_value's sums and rounding), not one thread
+        const int dcv = warp_dc_value<BD>(A, L, haveL, haveA, lw, lh);
+        if (t == 0) {
+            S.dcv[plane] = dcv;
+            S.hvL[plane] = haveL; S.hvA[plane] = haveA; S.px[plane] = px; S.py[plane] = py; S.mx[plane] = maxX; S.my[plane] = maxY;
+            S.ft[plane] = I.edgeFilter ? av1g_get_filter_type(plane, mi_row, mi_col, blkA >= 0 ? blkA : haveA, blkL >= 0 ? blkL : haveL,
+                                                              I.mYMode, I.mUVMode, I.MiCols, SS, SS) : 0;
+        }
     }
 }
 
@@ -1359,14 +1364,10 @@ __device__ __noinline__ void rc_chroma(int W, int H, RcShared<BD> &S, const GpBa
         const int c0 = pass ? 13 : 0, c1 = pass ? 19 : 13;
         if (pass) {
             if (!uvDeltaOk) break;
-            if (tid == 0) {
-                int bm = -1;
-                float bj = GP_INF;
-                for (int m = AV1G_V_PRED; m <= AV1G_D67_PRED; m++) {
-                    const float j = S.satd[m] + lamS * uvcbits(cand_pack(m, 0));
-                    if (j < bj) { bj = j; bm = m; }
-                }
-                for (int k = 0; k < 6; k++) S.uvc[13 + k] = cand_pack(bm, k < 3 ? -(k + 1) : (k - 2));
+            if (tid < 32) {   // best directional mode at delta 0: lane m's cost, the first minimum as the serial scan
+                const float j = tid >= AV1G_V_PRED && tid <= AV1G_D67_PRED ? S.satd[tid] + lamS * uvcbits(cand_pack(tid, 0)) : GP_INF;
+                const int bm = warp_argmin(j, tid);
+                if (tid < 6) S.uvc[13 + tid] = cand_pack(bm, tid < 3 ? -(tid + 1) : (tid - 2));
             }
             __syncthreads();
             nuv = 19;
@@ -1437,29 +1438,30 @@ __device__ __noinline__ void rc_chroma(int W, int H, RcShared<BD> &S, const GpBa
     }
     rc_tick(B, P, 5);  // chroma SATD screening
     // ---- exact RD: top uvK modes (+ CfL) for U and V ----
-    if (tid == 0) {
+    if (tid < 32) {
+        // top K by SATD cost (candidate ci on lane ci): K rounds of warp_argmin give the K smallest in (cost, index) order,
+        // the order of the serial insertion (strict <: an equal cost goes after the earlier candidate)
         const int K = max(1, min(P.uvK, 6));
-        int top[6];
-        float tj[6];
-        for (int k = 0; k < K; k++) { top[k] = -1; tj[k] = GP_INF; }
-        for (int ci = 0; ci < nuv; ci++) {
-            const float j = S.satd[ci] + lamS * uvcbits(S.uvc[ci]);
-            if (j < tj[K - 1]) {
-                int k = K - 1;
-                while (k > 0 && tj[k - 1] > j) { tj[k] = tj[k - 1]; top[k] = top[k - 1]; k--; }
-                tj[k] = j; top[k] = S.uvc[ci];
-            }
-        }
+        float js = tid < nuv ? S.satd[tid] + lamS * uvcbits(S.uvc[tid]) : GP_INF;
         int n = 0;
         for (int k = 0; k < K; k++) {
-            if (top[k] < 0) continue;
-            for (int pl = 1; pl <= 2; pl++) {
-                S.taskC[n] = top[k];
-                S.taskT[n] = av1g_chroma_tx_type(txSz, cand_mode(top[k]), 0);
-                S.taskP[n] = pl;
-                n++;
+            const int b = warp_argmin(js, tid);
+            if (b < 0) break;
+            if (tid == 0) {
+                const int c = S.uvc[b];
+                for (int pl = 1; pl <= 2; pl++) {
+                    S.taskC[n + pl - 1] = c;
+                    S.taskT[n + pl - 1] = av1g_chroma_tx_type(txSz, cand_mode(c), 0);
+                    S.taskP[n + pl - 1] = pl;
+                }
             }
+            n += 2;
+            if (tid == b) js = GP_INF;
         }
+        if (tid == 0) S.nTask = n;
+    }
+    if (tid == 0) {
+        int n = S.nTask;   // thread 0's own store above
         if (cflOk && (S.cflAlpha[0] || S.cflAlpha[1])) {
             for (int pl = 1; pl <= 2; pl++) {
                 S.taskC[n] = 255;
@@ -1725,16 +1727,21 @@ rc_chroma<SS, BD>(AV1G_T(Tx_Width)[uvTx], AV1G_T(Tx_Height)[uvTx], S, B, P, sb, 
         }
         const int skip = (eobY == 0 && eobU == 0 && eobV == 0) ? 1 : 0;
         // maps
-        const int bw4 = av1g_bw4(bsize), bh4 = av1g_bh4(bsize);
-        for (int k = tid; k < bw4 * bh4; k += RC_NT) {
-            const int r = mi_row + k / bw4, c = mi_col + k % bw4;
-            if (r < I.MiRows && c < I.MiCols) {
-                const size_t o = (size_t)r * I.MiCols + c;
-                I.mYMode[o] = (uint8_t)yMode;
-                if (hasChroma) I.mUVMode[o] = (uint8_t)uv;
-                I.mSkip[o] = (uint8_t)skip;
-                I.mMiSize[o] = (uint8_t)bsize;
-                I.mTx[o] = (uint8_t)(yTxDepth ? AV1G_T(Split_Tx_Size)[txSz] : txSz);
+        const int bw4 = av1g_bw4(bsize), bh4 = av1g_bh4(bsize), lbw4 = log2i(bw4);   // F6: powers of two, fields read once
+        {
+            const int miRows = I.MiRows, miCols = I.MiCols;
+            uint8_t *mY = I.mYMode, *mUV = I.mUVMode, *mS = I.mSkip, *mM = I.mMiSize, *mT = I.mTx;
+            const uint8_t txv = (uint8_t)(yTxDepth ? AV1G_T(Split_Tx_Size)[txSz] : txSz);
+            for (int k = tid; k < bw4 * bh4; k += RC_NT) {
+                const int r = mi_row + (k >> lbw4), c = mi_col + (k & (bw4 - 1));
+                if (r < miRows && c < miCols) {
+                    const size_t o = (size_t)r * miCols + c;
+                    mY[o] = (uint8_t)yMode;
+                    if (hasChroma) mUV[o] = (uint8_t)uv;
+                    mS[o] = (uint8_t)skip;
+                    mM[o] = (uint8_t)bsize;
+                    mT[o] = txv;
+                }
             }
         }
         if (tid == 0) {

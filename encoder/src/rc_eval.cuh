@@ -152,7 +152,8 @@ __device__ __forceinline__ void rc_quant_rate(const float *tmp, int16_t *q, cons
     constexpr int V = 32 / G;
     const int th = H > 32 ? 32 : H, tw = W > 32 ? 32 : W, TS = W + 1, n = tw * th;
     const int lt = log2i(tw);
-    const int den = av1g_dq_denom(e.txSz);
+    const int den = av1g_dq_denom(e.txSz), dsh = den >> 1;
+    const bool k64 = G == 32 && (W == 64 || H == 64);   // the kept energy is only read for 64-point sizes
     float dist[V], kept[V];
 #pragma unroll
     for (int v = 0; v < V; v++) { dist[v] = 0.f; kept[v] = 0.f; }
@@ -170,10 +171,16 @@ __device__ __forceinline__ void rc_quant_rate(const float *tmp, int16_t *q, cons
                 l = min(l, 16383);
                 const int qv = x < 0 ? -l : l;
                 q[idx] = (int16_t)qv;
-                const float dq = l ? (float)av1g_dequant_coef<BD>(qv, step, den) : 0.f;
+                float dq = 0.f;
+                if (l) {   // av1g_dequant_coef<BD>(qv, step, den): its division of a non-negative value by den = 1, 2, 4 is a shift (F6)
+                    const int32_t dqi = qv * step;
+                    int32_t a2 = ((dqi < 0 ? -dqi : dqi) & 0xFFFFFF) >> dsh;
+                    if (dqi < 0) a2 = -a2;
+                    dq = (float)av1g_clip3(-(1 << (7 + BD)), (1 << (7 + BD)) - 1, a2);
+                }
                 const float d = x - dq;
                 dist[v] = fmaf(d * d, e.qmDist ? wr * wr : 1.f, dist[v]);
-                kept[v] = fmaf(x, x, kept[v]);
+                if (k64) kept[v] = fmaf(x, x, kept[v]);
             }
         }
     }
