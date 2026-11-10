@@ -104,8 +104,6 @@ struct RcShared {
     int nTxb, nCoef;
     int finEob;
     int cflAvg, cflAlpha[2];
-    float cflNum[2], cflDen[2];
-    float alphaSse[2][3];
     // per-warp best luma task (tx blocks <= 16x16): its levels are the final ones, no re-evaluation
     float bestJw[RC_NW];
     int bestCw[RC_NW], bestTw[RC_NW], bestEw[RC_NW];
@@ -1288,7 +1286,6 @@ __device__ __noinline__ void rc_chroma(int W, int H, RcShared<BD> &S, const GpBa
         if ((tid & 31) == 0) atomicAdd(&S.cflAvg, sum);
         __syncthreads();
         if (tid == 0) S.cflAvg = av1g_round2(S.cflAvg, T.lw + T.lh);
-        if (tid < 2) { S.cflNum[tid] = 0.f; S.cflDen[tid] = 0.f; }
         __syncthreads();
         // least-squares alpha per plane: r = src - DC, l = v - avg; alpha ~ 64 * sum(r l) / sum(l^2)
         float num[2] = {0.f, 0.f}, den = 0.f;
@@ -1300,14 +1297,20 @@ __device__ __noinline__ void rc_chroma(int W, int H, RcShared<BD> &S, const GpBa
             den += l * l;
         }
         num[0] = warp_sum(num[0]); num[1] = warp_sum(num[1]); den = warp_sum(den);
-        if ((tid & 31) == 0) { atomicAdd(&S.cflNum[0], num[0]); atomicAdd(&S.cflNum[1], num[1]); atomicAdd(&S.cflDen[0], den); }
+        // The four warps' sums are added in warp order, 0 + w0 + w1 + w2 + w3.  They were added with a float atomicAdd
+        // per warp, in arrival order: once a sum is not exact (10-bit, large high-contrast blocks) the rounding, and
+        // through a tie in the +-1 refinement the alpha itself, could depend on which warp came first.  The fixed
+        // order is one of those arrival orders.  S.taskJ is free until the chroma RD tasks.
+        float *part = S.taskJ;
+        const int w = tid >> 5;
+        if ((tid & 31) == 0) { part[3 * w] = num[0]; part[3 * w + 1] = num[1]; part[3 * w + 2] = den; }
         __syncthreads();
         if (tid < 2) {
-            const float d = S.cflDen[0];
-            int a = d > 0.f ? (int)rintf(64.f * S.cflNum[tid] / d) : 0;
+            float n = 0.f, d = 0.f;
+            for (int k = 0; k < RC_NW; k++) { n += part[3 * k + tid]; d += part[3 * k + 2]; }
+            int a = d > 0.f ? (int)rintf(64.f * n / d) : 0;
             S.cflAlpha[tid] = max(-16, min(16, a));
         }
-        if (tid < 6) S.alphaSse[tid / 3][tid % 3] = 0.f;
         __syncthreads();
         // refine alpha +-1 by pixel SSE
         {
@@ -1328,14 +1331,19 @@ __device__ __noinline__ void rc_chroma(int W, int H, RcShared<BD> &S, const GpBa
             for (int pl = 0; pl < 2; pl++)
                 for (int k = 0; k < 3; k++) {
                     const float v = warp_sum(sse[pl][k]);
-                    if ((tid & 31) == 0) atomicAdd(&S.alphaSse[pl][k], v);
+                    if ((tid & 31) == 0) part[6 * w + 3 * pl + k] = v;
                 }
         }
         __syncthreads();
         if (tid == 0) {
             for (int pl = 0; pl < 2; pl++) {
+                float sse[3];
+                for (int k = 0; k < 3; k++) {
+                    sse[k] = 0.f;
+                    for (int ww = 0; ww < RC_NW; ww++) sse[k] += part[6 * ww + 3 * pl + k];   // warp order, as above
+                }
                 int bk = 1;
-                for (int k = 0; k < 3; k++) if (S.alphaSse[pl][k] < S.alphaSse[pl][bk]) bk = k;
+                for (int k = 0; k < 3; k++) if (sse[k] < sse[bk]) bk = k;
                 S.cflAlpha[pl] = max(-16, min(16, S.cflAlpha[pl] + bk - 1));
             }
         }
