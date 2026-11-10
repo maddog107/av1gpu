@@ -267,17 +267,19 @@ static_assert(AV1G_EDGE_LEN % 16 == 0 && offsetof(RcShared<8>, ea) % 16 == 0 && 
               offsetof(RcShared<8>, wea) % 16 == 0 && offsetof(RcShared<8>, wel) % 16 == 0, "edge buffers must be 16-byte aligned");
 static_assert(offsetof(RcShared<10>, ea) % 16 == 0 && offsetof(RcShared<10>, el) % 16 == 0 && offsetof(RcShared<10>, wea) % 16 == 0 &&
               offsetof(RcShared<10>, wel) % 16 == 0, "edge buffers must be 16-byte aligned");
-// warp-parallel av1g_edge_filter / av1g_edge_upsample (dsp.h), the same integer arithmetic: every lane reads its
-// outputs' inputs (the unfiltered edge) into registers, __syncwarp, then writes.  Called by full warps.
-template <typename P>
-__device__ __forceinline__ void warp_edge_filter(P *buf, int sz, int strength) {   // sz <= 129: outputs 1 .. 128
+// lane-group-parallel av1g_edge_filter / av1g_edge_upsample (dsp.h), the same integer arithmetic: every lane reads its
+// outputs' inputs (the unfiltered edge) into registers, syncs the group, then writes.  Called by whole groups (a warp,
+// or a half-warp for tx blocks up to 8x8: sz <= 17 there).
+template <int G, typename P>
+__device__ __forceinline__ void grp_edge_filter(P *buf, int sz, int strength, const RcLanes<G> &L) {   // sz <= 4 G + 1
     if (!strength) return;
-    const int lane = threadIdx.x & 31;
+    constexpr int NK = G == 32 ? 4 : 2;   // G = 32: outputs 1 .. 128; G = 16: 1 .. 32
+    const int lane = L.l;
     const uint8_t *K = AV1G_T(Intra_Edge_Kernel)[strength - 1];
-    int v[4];
+    int v[NK];
 #pragma unroll
-    for (int k = 0; k < 4; k++) {
-        const int i = lane + 1 + 32 * k;
+    for (int k = 0; k < NK; k++) {
+        const int i = lane + 1 + G * k;
         int s = 0;
         if (i < sz) {
 #pragma unroll
@@ -285,15 +287,15 @@ __device__ __forceinline__ void warp_edge_filter(P *buf, int sz, int strength) {
         }
         v[k] = (s + 8) >> 4;
     }
-    __syncwarp();
+    L.sync();
 #pragma unroll
-    for (int k = 0; k < 4; k++)
-        if (lane + 1 + 32 * k < sz) buf[lane + 32 * k] = (P)v[k];
-    __syncwarp();
+    for (int k = 0; k < NK; k++)
+        if (lane + 1 + G * k < sz) buf[lane + G * k] = (P)v[k];
+    L.sync();
 }
-template <int BD, typename P>
-__device__ __forceinline__ void warp_edge_upsample(P *buf, int numPx) {   // numPx <= 16 (upsampling: w + h <= 16)
-    const int lane = threadIdx.x & 31;
+template <int BD, int G, typename P>
+__device__ __forceinline__ void grp_edge_upsample(P *buf, int numPx, const RcLanes<G> &L) {   // numPx <= 16 (upsampling: w + h <= 16)
+    const int lane = L.l;
     // dup[0] = buf[-1], dup[k] = buf[k - 2] (k = 1 .. numPx + 1), dup[numPx + 2] = buf[numPx - 1]
     auto dup = [&](int k) -> int { return k == 0 ? buf[-1] : k == numPx + 2 ? buf[numPx - 1] : buf[k - 2]; };
     int s = 0, e = 0;
@@ -302,36 +304,36 @@ __device__ __forceinline__ void warp_edge_upsample(P *buf, int numPx) {   // num
         e = dup(lane + 2);
     }
     const P c = buf[-1];
-    __syncwarp();
+    L.sync();
     if (lane < numPx) { buf[2 * lane - 1] = (P)s; buf[2 * lane] = (P)e; }
     if (lane == 0) buf[-2] = c;
-    __syncwarp();
+    L.sync();
 }
-// warp-parallel av1g_edge_prepare (the corner by lane 0)
-template <int BD, typename P>
-__device__ __forceinline__ void warp_edge_prepare(int pAngle, int log2W, int log2H, int filterType, int haveLeft, int haveAbove, int x, int y,
-                                                  int maxX, int maxY, P *above, P *left, int *upA, int *upL) {
+// lane-group-parallel av1g_edge_prepare (the corner by lane 0); every lane gets the upsampling flags
+template <int BD, int G, typename P>
+__device__ __forceinline__ void grp_edge_prepare(int pAngle, int log2W, int log2H, int filterType, int haveLeft, int haveAbove, int x, int y,
+                                                 int maxX, int maxY, P *above, P *left, int *upA, int *upL, const RcLanes<G> &L) {
     const int w = 1 << log2W, h = 1 << log2H;
     if (pAngle != 90 && pAngle != 180) {
         if (pAngle > 90 && pAngle < 180 && (w + h) >= 24) {
-            if ((threadIdx.x & 31) == 0) {
+            if (L.l == 0) {
                 const P c = (P)av1g_round2(left[0] * 5 + above[-1] * 6 + above[0] * 5, 4);
                 left[-1] = c;
                 above[-1] = c;
             }
-            __syncwarp();
+            L.sync();
         }
         if (haveAbove)
-            warp_edge_filter(above, (w < maxX - x + 1 ? w : maxX - x + 1) + (pAngle < 90 ? h : 0) + 1,
-                             av1g_edge_strength(w, h, filterType, pAngle - 90));
+            grp_edge_filter<G>(above, (w < maxX - x + 1 ? w : maxX - x + 1) + (pAngle < 90 ? h : 0) + 1,
+                               av1g_edge_strength(w, h, filterType, pAngle - 90), L);
         if (haveLeft)
-            warp_edge_filter(left, (h < maxY - y + 1 ? h : maxY - y + 1) + (pAngle > 180 ? w : 0) + 1,
-                             av1g_edge_strength(w, h, filterType, pAngle - 180));
+            grp_edge_filter<G>(left, (h < maxY - y + 1 ? h : maxY - y + 1) + (pAngle > 180 ? w : 0) + 1,
+                               av1g_edge_strength(w, h, filterType, pAngle - 180), L);
     }
     *upA = av1g_edge_use_upsample(w, h, filterType, pAngle - 90);
-    if (*upA) warp_edge_upsample<BD>(above, w + (pAngle < 90 ? h : 0));
+    if (*upA) grp_edge_upsample<BD, G>(above, w + (pAngle < 90 ? h : 0), L);
     *upL = av1g_edge_use_upsample(w, h, filterType, pAngle - 180);
-    if (*upL) warp_edge_upsample<BD>(left, h + (pAngle > 180 ? w : 0));
+    if (*upL) grp_edge_upsample<BD, G>(left, h + (pAngle > 180 ? w : 0), L);
 }
 
 template <int BD>
@@ -350,13 +352,87 @@ __device__ __forceinline__ void rc_prepare_edges(RcShared<BD> &S, int plane, int
     }
     __syncwarp();
     int ua = 0, ul = 0;
-    warp_edge_prepare<BD>(pangle_of(m, cand_delta(c)), lw, lh, S.ft[plane], S.hvL[plane], S.hvA[plane], S.px[plane], S.py[plane], S.mx[plane],
-                          S.my[plane], S.wea[warp] + AV1G_EDGE_OFF, S.wel[warp] + AV1G_EDGE_OFF, &ua, &ul);
+    grp_edge_prepare<BD, 32>(pangle_of(m, cand_delta(c)), lw, lh, S.ft[plane], S.hvL[plane], S.hvA[plane], S.px[plane], S.py[plane], S.mx[plane],
+                             S.my[plane], S.wea[warp] + AV1G_EDGE_OFF, S.wel[warp] + AV1G_EDGE_OFF, &ua, &ul, rc_warp_lanes());
     if (lane == 0) {
         S.wup[warp][0] = ua;
         S.wup[warp][1] = ul;
     }
     __syncwarp();
+}
+
+// ---------------------------------------------------------------------------
+// two tasks per warp (tx blocks up to 8x8, more tasks than warps): half-warp h of warp w works in the first or second
+// half of S.u.w[w] (residual, levels: 64 values each; transform: 8 x 9 floats each) and prepares its edges in the
+// rest of w's tmp: 64 samples per edge, enough for blocks up to 8x8 (prepared edges reach index 2 (w + h) - 2 <= 30,
+// the filter and the upsampling index -2 .. 30; a copy starts AV1G_EDGE_OFF below index 0)
+#define RC_HALF_EDGE 64
+struct RcHalfScr {
+    int16_t *res, *q;
+    float *tmp;
+    void *ea, *el;   // av1g_pixel_t(BD)[RC_HALF_EDGE] each
+};
+template <int BD>
+__device__ __forceinline__ RcHalfScr rc_half_scr(RcShared<BD> &S) {
+    RcWarpScr &w = S.u.w[threadIdx.x >> 5];
+    const int h = (threadIdx.x >> 4) & 1;
+    constexpr int EB = RC_HALF_EDGE * (int)sizeof(av1g_pixel_t(BD));   // bytes per edge
+    static_assert(2 * 8 * 9 * 4 + 2 * 2 * RC_HALF_EDGE * 2 <= (int)sizeof(w.tmp) && 2 * 64 <= 16 * 16, "half-warp scratch");
+    char *e = (char *)(w.tmp + 2 * 8 * 9) + h * 2 * EB;   // 16-byte aligned: RcWarpScr is 2112 B, tmp at 512, + 576
+    return RcHalfScr{w.res + h * 64, w.q + h * 64, w.tmp + h * 8 * 9, e, e + EB};
+}
+static_assert(sizeof(RcWarpScr) % 16 == 0 && offsetof(RcWarpScr, tmp) % 16 == 0, "half-warp edge slots must be 16-byte aligned");
+
+// half-warp: residual of (plane, cand / CfL) for a W x H tx block (up to 8x8) into Hs.res, the prediction of rc_residual
+// (rc_pred: DC, CfL, filtered directional edges in the half's own slot, the unfiltered edges otherwise; luma filter
+// intra and palette as rc_residual).  No residual energy: it only matters for 64-point transforms.
+template <int BD>
+__device__ void rc_residual_half(int W, int H, RcShared<BD> &S, int plane, int c, bool cfl, int alpha, const av1g_pixel_t(BD) *src, int sp,
+                                 const RcHalfScr &Hs, const RcLanes<16> &L) {
+    typedef av1g_pixel_t(BD) Px;
+    const int lw = log2i(W), lh = log2i(H);
+    int16_t *res = Hs.res;
+    if (plane == 0 && is_fi(c)) {
+        Px *fiBuf = (Px *)Hs.tmp;
+        if (L.l == 0) av1g_predict_filter_intra<BD>(c - 128, lw, lh, S.ea[0] + AV1G_EDGE_OFF, S.el[0] + AV1G_EDGE_OFF, fiBuf, W);
+        L.sync();
+        for (int p = L.l; p < W * H; p += 16) res[p] = (int16_t)((int)src[(p >> lw) * sp + (p & (W - 1))] - (int)fiBuf[p]);
+        L.sync();
+        return;
+    }
+    if (plane == 0 && pal_cand(c)) {
+        for (int p = L.l; p < W * H; p += 16) res[p] = (int16_t)((int)src[(p >> lw) * sp + (p & (W - 1))] - (int)S.palCol[S.palMap[p]]);
+        L.sync();
+        return;
+    }
+    const int m = cand_mode(c);
+    const bool filt = !cfl && S.edgeFilter && av1g_is_directional(m);
+    const Px *EA = S.ea[plane] + AV1G_EDGE_OFF, *EL = S.el[plane] + AV1G_EDGE_OFF;
+    int upA = 0, upL = 0;
+    if (filt) {
+        constexpr int NW = RC_HALF_EDGE * (int)sizeof(Px) / 16;
+        const uint4 *sa = reinterpret_cast<const uint4 *>(S.ea[plane]), *sl = reinterpret_cast<const uint4 *>(S.el[plane]);
+        uint4 *da = reinterpret_cast<uint4 *>(Hs.ea), *dl = reinterpret_cast<uint4 *>(Hs.el);
+        for (int k = L.l; k < 2 * NW; k += 16) {
+            if (k < NW) da[k] = sa[k];
+            else dl[k - NW] = sl[k - NW];
+        }
+        L.sync();
+        grp_edge_prepare<BD, 16>(pangle_of(m, cand_delta(c)), lw, lh, S.ft[plane], S.hvL[plane], S.hvA[plane], S.px[plane], S.py[plane],
+                                 S.mx[plane], S.my[plane], (Px *)Hs.ea + AV1G_EDGE_OFF, (Px *)Hs.el + AV1G_EDGE_OFF, &upA, &upL, L);
+        EA = (const Px *)Hs.ea + AV1G_EDGE_OFF;
+        EL = (const Px *)Hs.el + AV1G_EDGE_OFF;
+    }
+    const int pa = pangle_of(m, cand_delta(c));
+    for (int p = L.l; p < W * H; p += 16) {
+        const int i = p >> lw, j = p & (W - 1);
+        int pr;
+        if (cfl) pr = av1g_clip1<BD>(S.dcv[plane] + av1g_round2signed(alpha * (rc_cflL(S.u)[i * W + j] - S.cflAvg), 6));
+        else if (m == AV1G_DC_PRED) pr = S.dcv[plane];
+        else pr = av1g_pred_pixel_up(m, pa, i, j, lw, lh, EA, EL, upA, upL);
+        res[p] = (int16_t)((int)src[i * sp + j] - pr);
+    }
+    L.sync();
 }
 
 // warp: residual of (plane, cand/cfl) for a W x H tx block into res; returns sum r^2
@@ -797,6 +873,43 @@ __device__ __noinline__ void rc_luma(int W, int H, RcShared<BD> &S, const GpBatc
     float sharedResE = 0.f;
     auto runTasks = [&](bool shared) {
         const int warp = tid >> 5;
+        if (W <= 8 && H <= 8 && S.nTask > RC_NW) {
+            // tx up to 8x8 with more tasks than warps (pass 2: 5-7 tx types): one task per half-warp, rounds of 8
+            // instead of 4 (rc_eval.cuh: the same J and levels).  The per-warp best is then updated in the order of the
+            // loop below - warp w compares tasks w, w + 4, w + 8, ... - so ties resolve as there.
+            const RcLanes<16> L = rc_half_lanes();
+            const RcHalfScr Hs = rc_half_scr(S);
+            for (int r0 = 0; r0 < S.nTask; r0 += 2 * RC_NW) {
+                const int t = r0 + (tid >> 4);
+                if (t < S.nTask) {
+                    const int c = S.taskC[t];
+                    EvalIn ee = e;
+                    ee.txType = S.taskT[t];
+                    ee.intraDir = intra_dir(c);
+                    ee.qm = av1g_qm(I.usingQm, I.qm[0], 0, txSz, ee.txType);
+                    if (!shared) rc_residual_half<BD>(W, H, S, 0, c, false, 0, src, I.spitch[0], Hs, L);
+                    const EvalOut o = rc_eval<BD, 16>(shared ? S.u.w[0].res : Hs.res, Hs.tmp, Hs.q, ee, W, H, L);
+                    const float J = o.D + lambda * (o.R + mbits(c));
+                    if (L.l == 0) { S.taskJ[t] = J; S.taskE[t] = o.eob; }
+                }
+                __syncthreads();
+#pragma unroll
+                for (int k = 0; k < 2; k++) {
+                    const int tt = r0 + warp + k * RC_NW, hs = warp + k * RC_NW;   // task, its half-warp slot
+                    if (tt < S.nTask && S.taskJ[tt] < S.bestJw[warp]) {   // warp-uniform
+                        const int16_t *qs = S.u.w[hs >> 1].q + (hs & 1) * 64;
+                        for (int i = tid & 31; i < W * H; i += 32) rc_bestq(S.u, warp)[i] = qs[i];
+                        __syncwarp();
+                        if ((tid & 31) == 0) {
+                            S.bestJw[warp] = S.taskJ[tt]; S.bestCw[warp] = S.taskC[tt]; S.bestTw[warp] = S.taskT[tt]; S.bestEw[warp] = S.taskE[tt];
+                        }
+                    }
+                    __syncwarp();
+                }
+                __syncthreads();
+            }
+            return;
+        }
         for (int t = warp; t < S.nTask; t += RC_NW) {   // W5: big tasks on every warp (own global slot)
             const int c = S.taskC[t];
             RcBigScr &BG = S.bigG[warp];
@@ -1358,7 +1471,29 @@ __device__ __noinline__ void rc_chroma(int W, int H, RcShared<BD> &S, const GpBa
     e.rnd = P.rndC; e.zbin = P.zbinC; e.skipCtx = skipCtxU; e.dcCtx = dcCtxU; e.reduced = 0; e.C = C;
     e.intraDir = 0; e.txType = 0; e.qm = 0; e.resEnergy = 0;
     e.qmDist = P.qmDist; e.qmRnd = P.qmRnd;
-    {
+    if (W <= 8 && H <= 8 && S.nTask > RC_NW) {
+        // tx up to 8x8 with more tasks than warps (uvK 2 + CfL: 6): one task per half-warp, one round instead of two;
+        // the same values (rc_eval.cuh), levels kept as below
+        const RcLanes<16> L = rc_half_lanes();
+        const RcHalfScr Hs = rc_half_scr(S);
+        for (int t = tid >> 4; t < S.nTask; t += 2 * RC_NW) {
+            const int pl = S.taskP[t], c = S.taskC[t];
+            const bool cfl = c == 255;
+            EvalIn ee = e;
+            ee.plane = pl;
+            ee.dcQ = bq.dcQ[pl]; ee.acQ = bq.acQ[pl];
+            ee.skipCtx = pl == 1 ? skipCtxU : skipCtxV;
+            ee.dcCtx = pl == 1 ? dcCtxU : dcCtxV;
+            ee.txType = S.taskT[t];
+            ee.qm = av1g_qm(I.usingQm, I.qm[pl], pl, txSz, ee.txType);
+            rc_residual_half<BD>(W, H, S, pl, c, cfl, cfl ? S.cflAlpha[pl - 1] : 0, pl == 1 ? srcU : srcV, I.spitch[pl], Hs, L);
+            const EvalOut o = rc_eval<BD, 16>(Hs.res, Hs.tmp, Hs.q, ee, W, H, L);
+            int16_t *dq = rc_taskq(S.u, t);   // nTask <= 6 * 2 + 2 = RC_TASKQ_MAX: all kept
+            for (int i = L.l; i < W * H; i += 16) dq[i] = Hs.q[i];
+            if (L.l == 0) { S.taskE[t] = o.eob; S.taskJ[t] = o.D + lambda * o.R; }
+        }
+        __syncthreads();
+    } else {
         const int warp = tid >> 5;
         const bool big = rc_big(W, H);
         for (int t = warp; t < S.nTask; t += RC_NW) {   // W5: big tasks on every warp (own global slot)
