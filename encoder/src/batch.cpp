@@ -1063,6 +1063,9 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
             "(gpu total %.1f, encode wall %.1f) | entropy wall %.1f (gpu %.1f) | write %.1f | peak dev %.0f MB\n",
             A.ingestWait, A.gpuSetup, A.analysis, A.dp, A.recon, A.pack, A.postfilter, A.download, A.gpuTotal, A.encodeWall, A.entropyWall,
             A.entropyGpu, A.writeWall, A.peakDev / 1048576.0);
+    if (gp_trusted_checked)
+        fprintf(stderr, "[av1gpu] GP_CHECK_TRUSTED: %llu entropy batches checked, %llu differences between trusted and derived records\n",
+                (unsigned long long)gp_trusted_checked.load(), (unsigned long long)gp_trusted_diffs.load());
     if (A.alphaImages)
         fprintf(stderr, "[av1gpu] alpha: %llu images with an alpha item (%.1f MP of alpha frames, %s)\n", (unsigned long long)A.alphaImages,
                 A.alphaPixels / 1e6, acfg.lossless ? "lossless" : ("qindex " + std::to_string(acfg.qindex)).c_str());

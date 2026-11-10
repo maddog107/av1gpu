@@ -88,7 +88,11 @@ SSIMULACRA2 or CVVDP, and libaom turns it off at the speeds av1gpu is compared w
 
 ## Entropy coding (`av1core/src/gpu_entropy.cu`)
 
-The block decisions of a batch are turned into per-tile symbol streams on the GPU. Each tile is then
+The block decisions of a batch are turned into per-tile symbol streams on the GPU. For its own lossy
+frames the encoder hands over what the closed loop already worked out: each tx block's end of block, the
+coefficient context maps, the 4×4 mode-info maps, and the tx blocks' symbol counts, which `k_pack` adds
+up while it copies the levels into the record; the symbolizer does not derive them again (external
+records and lossless frames still do; `GP_CHECK_TRUSTED=1` compares the two). Each tile is then
 range-coded with AV1's adaptive CDFs: one warp adapts the CDFs and a second warp runs the arithmetic
 coder. A single tile is serial, so throughput comes from coding hundreds of tiles of many images at
 once. The output is byte-identical to the CPU bitstream writer in `av1core/src/encoder.cpp`.

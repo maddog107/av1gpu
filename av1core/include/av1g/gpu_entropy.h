@@ -65,6 +65,8 @@ struct DevFrame {
     // its colour index maps at DevBatch::colorMap[mapBase + map_off], nMap entries in all
     uint32_t palBase = 0, nPal = 0;
     uint64_t mapBase = 0, nMap = 0;
+    // trusted records (DevBatch::ctxLvl): the offsets of the frame's Y, U, V maps in ctxLvl / ctxDc
+    uint64_t ctxOff[3] = {0, 0, 0};
 };
 
 struct DevBatch {
@@ -81,11 +83,29 @@ struct DevBatch {
     // 0.41 symbols/pixel for the encoder's dev batch (q120 class), 0.54 for libaom s6 q60 decisions;
     // lower qindex means more.  Too small -> AV1G_GPU_ERR_SYMBOLS with the exact count; rerun.
     uint64_t symbolCapacity = 0;
+    // Trusted records (optional; a producer that already has these, such as av1gpu's closed loop; lossy frames only,
+    // ignored when the batch has a lossless frame).  With miSize .. ctxDc set, txb[].eob and txb[].tx_type are taken as
+    // final (the chroma type and the eob that av1g_encode would derive, DCT_DCT for a luma tx block with eob 0) and the
+    // 4x4 maps as given, so the derivation (k_maps, k_txctx) is skipped:
+    //   miSize, yMode, skip, txSize: MiSize, YMode, Skip and the luma TxSize per 4x4 of each frame, MiCols x MiRows,
+    //     frames back to back in frame order (frame f at sum over f' < f of MiCols * MiRows)
+    //   ctxLvl, ctxDc: per plane and 4x4 of the plane (MiCols >> ssx per row, MiRows >> ssy rows), the culLevel
+    //     (min(63, sum |level|)) and the dc category (0 zero, 1 negative, 2 positive) of the tx block covering it, 0
+    //     where its eob is 0; frame f's plane p at DevFrame::ctxOff[p]
+    //   itemCount (optional, with the maps; mutable): [blocks + tx blocks + 1] with the symbol count of each tx block
+    //     (symstream.h: av1g_txb_head_syms + av1g_level_syms) at its item index t + b + 1 (tx block t of block b,
+    //     counted from frame 0's bases); run_batch_device fills in the blocks' items and scans it (the count pass skipped)
+    // checkTrusted: derive everything as without them too and count the differences in DevStatus::reserved (the
+    // symbols still come from the trusted inputs)
+    const uint8_t *miSize = nullptr, *yMode = nullptr, *skip = nullptr, *txSize = nullptr;
+    const uint8_t *ctxLvl = nullptr, *ctxDc = nullptr;
+    uint32_t *itemCount = nullptr;
+    bool checkTrusted = false;
 };
 
 struct DevStatus {
     int32_t error;            // 0 = ok, else AV1G_GPU_ERR_* bits
-    int32_t reserved;
+    int32_t reserved;         // DevBatch::checkTrusted: the differences found (0 otherwise)
     uint64_t symbols;         // symbols in the batch (also when it exceeded the capacity)
     uint64_t symbolCapacity;
     uint64_t bytes;           // total payload bytes = tileOffset[nTiles]
