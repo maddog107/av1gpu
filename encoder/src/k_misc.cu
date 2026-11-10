@@ -481,6 +481,7 @@ void cost_field(const av1g_cdfs &c, const Arr &field, float *out) {
 }  // namespace
 
 static GpHostTables hostTables;   // kept for gp_recon_prepare
+const GpHostTables *gp_host_tables() { return &hostTables; }   // (tests/rc_eval_drift_test: its own module's copy)
 
 int gp_init_tables(char *err, int errlen) {
     GpHostTables &H = hostTables;

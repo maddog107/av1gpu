@@ -197,7 +197,7 @@ endif()
 # encoder: analysis, partition DP, wavefront reconstruction, batching
 add_library(av1gpu_encoder STATIC
   encoder/src/k_misc.cu encoder/src/k_imageops.cu encoder/src/k_an_a.cu encoder/src/k_an_b.cu encoder/src/k_an_c.cu encoder/src/k_an_d.cu
-  encoder/src/k_an_uv.cu ${_av1gpu_recon_objects} encoder/src/k_lossless.cu encoder/src/k_pal.cu encoder/src/pipeline.cpp
+  encoder/src/k_an_uv.cu ${_av1gpu_recon_objects} encoder/src/k_recon_order.cu encoder/src/k_lossless.cu encoder/src/k_pal.cu encoder/src/pipeline.cpp
   encoder/src/imageio.cpp encoder/src/imageops.cpp encoder/src/entropy_gpu.cpp encoder/src/entropy_dev.cu encoder/src/batch.cpp)
 target_include_directories(av1gpu_encoder PUBLIC encoder/src)
 target_compile_options(av1gpu_encoder PRIVATE
@@ -230,6 +230,12 @@ if(AV1GPU_TESTS)
   add_executable(varboost_test tests/varboost_test.cu)
   target_link_libraries(varboost_test av1f)
   target_compile_options(varboost_test PRIVATE ${AV1GPU_CUDA_OPTIONS})
+  # k_recon's rc_eval (whole warp and half-warp) against warp_eval_rt, which it replaced: levels, eob, D and R bit
+  # for bit, all tx sizes and types, QM on / off, 8 and 10 bits
+  add_executable(rc_eval_drift_test tests/rc_eval_drift_test.cu)
+  target_link_libraries(rc_eval_drift_test av1gpu_encoder)
+  target_compile_options(rc_eval_drift_test PRIVATE ${AV1GPU_CUDA_OPTIONS})
+  add_test(NAME rc_eval_drift COMMAND rc_eval_drift_test)
   # gray JPEGs tagged 1x1 / 2x2 / 2x1 / 1x2 (jpeg_gray_sampling_test.py) and, with --ycbcr, 3-component JPEGs with
   # unusual sampling factors (jpeg_inverted_sampling_test.py), with libjpeg-turbo's decode of them
   add_executable(jpeg_gray_gen tests/jpeg_gray_gen.cpp)

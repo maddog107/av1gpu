@@ -4,6 +4,7 @@
 #include "pinned.h"
 #include "kernels.h"
 size_t gp_recon_scratch_bytes();   // k_recon.cu (W5/W3)
+void gp_recon_order(const GpBatch &B, uint32_t *dSteps, const uint32_t *dSeg, int nSeg, uint32_t maxSeg, cudaStream_t st);   // k_recon_order.cu
 #include "av1g/av1g.h"
 #include "av1g/blockinfo.h"
 #include "av1g/dsp.h"
@@ -526,15 +527,26 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
         stepFlat.insert(stepFlat.end(), steps[s].begin(), steps[s].end());
     }
     stepOff.push_back((uint32_t)stepFlat.size());
-    uint32_t *dSteps = nullptr;
+    // boundaries of every step's 4:2:0 and 4:4:4 groups (one k_recon launch each), for k_recon_order after the DP
+    std::vector<uint32_t> stepSeg;
+    uint32_t maxSeg = 0;
+    for (size_t s = 0; s + 1 < stepOff.size(); s++) {
+        stepSeg.push_back(stepOff[s]);
+        stepSeg.push_back(stepOff[s] + step420[s]);
+        maxSeg = std::max({maxSeg, step420[s], stepOff[s + 1] - stepOff[s] - step420[s]});
+    }
+    stepSeg.push_back(stepOff.back());
+    uint32_t *dSteps = nullptr, *dStepSeg = nullptr;
     if (!ll) {
         GPCK(A.get(dSteps, stepFlat.size()));
+        GPCK(A.get(dStepSeg, stepSeg.size()));
         size_t maxStep = 1;
         for (auto &v : steps) maxStep = std::max(maxStep, v.size());
         uint8_t *bs;
         GPCK(A.get(bs, maxStep * gp_recon_scratch_bytes()));
         B.bigScratch = bs;
         GPCK(cudaMemcpyAsync(dSteps, stepFlat.data(), stepFlat.size() * 4, cudaMemcpyHostToDevice, st));
+        GPCK(cudaMemcpyAsync(dStepSeg, stepSeg.data(), stepSeg.size() * 4, cudaMemcpyHostToDevice, st));
     }
     // lossless: per-plane 4x4 cost tables and the k_ll_cost segments (3 per image: Y, U, V; empty for monochrome chroma)
     GpLossless L;
@@ -577,6 +589,9 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
     GPCK(cudaGetLastError());
     cudaEventRecord(ev_[2], st);
     gp_launch_dp(B, P, st, bd);
+    // longest superblocks first in each step; debug: GP_RC_ORDER=0 keeps the list order (the CTA order changes no output)
+    static const bool rcOrder = !getenv("GP_RC_ORDER") || atoi(getenv("GP_RC_ORDER")) != 0;
+    if (!ll && rcOrder) gp_recon_order(B, dSteps, dStepSeg, (int)stepSeg.size() - 1, maxSeg, st);
     GPCK(cudaGetLastError());
     cudaEventRecord(ev_[3], st);
     // ---- closed loop, SB wavefront ----
