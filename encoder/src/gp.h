@@ -174,6 +174,17 @@ struct GpBatch {
     const uint32_t *palAny;    // device flag: some image of the batch has GpImage::sct (the lossy palette search runs)
 };
 
+// Live 16x16 cells of a batch with the flat-area pruning (gp_launch_live16), an argument of the analysis kernels of their
+// own (GpBatch keeps its layout): the cells that the pruning keeps, as (image, cy << 16 | cx) pairs in no particular
+// order.  The shapes below 16x16 take their blocks cell by cell from it, so pruned cells cost no threads.  All zero: no
+// list (the kernels use the shapes' raster grids).
+struct GpLive {
+    uint32_t nCells;           // 16x16 cells of the batch (raster per image)
+    const uint32_t *cellStart; // [nimg + 1] first cell of each image
+    uint32_t *cell;            // [2 * nCells]
+    uint32_t *count;           // [1]
+};
+
 // Lossless analysis (k_lossless.cu): per-plane 4x4 cost tables (uint16, 1/16 bit, position-major:
 // cost[p][costOff[img][p] + pos * NE_p + entry], pos = y4 * (MiCols >> ssx) + x4).
 #define LL_NCAND_Y 66    // 61 (mode, angle delta) candidates + 5 filter-intra modes

@@ -11,8 +11,8 @@ static void launch_an(const GpBatch &B, const GpParams &P, uint32_t n, cudaStrea
     uint32_t grid = (n + NW - 1) / NW;
     // non-persistent grid: short CTAs let the hardware scheduler interleave other streams (recon wavefronts)
     if (grid > (1u << 30)) grid = 1u << 30;
-    if (bd == 10) k_analysis<W, H, BS, NW, 10><<<grid, NW * 32, 0, st>>>(B, P, n);
-    else k_analysis<W, H, BS, NW, 8><<<grid, NW * 32, 0, st>>>(B, P, n);
+    if (bd == 10) k_analysis<W, H, BS, NW, 10><<<grid, NW * 32, 0, st>>>(B, P, n, GpLive{});
+    else k_analysis<W, H, BS, NW, 8><<<grid, NW * 32, 0, st>>>(B, P, n, GpLive{});
 }
 
 void gp_launch_an_c(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st, int bd) {

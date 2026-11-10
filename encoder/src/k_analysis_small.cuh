@@ -119,22 +119,36 @@ __device__ __forceinline__ EvalOut eval_scalar(const int16_t *res, const EvalIn 
     return o;
 }
 
-template <int W, int H, int BS, int BD = 8>
-__global__ void __launch_bounds__(128) k_analysis_small(GpBatch B, GpParams P, uint32_t nTotal) {
+template <int W, int H, int BS, int BD>
+__device__ __forceinline__ void analysis_small(const GpBatch &B, const GpParams &P, uint32_t nTotal, const GpLive &LC) {
+    static_assert(!an_cellwise<W, H>() || an_live_filled(BS), "k_live16 must fill this cell-wise shape (AN_LIVE_SHAPES)");
     typedef SmallTx<W, H> T;
     typedef av1g_pixel_t(BD) Px;
     const uint32_t gb = blockIdx.x * blockDim.x + threadIdx.x;
     if (gb >= nTotal) return;
-    const uint32_t *starts = B.shImgStart + (size_t)BS * (B.nimg + 1);
-    int lo = 0, hi = B.nimg - 1;
-    while (lo < hi) {
-        const int mid = (lo + hi + 1) >> 1;
-        if (starts[mid] <= gb) lo = mid; else hi = mid - 1;
+    // with a live-cell list, thread gb takes block gb % bpc of live cell gb / bpc (a warp: 2 to 8 whole cells, all of
+    // them kept by prune_flat), else block gb of the shape's raster grid
+    const bool cellwise = an_cellwise<W, H>() && LC.cell;
+    int lo;
+    uint32_t li;
+    int x, y;
+    if constexpr (an_cellwise<W, H>()) {
+        if (cellwise && !live_block<W, H>(B, LC, BS, gb, lo, li, x, y)) return;
+    }
+    if (!cellwise) {
+        const uint32_t *starts = B.shImgStart + (size_t)BS * (B.nimg + 1);
+        lo = 0;
+        int hi = B.nimg - 1;
+        while (lo < hi) {
+            const int mid = (lo + hi + 1) >> 1;
+            if (starts[mid] <= gb) lo = mid; else hi = mid - 1;
+        }
+        li = gb - starts[lo];
+        const int nbx = B.img[lo].shNbx[BS];
+        x = (int)(li % nbx) * W;
+        y = (int)(li / nbx) * H;
     }
     const GpImage &I = B.img[lo];
-    const uint32_t li = gb - starts[lo];
-    const int nbx = I.shNbx[BS];
-    const int x = (int)(li % nbx) * W, y = (int)(li / nbx) * H;
     GpBlockRes &out = B.blk[I.shOff[BS] + li];
     if (x >= I.MiCols * 4 || y >= I.MiRows * 4) { out.J = GP_INF; out.ncand = 0; return; }
     constexpr int txSz = (W == 4 && H == 4) ? AV1G_TX_4X4 : (W == 8 && H == 8) ? AV1G_TX_8X8 : (W == 4 && H == 8) ? AV1G_TX_4X8
@@ -151,7 +165,7 @@ __global__ void __launch_bounds__(128) k_analysis_small(GpBatch B, GpParams P, u
     const float lambda = gp_lambda<BD>(qidx, P.lambdaMul) * ssim_scale(I, x, y, W, H);
     const float lamS = P.satdLambda * sqrtf(lambda);
     const float *C = g_cost[I.qctx];
-    if (prune_flat<BD>(I, P, x, y, W, H, qidx)) { out.J = GP_INF; out.ncand = 0; return; }
+    if (!cellwise && prune_flat<BD>(I, P, x, y, W, H, qidx)) { out.J = GP_INF; out.ncand = 0; return; }
     constexpr int EL = AV1G_EDGE_OFF + 2 * (W + H) + 8;
     Px ea[EL], el[EL];
     Px *A = ea + AV1G_EDGE_OFF, *L = el + AV1G_EDGE_OFF;
@@ -286,4 +300,16 @@ __global__ void __launch_bounds__(128) k_analysis_small(GpBatch B, GpParams P, u
     for (int k = 0; k < nc && k < K; k++)
         if (k != bestK) out.cand[m++] = (uint8_t)cands[k];
     out.ncand = (uint8_t)m;
+}
+
+// Register budget per shape, measured on an RTX PRO 2000 Blackwell (one thread per block, so the budget is the
+// thread's): 4x4 and 4x8 run 10-15 % faster at 6 CTAs per SM (80 registers, k_analysis_small6); 8x4 and 8x8 gain
+// nothing there and 4x16 / 16x4 lose 2-3 % (their spills grow), so they keep the compiler's choice (126-168 registers).
+template <int W, int H, int BS, int BD = 8>
+__global__ void __launch_bounds__(128) k_analysis_small(GpBatch B, GpParams P, uint32_t nTotal, GpLive LC) {
+    analysis_small<W, H, BS, BD>(B, P, nTotal, LC);
+}
+template <int W, int H, int BS, int BD = 8>
+__global__ void __launch_bounds__(128, 6) k_analysis_small6(GpBatch B, GpParams P, uint32_t nTotal, GpLive LC) {
+    analysis_small<W, H, BS, BD>(B, P, nTotal, LC);
 }
