@@ -627,7 +627,7 @@ __device__ void rc_final_quant(int W, int H, RcShared<BD> &S, const EvalIn &e, i
         const int step = av1g_qm_step(idx == 0 ? e.dcQ : e.acQ, e.qm, idx);
         const float a = fabsf(v) * (float)den / (float)step;
         const float wr = e.qm ? 32.f / (float)e.qm[idx] : 1.f;
-        int l = a < e.zbin ? 0 : (int)(a + (e.qmRnd ? e.rnd * wr : e.rnd));
+        int l = a < e.zbin ? 0 : (int)__fadd_rn(a, e.qmRnd ? __fmul_rn(e.rnd, wr) : e.rnd);   // as rc_quant_rate
         l = min(l, 16383);
         const int qv = v < 0 ? -l : l;
         q[idx] = (int16_t)qv;
@@ -892,7 +892,7 @@ __device__ __noinline__ void rc_luma(int W, int H, RcShared<BD> &S, const GpBatc
                     ee.qm = av1g_qm(I.usingQm, I.qm[0], 0, txSz, ee.txType);
                     if (!shared) rc_residual_half<BD>(W, H, S, 0, c, false, 0, src, I.spitch[0], Hs, L);
                     const EvalOut o = rc_eval<BD, 16>(shared ? S.u.w[0].res : Hs.res, Hs.tmp, Hs.q, ee, W, H, L);
-                    const float J = o.D + lambda * (o.R + mbits(c));
+                    const float J = fmaf(lambda, __fadd_rn(o.R, mbits(c)), o.D);   // explicit rounding: rc_eval.cuh
                     if (L.l == 0) { S.taskJ[t] = J; S.taskE[t] = o.eob; }
                 }
                 __syncthreads();
@@ -925,7 +925,7 @@ __device__ __noinline__ void rc_luma(int W, int H, RcShared<BD> &S, const GpBatc
             ee.qm = av1g_qm(I.usingQm, I.qm[0], 0, txSz, ee.txType);
             ee.resEnergy = shared ? sharedResE : rc_residual<BD>(W, H, S, 0, c, false, 0, src, I.spitch[0], res, (Px *)tmp);
             const EvalOut o = rc_eval<BD, 32>(res, tmp, q, ee, W, H, rc_warp_lanes());
-            const float J = o.D + lambda * (o.R + mbits(c));
+            const float J = fmaf(lambda, __fadd_rn(o.R, mbits(c)), o.D);
             if ((tid & 31) == 0) S.taskJ[t] = J;
             if (!big) {
                 const bool better = J < S.bestJw[warp];   // identical in all lanes (warp-reduced values)
@@ -1071,7 +1071,7 @@ __device__ __noinline__ void rc_luma(int W, int H, RcShared<BD> &S, const GpBatc
         J0 = S.bestJw[bestW];
     } else if (trySplit) {
         rc_final_quant_rd<BD>(W, H, S, e, 0, bestC, false, 0, src, I.spitch[0]);
-        J0 = S.finD + lambda * (S.finR + mbits(bestC));
+        J0 = fmaf(lambda, __fadd_rn(S.finR, mbits(bestC)), S.finD);
     } else {
         rc_final_quant<BD>(W, H, S, e, 0, bestC, false, 0, src, I.spitch[0]);
         predRes = big ? S.bigG->res : S.u.w[0].res;
@@ -1137,7 +1137,7 @@ __device__ __noinline__ void rc_luma(int W, int H, RcShared<BD> &S, const GpBatc
                     es.qm = av1g_qm(I.usingQm, I.qm[0], 0, txSub, AV1G_DCT_DCT);
                     rc_final_quant_rd<BD>(Ws, Hs, S, es, 0, bestC, false, 0, srcS, I.spitch[0]);
                     tSel = AV1G_DCT_DCT;
-                    Jk = S.finD + lambda * S.finR;
+                    Jk = fmaf(lambda, S.finR, S.finD);
                 } else {
                     float myJ = GP_INF;
                     int myT = AV1G_DCT_DCT, myE = 0;
@@ -1149,7 +1149,7 @@ __device__ __noinline__ void rc_luma(int W, int H, RcShared<BD> &S, const GpBatc
                         ee.qm = av1g_qm(I.usingQm, I.qm[0], 0, txSub, ee.txType);
                         ee.resEnergy = rc_residual<BD>(Ws, Hs, S, 0, bestC, false, 0, srcS, I.spitch[0], res, (Px *)tmp);
                         const EvalOut o = rc_eval<BD, 32>(res, tmp, q, ee, Ws, Hs, rc_warp_lanes());
-                        const float J = o.D + lambda * o.R;
+                        const float J = fmaf(lambda, o.R, o.D);
                         if (J < myJ) {   // warp-uniform
                             __syncwarp();
                             for (int i = tid & 31; i < Ws * Hs; i += 32) rc_taskq(S.u, warp)[i] = q[i];
@@ -1365,7 +1365,7 @@ __device__ __noinline__ void rc_chroma(int W, int H, RcShared<BD> &S, const GpBa
         if (pass) {
             if (!uvDeltaOk) break;
             if (tid < 32) {   // best directional mode at delta 0: lane m's cost, the first minimum as the serial scan
-                const float j = tid >= AV1G_V_PRED && tid <= AV1G_D67_PRED ? S.satd[tid] + lamS * uvcbits(cand_pack(tid, 0)) : GP_INF;
+                const float j = tid >= AV1G_V_PRED && tid <= AV1G_D67_PRED ? fmaf(lamS, uvcbits(cand_pack(tid, 0)), S.satd[tid]) : GP_INF;
                 const int bm = warp_argmin(j, tid);
                 if (tid < 6) S.uvc[13 + tid] = cand_pack(bm, tid < 3 ? -(tid + 1) : (tid - 2));
             }
@@ -1442,7 +1442,7 @@ __device__ __noinline__ void rc_chroma(int W, int H, RcShared<BD> &S, const GpBa
         // top K by SATD cost (candidate ci on lane ci): K rounds of warp_argmin give the K smallest in (cost, index) order,
         // the order of the serial insertion (strict <: an equal cost goes after the earlier candidate)
         const int K = max(1, min(P.uvK, 6));
-        float js = tid < nuv ? S.satd[tid] + lamS * uvcbits(S.uvc[tid]) : GP_INF;
+        float js = tid < nuv ? fmaf(lamS, uvcbits(S.uvc[tid]), S.satd[tid]) : GP_INF;
         int n = 0;
         for (int k = 0; k < K; k++) {
             const int b = warp_argmin(js, tid);
@@ -1500,7 +1500,7 @@ __device__ __noinline__ void rc_chroma(int W, int H, RcShared<BD> &S, const GpBa
             const EvalOut o = rc_eval<BD, 16>(Hs.res, Hs.tmp, Hs.q, ee, W, H, L);
             int16_t *dq = rc_taskq(S.u, t);   // nTask <= 6 * 2 + 2 = RC_TASKQ_MAX: all kept
             for (int i = L.l; i < W * H; i += 16) dq[i] = Hs.q[i];
-            if (L.l == 0) { S.taskE[t] = o.eob; S.taskJ[t] = o.D + lambda * o.R; }
+            if (L.l == 0) { S.taskE[t] = o.eob; S.taskJ[t] = fmaf(lambda, o.R, o.D); }
         }
         __syncthreads();
     } else {
@@ -1531,7 +1531,7 @@ __device__ __noinline__ void rc_chroma(int W, int H, RcShared<BD> &S, const GpBa
                 for (int i = tid & 31; i < T.n; i += 32) dq[i] = qq[i];
                 if ((tid & 31) == 0) S.taskE[t] = o.eob;
             }
-            if ((tid & 31) == 0) S.taskJ[t] = o.D + lambda * o.R;
+            if ((tid & 31) == 0) S.taskJ[t] = fmaf(lambda, o.R, o.D);
         }
         __syncthreads();
     }

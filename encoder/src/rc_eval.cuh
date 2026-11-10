@@ -8,6 +8,10 @@
 //   with its own accumulator in the same element order); the first butterfly step of warp_sum (xor 16) is the sum
 //   of the two, the rest (xor 8 .. 1) runs on the half-warp's shuffles.  Float addition is commutative, so every
 //   lane ends with the bits of warp_sum.  eob is a maximum (order-free).
+// - rounding: the quantizer's offset, D and the callers' J = D + lambda * R are written with fmaf / __fmul_rn /
+//   __fadd_rn as the compiler contracted them in warp_eval_rt inlined into the caller (one FFMA for J and for the
+//   64-point energy term, separate FMUL / FADD everywhere else; SASS of b834f3f), so inlining or outlining rc_eval
+//   cannot change a value.
 #pragma once
 #include "dev_tx.cuh"
 
@@ -167,7 +171,7 @@ __device__ __forceinline__ void rc_quant_rate(const float *tmp, int16_t *q, cons
                 const int step = av1g_qm_step(idx == 0 ? e.dcQ : e.acQ, e.qm, idx);
                 const float a = fabsf(x) * (float)den / (float)step;
                 const float wr = e.qm ? 32.f / (float)e.qm[idx] : 1.f;
-                int l = a < e.zbin ? 0 : (int)(a + (e.qmRnd ? e.rnd * wr : e.rnd));
+                int l = a < e.zbin ? 0 : (int)__fadd_rn(a, e.qmRnd ? __fmul_rn(e.rnd, wr) : e.rnd);
                 l = min(l, 16383);
                 const int qv = x < 0 ? -l : l;
                 q[idx] = (int16_t)qv;
@@ -179,7 +183,7 @@ __device__ __forceinline__ void rc_quant_rate(const float *tmp, int16_t *q, cons
                     dq = (float)av1g_clip3(-(1 << (7 + BD)), (1 << (7 + BD)) - 1, a2);
                 }
                 const float d = x - dq;
-                dist[v] = fmaf(d * d, e.qmDist ? wr * wr : 1.f, dist[v]);
+                dist[v] = fmaf(__fmul_rn(d, d), e.qmDist ? __fmul_rn(wr, wr) : 1.f, dist[v]);
                 if (k64) kept[v] = fmaf(x, x, kept[v]);
             }
         }
@@ -211,11 +215,11 @@ __device__ __forceinline__ void rc_quant_rate(const float *tmp, int16_t *q, cons
     }
     const float bitsS = rc_grp_sum<G>(bits, L);
     const float g = g_txg[e.txSz][e.txType];
-    float D = g * distS;
+    float D = __fmul_rn(g, distS);
     if constexpr (G == 32) {
         if (W == 64 || H == 64) {
             const float keptS = rc_grp_sum<G>(kept, L);
-            D += fmaxf(0.f, e.resEnergy - g * keptS);
+            D = __fadd_rn(D, fmaxf(0.f, fmaf(-g, keptS, e.resEnergy)));
         }
     }
     o.D = D;
