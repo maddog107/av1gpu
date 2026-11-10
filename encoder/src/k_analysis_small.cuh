@@ -119,8 +119,8 @@ __device__ __forceinline__ EvalOut eval_scalar(const int16_t *res, const EvalIn 
     return o;
 }
 
-template <int W, int H, int BS, int BD = 8>
-__global__ void __launch_bounds__(128) k_analysis_small(GpBatch B, GpParams P, uint32_t nTotal) {
+template <int W, int H, int BS, int BD>
+__device__ __forceinline__ void analysis_small(const GpBatch &B, const GpParams &P, uint32_t nTotal) {
     typedef SmallTx<W, H> T;
     typedef av1g_pixel_t(BD) Px;
     const uint32_t gb = blockIdx.x * blockDim.x + threadIdx.x;
@@ -286,4 +286,16 @@ __global__ void __launch_bounds__(128) k_analysis_small(GpBatch B, GpParams P, u
     for (int k = 0; k < nc && k < K; k++)
         if (k != bestK) out.cand[m++] = (uint8_t)cands[k];
     out.ncand = (uint8_t)m;
+}
+
+// Register budget per shape, measured on an RTX PRO 2000 Blackwell (one thread per block, so the budget is the
+// thread's): 4x4 and 4x8 run 10-15 % faster at 6 CTAs per SM (80 registers, k_analysis_small6); 8x4 and 8x8 gain
+// nothing there and 4x16 / 16x4 lose 2-3 % (their spills grow), so they keep the compiler's choice (126-168 registers).
+template <int W, int H, int BS, int BD = 8>
+__global__ void __launch_bounds__(128) k_analysis_small(GpBatch B, GpParams P, uint32_t nTotal) {
+    analysis_small<W, H, BS, BD>(B, P, nTotal);
+}
+template <int W, int H, int BS, int BD = 8>
+__global__ void __launch_bounds__(128, 6) k_analysis_small6(GpBatch B, GpParams P, uint32_t nTotal) {
+    analysis_small<W, H, BS, BD>(B, P, nTotal);
 }

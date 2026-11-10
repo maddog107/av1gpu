@@ -10,14 +10,23 @@
 
 template <int W, int H, typename P = uint8_t>
 struct ASmem {
+    // 64x64 and 32x64 (64-sample columns, DCT_DCT only): the residual is stored by column, RS samples apart (an odd
+    // number of 4-byte words: conflict-free), and the transform runs in place (warp_eval_cm): a column's 64 samples (128
+    // bytes) are replaced by its 32 outputs, then each row of those by its outputs.  No tmp: 64x64 needs 9.4 instead of
+    // 17.4 KB per warp (9 instead of 5 warps per SM), 32x64 14.4 instead of 18.5 KB per CTA (6 instead of 5 CTAs); the
+    // levels of 64x64 go in the residual's upper half (columns 32..63, free once the row pass has read them).  (16x64:
+    // register-limited, measured no faster this way.)
+    static constexpr bool cm = H == 64 && W >= 32;
+    static constexpr int RS = H + 2;
+    static constexpr bool qInUpper = cm && W == 64;
     // shapes with a 32- or 64-sample side have only DCT_DCT for intra luma (no tx-type search), so every evaluation
     // follows a fresh warp_residual: the quantized levels reuse the residual's storage (the column pass has read all of
     // it before warp_quant_rate_rt writes a level).  Less shared memory per warp: 32x32 fits 3 CTAs per SM instead of 2.
-    static constexpr bool qInRes = W >= 32 || H >= 32;
-    int16_t res[W * H];
-    float tmp[TxD<W, H>::th * TxD<W, H>::TS];
-    int16_t qs[qInRes ? 2 : TxD<W, H>::n];
-    __device__ __forceinline__ int16_t *q() { return qInRes ? res : qs; }
+    static constexpr bool qInRes = !cm && (W >= 32 || H >= 32);
+    int16_t res[cm ? W * RS : W * H];
+    float tmp[cm ? 1 : TxD<W, H>::th * TxD<W, H>::TS];
+    int16_t qs[(qInRes || qInUpper) ? 2 : TxD<W, H>::n];
+    __device__ __forceinline__ int16_t *q() { return qInUpper ? res + 32 * RS : qInRes ? res : qs; }
     P ea[AV1G_EDGE_LEN], el[AV1G_EDGE_LEN];
     P pa[AV1G_EDGE_LEN], pl[AV1G_EDGE_LEN];   // edge-filter prepared edges (RD stage)
     int up[2];
@@ -270,9 +279,9 @@ __device__ __forceinline__ void an_edge_prepare(int pAngle, int log2W, int log2H
     if (upL) an_edge_upsample<BD>(left, h + (pAngle > 180 ? w : 0));
 }
 
-// residual of candidate c into res (W x H), returns sum r^2 in raster lane order (all lanes; 0 without a 64-sample
-// side, where EvalIn::resEnergy is unused).  With the intra edge filter, directional candidates use edges prepared
-// by the warp into pa/pl (filter type 0: neighbour modes unknown).
+// residual of candidate c into res (W x H; by column, ASmem::RS apart, for ASmem::cm), returns sum r^2 in raster lane
+// order (all lanes; 0 without a 64-sample side, where EvalIn::resEnergy is unused).  With the intra edge filter,
+// directional candidates use edges prepared by the warp into pa/pl (filter type 0: neighbour modes unknown).
 template <int W, int H, int BD = 8, typename P>
 __device__ __forceinline__ float warp_residual(const P *src, int sp, int c, int16_t *res, const P *A,
                                                const P *L, int dcv, P *pa = nullptr, P *pl = nullptr,
@@ -290,8 +299,11 @@ __device__ __forceinline__ float warp_residual(const P *src, int sp, int c, int1
                             pl + AV1G_EDGE_OFF, upA, upL);
     }
     const P *EA = ef ? pa + AV1G_EDGE_OFF : A, *EL = ef ? pl + AV1G_EDGE_OFF : L;
-    // res may hold the previous evaluation's quantized levels (ASmem::qInRes): every lane is done reading them
+    // res may hold the previous evaluation's quantized levels (ASmem::qInRes, qInUpper) or transform outputs
+    // (ASmem::cm): every lane is done reading them
     __syncwarp();
+    constexpr bool cm = H == 64 && W >= 32;   // ASmem::cm
+    constexpr int RS = H + 2;
     constexpr int nsx = W / 4;
     for (int sb = lane; sb < (W / 4) * (H / 4); sb += 32) {
         const int sx = (sb % nsx) * 4, sy = (sb / nsx) * 4;
@@ -300,21 +312,132 @@ __device__ __forceinline__ float warp_residual(const P *src, int sp, int c, int1
 #pragma unroll
         for (int i = 0; i < 4; i++)
 #pragma unroll
-            for (int j = 0; j < 4; j++) res[(sy + i) * W + sx + j] = (int16_t)((int)src[(sy + i) * sp + sx + j] - pr[i * 4 + j]);
+            for (int j = 0; j < 4; j++)
+                res[cm ? (sx + j) * RS + sy + i : (sy + i) * W + sx + j] = (int16_t)((int)src[(sy + i) * sp + sx + j] - pr[i * 4 + j]);
     }
     __syncwarp();
     if (W < 64 && H < 64) return 0.f;
     float e = 0.f;
     for (int p = lane; p < W * H; p += 32) {
-        const int r = res[p];
+        const int r = res[cm ? (p % W) * RS + p / W : p];
         e += (float)(r * r);
     }
     return warp_sum(e);
 }
 
+// warp_eval for the column-major residual of ASmem::cm (H == 64, DCT_DCT: no flips, no identity kind), the transform
+// in place: the column pass replaces column j's 64 samples by its 32 outputs (the same 128 bytes, read by the lanes of
+// that column before any of them writes), the row pass row i's 64 inputs by its tw outputs (one lane per row), all at
+// column stride RS / 2 floats.  The same fmaf chain per output and the same quantization as warp_eval: identical
+// results.  q: the levels (natural order, tw x 32), outside the first tw columns.
+template <int W, int H, int BD = 8>
+__device__ __forceinline__ void warp_eval_cm(int16_t *res, int16_t *q, const EvalIn &e, EvalOut &o) {
+    static_assert(H == 64 && W >= 32, "column-major storage: 64-sample columns, one lane per column");
+    constexpr int TH = 32, TW = W > 32 ? 32 : W, RS = H + 2, RF = RS / 2;
+    const int lane = threadIdx.x & 31;
+    float *col = (float *)res;   // column j's outputs: col[j * RF + i]
+    {
+        // warp_fwd_ct's column pass with one item per column (GC = 1 for W >= 32): lane j owns columns j and j + 32
+        const float *FcT = g_fwdT + g_fwdOff[AV1G_K_DCT][log2i(H)];
+        for (int j = lane; j < W; j += 32) {
+            const int16_t *x2 = res + j * RS;
+            float acc[TH];
+#pragma unroll
+            for (int i = 0; i < TH; i++) acc[i] = 0.f;
+            for (int k = 0; k < H; k++) {
+                const float x = (float)x2[k];
+                const float4 *f4 = (const float4 *)(FcT + k * H);
+#pragma unroll
+                for (int i4 = 0; i4 < TH / 4; i4++) {
+                    const float4 f = __ldg(&f4[i4]);
+                    acc[4 * i4 + 0] = fmaf(f.x, x, acc[4 * i4 + 0]);
+                    acc[4 * i4 + 1] = fmaf(f.y, x, acc[4 * i4 + 1]);
+                    acc[4 * i4 + 2] = fmaf(f.z, x, acc[4 * i4 + 2]);
+                    acc[4 * i4 + 3] = fmaf(f.w, x, acc[4 * i4 + 3]);
+                }
+            }
+#pragma unroll
+            for (int i = 0; i < TH; i++) col[j * RF + i] = acc[i];
+        }
+    }
+    __syncwarp();
+    {
+        const float *FrT = g_fwdT + g_fwdOff[AV1G_K_DCT][log2i(W)];
+        const float scale = g_txScale[e.txSz];
+        const int i = lane;   // one row per lane (TH == 32)
+        float acc[TW];
+#pragma unroll
+        for (int jj = 0; jj < TW; jj++) acc[jj] = 0.f;
+        for (int k = 0; k < W; k++) {
+            const float x = col[k * RF + i];
+            const float4 *f4 = (const float4 *)(FrT + k * W);
+#pragma unroll
+            for (int j4 = 0; j4 < TW / 4; j4++) {
+                const float4 f = __ldg(&f4[j4]);
+                acc[4 * j4 + 0] = fmaf(f.x, x, acc[4 * j4 + 0]);
+                acc[4 * j4 + 1] = fmaf(f.y, x, acc[4 * j4 + 1]);
+                acc[4 * j4 + 2] = fmaf(f.z, x, acc[4 * j4 + 2]);
+                acc[4 * j4 + 3] = fmaf(f.w, x, acc[4 * j4 + 3]);
+            }
+        }
+#pragma unroll
+        for (int jj = 0; jj < TW; jj++) col[jj * RF + i] = acc[jj] * scale;   // only this lane's row
+    }
+    __syncwarp();
+    // warp_quant_rate_rt with the coefficient (i, j) at col[j * RF + i]
+    constexpr int n = TW * TH, lt = TW == 32 ? 5 : TW == 16 ? 4 : 3;
+    const int den = av1g_dq_denom(e.txSz);
+    float dist = 0.f, kept = 0.f;
+    for (int idx = lane; idx < n; idx += 32) {
+        const int i = idx >> lt, j = idx & (TW - 1);
+        const float v = col[j * RF + i];
+        const int step = av1g_qm_step(idx == 0 ? e.dcQ : e.acQ, e.qm, idx);
+        const float a = fabsf(v) * (float)den / (float)step;
+        const float wr = e.qm ? 32.f / (float)e.qm[idx] : 1.f;
+        int l = a < e.zbin ? 0 : (int)(a + (e.qmRnd ? e.rnd * wr : e.rnd));
+        l = min(l, 16383);
+        const int qv = v < 0 ? -l : l;
+        q[idx] = (int16_t)qv;
+        const float dq = l ? (float)av1g_dequant_coef<BD>(qv, step, den) : 0.f;
+        const float d = v - dq;
+        dist = fmaf(d * d, e.qmDist ? wr * wr : 1.f, dist);
+        kept = fmaf(v, v, kept);
+    }
+    dist = warp_sum(dist);
+    __syncwarp();
+    const uint16_t *scan = av1g_get_scan(e.txSz, e.txType);
+    int last = 0;
+    for (int c = lane; c < n; c += 32)
+        if (q[scan[c]]) last = c + 1;
+    const int eob = warp_max(last);
+    float bits = lane == 0 ? base_bits(e, eob) : 0.f;
+    if (eob > 0) {
+        const int txClass = av1g_tx_class(e.txType);
+        for (int c = lane; c < eob; c += 32) bits += coeff_bits(c, eob, q, scan, e.txSz, txClass, e.plane > 0, e.dcCtx, e.C);
+    }
+    bits = warp_sum(bits);
+    const float g = g_txg[e.txSz][e.txType];
+    float D = g * dist;
+    kept = warp_sum(kept);
+    D += fmaxf(0.f, e.resEnergy - g * kept);
+    o.D = D;
+    o.R = bits;
+    o.eob = eob;
+}
+
+// Threads per SM that k_analysis<W, H> is compiled for (__launch_bounds__: registers <= 64 K / budget).  Measured per
+// shape against 512 (128 registers) on an RTX PRO 2000 Blackwell, kernel time with the default preset / --preset base:
+// 768 (80 registers, 6 CTAs of 4 warps) for shapes of up to 256 pixels, whose shared memory allows 6 CTAs (16x8 -12 /
+// -11 %, 8x16 -10 / -9 %, 16x16 -6 / -9 %, 8x32 -3 / -8 %, 32x8 -2 / -5 %); 640 for 16x32 (96 registers, 5 CTAs: -3 /
+// -1 %; 32x16 gained nothing that way); 384 for 32x32 (168 registers, 3 CTAs, the limit of its 28 KB anyway: -7 / -7 %).
+template <int W, int H>
+constexpr int an_thread_budget() {
+    return W * H <= 256 ? 768 : (W == 16 && H == 32) ? 640 : (W == 32 && H == 32) ? 384 : 512;
+}
+
 // BD: bit depth of the batch (distortions and lambda in native units, see gp_lambda)
 template <int W, int H, int BS, int NW, int BD = 8>
-__global__ void __launch_bounds__(NW * 32, (W * H <= 64 ? 768 : 512) / (NW * 32)) k_analysis(GpBatch B, GpParams P, uint32_t nTotal) {
+__global__ void __launch_bounds__(NW * 32, an_thread_budget<W, H>() / (NW * 32)) k_analysis(GpBatch B, GpParams P, uint32_t nTotal) {
     typedef TxD<W, H> T;
     typedef av1g_pixel_t(BD) Px;
     __shared__ ASmem<W, H, Px> smem[NW];
@@ -466,7 +589,8 @@ __global__ void __launch_bounds__(NW * 32, (W * H <= 64 ? 768 : 512) / (NW * 32)
             e.intraDir = cand_mode(c);
             e.qm = av1g_qm(I.usingQm, I.qm[0], 0, txSz, t);
             EvalOut o;
-            warp_eval<W, H, BD>(S.res, S.tmp, S.q(), e, o);
+            if constexpr (ASmem<W, H, Px>::cm) warp_eval_cm<W, H, BD>(S.res, S.q(), e, o);
+            else warp_eval<W, H, BD>(S.res, S.tmp, S.q(), e, o);
             const float J = o.D + lambda * (o.R + mbits(c) + overhead);
             if (J < bestJ) {
                 bestJ = J;

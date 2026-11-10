@@ -19,8 +19,13 @@ static void launch_an(const GpBatch &B, const GpParams &P, uint32_t n, cudaStrea
 template <int W, int H, int BS>
 static void launch_small(const GpBatch &B, const GpParams &P, uint32_t n, cudaStream_t st, int bd) {
     if (!n) return;
-    if (bd == 10) k_analysis_small<W, H, BS, 10><<<(n + 127) / 128, 128, 0, st>>>(B, P, n);
-    else k_analysis_small<W, H, BS, 8><<<(n + 127) / 128, 128, 0, st>>>(B, P, n);
+    if constexpr (W == 4 && H <= 8) {   // 4x4, 4x8: 6 CTAs per SM (k_analysis_small.cuh)
+        if (bd == 10) k_analysis_small6<W, H, BS, 10><<<(n + 127) / 128, 128, 0, st>>>(B, P, n);
+        else k_analysis_small6<W, H, BS, 8><<<(n + 127) / 128, 128, 0, st>>>(B, P, n);
+    } else {
+        if (bd == 10) k_analysis_small<W, H, BS, 10><<<(n + 127) / 128, 128, 0, st>>>(B, P, n);
+        else k_analysis_small<W, H, BS, 8><<<(n + 127) / 128, 128, 0, st>>>(B, P, n);
+    }
 }
 
 void gp_launch_an_a(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st, int bd) {
