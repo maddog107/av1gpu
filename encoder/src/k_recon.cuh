@@ -1280,26 +1280,39 @@ __device__ __noinline__ void rc_chroma(int W, int H, RcShared<BD> &S, const GpBa
             __syncthreads();
             continue;
         }
-        // smaller blocks: one 4x4 sub-block per half-warp, one pixel per lane (lane bits 0-1 column, 2-3 row),
-        // candidate-major: a warp's two sub-blocks have the same candidate, so rc_pred does not diverge.  The
-        // Hadamard runs on shuffles in hadamard4_abs's butterfly order (s0 = a + b, s1 = a - b): the same sum.
-        const int groups = nc * 2 * nsub;   // (candidate, plane, sub-block), even
-        const int lane = tid & 31;
-        for (int g0 = (tid >> 5) * 2; g0 < groups; g0 += RC_NT / 16) {
-            const int g = g0 + (lane >> 4);
-            const int ci = c0 + (g >> (ln + 1)), pl = 1 + ((g >> ln) & 1), sbk = g & (nsub - 1);
-            const int i = (sbk >> lx) * 4 + ((lane >> 2) & 3), j = (sbk & (nsx - 1)) * 4 + (lane & 3);
-            const Px *s = pl == 1 ? srcU : srcV;
-            int v = (int)s[i * I.spitch[pl] + j] - rc_pred<BD>(S, pl, S.uvc[ci], false, 0, i, j, T.lw, T.lh, W);
+        // smaller blocks (F3): one 4x4 sub-block per thread with pred_sub4, as above.  A candidate's ipc = 2 * nsub
+        // items (U then V sub-blocks) are adjacent lanes of one warp, 4 candidates per warp (2 for nsub = 8), so the 13
+        // modes take one round (two for nsub = 8) instead of 13-26 rounds of one pixel per lane.  The 13 modes run in
+        // an order that groups pred_sub4's branches: a warp sees at most two of them ({D113, D135, D157 | D203},
+        // {D45, D67 | V, H}, {SMOOTH, SMOOTH_V, SMOOTH_H | PAETH}, {DC}).  The SATD of a candidate is an integer sum
+        // (exact in float, see hadamard4_sum), reduced over its lanes and stored once: the same S.satd value.
+        const int lane = tid & 31, warp = tid >> 5;
+        const int lip = ln + 1, lcpw = lip <= 3 ? 2 : 1;   // log2 items per candidate (1..4), log2 candidates per warp
+        const int nws = (nc + (1 << lcpw) - 1) >> lcpw;    // warp-sized slots of candidates
+        for (int ws = warp; ws < nws; ws += RC_NW) {
+            const int s = (ws << lcpw) + (lane >> lip), item = lane & ((1 << lip) - 1);
+            const bool act = (lane >> lip) < (1 << lcpw) && s < nc;
+            int v = 0;
+            int ci = 0;
+            if (act) {
+                // pass 0: 5 4 6 7 | 3 8 1 2 | 9 10 11 12 | 0 (mode = candidate index); pass 1: the deltas in order
+                ci = c0 + (pass ? s : (int)((0xCBA921837645ull >> (4 * s)) & 15));
+                const int pl = 1 + (item >> ln), sbk = item & (nsub - 1);
+                const int sx = (sbk & (nsx - 1)) * 4, sy = (sbk >> lx) * 4;
+                const Px *sp0 = pl == 1 ? srcU : srcV;
+                const int sp = I.spitch[pl];
+                int d[16], p[16];
+                pred_sub4(S.uvc[ci], sy, sx, T.lw, T.lh, S.ea[pl] + AV1G_EDGE_OFF, S.el[pl] + AV1G_EDGE_OFF, S.dcv[pl], p);
 #pragma unroll
-            for (int o = 1; o < 16; o <<= 1) {
-                const int p = __shfl_xor_sync(0xffffffffu, v, o);
-                v = (lane & o) ? p - v : v + p;
+                for (int i = 0; i < 4; i++)
+#pragma unroll
+                    for (int j = 0; j < 4; j++) d[i * 4 + j] = (int)sp0[(sy + i) * sp + sx + j] - p[i * 4 + j];
+                v = hadamard4_sum(d);
             }
-            v = abs(v);
 #pragma unroll
-            for (int o = 1; o < 32; o <<= 1) v += __shfl_xor_sync(0xffffffffu, v, o);   // both sub-blocks: one atomic
-            if (lane == 0) atomicAdd(&S.satd[ci], (float)v * 0.25f);
+            for (int o = 1; o < 16; o <<= 1)
+                if (o < (1 << lip)) v += __shfl_xor_sync(0xffffffffu, v, o);
+            if (act && item == 0) S.satd[ci] = (float)v * 0.25f;
         }
         __syncthreads();
     }
