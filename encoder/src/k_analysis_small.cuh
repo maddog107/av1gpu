@@ -121,6 +121,7 @@ __device__ __forceinline__ EvalOut eval_scalar(const int16_t *res, const EvalIn 
 
 template <int W, int H, int BS, int BD>
 __device__ __forceinline__ void analysis_small(const GpBatch &B, const GpParams &P, uint32_t nTotal, const GpLive &LC) {
+    static_assert(!an_cellwise<W, H>() || an_live_filled(BS), "k_live16 must fill this cell-wise shape (AN_LIVE_SHAPES)");
     typedef SmallTx<W, H> T;
     typedef av1g_pixel_t(BD) Px;
     const uint32_t gb = blockIdx.x * blockDim.x + threadIdx.x;

@@ -32,6 +32,7 @@ __global__ void __launch_bounds__(NW * 32) k_analysis_uv(GpBatch B, GpParams P, 
     __shared__ UvSmem<UW, UH, Px> smem[NW];
     const int warp = threadIdx.x >> 5, lane = threadIdx.x & 31;
     UvSmem<UW, UH, Px> &S = smem[warp];
+    static_assert(!an_colmajor<UW, UH>(), "UvSmem::res is row-major (warp_residual)");   // UvDims clamps to 32
     const uint32_t *starts = B.shImgStart + (size_t)BS * (B.nimg + 1);
     constexpr int uvTx = (UW == 4 && UH == 4) ? AV1G_TX_4X4 : (UW == 8 && UH == 8) ? AV1G_TX_8X8 : (UW == 16 && UH == 16) ? AV1G_TX_16X16
                        : (UW == 32 && UH == 32) ? AV1G_TX_32X32 : (UW == 4 && UH == 8) ? AV1G_TX_4X8 : (UW == 8 && UH == 4) ? AV1G_TX_8X4

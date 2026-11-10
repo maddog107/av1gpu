@@ -28,10 +28,9 @@ __global__ void k_live16(GpBatch B, GpParams P, GpLive L) {
         const int cx = (int)(c % cols16), cy = (int)(c / cols16);
         live = !prune_flat<BD>(I, P, cx * 16, cy * 16, 4, 4, sb_qindex(I, cx * 16, cy * 16));
         if (!live) {
-            const int shapes[6] = {AV1G_BLOCK_4X4, AV1G_BLOCK_4X8, AV1G_BLOCK_8X4, AV1G_BLOCK_8X8, AV1G_BLOCK_8X16,
-                                   AV1G_BLOCK_16X8};   // the an_cellwise shapes
+            const int shapes[] = {AN_LIVE_SHAPES};   // every an_cellwise shape (k_analysis.cuh)
 #pragma unroll
-            for (int k = 0; k < 6; k++) {
+            for (int k = 0; k < (int)(sizeof shapes / sizeof shapes[0]); k++) {
                 const int s = shapes[k], nbx = I.shNbx[s];
                 if (!nbx) continue;
                 const int w = bw_px(s), h = bh_px(s);

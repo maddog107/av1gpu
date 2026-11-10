@@ -8,6 +8,13 @@
 #pragma once
 #include "dev_tx.cuh"
 
+// The residual layout of a W x H block in the analysis: by column, an_cm_stride<H>() samples apart, with the transform
+// in place (warp_eval_cm), for 64x64 and 32x64 (ASmem::cm); row-major otherwise.
+template <int W, int H>
+constexpr bool an_colmajor() { return H == 64 && W >= 32; }
+template <int H>
+constexpr int an_cm_stride() { return H + 2; }
+
 template <int W, int H, typename P = uint8_t>
 struct ASmem {
     // 64x64 and 32x64 (64-sample columns, DCT_DCT only): the residual is stored by column, RS samples apart (an odd
@@ -16,8 +23,8 @@ struct ASmem {
     // 17.4 KB per warp (9 instead of 5 warps per SM), 32x64 14.4 instead of 18.5 KB per CTA (6 instead of 5 CTAs); the
     // levels of 64x64 go in the residual's upper half (columns 32..63, free once the row pass has read them).  (16x64:
     // register-limited, measured no faster this way.)
-    static constexpr bool cm = H == 64 && W >= 32;
-    static constexpr int RS = H + 2;
+    static constexpr bool cm = an_colmajor<W, H>();
+    static constexpr int RS = an_cm_stride<H>();
     static constexpr bool qInUpper = cm && W == 64;
     // shapes with a 32- or 64-sample side have only DCT_DCT for intra luma (no tx-type search), so every evaluation
     // follows a fresh warp_residual: the quantized levels reuse the residual's storage (the column pass has read all of
@@ -302,8 +309,8 @@ __device__ __forceinline__ float warp_residual(const P *src, int sp, int c, int1
     // res may hold the previous evaluation's quantized levels (ASmem::qInRes, qInUpper) or transform outputs
     // (ASmem::cm): every lane is done reading them
     __syncwarp();
-    constexpr bool cm = H == 64 && W >= 32;   // ASmem::cm
-    constexpr int RS = H + 2;
+    constexpr bool cm = an_colmajor<W, H>();
+    constexpr int RS = an_cm_stride<H>();
     constexpr int nsx = W / 4;
     for (int sb = lane; sb < (W / 4) * (H / 4); sb += 32) {
         const int sx = (sb % nsx) * 4, sy = (sb / nsx) * 4;
@@ -332,8 +339,8 @@ __device__ __forceinline__ float warp_residual(const P *src, int sp, int c, int1
 // results.  q: the levels (natural order, tw x 32), outside the first tw columns.
 template <int W, int H, int BD = 8>
 __device__ __forceinline__ void warp_eval_cm(int16_t *res, int16_t *q, const EvalIn &e, EvalOut &o) {
-    static_assert(H == 64 && W >= 32, "column-major storage: 64-sample columns, one lane per column");
-    constexpr int TH = 32, TW = W > 32 ? 32 : W, RS = H + 2, RF = RS / 2;
+    static_assert(an_colmajor<W, H>() && W >= 32, "column-major storage: 64-sample columns, one lane per column");
+    constexpr int TH = 32, TW = W > 32 ? 32 : W, RS = an_cm_stride<H>(), RF = RS / 2;
     const int lane = threadIdx.x & 31;
     float *col = (float *)res;   // column j's outputs: col[j * RF + i]
     {
@@ -431,6 +438,16 @@ __device__ __forceinline__ void warp_eval_cm(int16_t *res, int16_t *q, const Eva
 template <int W, int H>
 constexpr bool an_cellwise() { return W <= 16 && H <= 16 && W * H < 256 && !(W == 4 && H == 16) && !(W == 16 && H == 4); }
 
+// The shapes whose blocks k_live16 fills in the pruned cells (J = GP_INF, ncand = 0).  Every an_cellwise shape must be one
+// of them (a static_assert in k_analysis and analysis_small), else the DP would read its pruned blocks unwritten.
+#define AN_LIVE_SHAPES AV1G_BLOCK_4X4, AV1G_BLOCK_4X8, AV1G_BLOCK_8X4, AV1G_BLOCK_8X8, AV1G_BLOCK_8X16, AV1G_BLOCK_16X8
+constexpr bool an_live_filled(int bs) {
+    constexpr int s[] = {AN_LIVE_SHAPES};
+    for (int x : s)
+        if (x == bs) return true;
+    return false;
+}
+
 // unit gb (thread or warp) of shape W x H in the live-cell order: cell gb / bpc of L, block gb % bpc of it in raster
 // order.  false past the live cells' share, and for block positions outside the shape's grid (cells at the right /
 // bottom frame edge hold fewer blocks).  Every block of a live cell has exactly one unit; the blocks of the pruned cells
@@ -476,6 +493,7 @@ constexpr int an_thread_budget() {
 template <int W, int H, int BS, int NW, int BD = 8>
 __global__ void __launch_bounds__(NW * 32, an_thread_budget<W, H>() / (NW * 32))
     k_analysis(GpBatch B, GpParams P, uint32_t nTotal, GpLive LC) {
+    static_assert(!an_cellwise<W, H>() || an_live_filled(BS), "k_live16 must fill this cell-wise shape (AN_LIVE_SHAPES)");
     typedef TxD<W, H> T;
     typedef av1g_pixel_t(BD) Px;
     __shared__ ASmem<W, H, Px> smem[NW];
