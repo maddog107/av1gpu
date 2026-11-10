@@ -138,7 +138,7 @@ __device__ __forceinline__ RcGrp rc_half() { const int k = threadIdx.x >> 6; ret
 // buffer S.u.inv.res + k * 2048 (halves: chroma tx blocks, <= 32x32).
 template <int BD>
 __device__ int cta_inverse_add(int W, int H, RcShared<BD> &S, int16_t *q, int txSz, int txType, int dcQ, int acQ, const uint8_t *qm,
-                               av1g_pixel_t(BD) *dst, int pitch, const RcGrp &g) {
+                               av1g_pixel_t(BD) *dst, int pitch, const RcGrp g) {   // g by value (a non-inlined call)
     const TxR T(W, H);
     const int tid = g.t, nt = g.nt;
     const int den = av1g_dq_denom(txSz);
@@ -415,8 +415,7 @@ __device__ void rc_final_quant_rd(int W, int H, RcShared<BD> &S, const EvalIn &e
         float *tmp = big ? BG.tmp : S.u.w[0].tmp;
         EvalIn ee = e;
         ee.resEnergy = rc_residual<BD>(W, H, S, plane, c, cfl, alpha, src, sp, res, (av1g_pixel_t(BD) *)tmp);
-        EvalOut o;
-        rc_eval<BD, 32>(res, tmp, S.qfin, ee, o, W, H, rc_warp_lanes());
+        const EvalOut o = rc_eval<BD, 32>(res, tmp, S.qfin, ee, W, H, rc_warp_lanes());
         if ((threadIdx.x & 31) == 0) { S.finEob = o.eob; S.finD = o.D; S.finR = o.R; }
     }
     __syncthreads();
@@ -809,8 +808,7 @@ __device__ __noinline__ void rc_luma(int W, int H, RcShared<BD> &S, const GpBatc
             ee.intraDir = intra_dir(c);
             ee.qm = av1g_qm(I.usingQm, I.qm[0], 0, txSz, ee.txType);
             ee.resEnergy = shared ? sharedResE : rc_residual<BD>(W, H, S, 0, c, false, 0, src, I.spitch[0], res, (Px *)tmp);
-            EvalOut o;
-            rc_eval<BD, 32>(res, tmp, q, ee, o, W, H, rc_warp_lanes());
+            const EvalOut o = rc_eval<BD, 32>(res, tmp, q, ee, W, H, rc_warp_lanes());
             const float J = o.D + lambda * (o.R + mbits(c));
             if ((tid & 31) == 0) S.taskJ[t] = J;
             if (!big) {
@@ -1034,8 +1032,7 @@ __device__ __noinline__ void rc_luma(int W, int H, RcShared<BD> &S, const GpBatc
                         ee.txType = types[ti];
                         ee.qm = av1g_qm(I.usingQm, I.qm[0], 0, txSub, ee.txType);
                         ee.resEnergy = rc_residual<BD>(Ws, Hs, S, 0, bestC, false, 0, srcS, I.spitch[0], res, (Px *)tmp);
-                        EvalOut o;
-                        rc_eval<BD, 32>(res, tmp, q, ee, o, Ws, Hs, rc_warp_lanes());
+                        const EvalOut o = rc_eval<BD, 32>(res, tmp, q, ee, Ws, Hs, rc_warp_lanes());
                         const float J = o.D + lambda * o.R;
                         if (J < myJ) {   // warp-uniform
                             __syncwarp();
@@ -1379,8 +1376,7 @@ __device__ __noinline__ void rc_chroma(int W, int H, RcShared<BD> &S, const GpBa
             ee.txType = S.taskT[t];
             ee.qm = av1g_qm(I.usingQm, I.qm[pl], pl, txSz, ee.txType);
             ee.resEnergy = rc_residual<BD>(W, H, S, pl, c, cfl, cfl ? S.cflAlpha[pl - 1] : 0, pl == 1 ? srcU : srcV, I.spitch[pl], res);
-            EvalOut o;
-            rc_eval<BD, 32>(res, tmp, qq, ee, o, W, H, rc_warp_lanes());
+            const EvalOut o = rc_eval<BD, 32>(res, tmp, qq, ee, W, H, rc_warp_lanes());
             if (!big && t < RC_TASKQ_MAX) {   // keep the levels: the final of the winner reuses them
                 int16_t *dq = rc_taskq(S.u, t);
                 for (int i = tid & 31; i < W * H; i += 32) dq[i] = qq[i];

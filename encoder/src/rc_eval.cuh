@@ -216,9 +216,14 @@ __device__ __forceinline__ void rc_quant_rate(const float *tmp, int16_t *q, cons
     o.eob = eob;
 }
 
+// Not inlined: inlined at every call site the evaluation ran with the caller's live state around it, and ptxas spilled
+// the quantizer's inputs (EvalIn fields, pointers) and reloaded them from local memory in every loop iteration (the hot
+// local-memory traffic of the closed loop).  As its own function it has the register file to itself; the call saves the
+// caller's registers once per task.  Arguments by value: a reference to a caller's local would be read from local memory.
 template <int BD, int G>
-__device__ __forceinline__ void rc_eval(const int16_t *res, float *tmp, int16_t *q, const EvalIn &e, EvalOut &o, int W, int H,
-                                        const RcLanes<G> &L) {
+__device__ __noinline__ EvalOut rc_eval(const int16_t *res, float *tmp, int16_t *q, const EvalIn e, int W, int H, const RcLanes<G> L) {
+    EvalOut o;
     rc_fwd<G>(res, tmp, W, H, e.txSz, e.txType, L);
     rc_quant_rate<BD, G>(tmp, q, e, o, W, H, L);
+    return o;
 }
