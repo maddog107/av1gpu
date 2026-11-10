@@ -157,7 +157,7 @@ __device__ __forceinline__ void rc_quant_rate(const float *tmp, int16_t *q, cons
     const int th = H > 32 ? 32 : H, tw = W > 32 ? 32 : W, TS = W + 1, n = tw * th;
     const int lt = log2i(tw);
     const int den = av1g_dq_denom(e.txSz), dsh = den >> 1;
-    const bool k64 = G == 32 && (W == 64 || H == 64);   // the kept energy is only read for 64-point sizes
+    const bool k64 = G == 32 && (W == 64 || H == 64);   // 64-point sizes: D also counts the energy of the dropped coefficients
     float dist[V], kept[V];
 #pragma unroll
     for (int v = 0; v < V; v++) { dist[v] = 0.f; kept[v] = 0.f; }
@@ -216,11 +216,9 @@ __device__ __forceinline__ void rc_quant_rate(const float *tmp, int16_t *q, cons
     const float bitsS = rc_grp_sum<G>(bits, L);
     const float g = g_txg[e.txSz][e.txType];
     float D = __fmul_rn(g, distS);
-    if constexpr (G == 32) {
-        if (W == 64 || H == 64) {
-            const float keptS = rc_grp_sum<G>(kept, L);
-            D = __fadd_rn(D, fmaxf(0.f, fmaf(-g, keptS, e.resEnergy)));
-        }
+    if (k64) {
+        const float keptS = rc_grp_sum<G>(kept, L);
+        D = __fadd_rn(D, fmaxf(0.f, fmaf(-g, keptS, e.resEnergy)));
     }
     o.D = D;
     o.R = bitsS;

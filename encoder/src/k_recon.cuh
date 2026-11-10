@@ -873,7 +873,6 @@ __device__ __noinline__ void rc_luma(int W, int H, RcShared<BD> &S, const GpBatc
     // the winner), the residual is computed once by the CTA into S.u.w[0].res and shared by all warps
     // (read-only during the evaluation); it also gives the final prediction (src - res) for free.
     int sharedResC = -1;
-    float sharedResE = 0.f;
     auto runTasks = [&](bool shared) {
         const int warp = tid >> 5;
         if (W <= 8 && H <= 8 && S.nTask > RC_NW) {
@@ -923,7 +922,8 @@ __device__ __noinline__ void rc_luma(int W, int H, RcShared<BD> &S, const GpBatc
             ee.txType = S.taskT[t];
             ee.intraDir = intra_dir(c);
             ee.qm = av1g_qm(I.usingQm, I.qm[0], 0, txSz, ee.txType);
-            ee.resEnergy = shared ? sharedResE : rc_residual<BD>(W, H, S, 0, c, false, 0, src, I.spitch[0], res, (Px *)tmp);
+            // (shared: never big, and only 64-point sizes read the energy)
+            ee.resEnergy = shared ? 0.f : rc_residual<BD>(W, H, S, 0, c, false, 0, src, I.spitch[0], res, (Px *)tmp);
             const EvalOut o = rc_eval<BD, 32>(res, tmp, q, ee, W, H, rc_warp_lanes());
             const float J = fmaf(lambda, __fadd_rn(o.R, mbits(c)), o.D);
             if ((tid & 31) == 0) S.taskJ[t] = J;
@@ -1023,11 +1023,6 @@ __device__ __noinline__ void rc_luma(int W, int H, RcShared<BD> &S, const GpBatc
                             res[p] = (int16_t)((int)src[i * I.spitch[0] + j] - rc_pred<BD>(S, 0, bestC, false, 0, i, j, T.lw, T.lh, W, 0));
                         }
                     __syncthreads();
-                    if (W == 64 || H == 64) {   // only the 64-point distortion uses the energy (never in pass 2)
-                        float en = 0.f;
-                        for (int p = tid & 31; p < W * H; p += 32) en += (float)((int)res[p] * (int)res[p]);
-                        sharedResE = warp_sum(en);
-                    }
                     sharedResC = bestC;
                     runTasks(true);
                 } else {
