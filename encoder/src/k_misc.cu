@@ -24,8 +24,8 @@ int gp_upload_tables_an_uv(const GpHostTables *);
 int gp_upload_tables_ll(const GpHostTables *);
 int gp_upload_tables_pal(const GpHostTables *);
 void gp_launch_an_uv(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st, int bd);
-void gp_launch_an_a(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st, int bd);
-void gp_launch_an_b(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st, int bd);
+void gp_launch_an_a(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st, int bd, const GpLive &L);
+void gp_launch_an_b(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st, int bd, const GpLive &L);
 void gp_launch_an_c(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st, int bd);
 void gp_launch_an_d(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st, int bd);
 
@@ -411,11 +411,12 @@ void gp_launch_resize(const void *src, int spitch, int in10, int sx0, int tw, co
                                                        chroma, alpha != nullptr);
 }
 
-void gp_launch_analysis(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st, int bd) {
+void gp_launch_analysis(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st, int bd, const GpLive *live) {
+    const GpLive L = live ? *live : GpLive{};   // the shapes below 16x16 (an_b: 8x16, 16x8; an_a) take their blocks from it
     gp_launch_an_d(B, P, shTotal, st, bd);
     gp_launch_an_c(B, P, shTotal, st, bd);
-    gp_launch_an_b(B, P, shTotal, st, bd);
-    gp_launch_an_a(B, P, shTotal, st, bd);
+    gp_launch_an_b(B, P, shTotal, st, bd, L);
+    gp_launch_an_a(B, P, shTotal, st, bd, L);
     if (P.uvInDp) gp_launch_an_uv(B, P, shTotal, st, bd);
 }
 

@@ -31,7 +31,12 @@ struct GpPackAux {
 
 // bd: bit depth of the batch (8 or 10): the kernels are instantiated per bit depth.  The images' sample planes
 // (GpImage::src / rec) are uint16_t at 10 bits.
-void gp_launch_analysis(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st, int bd = 8);
+// live: the batch's live 16x16 cells (gp_launch_live16), or null
+void gp_launch_analysis(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st, int bd = 8,
+                        const GpLive *live = nullptr);
+// the live 16x16 cells of B into L (nothing when L.cell is null), after the image upload and before gp_launch_analysis
+// (k_an_a.cu)
+void gp_launch_live16(const GpBatch &B, const GpParams &P, const GpLive &L, cudaStream_t st, int bd = 8);
 // palette candidates (k_pal.cu) of the screen-content frames, after gp_launch_analysis; nothing when B.oPal is null
 void gp_launch_pal_analysis(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st, int bd = 8);
 // y: luma plane (bd = 10: uint16_t samples, pitch in samples)

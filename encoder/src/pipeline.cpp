@@ -443,6 +443,23 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
     GPCK(A.get(B.oBlockTxb, (size_t)nSb * GP_MAX_LEAVES));
     GPCK(A.get(B.oTxb, (size_t)nSb * B.sbTxbCap));
     GPCK(A.get(B.oCoeffs, (size_t)nSb * B.sbCoefCap));
+    // live 16x16 cells for the analysis of the shapes below 16x16, with the flat-area pruning (gp_launch_live16 fills the
+    // list on the GPU; without pruning the shapes' raster order measured faster)
+    GpLive live;
+    memset(&live, 0, sizeof live);
+    std::vector<uint32_t> cellStart;
+    if (!ll && P.pruneFlat > 0.f) {
+        cellStart.assign(n + 1, 0);
+        for (int i = 0; i < n; i++)
+            cellStart[i + 1] = cellStart[i] + (uint32_t)(((imgs[i].MiCols + 3) / 4) * ((imgs[i].MiRows + 3) / 4));
+        live.nCells = cellStart[n];
+        uint32_t *dCs;
+        GPCK(A.get(dCs, n + 1));
+        GPCK(A.get(live.cell, 2 * (size_t)live.nCells));
+        GPCK(A.get(live.count, 1));
+        GPCK(cudaMemcpyAsync(dCs, cellStart.data(), (n + 1) * sizeof(uint32_t), cudaMemcpyHostToDevice, st));
+        live.cellStart = dCs;
+    }
     unsigned long long *dScCnt = nullptr;
     uint32_t *dPalAny = nullptr;
     if (palOn) {
@@ -553,7 +570,8 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
     // ---- analysis + DP ----
     if (ll) gp_launch_ll_analysis(B, L, shTotal, cfg_.edgeFilter, P.filterIntra, st, bd);
     else {
-        gp_launch_analysis(B, P, shTotal, st, bd);
+        gp_launch_live16(B, P, live, st, bd);
+        gp_launch_analysis(B, P, shTotal, st, bd, &live);
         gp_launch_pal_analysis(B, P, shTotal, st, bd);   // palette candidates (batches with screen-content frames)
     }
     GPCK(cudaGetLastError());

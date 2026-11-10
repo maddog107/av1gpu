@@ -425,6 +425,43 @@ __device__ __forceinline__ void warp_eval_cm(int16_t *res, int16_t *q, const Eva
     o.eob = eob;
 }
 
+// Shapes whose blocks lie inside one 16x16 cell and that prune_flat applies to (below 256 pixels): with a live-cell list
+// (GpLive) they are analysed cell by cell, only in the live cells.  Not 4x16 / 16x4: no preset that prunes has them, and
+// their kernels compiled for the cell order ran slower without pruning (another register allocation).
+template <int W, int H>
+constexpr bool an_cellwise() { return W <= 16 && H <= 16 && W * H < 256 && !(W == 4 && H == 16) && !(W == 16 && H == 4); }
+
+// unit gb (thread or warp) of shape W x H in the live-cell order: cell gb / bpc of L, block gb % bpc of it in raster
+// order.  false past the live cells' share, and for block positions outside the shape's grid (cells at the right /
+// bottom frame edge hold fewer blocks).  Every block of a live cell has exactly one unit; the blocks of the pruned cells
+// were filled by k_live16.
+template <int W, int H>
+__device__ __forceinline__ bool live_block(const GpBatch &B, const GpLive &L, int BS, uint32_t gb, int &img, uint32_t &li, int &x,
+                                           int &y) {
+    constexpr int cw = 16 / W, ch = 16 / H, bpc = cw * ch;
+    const uint32_t ci = gb / bpc;
+    if (ci >= __ldg(L.count)) return false;
+    const uint2 lc = __ldg((const uint2 *)L.cell + ci);
+    const GpImage &I = B.img[lc.x];
+    const int b = (int)(gb % bpc);
+    const int bx = (int)(lc.y & 0xFFFF) * cw + b % cw, by = (int)(lc.y >> 16) * ch + b / cw;
+    const int nbx = I.shNbx[BS];
+    if (bx >= nbx || by >= I.shNby[BS]) return false;
+    img = (int)lc.x;
+    li = (uint32_t)by * nbx + bx;
+    x = bx * W;
+    y = by * H;
+    return true;
+}
+
+// units (threads or warps) to launch for shape W x H: bpc per cell of the batch with the live-cell list (the units of
+// pruned cells return at once), else one per block of the shape (n)
+template <int W, int H>
+inline uint32_t an_units(const GpLive &L, uint32_t n) {
+    if (!n || !L.cell || !an_cellwise<W, H>()) return n;
+    return L.nCells * (uint32_t)((16 / W) * (16 / H));
+}
+
 // Threads per SM that k_analysis<W, H> is compiled for (__launch_bounds__: registers <= 64 K / budget).  Measured per
 // shape against 512 (128 registers) on an RTX PRO 2000 Blackwell, kernel time with the default preset / --preset base:
 // 768 (80 registers, 6 CTAs of 4 warps) for shapes of up to 256 pixels, whose shared memory allows 6 CTAs (16x8 -12 /
@@ -437,7 +474,8 @@ constexpr int an_thread_budget() {
 
 // BD: bit depth of the batch (distortions and lambda in native units, see gp_lambda)
 template <int W, int H, int BS, int NW, int BD = 8>
-__global__ void __launch_bounds__(NW * 32, an_thread_budget<W, H>() / (NW * 32)) k_analysis(GpBatch B, GpParams P, uint32_t nTotal) {
+__global__ void __launch_bounds__(NW * 32, an_thread_budget<W, H>() / (NW * 32))
+    k_analysis(GpBatch B, GpParams P, uint32_t nTotal, GpLive LC) {
     typedef TxD<W, H> T;
     typedef av1g_pixel_t(BD) Px;
     __shared__ ASmem<W, H, Px> smem[NW];
@@ -453,20 +491,38 @@ __global__ void __launch_bounds__(NW * 32, an_thread_budget<W, H>() / (NW * 32))
                        : (W == 16 && H == 64) ? AV1G_TX_16X64 : AV1G_TX_64X16;
     const int set = av1g_get_tx_set_intra(txSz, 0);
 
+    // the live-cell list holds only cells that prune_flat keeps
+    const bool cellwise = an_cellwise<W, H>() && LC.cell;
     for (uint32_t gb = blockIdx.x * NW + warp; gb < nTotal; gb += gridDim.x * NW) {
-        // image of this block (binary search over the per-image starts of this shape)
-        int lo = 0, hi = B.nimg - 1;
-        while (lo < hi) {
-            const int mid = (lo + hi + 1) >> 1;
-            if (starts[mid] <= gb) lo = mid; else hi = mid - 1;
+        int lo;
+        uint32_t li;
+        int x, y;
+        if constexpr (an_cellwise<W, H>()) {
+            if (cellwise && !live_block<W, H>(B, LC, BS, gb, lo, li, x, y)) continue;
+        }
+        if (!cellwise) {
+            // image of this block (binary search over the per-image starts of this shape)
+            lo = 0;
+            int hi = B.nimg - 1;
+            while (lo < hi) {
+                const int mid = (lo + hi + 1) >> 1;
+                if (starts[mid] <= gb) lo = mid; else hi = mid - 1;
+            }
+            li = gb - starts[lo];
+            const int nbx = B.img[lo].shNbx[BS];
+            x = (int)(li % nbx) * W;
+            y = (int)(li / nbx) * H;
         }
         const GpImage &I = B.img[lo];
-        const uint32_t li = gb - starts[lo];
-        const int nbx = I.shNbx[BS];
-        const int x = (int)(li % nbx) * W, y = (int)(li / nbx) * H;
         GpBlockRes &out = B.blk[I.shOff[BS] + li];
         if (x >= I.MiCols * 4 || y >= I.MiRows * 4) {
             if (lane == 0) { out.J = GP_INF; out.ncand = 0; }
+            continue;
+        }
+        const int qidx = sb_qindex(I, x, y);
+        if (!cellwise && prune_flat<BD>(I, P, x, y, W, H, qidx)) {
+            if (lane == 0) { out.J = GP_INF; out.ncand = 0; }
+            __syncwarp();
             continue;
         }
         const TileBox tb = tile_of(I, x, y);
@@ -476,15 +532,9 @@ __global__ void __launch_bounds__(NW * 32, an_thread_budget<W, H>() / (NW * 32))
         const int maxX = I.MiCols * 4 - 1, maxY = I.MiRows * 4 - 1;
         const Px *src = gp_src<BD>(I, 0) + (size_t)y * I.spitch[0] + x;
         const int sp = I.spitch[0];
-        const int qidx = sb_qindex(I, x, y);
         const float lambda = gp_lambda<BD>(qidx, P.lambdaMul) * ssim_scale(I, x, y, W, H);
         const float lamS = P.satdLambda * sqrtf(lambda);
         const float *C = g_cost[I.qctx];
-        if (prune_flat<BD>(I, P, x, y, W, H, qidx)) {
-            if (lane == 0) { out.J = GP_INF; out.ncand = 0; }
-            __syncwarp();
-            continue;
-        }
         if (P.pruneVar > 0.f && W * H >= P.pruneMinArea) {
             float s1 = 0.f, s2 = 0.f;
             for (int p = lane; p < W * H; p += 32) {
