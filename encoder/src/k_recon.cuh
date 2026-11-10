@@ -23,6 +23,7 @@
 #include "dev_tx.cuh"
 #include "k_analysis.cuh"
 #include "pal_dev.cuh"
+#include "rc_eval.cuh"
 #include "rc_inv.cuh"
 
 #define RC_NT 128
@@ -415,7 +416,7 @@ __device__ void rc_final_quant_rd(int W, int H, RcShared<BD> &S, const EvalIn &e
         EvalIn ee = e;
         ee.resEnergy = rc_residual<BD>(W, H, S, plane, c, cfl, alpha, src, sp, res, (av1g_pixel_t(BD) *)tmp);
         EvalOut o;
-        warp_eval_rt<BD>(res, tmp, S.qfin, ee, o, W, H);
+        rc_eval<BD, 32>(res, tmp, S.qfin, ee, o, W, H, rc_warp_lanes());
         if ((threadIdx.x & 31) == 0) { S.finEob = o.eob; S.finD = o.D; S.finR = o.R; }
     }
     __syncthreads();
@@ -809,7 +810,7 @@ __device__ __noinline__ void rc_luma(int W, int H, RcShared<BD> &S, const GpBatc
             ee.qm = av1g_qm(I.usingQm, I.qm[0], 0, txSz, ee.txType);
             ee.resEnergy = shared ? sharedResE : rc_residual<BD>(W, H, S, 0, c, false, 0, src, I.spitch[0], res, (Px *)tmp);
             EvalOut o;
-            warp_eval_rt<BD>(res, tmp, q, ee, o, W, H);
+            rc_eval<BD, 32>(res, tmp, q, ee, o, W, H, rc_warp_lanes());
             const float J = o.D + lambda * (o.R + mbits(c));
             if ((tid & 31) == 0) S.taskJ[t] = J;
             if (!big) {
@@ -1034,7 +1035,7 @@ __device__ __noinline__ void rc_luma(int W, int H, RcShared<BD> &S, const GpBatc
                         ee.qm = av1g_qm(I.usingQm, I.qm[0], 0, txSub, ee.txType);
                         ee.resEnergy = rc_residual<BD>(Ws, Hs, S, 0, bestC, false, 0, srcS, I.spitch[0], res, (Px *)tmp);
                         EvalOut o;
-                        warp_eval_rt<BD>(res, tmp, q, ee, o, Ws, Hs);
+                        rc_eval<BD, 32>(res, tmp, q, ee, o, Ws, Hs, rc_warp_lanes());
                         const float J = o.D + lambda * o.R;
                         if (J < myJ) {   // warp-uniform
                             __syncwarp();
@@ -1379,7 +1380,7 @@ __device__ __noinline__ void rc_chroma(int W, int H, RcShared<BD> &S, const GpBa
             ee.qm = av1g_qm(I.usingQm, I.qm[pl], pl, txSz, ee.txType);
             ee.resEnergy = rc_residual<BD>(W, H, S, pl, c, cfl, cfl ? S.cflAlpha[pl - 1] : 0, pl == 1 ? srcU : srcV, I.spitch[pl], res);
             EvalOut o;
-            warp_eval_rt<BD>(res, tmp, qq, ee, o, W, H);
+            rc_eval<BD, 32>(res, tmp, qq, ee, o, W, H, rc_warp_lanes());
             if (!big && t < RC_TASKQ_MAX) {   // keep the levels: the final of the winner reuses them
                 int16_t *dq = rc_taskq(S.u, t);
                 for (int i = tid & 31; i < W * H; i += 32) dq[i] = qq[i];
