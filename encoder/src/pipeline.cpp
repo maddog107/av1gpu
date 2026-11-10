@@ -589,7 +589,9 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
     GPCK(cudaGetLastError());
     cudaEventRecord(ev_[2], st);
     gp_launch_dp(B, P, st, bd);
-    if (!ll) gp_recon_order(B, dSteps, dStepSeg, (int)stepSeg.size() - 1, maxSeg, st);   // longest superblocks first per step
+    // longest superblocks first in each step; debug: GP_RC_ORDER=0 keeps the list order (the CTA order changes no output)
+    static const bool rcOrder = !getenv("GP_RC_ORDER") || atoi(getenv("GP_RC_ORDER")) != 0;
+    if (!ll && rcOrder) gp_recon_order(B, dSteps, dStepSeg, (int)stepSeg.size() - 1, maxSeg, st);
     GPCK(cudaGetLastError());
     cudaEventRecord(ev_[3], st);
     // ---- closed loop, SB wavefront ----
