@@ -94,7 +94,7 @@ struct RcShared {
     int ft[3], hvL[3], hvA[3], px[3], py[3], mx[3], my[3];
     int edgeFilter;
     float taskJ[32];
-    float satd[32];
+    union { float satd[32]; int satdI[32]; };   // satdI: integer totals of the >= 16x16 SATD screening
     int uvc[32];
     int taskC[32], taskT[32], taskP[32], taskE[32];
     int nTask;
@@ -1376,8 +1376,10 @@ __device__ __noinline__ void rc_chroma(int W, int H, RcShared<BD> &S, const GpBa
         const int lx = T.lw - 2, ln = T.lw + T.lh - 4;   // log2 nsx, nsub (powers of two: shifts, no divisions)
         const int nc = c1 - c0;
         if (nsub >= 16) {   // 16x16 and up: one 4x4 sub-block per thread (enough of them for the CTA), pred_sub4
-            // items = whole warps; a half-warp's sub-blocks share (plane, candidate): their integer sum (exact in
-            // float, see hadamard4_sum) goes in with one shared-memory float atomic (a CAS loop on sm_89)
+            // items = whole warps; a half-warp's sub-blocks share (plane, candidate): their integer sum goes into the
+            // candidate's integer total with one shared-memory atomic, converted to float once below.  (A float
+            // atomicAdd per half-warp rounded in arrival order once a total passed 2^22, which 10-bit 4:4:4 64x64
+            // blocks can reach: 512 sub-blocks of up to 65472 / 4.)
             const int items = nc * nsub * 2;
             for (int it = tid; it < items; it += RC_NT) {
                 const int pl = it < nc * nsub ? 1 : 2;
@@ -1395,8 +1397,11 @@ __device__ __noinline__ void rc_chroma(int W, int H, RcShared<BD> &S, const GpBa
                 int v = hadamard4_sum(d);
 #pragma unroll
                 for (int o = 1; o < 16; o <<= 1) v += __shfl_xor_sync(0xffffffffu, v, o);
-                if ((tid & 15) == 0) atomicAdd(&S.satd[ci], (float)v * 0.25f);
+                if ((tid & 15) == 0) atomicAdd(&S.satdI[ci], v);
             }
+            __syncthreads();
+            // (float) is exact below 2^24, so this is the float sums' value wherever they were exact (0.f, 0: same bits)
+            if (tid >= c0 && tid < c1) S.satd[tid] = (float)S.satdI[tid] * 0.25f;
             __syncthreads();
             continue;
         }
