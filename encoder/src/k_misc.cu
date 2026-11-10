@@ -1,7 +1,9 @@
 // table init (host), partition DP, pack, launchers.
 #include "kernels.h"
+#include "pack.h"
 #include "dev_common.cuh"
 #include "k_dp.cuh"
+#include "av1g/symstream.h"
 
 #include <cmath>
 #include <cstdio>
@@ -30,26 +32,32 @@ void gp_launch_an_c(const GpBatch &B, const GpParams &P, const uint32_t *shTotal
 void gp_launch_an_d(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st, int bd);
 
 // ---------------------------------------------------------------------------
-// pack: per-SB output slots -> DecisionRecord arrays (decode order, one CTA per SB)
+// pack: per-SB output slots -> DecisionRecord arrays (decode order, one CTA per SB).  aux.blockFrame (if set): each
+// block's image (k_set_cdef).  itemCount (lossy batches for the device entropy path, else null): the symbol count of
+// every tx block in the GPU symbolizer's item order (item of tx block t of block b: t + b + 1, batch-global indices; the
+// blocks' items are k_sbsym's), from the closed loop's eob and the levels while they are copied - the count pass that
+// k_txsym would otherwise run over the coefficients again (av1g_txb_head_syms + av1g_level_syms, symstream.h)
 __global__ void k_pack(GpBatch B, const GpPackOff *off, av1g_block *oB, uint32_t *oBT, av1g_txb *oT, int16_t *oC, GpPackAux aux,
-                       av1g_palette *oP, uint8_t *oM) {
+                       av1g_palette *oP, uint8_t *oM, uint32_t *itemCount, int reducedTxSet) {
+    __shared__ uint32_t acc[GP_MAX_TXB_444];             // per tx block: the levels' symbols
+    __shared__ uint16_t txbOf16[GP_SB_COEFFS_444 / 16];  // tx block of each 16 coefficients (tx blocks hold 16 * k)
     const uint32_t sb = blockIdx.x;
     const GpSbOut so = B.sbOut[sb];
     const GpPackOff o = off[sb];
+    if (itemCount) {
+        for (uint32_t k = threadIdx.x; k < so.nTxb; k += blockDim.x) {
+            const av1g_txb t = B.oTxb[(size_t)sb * B.sbTxbCap + k];
+            const uint32_t c0 = t.coeff_off >> 4, c1 = (t.coeff_off + (uint32_t)av1g_tx_coeffs(t.tx_size)) >> 4;
+            for (uint32_t c = c0; c < c1; c++) txbOf16[c] = (uint16_t)k;
+            acc[k] = 0;
+        }
+        __syncthreads();
+    }
     for (uint32_t k = threadIdx.x; k < so.nBlocks; k += blockDim.x) {
         oB[o.gBlk + k] = B.oBlocks[(size_t)sb * GP_MAX_LEAVES + k];
         const uint32_t t0 = B.oBlockTxb[(size_t)sb * GP_MAX_LEAVES + k];
         oBT[o.gBlk + k] = o.rTxb + t0;
-        if (aux.blockFrame) {
-            const uint32_t t1 = k + 1 < so.nBlocks ? B.oBlockTxb[(size_t)sb * GP_MAX_LEAVES + k + 1] : so.nTxb;
-            aux.blockFrame[o.gBlk + k] = o.img;
-            aux.blockTile[o.gBlk + k] = o.tile;
-            aux.blockTxbG[o.gBlk + k] = o.gTxb + t0;
-            for (uint32_t t = t0; t < t1; t++) {
-                aux.txbBlock[o.gTxb + t] = o.gBlk + k;
-                aux.txbCoeff[o.gTxb + t] = o.gCoef + B.oTxb[(size_t)sb * B.sbTxbCap + t].coeff_off;
-            }
-        }
+        if (aux.blockFrame) aux.blockFrame[o.gBlk + k] = o.img;
     }
     for (uint32_t k = threadIdx.x; k < so.nTxb; k += blockDim.x) {
         av1g_txb t = B.oTxb[(size_t)sb * B.sbTxbCap + k];
@@ -57,7 +65,27 @@ __global__ void k_pack(GpBatch B, const GpPackOff *off, av1g_block *oB, uint32_t
         oT[o.gTxb + k] = t;
     }
     const int16_t *src = B.oCoeffs + (size_t)sb * B.sbCoefCap;
-    for (uint32_t k = threadIdx.x; k < so.nCoeffs; k += blockDim.x) oC[o.gCoef + k] = src[k];
+    if (itemCount) {
+        for (uint32_t k = threadIdx.x; k < so.nCoeffs; k += blockDim.x) {
+            const int v = src[k];
+            oC[o.gCoef + k] = (int16_t)v;
+            if (v) atomicAdd(&acc[txbOf16[k >> 4]], av1g_level_syms(v));
+        }
+        __syncthreads();
+        for (uint32_t k = threadIdx.x; k < so.nBlocks; k += blockDim.x) {
+            const av1g_block b = B.oBlocks[(size_t)sb * GP_MAX_LEAVES + k];
+            const uint32_t t0 = B.oBlockTxb[(size_t)sb * GP_MAX_LEAVES + k];
+            const uint32_t t1 = k + 1 < so.nBlocks ? B.oBlockTxb[(size_t)sb * GP_MAX_LEAVES + k + 1] : so.nTxb;
+            for (uint32_t t = t0; t < t1; t++) {
+                const av1g_txb x = B.oTxb[(size_t)sb * B.sbTxbCap + t];
+                // the luma tx type is coded for a set with more than DCT_DCT (base_q_idx > 0 here: lossy batches)
+                const int typeSym = x.plane == 0 && av1g_get_tx_set_intra(x.tx_size, reducedTxSet) > 0;
+                itemCount[(uint64_t)o.gTxb + t + o.gBlk + k + 1] = b.skip ? 0u : av1g_txb_head_syms(x.eob, typeSym) + (x.eob ? acc[t] : 0u);
+            }
+        }
+    } else {
+        for (uint32_t k = threadIdx.x; k < so.nCoeffs; k += blockDim.x) oC[o.gCoef + k] = src[k];
+    }
     if (B.oPal) {   // palettes: block and map offsets SB-local -> image-relative
         for (uint32_t k = threadIdx.x; k < so.nPal; k += blockDim.x) {
             av1g_palette p = B.oPal[(size_t)sb * GP_SB_PAL + k];
@@ -428,8 +456,12 @@ void gp_launch_dp(const GpBatch &B, const GpParams &P, cudaStream_t st, int bd) 
 
 void gp_launch_pack(const GpBatch &B, const GpPackOff *dOff, av1g_block *oB, uint32_t *oBT, av1g_txb *oT, int16_t *oC,
                     const GpPackAux &aux, cudaStream_t st, av1g_palette *oP, uint8_t *oM) {
+    gp_launch_pack_counts(B, dOff, oB, oBT, oT, oC, aux, st, oP, oM, nullptr, 0);
+}
+void gp_launch_pack_counts(const GpBatch &B, const GpPackOff *dOff, av1g_block *oB, uint32_t *oBT, av1g_txb *oT, int16_t *oC,
+                           const GpPackAux &aux, cudaStream_t st, av1g_palette *oP, uint8_t *oM, uint32_t *itemCount, int reducedTxSet) {
     if (!B.nSb) return;
-    k_pack<<<B.nSb, 256, 0, st>>>(B, dOff, oB, oBT, oT, oC, aux, oP, oM);
+    k_pack<<<B.nSb, 256, 0, st>>>(B, dOff, oB, oBT, oT, oC, aux, oP, oM, itemCount, reducedTxSet);
 }
 
 // ---------------------------------------------------------------------------

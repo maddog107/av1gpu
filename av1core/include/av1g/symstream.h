@@ -41,6 +41,27 @@ AV1G_HD uint32_t av1g_split_or_psum(const uint16_t *pc, int vert) {
 #undef P_
 }
 
+/* Symbol counts of a tx block's coefficient syntax (residual(): coeffs()), without coding it: the symbols of a
+ * non-skip block's tx block with end of block eob are av1g_txb_head_syms(eob, typeSym) plus av1g_level_syms(v) over all
+ * its levels v (those at and past eob are 0).  typeSym: the luma tx type is coded (a tx set with more than DCT_DCT and
+ * base_q_idx > 0).  A skip block's tx blocks code nothing. */
+/* all_zero; for eob > 0 the tx type, eob_pt, eob_extra + its bits, one coeff_base(_eob) per position below eob */
+AV1G_HD uint32_t av1g_txb_head_syms(int eob, int typeSym) {
+    if (!eob) return 1;
+    int eobPt = eob;
+    if (eob > 2) { eobPt = 2; for (int v = eob - 1; v > 1; v >>= 1) eobPt++; }
+    return 2u + (typeSym ? 1u : 0u) + (eobPt >= 3 ? (uint32_t)(eobPt - 2) : 0u) + (uint32_t)eob;
+}
+/* a level's coeff_br symbols, its sign and its Golomb bits (0 for a zero level) */
+AV1G_HD uint32_t av1g_level_syms(int v) {
+    const int a = v < 0 ? -v : v;
+    if (!a) return 0;
+    uint32_t n = 1;
+    if (a > 2) { const int k = ((a < 15 ? a : 15) - 3) / 3 + 1; n += (uint32_t)(k < 4 ? k : 4); }
+    if (a > 14) { const uint32_t x = (uint32_t)(a - 14); int len = 0; while ((x >> len) > 1) len++; n += 2u * (uint32_t)len + 1u; }
+    return n;
+}
+
 /* Entropy-code one tile's symbol stream.  cdf must be initialised with
  * av1g_cdfs_init(cdf, base_q_idx); ec initialised with av1g_ec_init(). */
 AV1G_HD void av1g_code_symbols(const uint32_t *syms, uint32_t n, av1g_cdfs *cdf, av1g_ec *ec) {

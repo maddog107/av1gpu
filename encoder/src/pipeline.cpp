@@ -3,6 +3,7 @@
 #include <mutex>
 #include "pinned.h"
 #include "kernels.h"
+#include "pack.h"
 size_t gp_recon_scratch_bytes();   // k_recon.cu (W5/W3)
 void gp_recon_order(const GpBatch &B, uint32_t *dSteps, const uint32_t *dSeg, int nSeg, uint32_t maxSeg, cudaStream_t st);   // k_recon_order.cu
 #include "av1g/av1g.h"
@@ -312,9 +313,29 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
     }
     uint8_t *dRec, *dMaps, *dCtx, *dSbq = nullptr;
     GPCK(A.get(dRec, planeBytes));
-    GPCK(A.get(dMaps, miTotal * 5));
-    GPCK(A.get(dCtx, ctxTotal * 2));
-    GPCK(cudaMemsetAsync(dMaps, 0, miTotal * 5, st));
+    // the closed loop's 4x4 maps: with device records of a lossy batch they outlive the encode (trusted records for the
+    // entropy stage: DevBatch::miSize .. ctxDc, its own allocation handed to dev), else in the batch's arena
+    // (the four the entropy stage reads first, the UV mode map, which it does not, after them or in the arena)
+    const bool keepMaps = dev && !ll;
+    uint8_t *mapsMem = nullptr, *dUV = nullptr;
+    struct MapsGuard {   // frees the kept maps on an error return (set to null once dev owns them)
+        uint8_t *&p;
+        cudaStream_t s;
+        ~MapsGuard() { if (p) cudaFreeAsync(p, s); }
+    } mapsGuard{mapsMem, st};
+    const size_t mapsAt = (miTotal * 4 + 255) & ~(size_t)255;
+    if (keepMaps) {
+        GPCK(cudaMallocAsync((void **)&mapsMem, mapsAt + ctxTotal * 2, st));
+        dMaps = mapsMem;
+        dCtx = mapsMem + mapsAt;
+        GPCK(A.get(dUV, miTotal));
+    } else {
+        GPCK(A.get(dMaps, miTotal * 5));
+        GPCK(A.get(dCtx, ctxTotal * 2));
+        dUV = dMaps + 4 * miTotal;
+    }
+    GPCK(cudaMemsetAsync(dMaps, 0, miTotal * 4, st));
+    GPCK(cudaMemsetAsync(dUV, 0, miTotal, st));
     GPCK(cudaMemsetAsync(dCtx, 0, ctxTotal * 2, st));
     std::vector<uint8_t> hSbq;
     const bool anySbq = !ll && cfg_.deltaq && std::any_of(in.begin(), in.end(), [](const GpFrameIn &f) { return !f.sbQ.empty(); });
@@ -333,8 +354,8 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
             I.rec[2] = dRec + pr + ysz + csz; I.rpitch[2] = in[i].aw >> I.ssx;
             pr += ysz + 2 * csz;
             const size_t mi = (size_t)I.MiCols * I.MiRows;
-            I.mYMode = dMaps + pm; I.mUVMode = dMaps + miTotal + pm; I.mSkip = dMaps + 2 * miTotal + pm;
-            I.mMiSize = dMaps + 3 * miTotal + pm; I.mTx = dMaps + 4 * miTotal + pm;
+            I.mYMode = dMaps + pm; I.mSkip = dMaps + miTotal + pm; I.mMiSize = dMaps + 2 * miTotal + pm;
+            I.mTx = dMaps + 3 * miTotal + pm; I.mUVMode = dUV + pm;
             pm += mi;
             const size_t c1 = (size_t)(I.MiCols >> I.ssx) * (I.MiRows >> I.ssy);
             I.cLvl[0] = dCtx + pc; I.cLvl[1] = dCtx + pc + mi; I.cLvl[2] = dCtx + pc + mi + c1;
@@ -676,11 +697,15 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
     imgBlk0[n] = gBlk; imgTxb0[n] = gTxb; imgCoef0[n] = gCoef; imgPal0[n] = gPal; imgMap0[n] = gMap;
     // record arrays: one allocation; handed to the caller (dev) or freed at the end
     auto al = [](size_t x) { return (x + 255) & ~(size_t)255; };
+    // (k_pack's other auxiliary arrays - block tile, global first tx block, tx block -> block, -> coefficient - had no
+    // reader and are gone; the entropy stage derives its indices itself)
     const size_t szB = al((size_t)gBlk * sizeof(av1g_block)), szBT = al((size_t)gBlk * 4), szAux = al(((size_t)gBlk + 1) * 4);
-    const size_t szT = al((size_t)gTxb * sizeof(av1g_txb)), szTB = al((size_t)gTxb * 4), szTC = al((size_t)gTxb * 8);
+    const size_t szT = al((size_t)gTxb * sizeof(av1g_txb));
     const size_t szC = al((size_t)gCoef * 2 + 2);
     const size_t szP = gPal ? al((size_t)gPal * sizeof(av1g_palette)) : 0, szM = gMap ? al(gMap) : 0;
-    const size_t poolBytes = szB + szBT + 3 * szAux + szT + szTB + szTC + szC + szP + szM;
+    // trusted records: the tx blocks' symbol counts in the symbolizer's item order (blocks + tx blocks + 1)
+    const size_t szCnt = keepMaps ? al(((size_t)gBlk + gTxb + 1) * 4) : 0;
+    const size_t poolBytes = szB + szBT + szAux + szT + szC + szP + szM + szCnt;
     uint8_t *pool = nullptr;
     GPCK(cudaMallocAsync((void **)&pool, poolBytes, st));
     size_t pp = 0;
@@ -688,21 +713,18 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
     av1g_block *dB = (av1g_block *)take(szB);
     uint32_t *dBT = (uint32_t *)take(szBT);
     GpPackAux aux;
+    memset(&aux, 0, sizeof aux);
     aux.blockFrame = (uint32_t *)take(szAux);
-    aux.blockTile = (uint32_t *)take(szAux);
-    aux.blockTxbG = (uint32_t *)take(szAux);
     av1g_txb *dT = (av1g_txb *)take(szT);
-    aux.txbBlock = (uint32_t *)take(szTB);
-    aux.txbCoeff = (uint64_t *)take(szTC);
     int16_t *dC = (int16_t *)take(szC);
     av1g_palette *dPal = gPal ? (av1g_palette *)take(szP) : nullptr;
     uint8_t *dMap = gMap ? take(szM) : nullptr;
-    GPCK(cudaMemcpyAsync(aux.blockTxbG + gBlk, &gTxb, 4, cudaMemcpyHostToDevice, st));
+    uint32_t *dCnt = keepMaps ? (uint32_t *)take(szCnt) : nullptr;
     GpPackOff *dPo;
     GPCK(A.get(dPo, nSb));
     GPCK(cudaMemcpyAsync(dPo, po.data(), nSb * sizeof(GpPackOff), cudaMemcpyHostToDevice, st));
     cudaEventRecord(ev_[5], st);
-    gp_launch_pack(B, dPo, dB, dBT, dT, dC, aux, st, dPal, dMap);
+    gp_launch_pack_counts(B, dPo, dB, dBT, dT, dC, aux, st, dPal, dMap, dCnt, 0 /* fp.reduced_tx_set below */);
     GPCK(cudaGetLastError());
     cudaEventRecord(ev_[8], st);
     // ---- frame parameters ----
@@ -914,7 +936,7 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
     cudaEventRecord(ev_[7], st);
     if (gp_pinned().flush(st)) GPCK(cudaErrorUnknown);
     GPCK(cudaStreamSynchronize(st));
-    t.deviceBytes = A.bytes + poolBytes;
+    t.deviceBytes = A.bytes + poolBytes + (keepMaps ? mapsAt + ctxTotal * 2 : 0);
     A.release();
     if (dev) {
         dev->fp.clear();
@@ -924,6 +946,19 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
         dev->pal0 = imgPal0; dev->map0 = imgMap0;
         dev->palettes = dPal; dev->colorMap = dMap;
         dev->pool = pool;
+        dev->maps = mapsMem;
+        mapsMem = nullptr;   // (now dev's)
+        dev->ctx0.clear();
+        if (keepMaps) {   // the closed loop's maps (layout above: I.mYMode .. I.mTx, I.cLvl / I.cDc)
+            dev->yMode = dMaps; dev->skip = dMaps + miTotal; dev->miSize = dMaps + 2 * miTotal; dev->txSize = dMaps + 3 * miTotal;
+            dev->ctxLvl = dCtx; dev->ctxDc = dCtx + ctxTotal;
+            for (int i = 0; i < n; i++)
+                for (int p = 0; p < 3; p++) dev->ctx0.push_back((uint64_t)(imgs[i].cLvl[p] - dCtx));
+            dev->itemCount = dCnt;
+        } else {
+            dev->yMode = dev->skip = dev->miSize = dev->txSize = dev->ctxLvl = dev->ctxDc = nullptr;
+            dev->itemCount = nullptr;
+        }
     } else {
         cudaFreeAsync(pool, st);
     }

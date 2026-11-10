@@ -44,6 +44,7 @@ struct FrameG {
     int ssx, ssy;                                // chroma subsampling (4:2:0 / monochrome 1, 4:4:4 0)
     uint64_t miBase;
     uint64_t ctxBase[3];
+    uint64_t tctxBase[3];                        // trusted records: the frame's planes in DevBatch::ctxLvl / ctxDc
     int ctxStride[3], ctxRows[3];
     uint32_t blockBase, nBlocks, txbBase, nTxb;  // batch-global (relative to frame 0)
     uint64_t coeffBase;                          // absolute index into the caller's coeffs[]
@@ -108,7 +109,7 @@ __global__ void k_maps(const av1g_block *blocks, const uint32_t *blockFrame, con
     const int bw4 = av1g_bw4(k.bsize), bh4 = av1g_bh4(k.bsize);
     const int rEnd = min(k.mi_row + bh4, F.MiRows), cEnd = min(k.mi_col + bw4, F.MiCols);
     const uint8_t tx = (uint8_t)av1g_luma_tx_size(k.bsize, k.tx_depth);
-    for (int y = k.mi_row; y < rEnd; y++)
+    for (int y = k.mi_row; mMiSize && y < rEnd; y++)   // (null: the palette maps only - trusted records)
         for (int x = k.mi_col; x < cEnd; x++) {
             const uint64_t i = F.miBase + (uint64_t)y * F.MiCols + x;
             mMiSize[i] = k.bsize;
@@ -243,13 +244,43 @@ __global__ void k_txctx(const av1g_block *blocks, const uint32_t *blockFrame, co
         }
 }
 
+// DevBatch::checkTrusted: the trusted inputs against the derivation (k_maps, k_txctx, the count pass); differences
+// counted in st->reserved.  blockIdx.y: 0 tx blocks (eob, type, count), 1 the mode-info maps, 2 + f frame f's context maps
+struct MapPtrs { const uint8_t *m[4]; };
+__global__ void k_check_trusted(const FrameG *frames, uint32_t nT, const av1g_txb *txb, const uint32_t *txbBlock, const uint16_t *dEob,
+                                const uint8_t *dType, const uint32_t *dCount, const uint32_t *tCount, uint64_t miTotal,
+                                MapPtrs dMaps, MapPtrs tMaps, const uint8_t *dLvl, const uint8_t *dDc,
+                                const uint8_t *tLvl, const uint8_t *tDc, DevStatus *st) {
+    const uint64_t i0 = blockIdx.x * (uint64_t)blockDim.x + threadIdx.x, step = (uint64_t)gridDim.x * blockDim.x;
+    int bad = 0;
+    if (blockIdx.y == 0) {
+        for (uint64_t t = i0; t < nT; t += step) {
+            const av1g_txb x = txb[t];
+            bad += x.eob != dEob[t] || x.tx_type != dType[t];
+            if (tCount) { const uint64_t it = t + txbBlock[t] + 1; bad += tCount[it] != dCount[it]; }
+        }
+    } else if (blockIdx.y == 1) {
+        for (uint64_t i = i0; i < miTotal; i += step)
+            for (int m = 0; m < 4; m++) bad += dMaps.m[m][i] != tMaps.m[m][i];
+    } else {
+        const FrameG &F = frames[blockIdx.y - 2];
+        for (int p = 0; p < (F.mono ? 1 : 3); p++) {
+            const uint64_t n = (uint64_t)F.ctxStride[p] * F.ctxRows[p];
+            for (uint64_t i = i0; i < n; i += step)
+                bad += dLvl[F.ctxBase[p] + i] != tLvl[F.tctxBase[p] + i] || dDc[F.ctxBase[p] + i] != tDc[F.tctxBase[p] + i];
+        }
+    }
+    if (bad) atomicAdd(&st->reserved, bad);
+}
+
 // coefficient syntax of one tx block (mirror of Encoder::code_coeffs, write mode)
 template <bool LL, bool EMIT>
 __global__ void k_txsym(const av1g_block *blocks, const uint32_t *blockFrame, const uint32_t *blockTile, const FrameG *frames,
                         const TileG *tiles, const av1g_txb *txb, const uint32_t *txbBlock,
                         const int16_t *coeffs, uint32_t nTxb, const uint8_t *ctxLvl, const uint8_t *ctxDc,
                         const uint16_t *txbEob, const uint8_t *txbType, uint32_t *itemCount, const uint32_t *itemOff,
-                        uint32_t *syms, const uint32_t *symTotal, uint64_t symCap) {
+                        uint32_t *syms, const uint32_t *symTotal, uint64_t symCap, int trusted) {
+    // trusted records: eob and tx type from the record, context maps at the frames' tctxBase
     const uint32_t t = blockIdx.x * blockDim.x + threadIdx.x;
     if (t >= nTxb) return;
     if (EMIT && *symTotal > symCap) return;  // emit pass with too small a symbol buffer (reported later)
@@ -267,13 +298,14 @@ __global__ void k_txsym(const av1g_block *blocks, const uint32_t *blockFrame, co
     const int plane = x.plane, txSz = x.tx_size, ptype = plane > 0;
     const int subX = plane ? F.ssx : 0, subY = plane ? F.ssy : 0;
     const int x4 = x.x4, y4 = x.y4;
-    const int eob = txbEob[t], txType = txbType[t];
+    const int eob = trusted ? x.eob : txbEob[t], txType = trusted ? x.tx_type : txbType[t];
     const int16_t *q = coeffs + F.coeffBase + x.coeff_off;
     const int txSzCtx = (AV1G_T(Tx_Size_Sqr)[txSz] + AV1G_T(Tx_Size_Sqr_Up)[txSz] + 1) >> 1;
     const int w = AV1G_T(Tx_Width)[txSz], h = AV1G_T(Tx_Height)[txSz], w4 = w >> 2, h4 = h >> 2;
     const int maxX4 = F.MiCols >> subX, maxY4 = F.MiRows >> subY;
     const int stride = F.ctxStride[plane];
-    const uint8_t *L = ctxLvl + F.ctxBase[plane], *Dc = ctxDc + F.ctxBase[plane];
+    const uint64_t cb = trusted ? F.tctxBase[plane] : F.ctxBase[plane];
+    const uint8_t *L = ctxLvl + cb, *Dc = ctxDc + cb;
     const bool hasAbove = y4 > (T.miRowStart >> subY), hasLeft = x4 > (T.miColStart >> subX);
     auto aLvl = [&](int k_) -> int { return hasAbove ? L[(uint64_t)(y4 - 1) * stride + x4 + k_] : 0; };
     auto aDc = [&](int k_) -> int { return hasAbove ? Dc[(uint64_t)(y4 - 1) * stride + x4 + k_] : 0; };
@@ -1474,6 +1506,9 @@ struct Plan {
     uint32_t nPal = 0;
     bool anySct = false;
     size_t oPalMap[2] = {0, 0}, oPalIdx = 0, oBlockPal = 0, oPalTok = 0;
+    // trusted records (DevBatch::miSize .. ctxDc): derive = the derivation runs too (untrusted, or checkTrusted), counted =
+    // the tx blocks' counts are given; the arrays only the derivation / the count pass use are not reserved otherwise
+    bool trusted = false, derive = true, counted = false;
 };
 
 int build_plan(const DevBatch &b, Plan &P, std::string &err) {
@@ -1510,6 +1545,7 @@ int build_plan(const DevBatch &b, Plan &P, std::string &err) {
             g.ctxBase[p] = ctxTotal[p];
             if (p == 0 || !g.mono) ctxTotal[p] += (uint64_t)g.ctxStride[p] * g.ctxRows[p];
         }
+        for (int p = 0; p < 3; p++) g.tctxBase[p] = d.ctxOff[p];
         g.blockBase = P.nB; g.nBlocks = d.nBlocks; g.txbBase = P.nT; g.nTxb = d.nTxb; g.coeffBase = d.coeffBase;
         P.nB += d.nBlocks;
         P.nT += d.nTxb;
@@ -1580,12 +1616,19 @@ int build_plan(const DevBatch &b, Plan &P, std::string &err) {
     P.oBTxbG = take(4ull * (P.nB + 1));
     P.oTxbBlock = take(4ull * P.nT);
     P.oSbFirst = take(4ull * P.nSb);
-    for (int i = 0; i < 4; i++) P.oMap[i] = take(P.miTotal);
-    P.oCtxL = take(P.ctxAll);
-    P.oCtxD = take(P.ctxAll);
-    P.oEob = take(2ull * P.nT);
-    P.oType = take(P.nT);
-    P.oCount = take(4ull * (P.nItems + 1));
+    {
+        bool anyLL = false;
+        for (const FrameG &g : P.F) anyLL |= g.qidx == 0;
+        P.trusted = !anyLL && b.miSize && b.yMode && b.skip && b.txSize && b.ctxLvl && b.ctxDc;
+        P.derive = !P.trusted || b.checkTrusted;
+        P.counted = P.trusted && b.itemCount;
+    }
+    for (int i = 0; i < 4; i++) P.oMap[i] = P.derive ? take(P.miTotal) : 0;
+    P.oCtxL = P.derive ? take(P.ctxAll) : 0;
+    P.oCtxD = P.derive ? take(P.ctxAll) : 0;
+    P.oEob = P.derive ? take(2ull * P.nT) : 0;
+    P.oType = P.derive ? take(P.nT) : 0;
+    P.oCount = !P.counted || b.checkTrusted ? take(4ull * (P.nItems + 1)) : 0;
     P.oOff = take(4ull * (P.nItems + 1));
     P.oCub = take(std::max(t1, t2));
     P.oSyms = take(4ull * P.symCap);
@@ -1714,32 +1757,55 @@ int run_batch_device(const DevBatch &b, cudaStream_t s, void *scratch, size_t sc
         k_palblocks<<<grid(P.nPal, TB), TB, 0, s>>>(dF, P.nF, pg.pals, P.nPal, dBlockPal, dSt);
     }
     rec(1);
-    k_maps<<<grid(nB, TB), TB, 0, s>>>(blocks, dBFrame, dF, nB, mMiSize, mYMode, mSkip, mTx, pg);
     bool anyLL = false;   // lossless frames in the batch: the LL instantiations (handle lossy frames too)
     for (const FrameG &g : P.F) anyLL |= g.qidx == 0;
-    if (anyLL) k_txctx<true><<<grid(nT, TB), TB, 0, s>>>(blocks, dBFrame, dF, txb, dTxbBlock, b.coeffs, nT, dIscan, cL, cD, dEob, dType);
-    else k_txctx<false><<<grid(nT, TB), TB, 0, s>>>(blocks, dBFrame, dF, txb, dTxbBlock, b.coeffs, nT, dIscan, cL, cD, dEob, dType);
+    // trusted records: the producer's maps, eob and tx types (and maybe its tx-block symbol counts) instead of deriving them
+    const bool trusted = P.trusted, derive = P.derive, counted = P.counted;
+    if (!derive) {   // (not reserved: build_plan)
+        mMiSize = mYMode = mSkip = mTx = cL = cD = dType = nullptr;
+        dEob = nullptr;
+    }
+    if (!P.oCount) dCount = nullptr;
+    if (derive || P.anySct)   // (screen-content frames: the palette maps too; without derive, only those)
+        k_maps<<<grid(nB, TB), TB, 0, s>>>(blocks, dBFrame, dF, nB, mMiSize, mYMode, mSkip, mTx, pg);
+    if (derive) {
+        if (anyLL) k_txctx<true><<<grid(nT, TB), TB, 0, s>>>(blocks, dBFrame, dF, txb, dTxbBlock, b.coeffs, nT, dIscan, cL, cD, dEob, dType);
+        else k_txctx<false><<<grid(nT, TB), TB, 0, s>>>(blocks, dBFrame, dF, txb, dTxbBlock, b.coeffs, nT, dIscan, cL, cD, dEob, dType);
+    }
     rec(2);
-    CK(cudaMemsetAsync(dCount + nItems, 0, 4, s));
-    if (anyLL) k_txsym<true, false><<<grid(nT, TB), TB, 0, s>>>(blocks, dBFrame, dBTile, dF, dT, txb, dTxbBlock, b.coeffs, nT, cL, cD,
-                                               dEob, dType, dCount, nullptr, nullptr, nullptr, 0);
-    else k_txsym<false, false><<<grid(nT, TB), TB, 0, s>>>(blocks, dBFrame, dBTile, dF, dT, txb, dTxbBlock, b.coeffs, nT, cL, cD,
-                                               dEob, dType, dCount, nullptr, nullptr, nullptr, 0);
-    if (anyLL) k_sbsym<true><<<grid(nSb, 32), 32, 0, s>>>(dSb, nSb, dF, dT, blocks, dBTxbG, mMiSize, mYMode, mSkip, mTx, dCount, nullptr, nullptr,
+    uint32_t *cnt = counted ? b.itemCount : dCount;   // the item counts that are scanned
+    CK(cudaMemsetAsync(cnt + nItems, 0, 4, s));
+    if (!counted || b.checkTrusted) {
+        if (anyLL) k_txsym<true, false><<<grid(nT, TB), TB, 0, s>>>(blocks, dBFrame, dBTile, dF, dT, txb, dTxbBlock, b.coeffs, nT, cL, cD,
+                                                   dEob, dType, dCount, nullptr, nullptr, nullptr, 0, 0);
+        else k_txsym<false, false><<<grid(nT, TB), TB, 0, s>>>(blocks, dBFrame, dBTile, dF, dT, txb, dTxbBlock, b.coeffs, nT, cL, cD,
+                                                   dEob, dType, dCount, nullptr, nullptr, nullptr, 0, 0);
+    }
+    const uint8_t *sMiSize = trusted ? b.miSize : mMiSize, *sYMode = trusted ? b.yMode : mYMode, *sSkip = trusted ? b.skip : mSkip,
+                  *sTx = trusted ? b.txSize : mTx, *sLvl = trusted ? b.ctxLvl : cL, *sDc = trusted ? b.ctxDc : cD;
+    if (anyLL) k_sbsym<true><<<grid(nSb, 32), 32, 0, s>>>(dSb, nSb, dF, dT, blocks, dBTxbG, sMiSize, sYMode, sSkip, sTx, cnt, nullptr, nullptr,
                                           nullptr, 0, dSt, pg);
-    else k_sbsym<false><<<grid(nSb, 32), 32, 0, s>>>(dSb, nSb, dF, dT, blocks, dBTxbG, mMiSize, mYMode, mSkip, mTx, dCount, nullptr, nullptr,
+    else k_sbsym<false><<<grid(nSb, 32), 32, 0, s>>>(dSb, nSb, dF, dT, blocks, dBTxbG, sMiSize, sYMode, sSkip, sTx, cnt, nullptr, nullptr,
                                           nullptr, 0, dSt, pg);
+    if (trusted && b.checkTrusted) {
+        int sms = 0;
+        cudaDeviceGetAttribute(&sms, cudaDevAttrMultiProcessorCount, 0);
+        MapPtrs dm = {{mMiSize, mYMode, mSkip, mTx}}, tm = {{b.miSize, b.yMode, b.skip, b.txSize}};
+        k_check_trusted<<<dim3(std::max(1, sms) * 2, 2 + P.nF), 256, 0, s>>>(dF, nT, txb, dTxbBlock, dEob, dType, dCount,
+                                                                            counted ? b.itemCount : nullptr, P.miTotal, dm, tm, cL, cD,
+                                                                            b.ctxLvl, b.ctxDc, dSt);
+    }
     rec(3);
     size_t cubBytes = P.cubItems;
-    CK(cub::DeviceScan::ExclusiveSum(dCub, cubBytes, dCount, dOff, (int)(nItems + 1), s));
+    CK(cub::DeviceScan::ExclusiveSum(dCub, cubBytes, cnt, dOff, (int)(nItems + 1), s));
     rec(4);
-    if (anyLL) k_txsym<true, true><<<grid(nT, TB), TB, 0, s>>>(blocks, dBFrame, dBTile, dF, dT, txb, dTxbBlock, b.coeffs, nT, cL, cD,
-                                              dEob, dType, dCount, dOff, dSyms, dOff + nItems, P.symCap);
-    else k_txsym<false, true><<<grid(nT, TB), TB, 0, s>>>(blocks, dBFrame, dBTile, dF, dT, txb, dTxbBlock, b.coeffs, nT, cL, cD,
-                                              dEob, dType, dCount, dOff, dSyms, dOff + nItems, P.symCap);
-    if (anyLL) k_sbsym<true><<<grid(nSb, 32), 32, 0, s>>>(dSb, nSb, dF, dT, blocks, dBTxbG, mMiSize, mYMode, mSkip, mTx, dCount, dOff, dSyms,
+    if (anyLL) k_txsym<true, true><<<grid(nT, TB), TB, 0, s>>>(blocks, dBFrame, dBTile, dF, dT, txb, dTxbBlock, b.coeffs, nT, sLvl, sDc,
+                                              dEob, dType, cnt, dOff, dSyms, dOff + nItems, P.symCap, trusted);
+    else k_txsym<false, true><<<grid(nT, TB), TB, 0, s>>>(blocks, dBFrame, dBTile, dF, dT, txb, dTxbBlock, b.coeffs, nT, sLvl, sDc,
+                                              dEob, dType, cnt, dOff, dSyms, dOff + nItems, P.symCap, trusted);
+    if (anyLL) k_sbsym<true><<<grid(nSb, 32), 32, 0, s>>>(dSb, nSb, dF, dT, blocks, dBTxbG, sMiSize, sYMode, sSkip, sTx, cnt, dOff, dSyms,
                                           dOff + nItems, P.symCap, dSt, pg);
-    else k_sbsym<false><<<grid(nSb, 32), 32, 0, s>>>(dSb, nSb, dF, dT, blocks, dBTxbG, mMiSize, mYMode, mSkip, mTx, dCount, dOff, dSyms,
+    else k_sbsym<false><<<grid(nSb, 32), 32, 0, s>>>(dSb, nSb, dF, dT, blocks, dBTxbG, sMiSize, sYMode, sSkip, sTx, cnt, dOff, dSyms,
                                           dOff + nItems, P.symCap, dSt, pg);
     if (P.nPal) k_palsym<<<2 * P.nPal, 128, 0, s>>>(dF, P.nF, blocks, pg, dSyms, dOff + nItems, P.symCap);
     rec(5);
