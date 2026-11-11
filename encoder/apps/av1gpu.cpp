@@ -213,6 +213,10 @@ static void usage(FILE *to = stderr) {
             "  --uv-in-dp              add an open-loop chroma term to the analysis (chroma-aware partitioning)\n"
             "  --k-large K             analysis top-K for shapes of 1024 pixels or more\n"
             "  --deltas-max-area A     angle-delta screening only for shapes up to A pixels (0: all)\n"
+            "  (the next options change decisions and output, are off by default and apply to every preset: speed for size)\n"
+            "  --topdown 0|1           top-down analysis: the shapes with a side of 8 only in the 16x16 cells where a partition\n"
+            "                          DP over the larger shapes picks a block with a side of 16 (or next to such a cell), then\n"
+            "                          the shapes with a side of 4 likewise in 8x8 cells\n"
             "  --no-lossless-cfl       with --lossless: no CfL on 4x4 chroma blocks\n"
             "  --prof                  per-phase cycle accounting in k_recon\n"
             "  --check                 compare the reconstruction with av1core's CPU decode of the record\n"
@@ -493,6 +497,7 @@ static bool parse(int argc, char **argv, GpConfig &cfg, Opts &o) {
             o.tilesSet = true; o.tileMinMp = mp; o.tileColsLog2 = c; o.tileRowsLog2 = r;
         }
         else if (a == "--deltas-max-area") cfg.P.deltasMaxArea = atoi(nxt());
+        else if (a == "--topdown") cfg.anTopdown = atoi(nxt());
         else if (a == "--prof") cfg.P.profile = 1;
         else if (a == "--uv-in-dp") { cfg.P.uvInDp = 1; cfg.P.uvOverheadBits = 0.f; }
         else if (a == "--vb-order") { const char *v = nxt(); cfg.vbOrder = !strcmp(v, "row") ? 1 : !strcmp(v, "nearest") ? 2 : 0; }

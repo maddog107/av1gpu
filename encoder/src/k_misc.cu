@@ -5,6 +5,7 @@
 #include "k_dp.cuh"
 #include "av1g/symstream.h"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -26,10 +27,16 @@ int gp_upload_tables_an_uv(const GpHostTables *);
 int gp_upload_tables_ll(const GpHostTables *);
 int gp_upload_tables_pal(const GpHostTables *);
 void gp_launch_an_uv(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st, int bd);
-void gp_launch_an_a(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st, int bd, const GpLive &L);
-void gp_launch_an_b(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st, int bd, const GpLive &L);
-void gp_launch_an_c(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st, int bd);
-void gp_launch_an_d(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st, int bd);
+// xs (null: none): per shape, the options of the staged analysis (an_stage.h); mask: the shapes to launch
+void gp_launch_an_a(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st, int bd, const GpLive &L,
+                    const GpAnX *xs, uint32_t mask);
+void gp_launch_an_b(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st, int bd, const GpLive &L,
+                    const GpAnX *xs, uint32_t mask);
+void gp_launch_an_c(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st, int bd, const GpAnX *xs,
+                    uint32_t mask);
+void gp_launch_an_d(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st, int bd, const GpAnX *xs,
+                    uint32_t mask);
+void gp_launch_an_list(const GpBatch &B, const GpParams &P, const GpAnListStage &L, cudaStream_t st, int bd);
 
 // ---------------------------------------------------------------------------
 // pack: per-SB output slots -> DecisionRecord arrays (decode order, one CTA per SB).  aux.blockFrame (if set): each
@@ -441,17 +448,78 @@ void gp_launch_resize(const void *src, int spitch, int in10, int sx0, int tw, co
 
 void gp_launch_analysis(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st, int bd, const GpLive *live) {
     const GpLive L = live ? *live : GpLive{};   // the shapes below 16x16 (an_b: 8x16, 16x8; an_a) take their blocks from it
-    gp_launch_an_d(B, P, shTotal, st, bd);
-    gp_launch_an_c(B, P, shTotal, st, bd);
-    gp_launch_an_b(B, P, shTotal, st, bd, L);
-    gp_launch_an_a(B, P, shTotal, st, bd, L);
+    gp_launch_an_d(B, P, shTotal, st, bd, nullptr, ~0u);
+    gp_launch_an_c(B, P, shTotal, st, bd, nullptr, ~0u);
+    gp_launch_an_b(B, P, shTotal, st, bd, L, nullptr, ~0u);
+    gp_launch_an_a(B, P, shTotal, st, bd, L, nullptr, ~0u);
     if (P.uvInDp) gp_launch_an_uv(B, P, shTotal, st, bd);
 }
 
 void gp_launch_dp(const GpBatch &B, const GpParams &P, cudaStream_t st, int bd) {
     if (!B.nSb) return;
-    if (bd == 10) k_dp<10><<<(B.nSb + 63) / 64, 64, 0, st>>>(B, P);
-    else k_dp<8><<<(B.nSb + 63) / 64, 64, 0, st>>>(B, P);
+    if (bd == 10) k_dp<10><<<(B.nSb + 63) / 64, 64, 0, st>>>(B, P, GpDpStage{});
+    else k_dp<8><<<(B.nSb + 63) / 64, 64, 0, st>>>(B, P, GpDpStage{});
+}
+
+// ---------------------------------------------------------------------------
+// staged analysis (an_stage.h; opt-in)
+static void gp_launch_dp_stage(const GpBatch &B, const GpParams &P, const GpDpStage &S, cudaStream_t st, int bd) {
+    if (!B.nSb) return;
+    if (bd == 10) k_dp<10, true><<<(B.nSb + 63) / 64, 64, 0, st>>>(B, P, S);
+    else k_dp<8, true><<<(B.nSb + 63) / 64, 64, 0, st>>>(B, P, S);
+}
+
+void gp_launch_analysis_staged(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st, int bd,
+                               const GpLive *live, const GpAnRun &R) {
+    // the k_live16 cells serve the cell-wise shapes only without the top-down stages (which list those shapes' blocks)
+    const GpLive L0 = live && !R.topdown ? *live : GpLive{};
+    GpAnX xs[GP_NSHAPES];
+    memset(xs, 0, sizeof xs);
+    uint32_t stage[4] = {0, 0, 0, 0};
+    for (int s = 0; s < GP_NSHAPES; s++) {
+        if (!shTotal[s]) continue;
+        const int w = 4 * AV1G_T(Num_4x4_Blocks_Wide)[s], h = 4 * AV1G_T(Num_4x4_Blocks_High)[s];
+        const int sg = an_stage_of(R.topdown, w, h);
+        stage[sg] |= 1u << s;
+        if (sg >= 2) { xs[s].list = R.list[s]; xs[s].count = R.count + s; }
+    }
+    if (R.topdown) cudaMemsetAsync(R.count, 0, GP_NSHAPES * sizeof(uint32_t), st);
+    uint32_t done = 0;
+    // a stage's shapes (large to small, as gp_launch_analysis), then their chroma term and palette candidates, which the
+    // next DP stage sees
+    auto launch = [&](uint32_t mask, const GpLive &L) {
+        if (!mask) return;
+        gp_launch_an_d(B, P, shTotal, st, bd, xs, mask);
+        gp_launch_an_c(B, P, shTotal, st, bd, xs, mask);
+        gp_launch_an_b(B, P, shTotal, st, bd, L, xs, mask);
+        gp_launch_an_a(B, P, shTotal, st, bd, L, xs, mask);
+        uint32_t sub[GP_NSHAPES];
+        for (int s = 0; s < GP_NSHAPES; s++) sub[s] = (mask >> s) & 1 ? shTotal[s] : 0;
+        if (P.uvInDp) gp_launch_an_uv(B, P, sub, st, bd);
+        gp_launch_pal_analysis(B, P, sub, st, bd);
+        done |= mask;
+    };
+    // a DP stage over the shapes done, then the block lists of the next stage's shapes
+    auto next = [&](uint32_t mask, uint8_t *core, int cell) {
+        GpDpStage S;
+        memset(&S, 0, sizeof S);
+        S.shapeMask = done; S.core = core; S.coreCell = cell; S.coreSide = cell;
+        gp_launch_dp_stage(B, P, S, st, bd);
+        GpAnListStage Ls;
+        memset(&Ls, 0, sizeof Ls);
+        Ls.core16 = R.core16; Ls.core8 = R.core8; Ls.neigh = 1;
+        for (int s = 0; s < GP_NSHAPES; s++) {
+            if (!((mask >> s) & 1)) continue;
+            const int w = 4 * AV1G_T(Num_4x4_Blocks_Wide)[s], h = 4 * AV1G_T(Num_4x4_Blocks_High)[s], m = std::min(w, h);
+            GpAnListShape &sh = Ls.s[Ls.n++];
+            sh.bs = s; sh.total = shTotal[s]; sh.list = R.list[s]; sh.count = R.count + s; sh.flat = 1;
+            sh.cell = m == 8 ? 16 : 8;
+        }
+        gp_launch_an_list(B, P, Ls, st, bd);
+    };
+    launch(stage[1], L0);
+    if (stage[2]) { next(stage[2], R.core16, 16); launch(stage[2], GpLive{}); }
+    if (stage[3]) { next(stage[3], R.core8, 8); launch(stage[3], GpLive{}); }
 }
 
 void gp_launch_pack(const GpBatch &B, const GpPackOff *dOff, av1g_block *oB, uint32_t *oBT, av1g_txb *oT, int16_t *oC,

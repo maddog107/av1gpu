@@ -90,6 +90,9 @@ struct GpConfig {
                               // Advanced profile allows) are written with seq_level_idx 31 (no level limits)
     double maxInputMp = 0;    // front ends: largest source decoded (--max-input-mp; 0 or less than the maxMp limit: that
                               // limit); above it only helps sources that a crop / max-size brings under maxMp
+    // Staged analysis (an_stage.h): decision-changing speed knobs, all off by default, for every preset (not in GpParams,
+    // so the default analysis and the closed loop are unchanged).  Lossless frames ignore them.
+    int anTopdown = 0;        // --topdown 1: shapes with a side of 8 / 4 only where a DP over the larger shapes asks
     GpConfig();
 };
 

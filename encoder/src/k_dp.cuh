@@ -2,6 +2,7 @@
 // blocks in AV1 decode order (decode_partition pre-order).
 #pragma once
 #include "dev_common.cuh"
+#include "an_stage.h"
 
 __device__ __forceinline__ int sq_bsize(int n) {
     return n == 4 ? AV1G_BLOCK_4X4 : n == 8 ? AV1G_BLOCK_8X8 : n == 16 ? AV1G_BLOCK_16X16 : n == 32 ? AV1G_BLOCK_32X32 : AV1G_BLOCK_64X64;
@@ -64,11 +65,20 @@ static __device__ __noinline__ int dp_net8(const GpBatch &B, const GpImage &I, i
     return AV1G_PARTITION_SPLIT;
 }
 
-template <int BD = 8>
-__global__ void k_dp(GpBatch B, GpParams P) {
+// ST: a DP stage of the staged analysis (an_stage.h): only the shapes of S.shapeMask (the others count as GP_INF), and
+// instead of the leaves (and B.sbJ) it writes S.core (the cells under leaves whose smaller side is at most S.coreSide).
+// The default DP is ST = false (S unused).  (The body stays in the kernel: as a device function it cost the default DP
+// 8 registers.)
+template <int BD = 8, bool ST = false>
+__global__ void k_dp(GpBatch B, GpParams P, GpDpStage S) {
     const uint32_t sb = blockIdx.x * blockDim.x + threadIdx.x;
     if (sb >= B.nSb) return;
     const GpImage &I = B.img[B.sbImg[sb]];
+    auto dpJ = [&](int bs, int x, int y) -> float {
+        if constexpr (ST)
+            if (!((S.shapeMask >> bs) & 1)) return GP_INF;
+        return dp_blockJ(B, I, bs, x, y);
+    };
     const uint32_t local = sb - I.sbBase;
     const int sbx = (int)(local % I.sbCols) * 64, sby = (int)(local / I.sbCols) * 64;
     const int FW = I.MiCols * 4, FH = I.MiRows * 4;
@@ -90,7 +100,7 @@ __global__ void k_dp(GpBatch B, GpParams P) {
                 if (n == 8) {
                     for (int k = 0; k < 4; k++) {
                         const int xx = x + (k & 1) * 4, yy = y + (k >> 1) * 4;
-                        if (xx < FW && yy < FH) splitJ += dp_blockJ(B, I, AV1G_BLOCK_4X4, xx, yy);
+                        if (xx < FW && yy < FH) splitJ += dpJ(AV1G_BLOCK_4X4, xx, yy);
                     }
                 } else {
                     const int cb = lvBase[L + 1], cper = per * 2;
@@ -112,43 +122,43 @@ __global__ void k_dp(GpBatch B, GpParams P) {
                         const int sp = sub_bsize(AV1G_PARTITION_SPLIT, n);
                         if (pmask & (1 << AV1G_PARTITION_NONE)) {
                             // a block without a record stays GP_INF (a --split-bias below 1 would make it look finite)
-                            const float jn = dp_blockJ(B, I, sq_bsize(n), x, y);
+                            const float jn = dpJ(sq_bsize(n), x, y);
                             if (jn < GP_INF) consider(AV1G_PARTITION_NONE, jn * P.splitBias, pb[AV1G_PARTITION_NONE]);
                         }
                         if (pmask & (1 << AV1G_PARTITION_HORZ))
-                            consider(AV1G_PARTITION_HORZ, dp_blockJ(B, I, hz, x, y) + dp_blockJ(B, I, hz, x, y + half), pb[AV1G_PARTITION_HORZ]);
+                            consider(AV1G_PARTITION_HORZ, dpJ(hz, x, y) + dpJ(hz, x, y + half), pb[AV1G_PARTITION_HORZ]);
                         if (pmask & (1 << AV1G_PARTITION_VERT))
-                            consider(AV1G_PARTITION_VERT, dp_blockJ(B, I, vt, x, y) + dp_blockJ(B, I, vt, x + half, y), pb[AV1G_PARTITION_VERT]);
+                            consider(AV1G_PARTITION_VERT, dpJ(vt, x, y) + dpJ(vt, x + half, y), pb[AV1G_PARTITION_VERT]);
                         if (n > 8) {
-                            const float s00 = dp_blockJ(B, I, sp, x, y), s01 = dp_blockJ(B, I, sp, x + half, y);
-                            const float s10 = dp_blockJ(B, I, sp, x, y + half), s11 = dp_blockJ(B, I, sp, x + half, y + half);
+                            const float s00 = dpJ(sp, x, y), s01 = dpJ(sp, x + half, y);
+                            const float s10 = dpJ(sp, x, y + half), s11 = dpJ(sp, x + half, y + half);
                             if (pmask & (1 << AV1G_PARTITION_HORZ_A))
-                                consider(AV1G_PARTITION_HORZ_A, s00 + s01 + dp_blockJ(B, I, hz, x, y + half), pb[AV1G_PARTITION_HORZ_A]);
+                                consider(AV1G_PARTITION_HORZ_A, s00 + s01 + dpJ(hz, x, y + half), pb[AV1G_PARTITION_HORZ_A]);
                             if (pmask & (1 << AV1G_PARTITION_HORZ_B))
-                                consider(AV1G_PARTITION_HORZ_B, dp_blockJ(B, I, hz, x, y) + s10 + s11, pb[AV1G_PARTITION_HORZ_B]);
+                                consider(AV1G_PARTITION_HORZ_B, dpJ(hz, x, y) + s10 + s11, pb[AV1G_PARTITION_HORZ_B]);
                             if (pmask & (1 << AV1G_PARTITION_VERT_A))
-                                consider(AV1G_PARTITION_VERT_A, s00 + s10 + dp_blockJ(B, I, vt, x + half, y), pb[AV1G_PARTITION_VERT_A]);
+                                consider(AV1G_PARTITION_VERT_A, s00 + s10 + dpJ(vt, x + half, y), pb[AV1G_PARTITION_VERT_A]);
                             if (pmask & (1 << AV1G_PARTITION_VERT_B))
-                                consider(AV1G_PARTITION_VERT_B, dp_blockJ(B, I, vt, x, y) + s01 + s11, pb[AV1G_PARTITION_VERT_B]);
+                                consider(AV1G_PARTITION_VERT_B, dpJ(vt, x, y) + s01 + s11, pb[AV1G_PARTITION_VERT_B]);
                             const int h4 = sub_bsize(AV1G_PARTITION_HORZ_4, n), v4 = sub_bsize(AV1G_PARTITION_VERT_4, n);
                             if (pmask & (1 << AV1G_PARTITION_HORZ_4)) {
                                 float J = 0.f;
-                                for (int i = 0; i < 4; i++) if (i < 3 || y + 3 * q4 < FH) J += dp_blockJ(B, I, h4, x, y + i * q4);
+                                for (int i = 0; i < 4; i++) if (i < 3 || y + 3 * q4 < FH) J += dpJ(h4, x, y + i * q4);
                                 consider(AV1G_PARTITION_HORZ_4, J, pb[AV1G_PARTITION_HORZ_4]);
                             }
                             if (pmask & (1 << AV1G_PARTITION_VERT_4)) {
                                 float J = 0.f;
-                                for (int i = 0; i < 4; i++) if (i < 3 || x + 3 * q4 < FW) J += dp_blockJ(B, I, v4, x + i * q4, y);
+                                for (int i = 0; i < 4; i++) if (i < 3 || x + 3 * q4 < FW) J += dpJ(v4, x + i * q4, y);
                                 consider(AV1G_PARTITION_VERT_4, J, pb[AV1G_PARTITION_VERT_4]);
                             }
                         }
                     }
                 } else if (hasCols) {  // bottom half outside: split_or_horz
                     consider(AV1G_PARTITION_SPLIT, splitJ, 1.f);
-                    if (!big) consider(AV1G_PARTITION_HORZ, dp_blockJ(B, I, sub_bsize(AV1G_PARTITION_HORZ, n), x, y), 1.f);
+                    if (!big) consider(AV1G_PARTITION_HORZ, dpJ(sub_bsize(AV1G_PARTITION_HORZ, n), x, y), 1.f);
                 } else if (hasRows) {  // right half outside: split_or_vert
                     consider(AV1G_PARTITION_SPLIT, splitJ, 1.f);
-                    if (!big) consider(AV1G_PARTITION_VERT, dp_blockJ(B, I, sub_bsize(AV1G_PARTITION_VERT, n), x, y), 1.f);
+                    if (!big) consider(AV1G_PARTITION_VERT, dpJ(sub_bsize(AV1G_PARTITION_VERT, n), x, y), 1.f);
                 } else {
                     consider(AV1G_PARTITION_SPLIT, splitJ, 0.f);
                 }
@@ -156,13 +166,26 @@ __global__ void k_dp(GpBatch B, GpParams P) {
                 nd.p = (int8_t)bp;
             }
     }
-    B.sbJ[sb] = node[0].J;   // (not finite exactly where the safety net acts: the host names those frames)
+    if constexpr (!ST) B.sbJ[sb] = node[0].J;   // (not finite exactly where the safety net acts: the host names those frames)
     // ---- leaves in decode order ----
     uint32_t nRep = 0;   // blocks the safety net (dp_net8) coded
     GpLeaf *out = B.leaves + (size_t)sb * GP_MAX_LEAVES;
     int nl = 0;
+    // a stage marks the cells (coreCell x coreCell, raster in the SB) under its leaves with a smaller side <= coreSide
+    const int cpr = ST && S.core ? 64 / S.coreCell : 0;
+    uint8_t *core = ST && S.core ? S.core + (size_t)sb * cpr * cpr : nullptr;
+    if constexpr (ST)
+        for (int k = 0; k < cpr * cpr; k++) core[k] = 0;
     auto leaf = [&](int bs, int x, int y) {
         if (x >= FW || y >= FH) return;
+        if constexpr (ST) {
+            const int w = bw_px(bs), h = bh_px(bs);
+            if (core && (w < h ? w : h) <= S.coreSide)
+                for (int yy = y; yy < y + h; yy += S.coreCell)
+                    for (int xx = x; xx < x + w; xx += S.coreCell)
+                        core[((yy - sby) / S.coreCell) * cpr + (xx - sbx) / S.coreCell] = 1;
+            return;
+        }
         GpLeaf lf;
         lf.bsize = (uint8_t)bs;
         lf.x4 = (uint8_t)((x - sbx) >> 2);
@@ -190,16 +213,19 @@ __global__ void k_dp(GpBatch B, GpParams P) {
         case AV1G_PARTITION_VERT: leaf(sub, x, y); if (hasCols) leaf(sub, x + half, y); break;
         case AV1G_PARTITION_SPLIT:
             if (n == 8) {
-                if (!(nd.J < GP_INF)) {   // safety net (dp_net8)
-                    const int r = dp_net8(B, I, x, y, FW, FH), pt = r & 15;
-                    nRep += (uint32_t)(r >> 4);
-                    if (pt != AV1G_PARTITION_SPLIT) {
-                        const int bs = pt == AV1G_PARTITION_NONE ? AV1G_BLOCK_8X8 : pt == AV1G_PARTITION_HORZ ? AV1G_BLOCK_8X4 : AV1G_BLOCK_4X8;
-                        leaf(bs, x, y);
-                        if (pt != AV1G_PARTITION_NONE) leaf(bs, x + (pt == AV1G_PARTITION_VERT ? 4 : 0), y + (pt == AV1G_PARTITION_HORZ ? 4 : 0));
-                        break;
+                // safety net (dp_net8): the final DP only.  In a stage DP a non-finite 8x8 node is normal (its finer
+                // shapes are not analysed yet): its four 4x4 leaves mark the core cells that the next stage refines.
+                if constexpr (!ST)
+                    if (!(nd.J < GP_INF)) {
+                        const int r = dp_net8(B, I, x, y, FW, FH), pt = r & 15;
+                        nRep += (uint32_t)(r >> 4);
+                        if (pt != AV1G_PARTITION_SPLIT) {
+                            const int bs = pt == AV1G_PARTITION_NONE ? AV1G_BLOCK_8X8 : pt == AV1G_PARTITION_HORZ ? AV1G_BLOCK_8X4 : AV1G_BLOCK_4X8;
+                            leaf(bs, x, y);
+                            if (pt != AV1G_PARTITION_NONE) leaf(bs, x + (pt == AV1G_PARTITION_VERT ? 4 : 0), y + (pt == AV1G_PARTITION_HORZ ? 4 : 0));
+                            break;
+                        }
                     }
-                }
                 leaf(AV1G_BLOCK_4X4, x, y); leaf(AV1G_BLOCK_4X4, x + 4, y);
                 leaf(AV1G_BLOCK_4X4, x, y + 4); leaf(AV1G_BLOCK_4X4, x + 4, y + 4);
             } else {  // push children in reverse decode order
@@ -220,6 +246,8 @@ __global__ void k_dp(GpBatch B, GpParams P) {
             break;
         }
     }
-    B.leafCountW[sb] = (uint16_t)nl;
-    if (nRep) atomicAdd(&B.stats[5], nRep);
+    if constexpr (!ST) {
+        B.leafCountW[sb] = (uint16_t)nl;
+        if (nRep) atomicAdd(&B.stats[5], nRep);
+    }
 }
