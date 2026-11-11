@@ -6,6 +6,12 @@
 #include "pack.h"
 size_t gp_recon_scratch_bytes();   // k_recon.cu (W5/W3)
 void gp_recon_order(const GpBatch &B, uint32_t *dSteps, const uint32_t *dSeg, int nSeg, uint32_t maxSeg, cudaStream_t st);   // k_recon_order.cu
+#include "an_stage.h"
+// the staged analysis (opt-in, an_stage.h), in place of gp_launch_analysis + gp_launch_pal_analysis (k_an_x.cu); its
+// module's tables, once per process before the first staged batch (k_misc.cu; 0, or -1)
+void gp_launch_analysis_staged(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st, int bd,
+                               const GpLive *live, const GpAnRun &R);
+int gp_staged_prepare();
 #include "av1g/av1g.h"
 #include "av1g/blockinfo.h"
 #include "av1g/dsp.h"
@@ -263,6 +269,11 @@ int GpEncoder::init(const GpConfig &cfg, std::string &err) {
     }
     if (!cfg_.lossless && (cfg_.P.uvShortlist > 0 || cfg_.P.txShortlist > 0) && gp_leafprep_prepare()) {
         err = "k_leafprep table upload failed";
+        return -1;
+    }
+    // the staged analysis' module (k_an_x.cu), only with its switches (encode runs it under the same condition)
+    if (!cfg_.lossless && (cfg_.an.topdown || cfg_.an.prune41 >= 0.f) && gp_staged_prepare()) {
+        err = "staged analysis table upload failed";
         return -1;
     }
     for (auto &e : ev_) GPCK(cudaEventCreate(&e));
@@ -620,7 +631,28 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
     GpLive live;
     memset(&live, 0, sizeof live);
     std::vector<uint32_t> cellStart;
-    if (!ll && P.pruneFlat > 0.f) {
+    // staged analysis (opt-in, an_stage.h): the block lists of the shapes analysed after a DP stage, and that DP's maps
+    // (top-down: the shapes below 16x16 come from these lists, not from the live cells)
+    GpAnRun run;
+    memset(&run, 0, sizeof run);
+    const bool anRun = !ll && (cfg_.an.topdown || cfg_.an.prune41 >= 0.f);
+    if (anRun) {
+        run.topdown = cfg_.an.topdown ? 1 : 0;
+        run.gateMul = cfg_.an.prune41 >= 0.f ? 1.f + cfg_.an.prune41 / 100.f : 0.f;
+        if (run.topdown || run.gateMul > 0.f) {
+            for (int s = 0; s < GP_NSHAPES; s++) {
+                const int w = 4 * AV1G_T(Num_4x4_Blocks_Wide)[s], h = 4 * AV1G_T(Num_4x4_Blocks_High)[s];
+                if (shTotal[s] && an_stage_of(run.topdown, run.gateMul, P.smallKernel, w, h) >= 2) GPCK(A.get(run.list[s], shTotal[s]));
+            }
+            GPCK(A.get(run.count, GP_NSHAPES));
+            if (run.topdown) {
+                GPCK(A.get(run.core16, (size_t)nSb * 16));
+                GPCK(A.get(run.core8, (size_t)nSb * 64));
+            }
+            if (run.gateMul > 0.f) GPCK(A.get(run.gate, (size_t)nSb * GP_DP_GATE_NODES));
+        }
+    }
+    if (!ll && P.pruneFlat > 0.f && !run.topdown) {
         cellStart.assign(n + 1, 0);
         for (int i = 0; i < n; i++)
             cellStart[i + 1] = cellStart[i] + (uint32_t)(((imgs[i].MiCols + 3) / 4) * ((imgs[i].MiRows + 3) / 4));
@@ -752,7 +784,21 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
     cudaEventRecord(ev_[1], st);
     // ---- analysis + DP ----
     if (ll) gp_launch_ll_analysis(B, L, shTotal, cfg_.edgeFilter, P.filterIntra, st, bd);
-    else {
+    else if (anRun) {
+        gp_launch_live16(B, P, live, st, bd);   // (nothing with the top-down stages: no live cells allocated)
+        gp_launch_analysis_staged(B, P, shTotal, st, bd, &live, run);   // palette candidates after each stage
+        // debug (tests/staged_analysis_test.py): the listed blocks per staged shape of this batch (synchronises)
+        static const bool dbgStages = getenv("GP_DEBUG_STAGES") != nullptr;
+        if (dbgStages && run.count) {
+            uint32_t c[GP_NSHAPES];
+            GPCK(cudaMemcpyAsync(c, run.count, sizeof c, cudaMemcpyDeviceToHost, st));
+            GPCK(cudaStreamSynchronize(st));
+            for (int s = 0; s < GP_NSHAPES; s++)
+                if (run.list[s])
+                    fprintf(stderr, "stages: %dx%d listed %u of %u\n", 4 * AV1G_T(Num_4x4_Blocks_Wide)[s],
+                            4 * AV1G_T(Num_4x4_Blocks_High)[s], c[s], shTotal[s]);
+        }
+    } else {
         gp_launch_live16(B, P, live, st, bd);
         gp_launch_analysis(B, P, shTotal, st, bd, &live);
         gp_launch_pal_analysis(B, P, shTotal, st, bd);   // palette candidates (batches with screen-content frames)

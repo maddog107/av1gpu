@@ -25,11 +25,17 @@ int gp_upload_tables_recon_444_10(const GpHostTables *);
 int gp_upload_tables_an_uv(const GpHostTables *);
 int gp_upload_tables_ll(const GpHostTables *);
 int gp_upload_tables_pal(const GpHostTables *);
+int gp_upload_tables_an_x(const GpHostTables *);   // the staged analysis (k_an_x.cu): gp_staged_prepare
 void gp_launch_an_uv(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st, int bd);
-void gp_launch_an_a(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st, int bd, const GpLive &L);
-void gp_launch_an_b(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st, int bd, const GpLive &L);
-void gp_launch_an_c(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st, int bd);
-void gp_launch_an_d(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st, int bd);
+// xs (null: none): per shape, the options of the staged analysis (an_stage.h); mask: the shapes to launch
+void gp_launch_an_a(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st, int bd, const GpLive &L,
+                    const GpAnX *xs, uint32_t mask);
+void gp_launch_an_b(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st, int bd, const GpLive &L,
+                    const GpAnX *xs, uint32_t mask);
+void gp_launch_an_c(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st, int bd, const GpAnX *xs,
+                    uint32_t mask);
+void gp_launch_an_d(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st, int bd, const GpAnX *xs,
+                    uint32_t mask);
 
 // ---------------------------------------------------------------------------
 // pack: per-SB output slots -> DecisionRecord arrays (decode order, one CTA per SB).  aux.blockFrame (if set): each
@@ -441,17 +447,17 @@ void gp_launch_resize(const void *src, int spitch, int in10, int sx0, int tw, co
 
 void gp_launch_analysis(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st, int bd, const GpLive *live) {
     const GpLive L = live ? *live : GpLive{};   // the shapes below 16x16 (an_b: 8x16, 16x8; an_a) take their blocks from it
-    gp_launch_an_d(B, P, shTotal, st, bd);
-    gp_launch_an_c(B, P, shTotal, st, bd);
-    gp_launch_an_b(B, P, shTotal, st, bd, L);
-    gp_launch_an_a(B, P, shTotal, st, bd, L);
+    gp_launch_an_d(B, P, shTotal, st, bd, nullptr, ~0u);
+    gp_launch_an_c(B, P, shTotal, st, bd, nullptr, ~0u);
+    gp_launch_an_b(B, P, shTotal, st, bd, L, nullptr, ~0u);
+    gp_launch_an_a(B, P, shTotal, st, bd, L, nullptr, ~0u);
     if (P.uvInDp) gp_launch_an_uv(B, P, shTotal, st, bd);
 }
 
 void gp_launch_dp(const GpBatch &B, const GpParams &P, cudaStream_t st, int bd) {
     if (!B.nSb) return;
-    if (bd == 10) k_dp<10><<<(B.nSb + 63) / 64, 64, 0, st>>>(B, P);
-    else k_dp<8><<<(B.nSb + 63) / 64, 64, 0, st>>>(B, P);
+    if (bd == 10) k_dp<10><<<(B.nSb + 63) / 64, 64, 0, st>>>(B, P, GpDpStage{});
+    else k_dp<8><<<(B.nSb + 63) / 64, 64, 0, st>>>(B, P, GpDpStage{});
 }
 
 void gp_launch_pack(const GpBatch &B, const GpPackOff *dOff, av1g_block *oB, uint32_t *oBT, av1g_txb *oT, int16_t *oC,
@@ -656,4 +662,17 @@ int gp_recon_prepare(int bd, bool k420, bool k444) {
     if (k420 && prep(v)) return -1;
     if (k444 && prep(v + 1)) return -1;
     return 0;
+}
+
+// The staged analysis' module (k_an_x.cu: MODE 1 analysis, k_an_list, the DP stages; opt-in, an_stage.h), likewise
+// once per process, by GpEncoder::init of an encoder with --topdown / --prune-41 on (after gp_init_tables): a process
+// without the switches never touches it, so lazy loading never loads it.
+int gp_staged_prepare() {
+    static std::once_flag once;
+    static int rc;
+    std::call_once(once, []() {
+        rc = gp_upload_tables_an_x(&hostTables);
+        if (!rc && cudaStreamSynchronize(cudaStreamPerThread) != cudaSuccess) rc = -1;
+    });
+    return rc;
 }

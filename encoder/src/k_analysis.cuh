@@ -7,6 +7,7 @@
 //   -> GpBlockRes {J, candidates best-first, tx type}
 #pragma once
 #include "dev_tx.cuh"
+#include "an_stage.h"
 
 // The residual layout of a W x H block in the analysis: by column, an_cm_stride<H>() samples apart, with the transform
 // in place (warp_eval_cm), for 64x64 and 32x64 (ASmem::cm); row-major otherwise.
@@ -489,10 +490,12 @@ constexpr int an_thread_budget() {
     return W * H <= 256 ? 768 : (W == 16 && H == 32) ? 640 : (W == 32 && H == 32) ? 384 : 512;
 }
 
-// BD: bit depth of the batch (distortions and lambda in native units, see gp_lambda)
-template <int W, int H, int BS, int NW, int BD = 8>
+// BD: bit depth of the batch (distortions and lambda in native units, see gp_lambda).  MODE 0: the default analysis
+// (X unused).  MODE 1: the opt-in variant of the staged analysis (an_stage.h): the blocks of X.list (X.count of them)
+// instead of the shape's grid
+template <int W, int H, int BS, int NW, int BD = 8, int MODE = 0>
 __global__ void __launch_bounds__(NW * 32, an_thread_budget<W, H>() / (NW * 32))
-    k_analysis(GpBatch B, GpParams P, uint32_t nTotal, GpLive LC) {
+    k_analysis(GpBatch B, GpParams P, uint32_t nTotal, GpLive LC, GpAnX X) {
     static_assert(!an_cellwise<W, H>() || an_live_filled(BS), "k_live16 must fill this cell-wise shape (AN_LIVE_SHAPES)");
     typedef TxD<W, H> T;
     typedef av1g_pixel_t(BD) Px;
@@ -511,7 +514,14 @@ __global__ void __launch_bounds__(NW * 32, an_thread_budget<W, H>() / (NW * 32))
 
     // the live-cell list holds only cells that prune_flat keeps
     const bool cellwise = an_cellwise<W, H>() && LC.cell;
-    for (uint32_t gb = blockIdx.x * NW + warp; gb < nTotal; gb += gridDim.x * NW) {
+    // a block list (k_an_list) holds only blocks inside the frame that prune_flat keeps; nTotal is its worst case
+    const bool fromList = MODE != 0 && X.list;
+    if constexpr (MODE != 0)
+        if (fromList) nTotal = min(nTotal, __ldg(X.count));
+    for (uint32_t gi = blockIdx.x * NW + warp; gi < nTotal; gi += gridDim.x * NW) {
+        uint32_t gb = gi;
+        if constexpr (MODE != 0)
+            if (fromList) gb = __ldg(X.list + gi);
         int lo;
         uint32_t li;
         int x, y;
@@ -538,7 +548,7 @@ __global__ void __launch_bounds__(NW * 32, an_thread_budget<W, H>() / (NW * 32))
             continue;
         }
         const int qidx = sb_qindex(I, x, y);
-        if (!cellwise && prune_flat<BD>(I, P, x, y, W, H, qidx)) {
+        if (!cellwise && !fromList && prune_flat<BD>(I, P, x, y, W, H, qidx)) {
             if (lane == 0) { out.J = GP_INF; out.ncand = 0; }
             __syncwarp();
             continue;

@@ -14,7 +14,8 @@ has (counted, reported with the input's name, and a decoder-gate failure).
 - Every case in CASES is encoded twice through tests/decoder_gate.py, with every device allocation filled with 0 and
   with 120 (GP_POISON; 120 made v0.12.0 fail to encode the flat image): both runs must pass the gate (which also fails
   on any block coded by k_dp's safety net) and give the same bytes.  The cases cover interior superblocks (--maxpart),
-  the frame-edge-only route (--partN 0x3FE: flat 16x16 / 48x48 frames) and the variance pruning.
+  the frame-edge-only route (--partN 0x3FE: flat 16x16 / 48x48 frames), the variance pruning, and the staged analysis
+  (--topdown, --prune-41) on those routes.
 - GP_DP_UNCHECKED=1 keeps the pruning that init would switch off, so the safety net must act: with turbo (4x4
   records), turbo2 (8x8 blocks) and --shapes masks without 4x4 and 8x8 (8x4 / 4x8 blocks) --maxpart 8 must still decode,
   give the same bytes for both fillings and report the blocks with the input's name (single-file and batch mode).
@@ -47,6 +48,15 @@ CASES = [
     ["--prune-var", "0.0001", "--prune-area", "16", "--small-kernel", "0"],
     # (palette off: palette candidates would give the pruned blocks of the checker records)
     ["--preset", "base", "--prune-var", "0.5", "--prune-area", "64", "--prune-flat", "2", "--palette", "off"],
+    # the staged analysis (--topdown / --prune-41, staged_analysis_test.py) on the same routes: its DP stages decide
+    # which finer blocks are analysed, so they must leave the final DP a partition of finite cost wherever the default
+    # analysis has one (the NONE guard in the stage DPs: a pruned 64x64 times --split-bias 0.5 looked finite there)
+    ["--preset", "turbo", "--topdown", "1", "--maxpart", "8"],
+    ["--topdown", "1", "--prune-var", "0.0001", "--prune-area", "256", "--split-bias", "0.5"],
+    ["--preset", "base", "--topdown", "1", "--prune-41", "10", "--prune-var", "0.0001", "--prune-area", "256",
+     "--split-bias", "0.5"],
+    ["--preset", "base", "--prune-var", "0.5", "--prune-area", "64", "--prune-flat", "2", "--topdown", "1", "--palette", "off"],
+    ["--preset", "turbo2", "--topdown", "1"],
 ]
 # with GP_DP_UNCHECKED=1 (the safety net acts): 4x4 records (turbo), 8x8 blocks (turbo2: no 4x4), 8x4 blocks (no 4x4,
 # 8x8), 4x8 blocks (no 4x4, 8x8, 8x4)

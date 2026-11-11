@@ -1034,6 +1034,7 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
     if (bcfg.smallMp > 0) {
         GpConfig cs = bcfg;
         cs.P = bcfg.Psmall;
+        cs.an = bcfg.anSmall;
         for (int k = 0; k < nEnc; k++) {
             encsSmall[k] = new GpEncoder;
             if (encsSmall[k]->init(cs, err)) { fprintf(stderr, "init: %s\n", err.c_str()); return 1; }
