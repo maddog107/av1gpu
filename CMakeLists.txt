@@ -290,6 +290,10 @@ if(AV1GPU_TESTS)
     # --help prints every option the parser takes
     add_test(NAME help_lists_options COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/help_test.py
              --bin $<TARGET_FILE:av1gpu> --source ${PROJECT_SOURCE_DIR}/encoder/apps/av1gpu.cpp)
+    # the opt-in analysis switches (--topdown, --prune-41): the same bytes with one encoder and the list reversed, their
+    # off values = no switches, and decoder identity with both (default and base presets)
+    add_test(NAME staged_analysis COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/staged_analysis_test.py
+             --bin $<TARGET_FILE:av1gpu>)
     # #44: a gray JPEG's sampling factors (2x2, 2x1, 1x2) do not change its planes, on the nvJPEG and the CPU route
     add_test(NAME jpeg_gray_sampling COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/jpeg_gray_sampling_test.py
              --bin $<TARGET_FILE:av1gpu> --gen $<TARGET_FILE:jpeg_gray_gen>)
