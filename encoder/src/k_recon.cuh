@@ -7,6 +7,7 @@
 //   luma    re-evaluate the analysis top-K (DCT_DCT) with the REAL edges and exact mode/coefficient
 //           contexts, tx-type search for the winner, final quantization, exact dequant + inverse
 //           transform (av1core dsp.h) + reconstruction
+//           (GpParams::txShortlist: the search tries only the tx types k_leafprep.cu ranked best open loop)
 //   chroma  SATD screening of the 13 UV modes with real edges -> top uvK + CfL (least-squares alpha
 //           from the reconstructed luma) -> exact RD of U+V -> final quantization + reconstruction
 //           (GpParams::uvShortlist: no screening; the RD takes the open-loop shortlist of k_leafprep.cu + CfL)
@@ -996,12 +997,14 @@ __device__ __noinline__ void rc_luma(int W, int H, RcShared<BD> &S, const GpBatc
         // (racecheck 2026-10-02; seen as V-plane decoder mismatches in 2-encoder batch runs)
         __syncthreads();
         rc_tick(B, P, 1);  // pass 1
-        // pass 2: tx-type search for the winner with the real residual (all types if pass 1 was skipped)
+        // pass 2: tx-type search for the winner with the real residual (all types if pass 1 was skipped; for the
+        // analysis winner with an open-loop shortlist, B.txShort of k_leafprep.cu, only the types it kept)
         if (pass2) {
             if (tid == 0) {
+                const int keep = B.txShort && bestC == br.cand[0] ? B.txShort[gp_short_slot(sb, y >> 2, x >> 2)] : 0xFFFF;
                 int n = 0;
                 for (int t = 0; t < 16; t++) {
-                    if (!av1g_tx_type_in_set_intra(set, t)) continue;
+                    if (!av1g_tx_type_in_set_intra(set, t) || !((keep >> t) & 1)) continue;
                     if (!skip1 && (t == AV1G_DCT_DCT || (bestC == br.cand[0] && t == br.tx))) continue;
                     S.taskC[n] = bestC; S.taskT[n] = t; S.taskP[n] = 0; n++;
                 }

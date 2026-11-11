@@ -64,6 +64,7 @@ struct GpParams {
     float pruneFlat;     // > 0: skip shapes < 16x16 inside 16x16 regions whose 8x8 variances are all < pruneFlat * step_ac^2
     // (appended) open-loop shortlists for the closed loop, made by k_leafprep between the DP and the wavefront; 0 = off
     int uvShortlist;     // 1..GP_UV_SHORT_MAX: the chroma RD evaluates these open-loop screened modes (+ CfL), no screening
+    int txShortlist;     // 1..16: luma pass 2 evaluates at most this many tx types, ranked open loop
 };
 #define GP_UV_SHORT_MAX 6    // = the closed loop's largest uvK (its kept chroma RD levels: 6 modes x 2 planes + CfL)
 
@@ -179,9 +180,10 @@ struct GpBatch {
     av1g_palette *oPal;        // [nSb * GP_SB_PAL] (block = SB-local leaf index, map_off SB-local)
     uint8_t *oMap;             // [nSb * GP_SB_MAP]
     const uint32_t *palAny;    // device flag: some image of the batch has GpImage::sct (the lossy palette search runs)
-    // open-loop shortlists (k_leafprep.cu; null when GpParams::uvShortlist is 0).  One slot per 4x4 unit of an SB,
-    // gp_short_slot(): each chroma-coding leaf's top-left unit
+    // open-loop shortlists (k_leafprep.cu; null when GpParams::uvShortlist / txShortlist are 0).  One slot per 4x4 unit of
+    // an SB, gp_short_slot(): each leaf's (and, for chroma, each chroma-coding leaf's) top-left unit
     uint8_t *uvShort;          // [nSb * GP_MAX_LEAVES * uvShortlist] chroma candidate codes (mode << 3 | delta + 3), best first
+    uint16_t *txShort;         // [nSb * GP_MAX_LEAVES] luma tx types pass 2 may evaluate (bit t: type t; 0xFFFF: any)
 };
 // shortlist slot of the block whose top-left 4x4 unit is (mi_row, mi_col) in superblock sb
 #define gp_short_slot(sb, mi_row, mi_col) ((size_t)(sb) * GP_MAX_LEAVES + (((mi_row) & 15) << 4 | ((mi_col) & 15)))

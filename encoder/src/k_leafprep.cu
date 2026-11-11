@@ -1,8 +1,8 @@
 // Open-loop shortlists for the closed loop ("open-loop shortlists, closed-loop picks"): between the partition DP and the
 // wavefront, on the encoder stream (no host synchronisation), in parallel over every leaf of the batch.  k_recon runs per
 // wavefront step and a step lasts as long as its slowest superblock, so work moved from a superblock's serial chain to
-// here is paid at the price of parallel work.  Only with GpParams::uvShortlist (default off: nothing here runs and
-// nothing is allocated).
+// here is paid at the price of parallel work.  Only with GpParams::uvShortlist / txShortlist (default off: nothing here
+// runs and nothing is allocated).
 //
 //   chroma (B.uvShort)  the screening rc_chroma runs - SATD of the 13 UV modes over U and V, then of the 6 angle deltas
 //                       around the best directional mode, cost SATD + lambda_s * mode bits (uv_mode context: the luma
@@ -13,14 +13,24 @@
 //                       its own screening and runs the exact RD of those plus CfL (whose alphas need the reconstructed
 //                       luma) on the real edges.
 //
-// Two kernels: k_lp_index (one CTA per superblock) works out the availability flags and lists the leaves with work;
-// k_lp_uv runs one warp per listed leaf (so a superblock of one 64x64 leaf holds no idle warps).  The list's order
-// depends on the CTAs' timing, the work of an entry does not: every entry writes only its own leaf's slot from the
-// image, its partition and fixed arithmetic (integer SATD sums), so the results are deterministic and the same in
-// any batch.  A shortlist entry is a legal candidate whatever the edges: only decisions change, the stream stays valid.
+//   luma (B.txShort)    every tx type of the block's set (pass 2 of rc_luma) applied to the residual of the analysis
+//                       winner against the same source edges (intra edge filter with filter type 0, as the analysis):
+//                       rc_eval's forward transform, cost = L1 of the coefficients times the square root of the type's
+//                       energy gain (g_txg), i.e. in pixel units.  The txShortlist cheapest types form the leaf's mask;
+//                       rc_luma's pass 2 evaluates only those for that candidate.  (Ranking by rc_eval's exact D + lambda
+//                       R instead, LP_TX_L1 0, costs about 3x the time here; in a CPU emulation of the closed loop over
+//                       60 photos it saved 0.03 % of rate.)
+//
+// Three kernels: k_lp_index (one CTA per superblock) works out the availability flags and lists the leaves with work;
+// k_lp_uv and k_lp_tx run one warp per listed leaf (so a superblock of one 64x64 leaf holds no idle warps, and each
+// kernel has its own register budget).  The lists' order depends on the CTAs' timing, the work of an entry does not:
+// every entry writes only its own leaf's slot from the image, its partition and fixed arithmetic (integer SATD sums,
+// rc_eval's warp-reduced values), so the results are deterministic and the same in any batch.  A shortlist entry is a
+// legal candidate whatever the edges: only decisions change, the stream stays valid.
 #include "kernels.h"
 #include "dev_common.cuh"
 #include "k_analysis.cuh"
+#include "rc_eval.cuh"
 
 #include <algorithm>
 #include <mutex>
@@ -28,15 +38,19 @@
 GP_DEFINE_TABLE_UPLOAD(gp_upload_tables_leafprep)
 const GpHostTables *gp_host_tables();   // k_misc.cu
 
+#ifndef LP_TX_L1
+#define LP_TX_L1 1     // rank the tx types by transform-domain L1 (0: by rc_eval's D + lambda R, about 3x the time)
+#endif
 #define LP_IX_NT 64    // k_lp_index: threads per superblock
-#define LP_NW 4        // k_lp_uv: warps per CTA, one leaf each
+#define LP_NW 4        // k_lp_uv / k_lp_tx: warps per CTA, one leaf each
 #define LP_NT (LP_NW * 32)
 
-// scratch of k_lp_index / k_lp_uv (stream-ordered, gp_launch_leafprep)
+// scratch of k_lp_index / k_lp_uv / k_lp_tx (stream-ordered, gp_launch_leafprep)
 struct LpWork {
-    uint32_t *cnt;     // [1] entries of uvItem
+    uint32_t *cnt;     // [2] entries of uvItem / txItem
     uint32_t *uvItem;  // [nSb * GP_MAX_LEAVES] sb << 8 | leaf: leaves with chroma (B.uvShort)
-    uint8_t *flags;    // [nSb * GP_MAX_LEAVES] per gp_short_slot: 4 chroma above-right, 8 chroma below-left
+    uint32_t *txItem;  // [nSb * GP_MAX_LEAVES] leaves whose pass 2 gets a tx shortlist (B.txShort)
+    uint8_t *flags;    // [nSb * GP_MAX_LEAVES] per gp_short_slot: 1 luma above-right, 2 luma below-left, 4 / 8 chroma
 };
 
 // the closed loop's BlockDecoded flag of 4x4 unit (r, c) of plane p (SB-relative, plane units; r, c in -1 .. 16) when
@@ -56,9 +70,16 @@ __device__ __forceinline__ const GpBlockRes &lp_br(const GpBatch &B, const GpIma
     return B.blk[I.shOff[bsize] + (uint32_t)(y / AV1G_T(Tx_Height)[txSz]) * I.shNbx[bsize] + x / AV1G_T(Tx_Width)[txSz]];
 }
 
+// does pass 2 of rc_luma get a shortlist for this leaf: a tx search (the set has more types than the list) for a mode
+// candidate (not a palette)
+__device__ __forceinline__ bool lp_tx_listed(const GpParams &P, int bsize, int c0) {
+    const int set = av1g_get_tx_set_intra(AV1G_T(Max_Tx_Size_Rect)[bsize], 0);
+    return set != AV1G_TX_SET_DCTONLY && (set == AV1G_TX_SET_INTRA_1 ? 7 : 5) > P.txShortlist && c0 < 128;
+}
+
 // per superblock: BlockDecoded as k_recon builds it (rc_record_txb_at marks each recorded tx block's units - luma: the
 // block (tx depth 0), beyond the frame edge too; chroma: its tx blocks, 4:4:4 ones outside the coded area are not coded),
-// each chroma leaf's above-right / below-left flags, and the work list
+// each leaf's above-right / below-left flags, and the work lists
 __global__ void __launch_bounds__(LP_IX_NT) k_lp_index(GpBatch B, GpParams P, LpWork W) {
     __shared__ uint16_t own[2][16 * 16];   // luma / chroma: the leaf whose tx block marks each 4x4 unit of the SB
     const uint32_t sb = blockIdx.x;
@@ -96,27 +117,37 @@ __global__ void __launch_bounds__(LP_IX_NT) k_lp_index(GpBatch B, GpParams P, Lp
     // per leaf (whole warps: the list entries are reserved with one atomic per warp)
     for (int l0 = tid - lane; l0 < nLeaves; l0 += LP_IX_NT) {
         const int li = l0 + lane;
-        bool uv = false;
+        bool uv = false, tx = false;
         if (li < nLeaves) {
             const GpLeaf lf = lv[li];
             const int bsize = lf.bsize, x = sbx + lf.x4 * 4, y = sby + lf.y4 * 4, mi_row = y >> 2, mi_col = x >> 2;
+            const size_t slot = gp_short_slot(sb, mi_row, mi_col);
+            int f = 0;
+            const int sbW4 = miColEnd - sbc * 16, sbH4 = miRowEnd - sbr * 16;
+            const int Wt = bw_px(bsize), Ht = bh_px(bsize);   // luma tx = block (tx depth 0)
+            f |= lp_decoded(own[0], 0, lf.y4 - 1, lf.x4 + (Wt >> 2), li, 0, sbW4, sbH4);
+            f |= lp_decoded(own[0], 0, lf.y4 + (Ht >> 2), lf.x4 - 1, li, 0, sbW4, sbH4) << 1;
             if (av1g_has_chroma(bsize, mi_row, mi_col, I.mono, ss, ss)) {
-                const int sbW4 = miColEnd - sbc * 16, sbH4 = miRowEnd - sbr * 16;
                 const int uvTx = av1g_uv_tx_size(bsize, ss, ss);
                 const int r4 = (mi_row & 15) >> ss, c4 = (mi_col & 15) >> ss;
-                int f = lp_decoded(own[1], 1, r4 - 1, c4 + (AV1G_T(Tx_Width)[uvTx] >> 2), li, ss, sbW4 >> ss, sbH4 >> ss) << 2;
+                f |= lp_decoded(own[1], 1, r4 - 1, c4 + (AV1G_T(Tx_Width)[uvTx] >> 2), li, ss, sbW4 >> ss, sbH4 >> ss) << 2;
                 f |= lp_decoded(own[1], 1, r4 + (AV1G_T(Tx_Height)[uvTx] >> 2), c4 - 1, li, ss, sbW4 >> ss, sbH4 >> ss) << 3;
-                W.flags[gp_short_slot(sb, mi_row, mi_col)] = (uint8_t)f;
-                uv = true;
+                uv = B.uvShort != nullptr;
+            }
+            W.flags[slot] = (uint8_t)f;
+            if (B.txShort) {
+                tx = lp_tx_listed(P, bsize, lp_br(B, I, bsize, x, y).cand[0]);
+                if (!tx) B.txShort[slot] = 0xFFFF;   // pass 2 evaluates every type
             }
         }
         const uint32_t item = sb << 8 | (uint32_t)li;
-        const unsigned m = __ballot_sync(0xffffffffu, uv);
-        if (m) {
+        for (int k = 0; k < 2; k++) {
+            const unsigned m = __ballot_sync(0xffffffffu, k ? tx : uv);
+            if (!m) continue;
             uint32_t base = 0;
-            if (lane == 0) base = atomicAdd(W.cnt, (uint32_t)__popc(m));
+            if (lane == 0) base = atomicAdd(&W.cnt[k], (uint32_t)__popc(m));
             base = __shfl_sync(0xffffffffu, base, 0);
-            if (uv) W.uvItem[base + __popc(m & ((1u << lane) - 1))] = item;
+            if ((m >> lane) & 1) (k ? W.txItem : W.uvItem)[base + __popc(m & ((1u << lane) - 1))] = item;
         }
     }
 }
@@ -243,23 +274,117 @@ __global__ void __launch_bounds__(LP_NT) k_lp_uv(GpBatch B, GpParams P, LpWork W
     }
 }
 
+template <typename Px>
+struct LpTxScr {
+    __align__(16) Px ea[2][AV1G_EDGE_LEN];   // the edges, the edge-filtered ones
+    __align__(16) Px el[2][AV1G_EDGE_LEN];
+    int16_t res[16 * 16];                    // residual, levels and transform of tx blocks up to 16x16 (rc_eval)
+    int16_t q[16 * 16];
+    float tmp[16 * 17];
+};
+
+// luma: rank the tx types of pass 2 for the analysis winner, one warp per listed leaf
+template <int BD>
+__global__ void __launch_bounds__(LP_NT, 4) k_lp_tx(GpBatch B, GpParams P, LpWork W) {
+    typedef av1g_pixel_t(BD) Px;
+    __shared__ LpTxScr<Px> scr[LP_NW];
+    const int warp = threadIdx.x >> 5, lane = threadIdx.x & 31;
+    LpTxScr<Px> &S = scr[warp];
+    const uint32_t n = W.cnt[1];
+    for (uint32_t e = blockIdx.x * LP_NW + warp; e < n; e += gridDim.x * LP_NW) {
+        const GpImage *Ip;
+        const LpLeaf L = lp_leaf(B, W, W.txItem[e], Ip);
+        const GpImage &I = *Ip;
+        const int bsize = L.bsize, x = L.x, y = L.y;
+        const int c0 = lp_br(B, I, bsize, x, y).cand[0];
+        const float lambdaB = gp_lambda<BD>(L.qidx, P.lambdaMul) * ssim_scale(I, x, y, bw_px(bsize), bh_px(bsize));
+        const int txSz = AV1G_T(Max_Tx_Size_Rect)[bsize], set = av1g_get_tx_set_intra(txSz, 0);
+        const int Wt = AV1G_T(Tx_Width)[txSz], Ht = AV1G_T(Tx_Height)[txSz], lw = log2i(Wt), lh = log2i(Ht);
+        const int maxX = I.MiCols * 4 - 1, maxY = I.MiRows * 4 - 1;
+        build_edges_par<BD>(gp_src<BD>(I, 0), I.spitch[0], x, y, lw, lh, L.availL, L.availU, L.flags & 1, (L.flags >> 1) & 1, maxX, maxY,
+                            S.ea[0] + AV1G_EDGE_OFF, S.el[0] + AV1G_EDGE_OFF, lane, 32);
+        __syncwarp();
+        const int dcv = warp_dc_value<BD>(S.ea[0] + AV1G_EDGE_OFF, S.el[0] + AV1G_EDGE_OFF, L.availL, L.availU, lw, lh);
+        const int m = cand_mode(c0);
+        const bool ef = I.edgeFilter && av1g_is_directional(m);
+        int upA = 0, upL = 0;
+        if (ef) {   // warp_residual's edge preparation (filter type 0), into the second edge pair
+            for (int k = lane; k < AV1G_EDGE_LEN; k += 32) { S.ea[1][k] = S.ea[0][k]; S.el[1][k] = S.el[0][k]; }
+            __syncwarp();
+            an_edge_prepare<BD>(pangle_of(m, cand_delta(c0)), lw, lh, 0, L.availL, L.availU, x, y, maxX, maxY, S.ea[1] + AV1G_EDGE_OFF,
+                                S.el[1] + AV1G_EDGE_OFF, upA, upL);
+        }
+        const Px *EA = S.ea[ef ? 1 : 0] + AV1G_EDGE_OFF, *EL = S.el[ef ? 1 : 0] + AV1G_EDGE_OFF;
+        const Px *src = gp_src<BD>(I, 0) + (size_t)y * I.spitch[0] + x;
+        const int sp = I.spitch[0], nsx = Wt >> 2;
+        for (int sbk = lane; sbk < nsx * (Ht >> 2); sbk += 32) {
+            const int sx = (sbk % nsx) * 4, sy = (sbk / nsx) * 4;
+            int pr[16];
+            pred_sub4(c0, sy, sx, lw, lh, EA, EL, dcv, pr, upA, upL);
+#pragma unroll
+            for (int i = 0; i < 4; i++)
+#pragma unroll
+                for (int jj = 0; jj < 4; jj++) S.res[(sy + i) * Wt + sx + jj] = (int16_t)((int)src[(sy + i) * sp + sx + jj] - pr[i * 4 + jj]);
+        }
+        __syncwarp();
+        const BlockQ bq = block_q<BD>(I, L.qidx);
+        EvalIn ev;
+        ev.txSz = txSz; ev.plane = 0; ev.dcQ = bq.dcQ[0]; ev.acQ = bq.acQ[0];
+        ev.rnd = P.rnd; ev.zbin = P.zbin; ev.skipCtx = 0; ev.dcCtx = 0; ev.reduced = 0; ev.C = g_cost[I.qctx];
+        ev.intraDir = m; ev.resEnergy = 0.f; ev.qmDist = P.qmDist; ev.qmRnd = P.qmRnd;
+        float myJ = GP_INF;   // lane t: cost of tx type t
+        for (int t = 0; t < 16; t++) {
+            if (!av1g_tx_type_in_set_intra(set, t)) continue;
+            float J;
+            if (LP_TX_L1) {   // transform-domain L1 in pixel units (sqrt of the type's energy gain)
+                rc_fwd<32>(S.res, S.tmp, Wt, Ht, txSz, t, rc_warp_lanes());
+                float a = 0.f;
+                for (int idx = lane; idx < Wt * Ht; idx += 32) a += fabsf(S.tmp[(idx >> lw) * (Wt + 1) + (idx & (Wt - 1))]);
+                J = __fmul_rn(warp_sum(a), sqrtf(g_txg[txSz][t]));
+                __syncwarp();
+            } else {
+                ev.txType = t;
+                ev.qm = av1g_qm(I.usingQm, I.qm[0], 0, txSz, t);
+                const EvalOut o = rc_eval<BD, 32>(S.res, S.tmp, S.q, ev, Wt, Ht, rc_warp_lanes());
+                J = fmaf(lambdaB, o.R, o.D);
+            }
+            if (lane == t) myJ = J;
+        }
+        int keep = 0;
+        for (int k = 0; k < P.txShortlist; k++) {   // the best, ties to the lower type
+            const int b = warp_argmin(myJ, lane);
+            if (b < 0) break;
+            keep |= 1 << b;
+            if (lane == b) myJ = GP_INF;
+        }
+        if (lane == 0) B.txShort[gp_short_slot(L.sb, L.mi_row, L.mi_col)] = (uint16_t)keep;
+        __syncwarp();
+    }
+}
+
 int gp_launch_leafprep(const GpBatch &B, const GpParams &P, cudaStream_t st, int bd) {
-    if (!B.nSb || !B.uvShort) return 0;
+    if (!B.nSb || (!B.uvShort && !B.txShort)) return 0;
     const size_t slots = (size_t)B.nSb * GP_MAX_LEAVES;
     LpWork W;
     char *mem = nullptr;
-    cudaError_t e = cudaMallocAsync((void **)&mem, 16 + slots * 4 + slots, st);
+    cudaError_t e = cudaMallocAsync((void **)&mem, 16 + slots * (B.uvShort ? 4 : 0) + slots * (B.txShort ? 4 : 0) + slots, st);
     if (e != cudaSuccess) return (int)e;
     W.cnt = (uint32_t *)mem;
     W.uvItem = (uint32_t *)(mem + 16);
-    W.flags = (uint8_t *)(W.uvItem + slots);
-    e = cudaMemsetAsync(W.cnt, 0, 4, st);
+    W.txItem = W.uvItem + (B.uvShort ? slots : 0);
+    W.flags = (uint8_t *)(W.txItem + (B.txShort ? slots : 0));
+    e = cudaMemsetAsync(W.cnt, 0, 8, st);
     if (e == cudaSuccess) {
         // one warp per list entry, grid-strided; about 8 leaves per superblock: one warp per superblock
         const unsigned grid = (unsigned)std::max<uint32_t>(1, (B.nSb + LP_NW - 1) / LP_NW);
         k_lp_index<<<B.nSb, LP_IX_NT, 0, st>>>(B, P, W);
-        if (bd == 10) k_lp_uv<10><<<grid, LP_NT, 0, st>>>(B, P, W);
-        else k_lp_uv<8><<<grid, LP_NT, 0, st>>>(B, P, W);
+        if (bd == 10) {
+            if (B.uvShort) k_lp_uv<10><<<grid, LP_NT, 0, st>>>(B, P, W);
+            if (B.txShort) k_lp_tx<10><<<grid, LP_NT, 0, st>>>(B, P, W);
+        } else {
+            if (B.uvShort) k_lp_uv<8><<<grid, LP_NT, 0, st>>>(B, P, W);
+            if (B.txShort) k_lp_tx<8><<<grid, LP_NT, 0, st>>>(B, P, W);
+        }
         e = cudaGetLastError();
     }
     const cudaError_t f = cudaFreeAsync(mem, st);

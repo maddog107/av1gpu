@@ -261,7 +261,7 @@ int GpEncoder::init(const GpConfig &cfg, std::string &err) {
         err = "k_recon table upload failed";
         return -1;
     }
-    if (!cfg_.lossless && cfg_.P.uvShortlist > 0 && gp_leafprep_prepare()) {
+    if (!cfg_.lossless && (cfg_.P.uvShortlist > 0 || cfg_.P.txShortlist > 0) && gp_leafprep_prepare()) {
         err = "k_leafprep table upload failed";
         return -1;
     }
@@ -611,8 +611,10 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
     GPCK(A.get(B.oBlockTxb, (size_t)nSb * GP_MAX_LEAVES));
     GPCK(A.get(B.oTxb, (size_t)nSb * B.sbTxbCap));
     GPCK(A.get(B.oCoeffs, (size_t)nSb * B.sbCoefCap));
-    // open-loop chroma shortlists for the closed loop (--uv-shortlist, k_leafprep): slots only when on, with colour frames
+    // open-loop shortlists for the closed loop (--uv-shortlist / --tx-shortlist, k_leafprep): slots only when on (the
+    // chroma one only with colour frames, the tx-type one only where rc_luma's pass 2 runs)
     if (!ll && P.uvShortlist > 0 && (any420 || any444)) GPCK(A.get(B.uvShort, (size_t)nSb * GP_MAX_LEAVES * P.uvShortlist));
+    if (!ll && P.txShortlist > 0 && P.txSearchCL && !P.txAllCL) GPCK(A.get(B.txShort, (size_t)nSb * GP_MAX_LEAVES));
     // live 16x16 cells for the analysis of the shapes below 16x16, with the flat-area pruning (gp_launch_live16 fills the
     // list on the GPU; without pruning the shapes' raster order measured faster)
     GpLive live;
@@ -761,7 +763,7 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
     // longest superblocks first in each step; debug: GP_RC_ORDER=0 keeps the list order (the CTA order changes no output)
     static const bool rcOrder = !getenv("GP_RC_ORDER") || atoi(getenv("GP_RC_ORDER")) != 0;
     if (!ll && rcOrder) gp_recon_order(B, dSteps, dStepSeg, (int)stepSeg.size() - 1, maxSeg, st);
-    if (B.uvShort) GPCK((cudaError_t)gp_launch_leafprep(B, P, st, bd));   // shortlists of every leaf (in t.dp)
+    if (B.uvShort || B.txShort) GPCK((cudaError_t)gp_launch_leafprep(B, P, st, bd));   // shortlists of every leaf (in t.dp)
     GPCK(cudaGetLastError());
     cudaEventRecord(ev_[3], st);
     // ---- closed loop, SB wavefront ----

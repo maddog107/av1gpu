@@ -59,9 +59,9 @@ void gp_launch_recon(const GpBatch &B, const GpParams &P, const uint32_t *dSbLis
 // their first launch (after gp_init_tables).  Each instantiation is its own kernel module, 39 MB of sm_120 code: with
 // lazy module loading (the default outside batch mode) a single image loads only the one it uses.  0, or -1.
 int gp_recon_prepare(int bd, bool k420, bool k444);
-// open-loop chroma shortlists for the closed loop (GpParams::uvShortlist) into B.uvShort, after the partition DP and
-// before the wavefront (k_leafprep.cu; its scratch is stream-ordered): 0, or a cudaError_t.  gp_leafprep_prepare
-// uploads that module's tables, once per process, before its first launch: 0, or -1
+// open-loop shortlists for the closed loop (GpParams::uvShortlist / txShortlist) into B.uvShort / B.txShort (whichever is
+// allocated), after the partition DP and before the wavefront (k_leafprep.cu; its scratch is stream-ordered): 0, or a
+// cudaError_t.  gp_leafprep_prepare uploads that module's tables, once per process, before its first launch: 0, or -1
 int gp_launch_leafprep(const GpBatch &B, const GpParams &P, cudaStream_t st, int bd = 8);
 int gp_leafprep_prepare();
 void gp_launch_pack(const GpBatch &B, const GpPackOff *dOff, av1g_block *oB, uint32_t *oBT, av1g_txb *oT, int16_t *oC,
