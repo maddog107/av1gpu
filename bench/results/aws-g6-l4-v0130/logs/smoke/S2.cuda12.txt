@@ -1,0 +1,5 @@
+outputs: 311 entries in 28 s
+speed: 327.9 MP/s on NVIDIA L4 (best of 5: 328, 326, 323, 326, 323)
+speed against --ref: +9.6% (ref best 299.2 MP/s)
+PASS: 311/311 match the golden outputs; 83 s in all
+sanity exit 0

@@ -1,0 +1,91 @@
+=== quality 2026-11-11T10:21:06
+new gamut_default 0 800 files 18.38 s
+old gamut_default 0 800 files 19.49 s
+new gamut_nosmall 0 600 files 10.88 s
+old gamut_nosmall 0 600 files 11.29 s
+new gamut_turbo3ns 0 600 files 9.2 s
+old gamut_turbo3ns 0 600 files 9.14 s
+new gamut_turbo3 0 600 files 10.7 s
+old gamut_turbo3 0 600 files 10.82 s
+new fmt_444_8 0 600 files 15.56 s
+old fmt_444_8 0 600 files 16.83 s
+new fmt_420_10 0 600 files 12.34 s
+old fmt_420_10 0 600 files 13.5 s
+new fmt_444_10 0 600 files 16.07 s
+old fmt_444_10 0 600 files 17.02 s
+new std_default 0 600 files 7.07 s
+old std_default 0 600 files 8.18 s
+new std_nosmall 0 600 files 4.77 s
+old std_nosmall 0 600 files 4.94 s
+new std_turbo3ns 0 600 files 4.17 s
+old std_turbo3ns 0 600 files 4.13 s
+new ll_jpeg_gamut 0 0 files
+old ll_jpeg_gamut 0 0 files
+new ll_cmp 0 51 files
+old ll_cmp 0 51 files
+new ll_cmp_ycgco 0 51 files
+old ll_cmp_ycgco 0 51 files
+new ll_misc 0 13 files
+old ll_misc 0 13 files
+new ll_jpeg_misc 0 0 files
+old ll_jpeg_misc 0 0 files
+new alpha_default 0 43 files
+old alpha_default 0 43 files
+new alpha_q100 0 43 files
+old alpha_q100 0 43 files
+new alpha_lossless 0 42 files
+old alpha_lossless 0 42 files
+gamut_default {'new': 800, 'old': 800, 'lt1': {'files': 320, 'identical': 0, 'bytes_new': 17626806, 'bytes_old': 17630557}, '1to2': {'files': 64, 'identical': 0, 'bytes_new': 10450808, 'bytes_old': 10452373}, 'ge2': {'files': 416, 'identical': 0, 'bytes_new': 240201473, 'bytes_old': 240190824}, 'unknown_size': {'files': 0, 'identical': 0}, 'all': {'files': 800, 'identical': 0, 'bytes_new': 268279087, 'bytes_old': 268273754}}
+gamut_nosmall {'new': 600, 'old': 600, 'lt1': {'files': 240, 'identical': 0, 'bytes_new': 9561372, 'bytes_old': 9550715}, '1to2': {'files': 48, 'identical': 0, 'bytes_new': 5556231, 'bytes_old': 5556041}, 'ge2': {'files': 312, 'identical': 0, 'bytes_new': 118566546, 'bytes_old': 118552920}, 'unknown_size': {'files': 0, 'identical': 0}, 'all': {'files': 600, 'identical': 0, 'bytes_new': 133684149, 'bytes_old': 133659676}}
+gamut_turbo3ns {'new': 600, 'old': 600, 'lt1': {'files': 240, 'identical': 240, 'bytes_new': 9924908, 'bytes_old': 9924908}, '1to2': {'files': 48, 'identical': 48, 'bytes_new': 5688230, 'bytes_old': 5688230}, 'ge2': {'files': 312, 'identical': 312, 'bytes_new': 121477643, 'bytes_old': 121477643}, 'unknown_size': {'files': 0, 'identical': 0}, 'all': {'files': 600, 'identical': 600, 'bytes_new': 137090781, 'bytes_old': 137090781}}
+gamut_turbo3 {'new': 600, 'old': 600, 'lt1': {'files': 240, 'identical': 0, 'bytes_new': 9507523, 'bytes_old': 9509384}, '1to2': {'files': 48, 'identical': 48, 'bytes_new': 5688230, 'bytes_old': 5688230}, 'ge2': {'files': 312, 'identical': 312, 'bytes_new': 121477643, 'bytes_old': 121477643}, 'unknown_size': {'files': 0, 'identical': 0}, 'all': {'files': 600, 'identical': 360, 'bytes_new': 136673396, 'bytes_old': 136675257}}
+fmt_444_8 {'new': 600, 'old': 600, 'lt1': {'files': 240, 'identical': 0, 'bytes_new': 9758565, 'bytes_old': 9743914}, '1to2': {'files': 48, 'identical': 0, 'bytes_new': 5643374, 'bytes_old': 5638510}, 'ge2': {'files': 312, 'identical': 0, 'bytes_new': 121152357, 'bytes_old': 121063391}, 'unknown_size': {'files': 0, 'identical': 0}, 'all': {'files': 600, 'identical': 0, 'bytes_new': 136554296, 'bytes_old': 136445815}}
+fmt_420_10 {'new': 600, 'old': 600, 'lt1': {'files': 240, 'identical': 0, 'bytes_new': 9656425, 'bytes_old': 9656057}, '1to2': {'files': 48, 'identical': 0, 'bytes_new': 5662655, 'bytes_old': 5663120}, 'ge2': {'files': 312, 'identical': 0, 'bytes_new': 121819601, 'bytes_old': 121817137}, 'unknown_size': {'files': 0, 'identical': 0}, 'all': {'files': 600, 'identical': 0, 'bytes_new': 137138681, 'bytes_old': 137136314}}
+fmt_444_10 {'new': 600, 'old': 600, 'lt1': {'files': 240, 'identical': 0, 'bytes_new': 9784506, 'bytes_old': 9767423}, '1to2': {'files': 48, 'identical': 0, 'bytes_new': 5675112, 'bytes_old': 5670427}, 'ge2': {'files': 312, 'identical': 0, 'bytes_new': 122356904, 'bytes_old': 122292293}, 'unknown_size': {'files': 0, 'identical': 0}, 'all': {'files': 600, 'identical': 0, 'bytes_new': 137816522, 'bytes_old': 137730143}}
+std_default {'new': 600, 'old': 600, 'lt1': {'files': 516, 'identical': 0, 'bytes_new': 27275206, 'bytes_old': 27292349}, '1to2': {'files': 84, 'identical': 0, 'bytes_new': 4070417, 'bytes_old': 4068180}, 'ge2': {'files': 0, 'identical': 0, 'bytes_new': 0, 'bytes_old': 0}, 'unknown_size': {'files': 0, 'identical': 0}, 'all': {'files': 600, 'identical': 0, 'bytes_new': 31345623, 'bytes_old': 31360529}}
+std_nosmall {'new': 600, 'old': 600, 'lt1': {'files': 516, 'identical': 0, 'bytes_new': 27439166, 'bytes_old': 27398844}, '1to2': {'files': 84, 'identical': 0, 'bytes_new': 4070417, 'bytes_old': 4068180}, 'ge2': {'files': 0, 'identical': 0, 'bytes_new': 0, 'bytes_old': 0}, 'unknown_size': {'files': 0, 'identical': 0}, 'all': {'files': 600, 'identical': 0, 'bytes_new': 31509583, 'bytes_old': 31467024}}
+std_turbo3ns {'new': 600, 'old': 600, 'lt1': {'files': 516, 'identical': 516, 'bytes_new': 28303288, 'bytes_old': 28303288}, '1to2': {'files': 84, 'identical': 84, 'bytes_new': 4204239, 'bytes_old': 4204239}, 'ge2': {'files': 0, 'identical': 0, 'bytes_new': 0, 'bytes_old': 0}, 'unknown_size': {'files': 0, 'identical': 0}, 'all': {'files': 600, 'identical': 600, 'bytes_new': 32507527, 'bytes_old': 32507527}}
+ll_jpeg_gamut {'new': 0, 'old': 0, 'lt1': {'files': 0, 'identical': 0, 'bytes_new': 0, 'bytes_old': 0}, '1to2': {'files': 0, 'identical': 0, 'bytes_new': 0, 'bytes_old': 0}, 'ge2': {'files': 0, 'identical': 0, 'bytes_new': 0, 'bytes_old': 0}, 'unknown_size': {'files': 0, 'identical': 0}, 'all': {'files': 0, 'identical': 0, 'bytes_new': 0, 'bytes_old': 0}}
+ll_cmp {'new': 51, 'old': 51, 'lt1': {'files': 30, 'identical': 30, 'bytes_new': 14234450, 'bytes_old': 14234450}, '1to2': {'files': 14, 'identical': 14, 'bytes_new': 2724125, 'bytes_old': 2724125}, 'ge2': {'files': 7, 'identical': 7, 'bytes_new': 3283421, 'bytes_old': 3283421}, 'unknown_size': {'files': 0, 'identical': 0}, 'all': {'files': 51, 'identical': 51, 'bytes_new': 20241996, 'bytes_old': 20241996}}
+ll_cmp_ycgco {'new': 51, 'old': 51, 'lt1': {'files': 30, 'identical': 30, 'bytes_new': 12613905, 'bytes_old': 12613905}, '1to2': {'files': 14, 'identical': 14, 'bytes_new': 1986964, 'bytes_old': 1986964}, 'ge2': {'files': 7, 'identical': 7, 'bytes_new': 2320079, 'bytes_old': 2320079}, 'unknown_size': {'files': 0, 'identical': 0}, 'all': {'files': 51, 'identical': 51, 'bytes_new': 16920948, 'bytes_old': 16920948}}
+ll_misc {'new': 13, 'old': 13, 'lt1': {'files': 12, 'identical': 12, 'bytes_new': 3522474, 'bytes_old': 3522474}, '1to2': {'files': 0, 'identical': 0, 'bytes_new': 0, 'bytes_old': 0}, 'ge2': {'files': 1, 'identical': 1, 'bytes_new': 30136673, 'bytes_old': 30136673}, 'unknown_size': {'files': 0, 'identical': 0}, 'all': {'files': 13, 'identical': 13, 'bytes_new': 33659147, 'bytes_old': 33659147}}
+ll_jpeg_misc {'new': 0, 'old': 0, 'lt1': {'files': 0, 'identical': 0, 'bytes_new': 0, 'bytes_old': 0}, '1to2': {'files': 0, 'identical': 0, 'bytes_new': 0, 'bytes_old': 0}, 'ge2': {'files': 0, 'identical': 0, 'bytes_new': 0, 'bytes_old': 0}, 'unknown_size': {'files': 0, 'identical': 0}, 'all': {'files': 0, 'identical': 0, 'bytes_new': 0, 'bytes_old': 0}}
+alpha_default {'new': 43, 'old': 43, 'lt1': {'files': 38, 'identical': 2, 'bytes_new': 736467, 'bytes_old': 734766}, '1to2': {'files': 4, 'identical': 0, 'bytes_new': 48227, 'bytes_old': 47938}, 'ge2': {'files': 1, 'identical': 0, 'bytes_new': 7629, 'bytes_old': 7642}, 'unknown_size': {'files': 0, 'identical': 0}, 'all': {'files': 43, 'identical': 2, 'bytes_new': 792323, 'bytes_old': 790346}}
+alpha_q100 {'new': 43, 'old': 43, 'lt1': {'files': 38, 'identical': 2, 'bytes_new': 1135150, 'bytes_old': 1134222}, '1to2': {'files': 4, 'identical': 0, 'bytes_new': 49504, 'bytes_old': 49222}, 'ge2': {'files': 1, 'identical': 0, 'bytes_new': 14101, 'bytes_old': 14105}, 'unknown_size': {'files': 0, 'identical': 0}, 'all': {'files': 43, 'identical': 2, 'bytes_new': 1198755, 'bytes_old': 1197549}}
+alpha_lossless {'new': 42, 'old': 42, 'lt1': {'files': 37, 'identical': 37, 'bytes_new': 8059417, 'bytes_old': 8059417}, '1to2': {'files': 4, 'identical': 4, 'bytes_new': 297638, 'bytes_old': 297638}, 'ge2': {'files': 1, 'identical': 1, 'bytes_new': 30706, 'bytes_old': 30706}, 'unknown_size': {'files': 0, 'identical': 0}, 'all': {'files': 42, 'identical': 42, 'bytes_new': 8387761, 'bytes_old': 8387761}}
+6800 score jobs 
+200 scored 67 s
+400 scored 113 s
+600 scored 150 s
+800 scored 208 s
+1000 scored 208 s
+1200 scored 209 s
+1400 scored 210 s
+1600 scored 274 s
+1800 scored 315 s
+2000 scored 363 s
+2200 scored 363 s
+2400 scored 363 s
+2600 scored 372 s
+2800 scored 431 s
+3000 scored 475 s
+3200 scored 523 s
+3400 scored 608 s
+3600 scored 671 s
+3800 scored 736 s
+4000 scored 822 s
+4200 scored 885 s
+4400 scored 955 s
+4600 scored 956 s
+4800 scored 964 s
+5000 scored 973 s
+5200 scored 979 s
+5400 scored 985 s
+5600 scored 993 s
+5800 scored 1000 s
+6000 scored 1008 s
+6200 scored 1017 s
+6400 scored 1080 s
+6600 scored 1122 s
+6800 scored 1168 s
+6800 rows, 0 with a failed score

@@ -1,0 +1,10 @@
+10:01:38 start S1
+10:01:54 end S1
+10:01:54 start S4
+10:01:55 end S4
+10:01:55 start S2
+10:03:17 S2 cuda13 done
+10:04:41 end S2
+10:04:41 start S3
+10:09:14 end S3
+10:09:14 SMOKE_DONE

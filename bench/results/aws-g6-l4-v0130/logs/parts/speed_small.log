@@ -1,0 +1,21 @@
+=== speed_small 2026-11-11T10:44:47
+thumbs default new: 95.9 MP/s (runs 96.0, 95.9, 95.8), cores 1.54
+thumbs default old: 76.0 MP/s (runs 76.0, 76.1, 75.7), cores 1.50
+thumbs nosmall new: 202.7 MP/s (runs 203.1, 202.4, 202.7), cores 1.59
+thumbs nosmall old: 185.8 MP/s (runs 186.1, 185.8, 185.6), cores 1.55
+thumbs nosmall old: 186.6 MP/s (runs 186.6, 186.7, 186.6), cores 1.51
+thumbs nosmall new: 201.6 MP/s (runs 202.3, 201.6, 200.9), cores 1.60
+thumbs default old: 75.1 MP/s (runs 74.8, 75.1, 75.4), cores 1.51
+thumbs default new: 93.5 MP/s (runs 93.9, 93.5, 93.3), cores 1.54
+kodak default new: 84.4 MP/s (runs 84.2, 84.4, 84.4), cores 4.28
+kodak default old: 70.5 MP/s (runs 71.6, 70.5, 70.5), cores 3.65
+kodak nosmall new: 194.2 MP/s (runs 191.5, 194.6, 194.2), cores 8.97
+kodak nosmall old: 181.6 MP/s (runs 181.6, 181.9, 180.5), cores 8.36
+kodak turbo3_nosmall new: 275.4 MP/s (runs 276.4, 275.4, 273.5), cores 12.90
+kodak turbo3_nosmall old: 273.5 MP/s (runs 273.0, 275.3, 273.5), cores 12.75
+kodak turbo3_nosmall old: 272.1 MP/s (runs 272.8, 271.1, 272.1), cores 12.64
+kodak turbo3_nosmall new: 276.2 MP/s (runs 276.5, 276.2, 269.7), cores 12.98
+kodak nosmall old: 179.8 MP/s (runs 180.8, 179.7, 179.8), cores 8.30
+kodak nosmall new: 193.6 MP/s (runs 194.7, 193.6, 191.5), cores 8.96
+kodak default old: 69.3 MP/s (runs 69.4, 68.7, 69.3), cores 3.73
+kodak default new: 84.6 MP/s (runs 83.9, 84.6, 85.0), cores 4.43

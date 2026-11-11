@@ -1,0 +1,21 @@
+=== startup 2026-11-11T11:13:16
+== photo.jpg
+/home/ubuntu/bin/new: median 380.4 ms, min 366.7, max 391.8, n 12
+/home/ubuntu/bin/old: median 361.4 ms, min 357.0, max 371.3, n 12
+/home/ubuntu/bin/old2: median 360.5 ms, min 348.8, max 363.8, n 12
+== big.jpg
+/home/ubuntu/bin/new: median 458.2 ms, min 451.9, max 467.3, n 12
+/home/ubuntu/bin/old: median 463.9 ms, min 450.0, max 473.4, n 12
+/home/ubuntu/bin/old2: median 454.7 ms, min 448.1, max 464.7, n 12
+== thumb512.jpg
+/home/ubuntu/bin/new: median 366.6 ms, min 358.7, max 377.6, n 12
+/home/ubuntu/bin/old: median 346.9 ms, min 339.9, max 359.8, n 12
+/home/ubuntu/bin/old2: median 342.8 ms, min 334.4, max 357.2, n 12
+== t320.jpg
+/home/ubuntu/bin/new: median 381.9 ms, min 373.4, max 400.0, n 12
+/home/ubuntu/bin/old: median 365.4 ms, min 357.9, max 373.7, n 12
+/home/ubuntu/bin/old2: median 363.8 ms, min 356.7, max 370.5, n 12
+== pair batch (photo.jpg + thumb512.jpg)
+/home/ubuntu/bin/new: median 593.1 ms, min 581.4, max 605.7, n 12
+/home/ubuntu/bin/old: median 564.8 ms, min 558.2, max 575.6, n 12
+/home/ubuntu/bin/old2: median 562.5 ms, min 551.7, max 579.1, n 12

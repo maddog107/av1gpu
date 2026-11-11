@@ -1,0 +1,17 @@
+=== speed_extra 2026-11-11T11:31:57
+jpeg size_range/default_enc2 new: 298.1 MP/s (runs 297.6, 300.2, 298.1), cores 0.33
+jpeg size_range/default_enc2 old: 268.2 MP/s (runs 268.8, 267.0, 268.2), cores 0.29
+jpeg size_range/nosmall_enc3 new: 377.4 MP/s (runs 375.5, 377.4, 377.8), cores 0.40
+jpeg size_range/nosmall_enc3 old: 344.3 MP/s (runs 343.3, 348.1, 344.3), cores 0.37
+jpeg size_range/tiles211_enc3 new: 295.8 MP/s (runs 293.2, 296.1, 295.8), cores 0.31
+jpeg size_range/tiles211_enc3 old: 263.4 MP/s (runs 261.0, 263.4, 263.8), cores 0.29
+jpeg size_range/tiles233_enc3 new: 345.1 MP/s (runs 345.2, 345.1, 340.0), cores 0.37
+jpeg size_range/tiles233_enc3 old: 307.2 MP/s (runs 307.2, 305.1, 310.8), cores 0.33
+jpeg size_range/default_enc2 old: 263.2 MP/s (runs 266.3, 262.5, 263.2), cores 0.29
+jpeg size_range/default_enc2 new: 288.9 MP/s (runs 287.3, 288.9, 292.9), cores 0.31
+jpeg size_range/nosmall_enc3 old: 335.9 MP/s (runs 335.9, 336.6, 332.5), cores 0.35
+jpeg size_range/nosmall_enc3 new: 360.1 MP/s (runs 364.8, 359.7, 360.1), cores 0.39
+jpeg size_range/tiles211_enc3 old: 265.8 MP/s (runs 265.8, 265.9, 262.9), cores 0.28
+jpeg size_range/tiles211_enc3 new: 287.2 MP/s (runs 287.2, 288.1, 283.8), cores 0.30
+jpeg size_range/tiles233_enc3 old: 300.9 MP/s (runs 296.4, 302.8, 300.9), cores 0.32
+jpeg size_range/tiles233_enc3 new: 337.0 MP/s (runs 336.0, 337.0, 338.7), cores 0.37

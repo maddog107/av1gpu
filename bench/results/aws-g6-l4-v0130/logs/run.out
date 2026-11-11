@@ -1,0 +1,13 @@
+# run.sh 2026-11-11T10:09:14: parts speed quality speed_small speed_std speed_ll gates startup alpha cvvdp quality_old speed_extra
+## speed: OK, 712 s
+## quality: OK, 1421 s
+## speed_small: OK, 714 s
+## speed_std: OK, 719 s
+## speed_ll: OK, 244 s
+## gates: OK, 32 s
+## startup: OK, 83 s
+## alpha: OK, 401 s
+## cvvdp: FAILED rc=1 (tail: cvvdp does not run on cuda: CUDNN_BACKEND_TENSOR_DESCRIPTOR cudnnFinalize failedptrDesc->finalize() cudnn_status: CUDNN_), 4 s
+## quality_old: OK, 633 s
+## speed_extra: OK, 363 s
+RUN_DONE 2026-11-11T11:38:00

@@ -551,9 +551,19 @@ def checks():
             com = [k for k in st if k in run]
             o["sizes_vs_published"][key] = dict(stored=len(st), common=len(com), same_size=sum(run[k] == st[k]["bytes"] for k in com),
                                                 bytes_run=sum(run[k] for k in com), bytes_stored=sum(st[k]["bytes"] for k in com))
-    # scorer: our score of a file with the stored row's (image, q, bytes) against the stored score
+    # scorer: our score of a file with the stored row's (image, q, bytes) against the stored score.  A control is a file
+    # that is presumably the published one: OLD's (v0.12.0, whose sizes all equal the stored rows'), or NEW's when its
+    # md5 equals OLD's.  NEW files that only share a stored row's byte count are other bitstreams: listed apart.
+    old_md5 = {}
+    for key, v in manifests.items():
+        b_, cfg_ = key.split("/", 1)
+        if b_ == "old":
+            for f, mm in v["files"].items():
+                if ".q" in f:
+                    img, qq = f.rsplit(".q", 1)
+                    old_md5[(cfg_, img, inv[int(qq[:-5])])] = mm["md5"]
     for metric, src_rows in (("ssimulacra2", ALL_SC), ("cvvdp", sc_cv or [])):
-        diffs, eq = [], 0
+        diffs, eq, other = [], 0, []
         for r in src_rows:
             if r.get(metric) is None:
                 continue
@@ -564,11 +574,15 @@ def checks():
                       and x.get(metric) is not None), None)
             if s:
                 d = abs(r[metric] - s[metric])
-                diffs.append((d, r["config"], r["bin"], r["image"], r["q"]))
-                eq += d == 0
+                if r["bin"] == "old" or old_md5.get((r["config"], r["image"], r["q"])) == r["md5"]:
+                    diffs.append((d, r["config"], r["bin"], r["image"], r["q"]))
+                    eq += d == 0
+                else:
+                    other.append(dict(diff=r[metric] - s[metric], config=r["config"], image=r["image"], q=r["q"], bytes=r["bytes"]))
         diffs.sort(reverse=True)
         o["scorer"][metric] = dict(rows=len(diffs), equal=eq, max_abs_diff=diffs[0][0] if diffs else None,
-                                   worst=[dict(diff=d, config=c, bin=b, image=i, q=q) for d, c, b, i, q in diffs[:5]])
+                                   worst=[dict(diff=d, config=c, bin=b, image=i, q=q) for d, c, b, i, q in diffs[:5]],
+                                   same_size_other_bitstream=other)
     return o
 
 
@@ -592,7 +606,7 @@ SINGLE = parse_wall(os.path.join(RUN, "startup.txt"), lambda s: lab.get(os.path.
 env = [l for l in env_txt.splitlines() if l.strip()]
 cpu = dict(nproc=next((l.split()[1] for l in env if l.startswith("nproc ")), None),
            model=next((l.split(":", 1)[1].strip() for l in env if l.startswith("Model name")), None))
-bins = [l for l in rd("binaries.txt").splitlines() if l.strip()]
+bins = [l.replace(" unknown option --version", "") for l in rd("binaries.txt").splitlines() if l.strip()]   # (no --version)
 
 # derived speed claims (the ratios make_charts.py and the README compute)
 DER = dict(QB.pop("derived"))
@@ -645,11 +659,18 @@ out = ["# v0.13.0 on the NVIDIA L4: speed and file sizes for the docs", ""]
 if SKIP:
     out += [f"**NOT MEASURED in this run: {', '.join(sorted(SKIP))}** — the docs rows that depend on these keep their "
             "old values with a \"measured with\" note (REFRESH_MAP.md).", ""]
-sc = CHK["scorer"]["ssimulacra2"]
-if sc["rows"] and sc["max_abs_diff"] > 1e-6:
-    out += [f"**WARNING: the scorer does not reproduce the stored SSIMULACRA2 scores**: {sc['rows']} files with a stored row "
-            f"of the same size, {sc['equal']} equal, max |diff| {sc['max_abs_diff']:.4g}. BD-rates against the stored CPU "
-            "baselines mix two scorers.", ""]
+for mt, sc in CHK["scorer"].items():
+    oth = sc["same_size_other_bitstream"]
+    if sc["rows"] and sc["max_abs_diff"] > 1e-6:
+        out += [f"**WARNING: the scorer does not reproduce the stored {mt} scores**: {sc['rows']} files identical to the "
+                f"published ones (v0.12.0's, or v0.13.0's with v0.12.0's md5), {sc['equal']} scored equal, max |diff| "
+                f"{sc['max_abs_diff']:.4g}. BD-rates against the stored CPU baselines mix two scorers.", ""]
+    elif sc["rows"]:
+        out += [f"Scorer check ({mt}): all {sc['rows']} files identical to the published ones (v0.12.0's, whose sizes all "
+                f"equal the stored rows', and v0.13.0's with v0.12.0's md5) score exactly as published."
+                + (f" {len(oth)} other v0.13.0 files merely have the byte count of a stored row (different bitstreams, "
+                   f"md5 unlike v0.12.0's) and score differently (by {min(x['diff'] for x in oth):+.4g} to "
+                   f"{max(x['diff'] for x in oth):+.4g}), as different files do: not a scorer difference." if oth else ""), ""]
 out += [f"new: `{new_line}`  ", f"old: `{old_line}`  ", f"CPU: {cpu['model']}, {cpu['nproc']} vCPUs", "",
         "## Speed (MP/s, median of 6; av1gpu --stats)", "", "| setting | v0.13.0 | v0.12.0 | change | img/s new | CPU cores new |",
         "|---|---:|---:|---:|---:|---:|"]
@@ -692,7 +713,8 @@ out += ["", "## Checks", ""]
 for k, v in CHK["sizes_vs_published"].items():
     out.append(f"- sizes {k} vs the stored rows: {v['same_size']}/{v['common']} same size")
 for k, v in CHK["scorer"].items():
-    out.append(f"- scorer {k}: {v['rows']} files with a stored row of the same size, {v['equal']} equal, max |diff| {v['max_abs_diff']}")
+    out.append(f"- scorer {k}: {v['rows']} files identical to the published ones, {v['equal']} equal, max |diff| {v['max_abs_diff']}; "
+               f"{len(v['same_size_other_bitstream'])} other bitstreams of a stored row's byte count")
 out += [f"- inputs vs the v0.9.0 check: " + "; ".join(f"{k} {v['identical']}/{v['files']}" for k, v in inputs_cmp.items()), ""]
 if gates:
     out += ["## Decoder gates (NEW, tests/decoder_gate.py, 100 size-range photos)", ""] + [f"- {k}: {x}" for k, v in gates.items() for x in v] + [""]

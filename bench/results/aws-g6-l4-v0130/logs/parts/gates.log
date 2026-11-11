@@ -1,0 +1,4 @@
+=== gates 2026-11-11T11:12:44
+default_q60_120_180 rc 0 16 s [gate] q180: 100/100 identical in dav1d and aomdec (420 100; 7231302 bytes), 0 not encoded (unsupported input), rc=0 PASS
+yuv444_10_q120 rc 0 10 s [gate] q120: 100/100 identical in dav1d and aomdec (444 10-bit 100; 23156313 bytes), 0 not encoded (unsupported input), rc=0 PASS
+turbo3_nosmall_q120 rc 0 5 s [gate] q120: 100/100 identical in dav1d and aomdec (420 100; 23197757 bytes), 0 not encoded (unsupported input), rc=0 PASS

@@ -1,0 +1,17 @@
+=== speed_ll 2026-11-11T11:08:40
+lossless cmp_1pass new: 37.1 MP/s (runs 37.1, 38.8, 37.0), cores 1.34
+lossless cmp_1pass_ycgco new: 37.4 MP/s (runs 37.4, 36.6, 39.1), cores 1.40
+lossless cmp_4x new: 44.2 MP/s (runs 44.2, 44.0, 44.3), cores 1.45
+lossless cmp_4x_ycgco new: 43.3 MP/s (runs 42.8, 43.3, 43.5), cores 1.32
+lossless cmp_1pass old: 38.2 MP/s (runs 38.2, 38.0, 38.3), cores 1.31
+lossless cmp_1pass_ycgco old: 39.4 MP/s (runs 38.7, 39.5, 39.4), cores 1.36
+lossless cmp_4x old: 45.7 MP/s (runs 45.5, 46.1, 45.7), cores 1.44
+lossless cmp_4x_ycgco old: 44.5 MP/s (runs 44.2, 44.6, 44.5), cores 1.29
+lossless cmp_1pass old: 38.8 MP/s (runs 37.5, 39.7, 38.8), cores 1.35
+lossless cmp_1pass_ycgco old: 39.5 MP/s (runs 39.0, 39.5, 40.1), cores 1.42
+lossless cmp_4x old: 45.4 MP/s (runs 45.4, 45.2, 45.8), cores 1.43
+lossless cmp_4x_ycgco old: 44.9 MP/s (runs 45.6, 44.6, 44.9), cores 1.31
+lossless cmp_1pass new: 37.5 MP/s (runs 36.4, 40.0, 37.5), cores 1.30
+lossless cmp_1pass_ycgco new: 39.1 MP/s (runs 39.1, 38.7, 39.2), cores 1.44
+lossless cmp_4x new: 45.4 MP/s (runs 45.2, 45.4, 46.1), cores 1.51
+lossless cmp_4x_ycgco new: 45.4 MP/s (runs 45.4, 44.8, 45.6), cores 1.39

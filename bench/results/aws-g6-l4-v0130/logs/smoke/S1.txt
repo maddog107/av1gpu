@@ -1,0 +1,35 @@
+Shutdown scheduled for Wed 2026-11-11 12:08:11 UTC, use 'shutdown -c' to cancel.
+NVIDIA L4, 595.112.07, 23034 MiB
+source unpacked
+b713252054a0f753939252db6f7444ed1de1f76e87855f69f3647b530e3bc123  av1gpu-0.13.0-linux-x86_64.tar.gz
+av1gpu-0.13.0-linux-x86_64.tar.gz: OK
+av1gpu-0.13.0-linux-x86_64: download+verify+unpack exit 0
+d3decbb27a3fd5a2a02dba3e07179d97d5341d26d4177e74c2d8e7ded1badeb9  av1gpu-0.13.0-linux-x86_64/av1gpu
+total 519652
+drwxr-xr-x 2 ubuntu ubuntu      4096 Nov 11 09:55 .
+drwxrwxr-x 4 ubuntu ubuntu      4096 Nov 11 10:00 ..
+-rw-r--r-- 1 ubuntu ubuntu      1326 Nov 11 09:55 LICENSE
+-rw-r--r-- 1 ubuntu ubuntu      3892 Nov 11 09:55 THIRD_PARTY_NOTICES.md
+-rwxr-xr-x 1 ubuntu ubuntu 532105944 Nov 11 09:55 av1gpu
+eb6c2d1299fb40430efdbceae1f1af75003e8bf479d21745548d0a1804005a1f  av1gpu-0.13.0-linux-x86_64-cuda12.tar.gz
+av1gpu-0.13.0-linux-x86_64-cuda12.tar.gz: OK
+av1gpu-0.13.0-linux-x86_64-cuda12: download+verify+unpack exit 0
+cf2f89e859e50ca22f7915030d629651bcf3db333b78233f892c63322e337f73  av1gpu-0.13.0-linux-x86_64-cuda12/av1gpu
+total 610552
+drwxr-xr-x 2 ubuntu ubuntu      4096 Nov 11 09:49 .
+drwxrwxr-x 5 ubuntu ubuntu      4096 Nov 11 10:01 ..
+-rw-r--r-- 1 ubuntu ubuntu      1326 Nov 11 09:49 LICENSE
+-rw-r--r-- 1 ubuntu ubuntu      3892 Nov 11 09:49 THIRD_PARTY_NOTICES.md
+-rwxr-xr-x 1 ubuntu ubuntu 625186608 Nov 11 09:49 av1gpu
+2492b6726241b4ec53f06de349b2bc62f513508e5ffcf47816a752095bbd129f  av1gpu-0.12.0-linux-x86_64.tar.gz
+av1gpu-0.12.0-linux-x86_64.tar.gz: OK
+av1gpu-0.12.0-linux-x86_64: download+verify+unpack exit 0
+bafc8c1d1bf7050e2b7e95ffdcd4d8a15144d3b0718e281458244f62e5d891dc  av1gpu-0.12.0-linux-x86_64/av1gpu
+total 481928
+drwxr-xr-x 2 ubuntu ubuntu      4096 Nov 10 22:52 .
+drwxrwxr-x 5 ubuntu ubuntu      4096 Nov 11 10:01 ..
+-rw-r--r-- 1 ubuntu ubuntu      1326 Nov 10 22:52 LICENSE
+-rw-r--r-- 1 ubuntu ubuntu      3892 Nov 10 22:52 THIRD_PARTY_NOTICES.md
+-rwxr-xr-x 1 ubuntu ubuntu 493477704 Nov 10 22:52 av1gpu
+100/100 images (477.8 MP) in /home/ubuntu/images
+100 photos

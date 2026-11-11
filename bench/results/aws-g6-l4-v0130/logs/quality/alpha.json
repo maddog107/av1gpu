@@ -1,0 +1,1718 @@
+{
+ "new/alpha_default": {
+  "files": 39,
+  "bytes": 687225,
+  "colour": 580413,
+  "alpha": 91344,
+  "alpha_exact": 7,
+  "alpha_max_err": 71,
+  "alpha_mean_abs": 0.18295718430002103,
+  "alpha_psnr": 50.15155249333188,
+  "per_file": {
+   "chart_by-size-dark.png": {
+    "bytes": 11152,
+    "colour": 10536,
+    "alpha": 204,
+    "alpha_psnr": 57.00573766601521,
+    "transparent": true
+   },
+   "chart_pipeline-light.png": {
+    "bytes": 11810,
+    "colour": 11177,
+    "alpha": 221,
+    "alpha_psnr": 59.01519245193859,
+    "transparent": true
+   },
+   "chart_quality-dark.png": {
+    "bytes": 10796,
+    "colour": 10175,
+    "alpha": 209,
+    "alpha_psnr": 59.53343298067493,
+    "transparent": true
+   },
+   "chart_tradeoff-light.png": {
+    "bytes": 14469,
+    "colour": 13846,
+    "alpha": 211,
+    "alpha_psnr": 59.73622497772877,
+    "transparent": true
+   },
+   "edge_1x1.png": {
+    "bytes": 463,
+    "colour": 36,
+    "alpha": 15,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "edge_33x17_noise.png": {
+    "bytes": 1206,
+    "colour": 401,
+    "alpha": 393,
+    "alpha_psnr": 35.51955375125547,
+    "transparent": true
+   },
+   "edge_gray_alpha.png": {
+    "bytes": 6540,
+    "colour": 6048,
+    "alpha": 80,
+    "alpha_psnr": 58.92261606915535,
+    "transparent": true
+   },
+   "edge_palette_trns.png": {
+    "bytes": 1022,
+    "colour": 444,
+    "alpha": 166,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "edge_rgba16_10bit.png": {
+    "bytes": 9335,
+    "colour": 8496,
+    "alpha": 427,
+    "alpha_psnr": 51.188365960399736,
+    "transparent": true
+   },
+   "edge_transparent.png": {
+    "bytes": 480,
+    "colour": 40,
+    "alpha": 28,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "icon_128.png": {
+    "bytes": 1342,
+    "colour": 562,
+    "alpha": 368,
+    "alpha_psnr": 47.0860258553616,
+    "transparent": true
+   },
+   "icon_16.png": {
+    "bytes": 682,
+    "colour": 149,
+    "alpha": 121,
+    "alpha_psnr": 36.69017216841406,
+    "transparent": true
+   },
+   "icon_256.png": {
+    "bytes": 2242,
+    "colour": 1246,
+    "alpha": 584,
+    "alpha_psnr": 50.937094160202264,
+    "transparent": true
+   },
+   "icon_32.png": {
+    "bytes": 1232,
+    "colour": 503,
+    "alpha": 317,
+    "alpha_psnr": 38.77321257122598,
+    "transparent": true
+   },
+   "icon_48.png": {
+    "bytes": 803,
+    "colour": 237,
+    "alpha": 154,
+    "alpha_psnr": 44.03534670294229,
+    "transparent": true
+   },
+   "icon_64.png": {
+    "bytes": 901,
+    "colour": 288,
+    "alpha": 201,
+    "alpha_psnr": 45.316785467777414,
+    "transparent": true
+   },
+   "logo_circle.png": {
+    "bytes": 8562,
+    "colour": 6251,
+    "alpha": 1899,
+    "alpha_psnr": 53.907178755190444,
+    "transparent": true
+   },
+   "logo_gradient.png": {
+    "bytes": 1738,
+    "colour": 810,
+    "alpha": 516,
+    "alpha_psnr": 50.73719018235113,
+    "transparent": true
+   },
+   "logo_rings.png": {
+    "bytes": 12378,
+    "colour": 6270,
+    "alpha": 5696,
+    "alpha_psnr": 47.60885208538248,
+    "transparent": true
+   },
+   "logo_star.png": {
+    "bytes": 57597,
+    "colour": 55391,
+    "alpha": 1794,
+    "alpha_psnr": 51.32354110787655,
+    "transparent": true
+   },
+   "logo_wordmark.png": {
+    "bytes": 4064,
+    "colour": 2962,
+    "alpha": 690,
+    "alpha_psnr": 51.91806685450477,
+    "transparent": true
+   },
+   "opaque_gray.png": {
+    "bytes": 29189,
+    "colour": 28927,
+    "alpha": 0,
+    "alpha_psnr": 99.0,
+    "transparent": false
+   },
+   "opaque_palette.png": {
+    "bytes": 27479,
+    "colour": 27217,
+    "alpha": 0,
+    "alpha_psnr": 99.0,
+    "transparent": false
+   },
+   "opaque_rgb.png": {
+    "bytes": 55602,
+    "colour": 55340,
+    "alpha": 0,
+    "alpha_psnr": 99.0,
+    "transparent": false
+   },
+   "opaque_rgba.png": {
+    "bytes": 53345,
+    "colour": 53083,
+    "alpha": 0,
+    "alpha_psnr": 99.0,
+    "transparent": false
+   },
+   "photo_circle_cut.png": {
+    "bytes": 34929,
+    "colour": 32509,
+    "alpha": 2008,
+    "alpha_psnr": 55.160570244459784,
+    "transparent": true
+   },
+   "photo_fade.png": {
+    "bytes": 55857,
+    "colour": 55340,
+    "alpha": 105,
+    "alpha_psnr": 57.49051574254509,
+    "transparent": true
+   },
+   "photo_hair_matte.png": {
+    "bytes": 49620,
+    "colour": 28243,
+    "alpha": 20965,
+    "alpha_psnr": 43.903546901937894,
+    "transparent": true
+   },
+   "photo_half.png": {
+    "bytes": 20297,
+    "colour": 19834,
+    "alpha": 51,
+    "alpha_psnr": 69.99471576563404,
+    "transparent": true
+   },
+   "photo_luma_matte.png": {
+    "bytes": 61557,
+    "colour": 25909,
+    "alpha": 35236,
+    "alpha_psnr": 39.108435845970384,
+    "transparent": true
+   },
+   "photo_vignette.png": {
+    "bytes": 54430,
+    "colour": 53083,
+    "alpha": 935,
+    "alpha_psnr": 52.55502723480922,
+    "transparent": true
+   },
+   "sticker_kodim03.png": {
+    "bytes": 11359,
+    "colour": 9656,
+    "alpha": 1291,
+    "alpha_psnr": 52.22065469883123,
+    "transparent": true
+   },
+   "sticker_kodim15.png": {
+    "bytes": 14269,
+    "colour": 12526,
+    "alpha": 1331,
+    "alpha_psnr": 52.07498733500057,
+    "transparent": true
+   },
+   "sticker_kodim20.png": {
+    "bytes": 9585,
+    "colour": 8052,
+    "alpha": 1121,
+    "alpha_psnr": 52.74012897078879,
+    "transparent": true
+   },
+   "sticker_kodim23.png": {
+    "bytes": 12793,
+    "colour": 11051,
+    "alpha": 1330,
+    "alpha_psnr": 52.15653654840199,
+    "transparent": true
+   },
+   "ui_controls.png": {
+    "bytes": 9194,
+    "colour": 6185,
+    "alpha": 2597,
+    "alpha_psnr": 50.20909377056575,
+    "transparent": true
+   },
+   "ui_hud_1080p.png": {
+    "bytes": 7629,
+    "colour": 4178,
+    "alpha": 3039,
+    "alpha_psnr": 58.592336403361784,
+    "transparent": true
+   },
+   "ui_panel.png": {
+    "bytes": 19609,
+    "colour": 12602,
+    "alpha": 6595,
+    "alpha_psnr": 45.645523126970616,
+    "transparent": true
+   },
+   "ui_toolbar.png": {
+    "bytes": 1668,
+    "colour": 810,
+    "alpha": 446,
+    "alpha_psnr": 49.74931180808981,
+    "transparent": true
+   }
+  },
+  "set_mp": 10.12409
+ },
+ "new/alpha_q100": {
+  "files": 39,
+  "bytes": 1073452,
+  "colour": 580413,
+  "alpha": 477571,
+  "alpha_exact": 39,
+  "alpha_max_err": 0,
+  "alpha_mean_abs": 0.0,
+  "alpha_psnr": 99.0,
+  "per_file": {
+   "chart_by-size-dark.png": {
+    "bytes": 11465,
+    "colour": 10536,
+    "alpha": 517,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "chart_pipeline-light.png": {
+    "bytes": 12133,
+    "colour": 11177,
+    "alpha": 544,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "chart_quality-dark.png": {
+    "bytes": 11099,
+    "colour": 10175,
+    "alpha": 512,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "chart_tradeoff-light.png": {
+    "bytes": 14807,
+    "colour": 13846,
+    "alpha": 549,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "edge_1x1.png": {
+    "bytes": 460,
+    "colour": 36,
+    "alpha": 12,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "edge_33x17_noise.png": {
+    "bytes": 1703,
+    "colour": 401,
+    "alpha": 890,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "edge_gray_alpha.png": {
+    "bytes": 6634,
+    "colour": 6048,
+    "alpha": 174,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "edge_palette_trns.png": {
+    "bytes": 1004,
+    "colour": 444,
+    "alpha": 148,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "edge_rgba16_10bit.png": {
+    "bytes": 23009,
+    "colour": 8496,
+    "alpha": 14101,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "edge_transparent.png": {
+    "bytes": 477,
+    "colour": 40,
+    "alpha": 25,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "icon_128.png": {
+    "bytes": 2366,
+    "colour": 562,
+    "alpha": 1392,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "icon_16.png": {
+    "bytes": 756,
+    "colour": 149,
+    "alpha": 195,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "icon_256.png": {
+    "bytes": 5082,
+    "colour": 1246,
+    "alpha": 3424,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "icon_32.png": {
+    "bytes": 1281,
+    "colour": 503,
+    "alpha": 366,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "icon_48.png": {
+    "bytes": 1167,
+    "colour": 237,
+    "alpha": 518,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "icon_64.png": {
+    "bytes": 1337,
+    "colour": 288,
+    "alpha": 637,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "logo_circle.png": {
+    "bytes": 13394,
+    "colour": 6251,
+    "alpha": 6731,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "logo_gradient.png": {
+    "bytes": 8220,
+    "colour": 810,
+    "alpha": 6998,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "logo_rings.png": {
+    "bytes": 26021,
+    "colour": 6270,
+    "alpha": 19339,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "logo_star.png": {
+    "bytes": 61734,
+    "colour": 55391,
+    "alpha": 5931,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "logo_wordmark.png": {
+    "bytes": 5423,
+    "colour": 2962,
+    "alpha": 2049,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "opaque_gray.png": {
+    "bytes": 29189,
+    "colour": 28927,
+    "alpha": 0,
+    "alpha_psnr": 99.0,
+    "transparent": false
+   },
+   "opaque_palette.png": {
+    "bytes": 27479,
+    "colour": 27217,
+    "alpha": 0,
+    "alpha_psnr": 99.0,
+    "transparent": false
+   },
+   "opaque_rgb.png": {
+    "bytes": 55602,
+    "colour": 55340,
+    "alpha": 0,
+    "alpha_psnr": 99.0,
+    "transparent": false
+   },
+   "opaque_rgba.png": {
+    "bytes": 53345,
+    "colour": 53083,
+    "alpha": 0,
+    "alpha_psnr": 99.0,
+    "transparent": false
+   },
+   "photo_circle_cut.png": {
+    "bytes": 40249,
+    "colour": 32509,
+    "alpha": 7328,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "photo_fade.png": {
+    "bytes": 56073,
+    "colour": 55340,
+    "alpha": 321,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "photo_hair_matte.png": {
+    "bytes": 95386,
+    "colour": 28243,
+    "alpha": 66731,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "photo_half.png": {
+    "bytes": 20302,
+    "colour": 19834,
+    "alpha": 56,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "photo_luma_matte.png": {
+    "bytes": 236093,
+    "colour": 25909,
+    "alpha": 209772,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "photo_vignette.png": {
+    "bytes": 93286,
+    "colour": 53083,
+    "alpha": 39791,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "sticker_kodim03.png": {
+    "bytes": 21378,
+    "colour": 9656,
+    "alpha": 11310,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "sticker_kodim15.png": {
+    "bytes": 24128,
+    "colour": 12526,
+    "alpha": 11190,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "sticker_kodim20.png": {
+    "bytes": 18548,
+    "colour": 8052,
+    "alpha": 10084,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "sticker_kodim23.png": {
+    "bytes": 22563,
+    "colour": 11051,
+    "alpha": 11100,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "ui_controls.png": {
+    "bytes": 14163,
+    "colour": 6185,
+    "alpha": 7566,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "ui_hud_1080p.png": {
+    "bytes": 14101,
+    "colour": 4178,
+    "alpha": 9511,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "ui_panel.png": {
+    "bytes": 39075,
+    "colour": 12602,
+    "alpha": 26061,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "ui_toolbar.png": {
+    "bytes": 2920,
+    "colour": 810,
+    "alpha": 1698,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   }
+  },
+  "set_mp": 10.12409
+ },
+ "new/alpha_lossless": {
+  "files": 39,
+  "bytes": 7489058,
+  "colour": 6990526,
+  "alpha": 483094,
+  "alpha_exact": 39,
+  "alpha_max_err": 0,
+  "alpha_mean_abs": 0.0,
+  "alpha_psnr": 99.0,
+  "per_file": {
+   "chart_by-size-dark.png": {
+    "bytes": 64013,
+    "colour": 63084,
+    "alpha": 517,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "chart_pipeline-light.png": {
+    "bytes": 73417,
+    "colour": 72461,
+    "alpha": 544,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "chart_quality-dark.png": {
+    "bytes": 68289,
+    "colour": 67365,
+    "alpha": 512,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "chart_tradeoff-light.png": {
+    "bytes": 91919,
+    "colour": 90958,
+    "alpha": 549,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "edge_1x1.png": {
+    "bytes": 453,
+    "colour": 29,
+    "alpha": 12,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "edge_33x17_noise.png": {
+    "bytes": 3918,
+    "colour": 2616,
+    "alpha": 890,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "edge_gray_alpha.png": {
+    "bytes": 39757,
+    "colour": 39199,
+    "alpha": 174,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "edge_palette_trns.png": {
+    "bytes": 1965,
+    "colour": 1405,
+    "alpha": 148,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "edge_rgba16_10bit.png": {
+    "bytes": 237292,
+    "colour": 217256,
+    "alpha": 19624,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "edge_transparent.png": {
+    "bytes": 479,
+    "colour": 42,
+    "alpha": 25,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "icon_128.png": {
+    "bytes": 5986,
+    "colour": 4182,
+    "alpha": 1392,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "icon_16.png": {
+    "bytes": 1263,
+    "colour": 656,
+    "alpha": 195,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "icon_256.png": {
+    "bytes": 11976,
+    "colour": 8140,
+    "alpha": 3424,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "icon_32.png": {
+    "bytes": 2171,
+    "colour": 1393,
+    "alpha": 366,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "icon_48.png": {
+    "bytes": 2814,
+    "colour": 1884,
+    "alpha": 518,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "icon_64.png": {
+    "bytes": 3455,
+    "colour": 2406,
+    "alpha": 637,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "logo_circle.png": {
+    "bytes": 44911,
+    "colour": 37768,
+    "alpha": 6731,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "logo_gradient.png": {
+    "bytes": 23295,
+    "colour": 15885,
+    "alpha": 6998,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "logo_rings.png": {
+    "bytes": 76467,
+    "colour": 56716,
+    "alpha": 19339,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "logo_star.png": {
+    "bytes": 485934,
+    "colour": 479591,
+    "alpha": 5931,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "logo_wordmark.png": {
+    "bytes": 27891,
+    "colour": 25430,
+    "alpha": 2049,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "opaque_gray.png": {
+    "bytes": 208527,
+    "colour": 208267,
+    "alpha": 0,
+    "alpha_psnr": 99.0,
+    "transparent": false
+   },
+   "opaque_palette.png": {
+    "bytes": 156789,
+    "colour": 156527,
+    "alpha": 0,
+    "alpha_psnr": 99.0,
+    "transparent": false
+   },
+   "opaque_rgb.png": {
+    "bytes": 663993,
+    "colour": 663731,
+    "alpha": 0,
+    "alpha_psnr": 99.0,
+    "transparent": false
+   },
+   "opaque_rgba.png": {
+    "bytes": 614396,
+    "colour": 614134,
+    "alpha": 0,
+    "alpha_psnr": 99.0,
+    "transparent": false
+   },
+   "photo_circle_cut.png": {
+    "bytes": 548694,
+    "colour": 540954,
+    "alpha": 7328,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "photo_fade.png": {
+    "bytes": 664464,
+    "colour": 663731,
+    "alpha": 321,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "photo_hair_matte.png": {
+    "bytes": 573380,
+    "colour": 506237,
+    "alpha": 66731,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "photo_half.png": {
+    "bytes": 499148,
+    "colour": 498680,
+    "alpha": 56,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "photo_luma_matte.png": {
+    "bytes": 713147,
+    "colour": 502963,
+    "alpha": 209772,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "photo_vignette.png": {
+    "bytes": 654337,
+    "colour": 614134,
+    "alpha": 39791,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "sticker_kodim03.png": {
+    "bytes": 173155,
+    "colour": 161433,
+    "alpha": 11310,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "sticker_kodim15.png": {
+    "bytes": 193427,
+    "colour": 181825,
+    "alpha": 11190,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "sticker_kodim20.png": {
+    "bytes": 147168,
+    "colour": 136672,
+    "alpha": 10084,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "sticker_kodim23.png": {
+    "bytes": 192776,
+    "colour": 181264,
+    "alpha": 11100,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "ui_controls.png": {
+    "bytes": 55563,
+    "colour": 47585,
+    "alpha": 7566,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "ui_hud_1080p.png": {
+    "bytes": 30706,
+    "colour": 20783,
+    "alpha": 9511,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "ui_panel.png": {
+    "bytes": 123754,
+    "colour": 97281,
+    "alpha": 26061,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "ui_toolbar.png": {
+    "bytes": 7969,
+    "colour": 5859,
+    "alpha": 1698,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   }
+  },
+  "set_mp": 10.12409
+ },
+ "old/alpha_default": {
+  "files": 39,
+  "bytes": 685414,
+  "colour": 579335,
+  "alpha": 90611,
+  "alpha_exact": 7,
+  "alpha_max_err": 71,
+  "alpha_mean_abs": 0.18169879959581553,
+  "alpha_psnr": 50.199279000655665,
+  "per_file": {
+   "chart_by-size-dark.png": {
+    "bytes": 11048,
+    "colour": 10434,
+    "alpha": 202,
+    "alpha_psnr": 56.91818876461799,
+    "transparent": true
+   },
+   "chart_pipeline-light.png": {
+    "bytes": 11760,
+    "colour": 11125,
+    "alpha": 223,
+    "alpha_psnr": 58.32442016571846,
+    "transparent": true
+   },
+   "chart_quality-dark.png": {
+    "bytes": 10763,
+    "colour": 10147,
+    "alpha": 204,
+    "alpha_psnr": 59.406392832936746,
+    "transparent": true
+   },
+   "chart_tradeoff-light.png": {
+    "bytes": 14367,
+    "colour": 13746,
+    "alpha": 209,
+    "alpha_psnr": 59.50331044210478,
+    "transparent": true
+   },
+   "edge_1x1.png": {
+    "bytes": 463,
+    "colour": 36,
+    "alpha": 15,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "edge_33x17_noise.png": {
+    "bytes": 1206,
+    "colour": 401,
+    "alpha": 393,
+    "alpha_psnr": 35.51955375125547,
+    "transparent": true
+   },
+   "edge_gray_alpha.png": {
+    "bytes": 6545,
+    "colour": 6053,
+    "alpha": 80,
+    "alpha_psnr": 58.92261606915535,
+    "transparent": true
+   },
+   "edge_palette_trns.png": {
+    "bytes": 1019,
+    "colour": 441,
+    "alpha": 166,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "edge_rgba16_10bit.png": {
+    "bytes": 9324,
+    "colour": 8485,
+    "alpha": 427,
+    "alpha_psnr": 51.188365960399736,
+    "transparent": true
+   },
+   "edge_transparent.png": {
+    "bytes": 480,
+    "colour": 40,
+    "alpha": 28,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "icon_128.png": {
+    "bytes": 1357,
+    "colour": 556,
+    "alpha": 389,
+    "alpha_psnr": 47.900319669140785,
+    "transparent": true
+   },
+   "icon_16.png": {
+    "bytes": 633,
+    "colour": 149,
+    "alpha": 72,
+    "alpha_psnr": 39.483190541160226,
+    "transparent": true
+   },
+   "icon_256.png": {
+    "bytes": 2167,
+    "colour": 1165,
+    "alpha": 590,
+    "alpha_psnr": 50.78110293518734,
+    "transparent": true
+   },
+   "icon_32.png": {
+    "bytes": 816,
+    "colour": 283,
+    "alpha": 121,
+    "alpha_psnr": 41.42954146649576,
+    "transparent": true
+   },
+   "icon_48.png": {
+    "bytes": 802,
+    "colour": 240,
+    "alpha": 150,
+    "alpha_psnr": 43.404432451945354,
+    "transparent": true
+   },
+   "icon_64.png": {
+    "bytes": 897,
+    "colour": 285,
+    "alpha": 200,
+    "alpha_psnr": 45.1759916625274,
+    "transparent": true
+   },
+   "logo_circle.png": {
+    "bytes": 8532,
+    "colour": 6227,
+    "alpha": 1893,
+    "alpha_psnr": 54.02670523813843,
+    "transparent": true
+   },
+   "logo_gradient.png": {
+    "bytes": 1749,
+    "colour": 821,
+    "alpha": 516,
+    "alpha_psnr": 50.73719018235113,
+    "transparent": true
+   },
+   "logo_rings.png": {
+    "bytes": 12291,
+    "colour": 6223,
+    "alpha": 5656,
+    "alpha_psnr": 47.634451000230634,
+    "transparent": true
+   },
+   "logo_star.png": {
+    "bytes": 57653,
+    "colour": 55498,
+    "alpha": 1743,
+    "alpha_psnr": 51.38130112171449,
+    "transparent": true
+   },
+   "logo_wordmark.png": {
+    "bytes": 4067,
+    "colour": 2962,
+    "alpha": 693,
+    "alpha_psnr": 54.05145335750959,
+    "transparent": true
+   },
+   "opaque_gray.png": {
+    "bytes": 29238,
+    "colour": 28976,
+    "alpha": 0,
+    "alpha_psnr": 99.0,
+    "transparent": false
+   },
+   "opaque_palette.png": {
+    "bytes": 27336,
+    "colour": 27074,
+    "alpha": 0,
+    "alpha_psnr": 99.0,
+    "transparent": false
+   },
+   "opaque_rgb.png": {
+    "bytes": 55558,
+    "colour": 55296,
+    "alpha": 0,
+    "alpha_psnr": 99.0,
+    "transparent": false
+   },
+   "opaque_rgba.png": {
+    "bytes": 53386,
+    "colour": 53124,
+    "alpha": 0,
+    "alpha_psnr": 99.0,
+    "transparent": false
+   },
+   "photo_circle_cut.png": {
+    "bytes": 34882,
+    "colour": 32461,
+    "alpha": 2009,
+    "alpha_psnr": 55.1810733955635,
+    "transparent": true
+   },
+   "photo_fade.png": {
+    "bytes": 55813,
+    "colour": 55296,
+    "alpha": 105,
+    "alpha_psnr": 57.49051574254509,
+    "transparent": true
+   },
+   "photo_hair_matte.png": {
+    "bytes": 49427,
+    "colour": 28167,
+    "alpha": 20848,
+    "alpha_psnr": 43.91860339315576,
+    "transparent": true
+   },
+   "photo_half.png": {
+    "bytes": 20308,
+    "colour": 19845,
+    "alpha": 51,
+    "alpha_psnr": 69.99471576563404,
+    "transparent": true
+   },
+   "photo_luma_matte.png": {
+    "bytes": 61411,
+    "colour": 25831,
+    "alpha": 35168,
+    "alpha_psnr": 39.12277110001057,
+    "transparent": true
+   },
+   "photo_vignette.png": {
+    "bytes": 54471,
+    "colour": 53124,
+    "alpha": 935,
+    "alpha_psnr": 52.55502723480922,
+    "transparent": true
+   },
+   "sticker_kodim03.png": {
+    "bytes": 11354,
+    "colour": 9670,
+    "alpha": 1272,
+    "alpha_psnr": 52.388457241447156,
+    "transparent": true
+   },
+   "sticker_kodim15.png": {
+    "bytes": 14294,
+    "colour": 12546,
+    "alpha": 1336,
+    "alpha_psnr": 51.99072614159053,
+    "transparent": true
+   },
+   "sticker_kodim20.png": {
+    "bytes": 9505,
+    "colour": 7959,
+    "alpha": 1134,
+    "alpha_psnr": 52.72088053194779,
+    "transparent": true
+   },
+   "sticker_kodim23.png": {
+    "bytes": 12773,
+    "colour": 11036,
+    "alpha": 1325,
+    "alpha_psnr": 52.08923731783365,
+    "transparent": true
+   },
+   "ui_controls.png": {
+    "bytes": 9110,
+    "colour": 6159,
+    "alpha": 2539,
+    "alpha_psnr": 50.29344674575346,
+    "transparent": true
+   },
+   "ui_hud_1080p.png": {
+    "bytes": 7642,
+    "colour": 4182,
+    "alpha": 3048,
+    "alpha_psnr": 58.62054161573012,
+    "transparent": true
+   },
+   "ui_panel.png": {
+    "bytes": 19331,
+    "colour": 12494,
+    "alpha": 6425,
+    "alpha_psnr": 45.934401762315666,
+    "transparent": true
+   },
+   "ui_toolbar.png": {
+    "bytes": 1636,
+    "colour": 778,
+    "alpha": 446,
+    "alpha_psnr": 49.75301782383073,
+    "transparent": true
+   }
+  },
+  "set_mp": 10.12409
+ },
+ "old/alpha_q100": {
+  "files": 39,
+  "bytes": 1072374,
+  "colour": 579335,
+  "alpha": 477571,
+  "alpha_exact": 39,
+  "alpha_max_err": 0,
+  "alpha_mean_abs": 0.0,
+  "alpha_psnr": 99.0,
+  "per_file": {
+   "chart_by-size-dark.png": {
+    "bytes": 11363,
+    "colour": 10434,
+    "alpha": 517,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "chart_pipeline-light.png": {
+    "bytes": 12081,
+    "colour": 11125,
+    "alpha": 544,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "chart_quality-dark.png": {
+    "bytes": 11071,
+    "colour": 10147,
+    "alpha": 512,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "chart_tradeoff-light.png": {
+    "bytes": 14707,
+    "colour": 13746,
+    "alpha": 549,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "edge_1x1.png": {
+    "bytes": 460,
+    "colour": 36,
+    "alpha": 12,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "edge_33x17_noise.png": {
+    "bytes": 1703,
+    "colour": 401,
+    "alpha": 890,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "edge_gray_alpha.png": {
+    "bytes": 6639,
+    "colour": 6053,
+    "alpha": 174,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "edge_palette_trns.png": {
+    "bytes": 1001,
+    "colour": 441,
+    "alpha": 148,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "edge_rgba16_10bit.png": {
+    "bytes": 22998,
+    "colour": 8485,
+    "alpha": 14101,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "edge_transparent.png": {
+    "bytes": 477,
+    "colour": 40,
+    "alpha": 25,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "icon_128.png": {
+    "bytes": 2360,
+    "colour": 556,
+    "alpha": 1392,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "icon_16.png": {
+    "bytes": 756,
+    "colour": 149,
+    "alpha": 195,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "icon_256.png": {
+    "bytes": 5001,
+    "colour": 1165,
+    "alpha": 3424,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "icon_32.png": {
+    "bytes": 1061,
+    "colour": 283,
+    "alpha": 366,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "icon_48.png": {
+    "bytes": 1170,
+    "colour": 240,
+    "alpha": 518,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "icon_64.png": {
+    "bytes": 1334,
+    "colour": 285,
+    "alpha": 637,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "logo_circle.png": {
+    "bytes": 13370,
+    "colour": 6227,
+    "alpha": 6731,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "logo_gradient.png": {
+    "bytes": 8231,
+    "colour": 821,
+    "alpha": 6998,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "logo_rings.png": {
+    "bytes": 25974,
+    "colour": 6223,
+    "alpha": 19339,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "logo_star.png": {
+    "bytes": 61841,
+    "colour": 55498,
+    "alpha": 5931,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "logo_wordmark.png": {
+    "bytes": 5423,
+    "colour": 2962,
+    "alpha": 2049,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "opaque_gray.png": {
+    "bytes": 29238,
+    "colour": 28976,
+    "alpha": 0,
+    "alpha_psnr": 99.0,
+    "transparent": false
+   },
+   "opaque_palette.png": {
+    "bytes": 27336,
+    "colour": 27074,
+    "alpha": 0,
+    "alpha_psnr": 99.0,
+    "transparent": false
+   },
+   "opaque_rgb.png": {
+    "bytes": 55558,
+    "colour": 55296,
+    "alpha": 0,
+    "alpha_psnr": 99.0,
+    "transparent": false
+   },
+   "opaque_rgba.png": {
+    "bytes": 53386,
+    "colour": 53124,
+    "alpha": 0,
+    "alpha_psnr": 99.0,
+    "transparent": false
+   },
+   "photo_circle_cut.png": {
+    "bytes": 40201,
+    "colour": 32461,
+    "alpha": 7328,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "photo_fade.png": {
+    "bytes": 56029,
+    "colour": 55296,
+    "alpha": 321,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "photo_hair_matte.png": {
+    "bytes": 95310,
+    "colour": 28167,
+    "alpha": 66731,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "photo_half.png": {
+    "bytes": 20313,
+    "colour": 19845,
+    "alpha": 56,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "photo_luma_matte.png": {
+    "bytes": 236015,
+    "colour": 25831,
+    "alpha": 209772,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "photo_vignette.png": {
+    "bytes": 93327,
+    "colour": 53124,
+    "alpha": 39791,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "sticker_kodim03.png": {
+    "bytes": 21392,
+    "colour": 9670,
+    "alpha": 11310,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "sticker_kodim15.png": {
+    "bytes": 24148,
+    "colour": 12546,
+    "alpha": 11190,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "sticker_kodim20.png": {
+    "bytes": 18455,
+    "colour": 7959,
+    "alpha": 10084,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "sticker_kodim23.png": {
+    "bytes": 22548,
+    "colour": 11036,
+    "alpha": 11100,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "ui_controls.png": {
+    "bytes": 14137,
+    "colour": 6159,
+    "alpha": 7566,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "ui_hud_1080p.png": {
+    "bytes": 14105,
+    "colour": 4182,
+    "alpha": 9511,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "ui_panel.png": {
+    "bytes": 38967,
+    "colour": 12494,
+    "alpha": 26061,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "ui_toolbar.png": {
+    "bytes": 2888,
+    "colour": 778,
+    "alpha": 1698,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   }
+  },
+  "set_mp": 10.12409
+ },
+ "old/alpha_lossless": {
+  "files": 39,
+  "bytes": 7489058,
+  "colour": 6990526,
+  "alpha": 483094,
+  "alpha_exact": 39,
+  "alpha_max_err": 0,
+  "alpha_mean_abs": 0.0,
+  "alpha_psnr": 99.0,
+  "per_file": {
+   "chart_by-size-dark.png": {
+    "bytes": 64013,
+    "colour": 63084,
+    "alpha": 517,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "chart_pipeline-light.png": {
+    "bytes": 73417,
+    "colour": 72461,
+    "alpha": 544,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "chart_quality-dark.png": {
+    "bytes": 68289,
+    "colour": 67365,
+    "alpha": 512,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "chart_tradeoff-light.png": {
+    "bytes": 91919,
+    "colour": 90958,
+    "alpha": 549,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "edge_1x1.png": {
+    "bytes": 453,
+    "colour": 29,
+    "alpha": 12,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "edge_33x17_noise.png": {
+    "bytes": 3918,
+    "colour": 2616,
+    "alpha": 890,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "edge_gray_alpha.png": {
+    "bytes": 39757,
+    "colour": 39199,
+    "alpha": 174,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "edge_palette_trns.png": {
+    "bytes": 1965,
+    "colour": 1405,
+    "alpha": 148,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "edge_rgba16_10bit.png": {
+    "bytes": 237292,
+    "colour": 217256,
+    "alpha": 19624,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "edge_transparent.png": {
+    "bytes": 479,
+    "colour": 42,
+    "alpha": 25,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "icon_128.png": {
+    "bytes": 5986,
+    "colour": 4182,
+    "alpha": 1392,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "icon_16.png": {
+    "bytes": 1263,
+    "colour": 656,
+    "alpha": 195,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "icon_256.png": {
+    "bytes": 11976,
+    "colour": 8140,
+    "alpha": 3424,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "icon_32.png": {
+    "bytes": 2171,
+    "colour": 1393,
+    "alpha": 366,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "icon_48.png": {
+    "bytes": 2814,
+    "colour": 1884,
+    "alpha": 518,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "icon_64.png": {
+    "bytes": 3455,
+    "colour": 2406,
+    "alpha": 637,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "logo_circle.png": {
+    "bytes": 44911,
+    "colour": 37768,
+    "alpha": 6731,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "logo_gradient.png": {
+    "bytes": 23295,
+    "colour": 15885,
+    "alpha": 6998,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "logo_rings.png": {
+    "bytes": 76467,
+    "colour": 56716,
+    "alpha": 19339,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "logo_star.png": {
+    "bytes": 485934,
+    "colour": 479591,
+    "alpha": 5931,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "logo_wordmark.png": {
+    "bytes": 27891,
+    "colour": 25430,
+    "alpha": 2049,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "opaque_gray.png": {
+    "bytes": 208527,
+    "colour": 208267,
+    "alpha": 0,
+    "alpha_psnr": 99.0,
+    "transparent": false
+   },
+   "opaque_palette.png": {
+    "bytes": 156789,
+    "colour": 156527,
+    "alpha": 0,
+    "alpha_psnr": 99.0,
+    "transparent": false
+   },
+   "opaque_rgb.png": {
+    "bytes": 663993,
+    "colour": 663731,
+    "alpha": 0,
+    "alpha_psnr": 99.0,
+    "transparent": false
+   },
+   "opaque_rgba.png": {
+    "bytes": 614396,
+    "colour": 614134,
+    "alpha": 0,
+    "alpha_psnr": 99.0,
+    "transparent": false
+   },
+   "photo_circle_cut.png": {
+    "bytes": 548694,
+    "colour": 540954,
+    "alpha": 7328,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "photo_fade.png": {
+    "bytes": 664464,
+    "colour": 663731,
+    "alpha": 321,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "photo_hair_matte.png": {
+    "bytes": 573380,
+    "colour": 506237,
+    "alpha": 66731,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "photo_half.png": {
+    "bytes": 499148,
+    "colour": 498680,
+    "alpha": 56,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "photo_luma_matte.png": {
+    "bytes": 713147,
+    "colour": 502963,
+    "alpha": 209772,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "photo_vignette.png": {
+    "bytes": 654337,
+    "colour": 614134,
+    "alpha": 39791,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "sticker_kodim03.png": {
+    "bytes": 173155,
+    "colour": 161433,
+    "alpha": 11310,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "sticker_kodim15.png": {
+    "bytes": 193427,
+    "colour": 181825,
+    "alpha": 11190,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "sticker_kodim20.png": {
+    "bytes": 147168,
+    "colour": 136672,
+    "alpha": 10084,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "sticker_kodim23.png": {
+    "bytes": 192776,
+    "colour": 181264,
+    "alpha": 11100,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "ui_controls.png": {
+    "bytes": 55563,
+    "colour": 47585,
+    "alpha": 7566,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "ui_hud_1080p.png": {
+    "bytes": 30706,
+    "colour": 20783,
+    "alpha": 9511,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "ui_panel.png": {
+    "bytes": 123754,
+    "colour": 97281,
+    "alpha": 26061,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   },
+   "ui_toolbar.png": {
+    "bytes": 7969,
+    "colour": 5859,
+    "alpha": 1698,
+    "alpha_psnr": 99.0,
+    "transparent": true
+   }
+  },
+  "set_mp": 10.12409
+ }
+}

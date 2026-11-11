@@ -1,0 +1,25 @@
+{
+ "cvvdp": "0.5.7",
+ "parameters_version": "0.5.7",
+ "torch": "2.15.0+cu132",
+ "torch_cuda": "13.2",
+ "device": "NVIDIA L4",
+ "display": "standard_fhd",
+ "display_name": "24-inch FullHD monitor, peak luminance 200 cd/m^2, viewed under office light levels (250 lux), seen from 2 x display height",
+ "eotf": "sRGB",
+ "peak_cd_m2": 200,
+ "contrast": 1000,
+ "ambient_lux": 250,
+ "k_refl": 0.005,
+ "resolution": [
+  1920,
+  1080
+ ],
+ "distance_m": 0.6,
+ "display_size_m": [
+  0.5313124474311252,
+  0.29886325168000794
+ ],
+ "pixels_per_degree": 37.842503853602885,
+ "inputs": "8-bit sRGB (ICC profiles converted with LittleCMS, relative colorimetric), 1:1 pixel mapping"
+}

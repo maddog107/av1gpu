@@ -1,0 +1,40 @@
+== /home/ubuntu/rel/av1gpu-0.13.0-linux-x86_64/av1gpu
+--version:
+unknown option --version
+usage: av1gpu IN OUT.avif [options]
+       av1gpu --batch LIST|DIR --outdir DIR [options]
+(exit 141)
+-V:
+usage: av1gpu IN OUT.avif [options]
+       av1gpu --batch LIST|DIR --outdir DIR [options]
+(exit 141)
+--help lines naming a version:
+--help exit: 0, lines: 202
+occurrences of 0.13.0 in the binary: 0
+ldd:
+	linux-vdso.so.1 (0x000071d8987cf000)
+	libstdc++.so.6 => /lib/x86_64-linux-gnu/libstdc++.so.6 (0x000071d878600000)
+	libm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x000071d878917000)
+	libgcc_s.so.1 => /lib/x86_64-linux-gnu/libgcc_s.so.1 (0x000071d898788000)
+	libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x000071d878200000)
+	/lib64/ld-linux-x86-64.so.2 (0x000071d8987d1000)
+== /home/ubuntu/rel/av1gpu-0.13.0-linux-x86_64-cuda12/av1gpu
+--version:
+unknown option --version
+usage: av1gpu IN OUT.avif [options]
+       av1gpu --batch LIST|DIR --outdir DIR [options]
+(exit 141)
+-V:
+usage: av1gpu IN OUT.avif [options]
+       av1gpu --batch LIST|DIR --outdir DIR [options]
+(exit 141)
+--help lines naming a version:
+--help exit: 0, lines: 202
+occurrences of 0.13.0 in the binary: 0
+ldd:
+	linux-vdso.so.1 (0x000075ebd761d000)
+	libstdc++.so.6 => /lib/x86_64-linux-gnu/libstdc++.so.6 (0x000075ebb1c00000)
+	libm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x000075ebb1f17000)
+	libgcc_s.so.1 => /lib/x86_64-linux-gnu/libgcc_s.so.1 (0x000075ebb1ee9000)
+	libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x000075ebb1800000)
+	/lib64/ld-linux-x86-64.so.2 (0x000075ebd761f000)

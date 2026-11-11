@@ -1,0 +1,10 @@
+=== cvvdp 2026-11-11T11:21:20
+Unable to load any of {libcudnn_engines_runtime_compiled.so.9.26.0, libcudnn_engines_runtime_compiled.so.9.26, libcudnn_engines_runtime_compiled.so.9, libcudnn_engines_runtime_compiled.so}.
+cvvdp does not run on cuda: CUDNN_BACKEND_TENSOR_DESCRIPTOR cudnnFinalize failedptrDesc->finalize() cudnn_status: CUDNN_STATUS_SUBLIBRARY_LOADING_FAILED
+=== cvvdp 2026-11-11T11:38:06
+856 score jobs (+ CVVDP)
+200 scored 37 s
+400 scored 67 s
+600 scored 95 s
+800 scored 136 s
+856 rows, 0 with a failed score
