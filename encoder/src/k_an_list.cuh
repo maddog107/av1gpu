@@ -1,4 +1,4 @@
-// Staged analysis (an_stage.h): which blocks of a stage's shapes are analysed (k_an_list, k_an_a.cu).  Device code that
+// Staged analysis (an_stage.h): which blocks of a stage's shapes are analysed (k_an_list, k_an_x.cu).  Device code that
 // the research CPU emulation also compiles, so the rule it costs is this one.
 #pragma once
 #include "dev_common.cuh"

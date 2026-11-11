@@ -5,21 +5,19 @@
 
 GP_DEFINE_TABLE_UPLOAD(gp_upload_tables_an_b)
 
-// x (may be null): the shape's options of the staged analysis; the MODE 1 kernel when it sets any (an_x_on)
+// the staged analysis' MODE 1 kernels (k_an_x.cu), for a shape whose GpAnX is on
+void gp_launch_an_x(const GpBatch &B, const GpParams &P, int bs, uint32_t n, const GpLive &L, cudaStream_t st, int bd, const GpAnX &x);
+
+// x (may be null): the shape's options of the staged analysis; its MODE 1 kernel (k_an_x.cu) when it sets any
 template <int W, int H, int BS, int NW>
 static void launch_an(const GpBatch &B, const GpParams &P, const GpLive &L, uint32_t n, cudaStream_t st, int bd, const GpAnX *x) {
     n = an_units<W, H>(L, n);   // 8x16, 16x8: a warp per block of the live cells
     if (!n) return;
+    if constexpr (an_staged_shape(W, H))   // (16x16 is never listed)
+        if (an_x_on(x)) { gp_launch_an_x(B, P, BS, n, L, st, bd, *x); return; }
     uint32_t grid = (n + NW - 1) / NW;
     // non-persistent grid: short CTAs let the hardware scheduler interleave other streams (recon wavefronts)
     if (grid > (1u << 30)) grid = 1u << 30;
-    if constexpr (an_staged_shape(W, H)) {   // (no MODE 1 instance for the others)
-        if (an_x_on(x)) {
-            if (bd == 10) k_analysis<W, H, BS, NW, 10, 1><<<grid, NW * 32, 0, st>>>(B, P, n, L, *x);
-            else k_analysis<W, H, BS, NW, 8, 1><<<grid, NW * 32, 0, st>>>(B, P, n, L, *x);
-            return;
-        }
-    }
     if (bd == 10) k_analysis<W, H, BS, NW, 10><<<grid, NW * 32, 0, st>>>(B, P, n, L, GpAnX{});
     else k_analysis<W, H, BS, NW, 8><<<grid, NW * 32, 0, st>>>(B, P, n, L, GpAnX{});
 }

@@ -5,7 +5,6 @@
 #include "k_dp.cuh"
 #include "av1g/symstream.h"
 
-#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -26,6 +25,7 @@ int gp_upload_tables_recon_444_10(const GpHostTables *);
 int gp_upload_tables_an_uv(const GpHostTables *);
 int gp_upload_tables_ll(const GpHostTables *);
 int gp_upload_tables_pal(const GpHostTables *);
+int gp_upload_tables_an_x(const GpHostTables *);   // the staged analysis (k_an_x.cu): gp_staged_prepare
 void gp_launch_an_uv(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st, int bd);
 // xs (null: none): per shape, the options of the staged analysis (an_stage.h); mask: the shapes to launch
 void gp_launch_an_a(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st, int bd, const GpLive &L,
@@ -36,7 +36,6 @@ void gp_launch_an_c(const GpBatch &B, const GpParams &P, const uint32_t *shTotal
                     uint32_t mask);
 void gp_launch_an_d(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st, int bd, const GpAnX *xs,
                     uint32_t mask);
-void gp_launch_an_list(const GpBatch &B, const GpParams &P, const GpAnListStage &L, cudaStream_t st, int bd);
 
 // ---------------------------------------------------------------------------
 // pack: per-SB output slots -> DecisionRecord arrays (decode order, one CTA per SB).  aux.blockFrame (if set): each
@@ -461,86 +460,6 @@ void gp_launch_dp(const GpBatch &B, const GpParams &P, cudaStream_t st, int bd) 
     else k_dp<8><<<(B.nSb + 63) / 64, 64, 0, st>>>(B, P, GpDpStage{});
 }
 
-// ---------------------------------------------------------------------------
-// staged analysis (an_stage.h; opt-in)
-static void gp_launch_dp_stage(const GpBatch &B, const GpParams &P, const GpDpStage &S, cudaStream_t st, int bd) {
-    if (!B.nSb) return;
-    if (bd == 10) k_dp<10, true><<<(B.nSb + 63) / 64, 64, 0, st>>>(B, P, S);
-    else k_dp<8, true><<<(B.nSb + 63) / 64, 64, 0, st>>>(B, P, S);
-}
-
-void gp_launch_analysis_staged(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st, int bd,
-                               const GpLive *live, const GpAnRun &R) {
-    const bool staged = R.topdown || R.gateMul > 0.f;
-    // the k_live16 cells serve the cell-wise shapes only without the top-down stages (which list those shapes' blocks)
-    const GpLive L0 = live && !R.topdown ? *live : GpLive{};
-    GpAnX xs[GP_NSHAPES];
-    memset(xs, 0, sizeof xs);
-    uint32_t stage[8] = {0, 0, 0, 0, 0, 0, 0, 0};
-    for (int s = 0; s < GP_NSHAPES; s++) {
-        if (!shTotal[s]) continue;
-        const int w = 4 * AV1G_T(Num_4x4_Blocks_Wide)[s], h = 4 * AV1G_T(Num_4x4_Blocks_High)[s];
-        const int sg = an_stage_of(R.topdown, R.gateMul, w, h);
-        stage[sg] |= 1u << s;
-        if (sg >= 2) { xs[s].list = R.list[s]; xs[s].count = R.count + s; }
-    }
-    if (staged) cudaMemsetAsync(R.count, 0, GP_NSHAPES * sizeof(uint32_t), st);
-    uint32_t done = 0;
-    // a stage's shapes (large to small, as gp_launch_analysis), then their chroma term and palette candidates, which the
-    // next DP stage sees
-    auto launch = [&](uint32_t mask, const GpLive &L) {
-        if (!mask) return;
-        gp_launch_an_d(B, P, shTotal, st, bd, xs, mask);
-        gp_launch_an_c(B, P, shTotal, st, bd, xs, mask);
-        gp_launch_an_b(B, P, shTotal, st, bd, L, xs, mask);
-        gp_launch_an_a(B, P, shTotal, st, bd, L, xs, mask);
-        uint32_t sub[GP_NSHAPES];
-        for (int s = 0; s < GP_NSHAPES; s++) sub[s] = (mask >> s) & 1 ? shTotal[s] : 0;
-        if (P.uvInDp) gp_launch_an_uv(B, P, sub, st, bd);
-        gp_launch_pal_analysis(B, P, sub, st, bd);
-        done |= mask;
-    };
-    // a DP stage over the shapes done, then the block lists of the next stage's shapes.  The map marks the cells under
-    // leaves whose smaller side is the smallest of the shapes done (16 for the 16x16 map, 8 for the 8x8 one in every
-    // preset; larger when --shapes leaves out a group, so that the next group still refines where the DP went finest)
-    auto next = [&](uint32_t mask, uint8_t *core, int cell, uint8_t *gate) {
-        int side = 64;
-        for (int s = 0; s < GP_NSHAPES; s++)
-            if ((done >> s) & 1)
-                side = std::min(side, std::min(4 * (int)AV1G_T(Num_4x4_Blocks_Wide)[s], 4 * (int)AV1G_T(Num_4x4_Blocks_High)[s]));
-        GpDpStage S;
-        memset(&S, 0, sizeof S);
-        S.shapeMask = done; S.core = core; S.coreCell = cell; S.coreSide = std::max(cell, side); S.gate = gate; S.gateMul = R.gateMul;
-        gp_launch_dp_stage(B, P, S, st, bd);
-        GpAnListStage Ls;
-        memset(&Ls, 0, sizeof Ls);
-        Ls.core16 = R.core16; Ls.core8 = R.core8; Ls.gate = R.gate; Ls.neigh = 1;
-        for (int s = 0; s < GP_NSHAPES; s++) {
-            if (!((mask >> s) & 1)) continue;
-            const int w = 4 * AV1G_T(Num_4x4_Blocks_Wide)[s], h = 4 * AV1G_T(Num_4x4_Blocks_High)[s], m = std::min(w, h);
-            GpAnListShape &sh = Ls.s[Ls.n++];
-            sh.bs = s; sh.total = shTotal[s]; sh.list = R.list[s]; sh.count = R.count + s; sh.flat = 1;
-            sh.cell = R.topdown ? (m == 8 ? 16 : m == 4 ? 8 : 0) : 0;
-            sh.gate = gate != nullptr;
-        }
-        gp_launch_an_list(B, P, Ls, st, bd);
-    };
-    // stages in the order of an_stage_of: 1, 5, 2, 6, 3, 7 with the top-down stages, else 1, 4
-    launch(stage[1], L0);
-    // (a gated group without the group before it in the shape set maps the cells its blocks need in the gating DP)
-    const int order[] = {5, 2, 6, 3, 7, 4};
-    bool have16 = false, have8 = false;
-    for (int sg : order) {
-        if (!stage[sg]) continue;
-        uint8_t *core = nullptr;
-        int cell = 16;
-        if (sg == 2 || (sg == 6 && !have16)) { core = R.core16; have16 = true; }
-        if (sg == 3 || (sg == 7 && !have8)) { core = R.core8; cell = 8; have8 = true; }
-        next(stage[sg], core, cell, sg >= 4 ? R.gate : nullptr);
-        launch(stage[sg], GpLive{});
-    }
-}
-
 void gp_launch_pack(const GpBatch &B, const GpPackOff *dOff, av1g_block *oB, uint32_t *oBT, av1g_txb *oT, int16_t *oC,
                     const GpPackAux &aux, cudaStream_t st, av1g_palette *oP, uint8_t *oM) {
     gp_launch_pack_counts(B, dOff, oB, oBT, oT, oC, aux, st, oP, oM, nullptr, 0);
@@ -743,4 +662,17 @@ int gp_recon_prepare(int bd, bool k420, bool k444) {
     if (k420 && prep(v)) return -1;
     if (k444 && prep(v + 1)) return -1;
     return 0;
+}
+
+// The staged analysis' module (k_an_x.cu: MODE 1 analysis, k_an_list, the DP stages; opt-in, an_stage.h), likewise
+// once per process, by GpEncoder::init of an encoder with --topdown / --prune-41 on (after gp_init_tables): a process
+// without the switches never touches it, so lazy loading never loads it.
+int gp_staged_prepare() {
+    static std::once_flag once;
+    static int rc;
+    std::call_once(once, []() {
+        rc = gp_upload_tables_an_x(&hostTables);
+        if (!rc && cudaStreamSynchronize(cudaStreamPerThread) != cudaSuccess) rc = -1;
+    });
+    return rc;
 }

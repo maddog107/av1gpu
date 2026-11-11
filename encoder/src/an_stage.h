@@ -10,7 +10,10 @@
 //     (VERT likewise), after everything else or, with the top-down stages, right after their own group.
 //
 // Kept out of gp.h / kernels.h (and out of GpParams), so that the closed loop and the default analysis kernels do not
-// change at all: only the analysis translation units, k_misc.cu and pipeline.cpp include this header.
+// change at all: only the analysis translation units, k_misc.cu and pipeline.cpp include this header.  The staged
+// kernels (MODE 1 analysis, k_an_list, the DP stages) are a module of their own, k_an_x.cu, whose tables are uploaded
+// only for an encoder with a switch on (gp_staged_prepare): without the switches a process never loads that code
+// (lazy module loading, the default outside batch mode).
 #ifndef GP_AN_STAGE_H
 #define GP_AN_STAGE_H
 
@@ -26,7 +29,8 @@ struct GpAnX {
 inline bool an_x_on(const GpAnX *x) { return x && x->list; }
 // The shapes a staged analysis lists (an_stage_of >= 2 with some switch): smaller side 8 or 4, and the 4:1 shapes.  Only
 // they have MODE 1 kernels: every kernel in the binary is loaded at start-up in batch mode (eager module loading), and
-// MODE 1 instances of every shape cost 80 ms there on an L4 with the switches off.
+// MODE 1 instances of every shape cost 80 ms there on an L4 with the switches off.  Of the shapes up to 64 pixels
+// (k_an_a.cu) only the small-kernel versions have one: with --small-kernel 0 an_stage_of puts them in stage 1.
 constexpr bool an_staged_shape(int w, int h) { return (w < h ? w : h) <= 8 || w == 4 * h || h == 4 * w; }
 
 // Options of a DP stage (k_dp<BD, true>, k_dp.cuh): which shapes the DP may use, and what it writes.
@@ -62,8 +66,11 @@ struct GpAnListStage {
 // Stage of a w x h shape: 1 (analysed first, every block); with the top-down stages 2 (smaller side 8) and 3 (side 4);
 // the 4:1 shapes with the gating: 4 without the top-down stages (after everything else), else right after their own
 // group, before the DP that maps the next group (5: 64x16 / 16x64 after 1; 6: 32x8 / 8x32 after 2; 7: 16x4 / 4x16
-// after 3).  Order: 1, 5, 2, 6, 3, 7 (or 1, 4), a DP stage before each but the first.
-inline int an_stage_of(int topdown, float gateMul, int w, int h) {
+// after 3).  Order: 1, 5, 2, 6, 3, 7 (or 1, 4), a DP stage before each but the first.  smallKernel 0 (GpParams): the
+// shapes of up to 64 pixels go through k_an_a's warp kernels, which have no MODE 1 version, so they stay in stage 1
+// (every block analysed, as without the switches).
+inline int an_stage_of(int topdown, float gateMul, int smallKernel, int w, int h) {
+    if (!smallKernel && w * h <= 64) return 1;
     const int m = w < h ? w : h, g = m >= 16 ? 1 : m == 8 ? 2 : 3;
     if (gateMul > 0.f && (w == 4 * h || h == 4 * w)) return topdown ? 4 + g : 4;
     return topdown ? g : 1;

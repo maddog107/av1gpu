@@ -14,8 +14,11 @@ flat sky, a gradient, fine and coarse texture), a 640x480 and a 333x250 one (bas
 - determinism: both switches give the same bytes with three encoders in list order as with one encoder and the list
   reversed (and --topdown alone in the default preset); with every allocation poisoned (GP_POISON=255) the same bytes;
 - off values (--topdown 0 --prune-41 off) give the bytes of a run without the options;
+- --small-kernel 0 (base, both switches): no shape of up to 64 pixels is listed (they have no list-driven kernel and
+  are analysed in full), the larger staged shapes are, and the output changes;
 - tests/decoder_gate.py (dav1d + aomdec reproduce the encoder's reconstruction, alpha items included) with each
-  switch alone, and with both in 4:4:4 10-bit and with 4x4 tiles;
+  switch alone, and with both in 4:4:4 10-bit, with 4x4 tiles and with --small-kernel 0;
+  (the routes without a fallback partition, with GP_POISON 0 / 120: tests/maxpart_test.py)
 - option validation: --topdown 2 / -1 and --prune-41 abc / -0 / nan / inf / 1e30 / 1001 are refused.
 
   tests/staged_analysis_test.py --bin build/av1gpu [--keep DIR]
@@ -158,11 +161,24 @@ def main():
                     p, _, _ = batch(f"{pname}_{name}_poison", preset, opts, env={"GP_POISON": "255"})
                     if p != h:
                         fails.append(f"{pname} {name}: GP_POISON=255 changes {[k for k in h if h.get(k) != p.get(k)]}")
-        # decoder identity: each switch alone, both in 4:4:4 10-bit, both with 4x4 tiles (alpha items in every run)
+        # --small-kernel 0: the shapes of up to 64 pixels have no list-driven kernel, so they are analysed in full (stage
+        # 1); the larger staged shapes are still listed
+        sk0 = ["--preset", "base", "--small-kernel", "0"]
+        h0, _, _ = batch("base_sk0_none", sk0, [])
+        h, _, err = batch("base_sk0_both", sk0, BOTH, env={"GP_DEBUG_STAGES": "1"})
+        s = listed(err)
+        print("base --small-kernel 0 both: listed " + ", ".join(f"{w}x{hh} {v[0]}/{v[1]}" for (w, hh), v in sorted(s.items())), flush=True)
+        if not s or any(w * hh <= 64 for w, hh in s):
+            fails.append(f"--small-kernel 0: lists for {sorted(s)} (expected the staged shapes above 64 pixels only)")
+        if h == h0:
+            fails.append("--small-kernel 0: the switches leave every output unchanged")
+        # decoder identity: each switch alone, both in 4:4:4 10-bit, both with 4x4 tiles, both with --small-kernel 0
+        # (alpha items in every run)
         gates = [("default_topdown", TD, []), ("base_prune41", ["--preset", "base"] + G, []),
                  ("base_both_444_10", ["--preset", "base", "--yuv", "444", "--depth", "10"] + BOTH,
                   ["--expect-format", "444", "--expect-depth", "10"]),
-                 ("default_both_tiles", ["--tiles", "0,2,2"] + BOTH, [])]
+                 ("default_both_tiles", ["--tiles", "0,2,2"] + BOTH, []),
+                 ("base_both_sk0", sk0 + BOTH, [])]
         for tag, opts, gopts in gates:
             g = subprocess.run([sys.executable, os.path.join(HERE, "decoder_gate.py"), "--bin", a.bin, "--images", src, "--q", "120",
                                 "--keep", os.path.join(t, "gate_" + tag)] + gopts + ["--"] + opts,

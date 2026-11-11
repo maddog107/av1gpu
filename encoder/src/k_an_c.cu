@@ -5,20 +5,15 @@
 
 GP_DEFINE_TABLE_UPLOAD(gp_upload_tables_an_c)
 
-// x (may be null): the shape's options of the staged analysis; the MODE 1 kernel when it sets any (an_x_on)
+// x: unused (none of these shapes is listed by the staged analysis: an_staged_shape)
 template <int W, int H, int BS, int NW>
 static void launch_an(const GpBatch &B, const GpParams &P, uint32_t n, cudaStream_t st, int bd, const GpAnX *x) {
+    static_assert(!an_staged_shape(W, H), "a listed shape needs its MODE 1 launch (k_an_x.cu)");
+    (void)x;
     if (!n) return;
     uint32_t grid = (n + NW - 1) / NW;
     // non-persistent grid: short CTAs let the hardware scheduler interleave other streams (recon wavefronts)
     if (grid > (1u << 30)) grid = 1u << 30;
-    if constexpr (an_staged_shape(W, H)) {   // (no MODE 1 instance for the others)
-        if (an_x_on(x)) {
-            if (bd == 10) k_analysis<W, H, BS, NW, 10, 1><<<grid, NW * 32, 0, st>>>(B, P, n, GpLive{}, *x);
-            else k_analysis<W, H, BS, NW, 8, 1><<<grid, NW * 32, 0, st>>>(B, P, n, GpLive{}, *x);
-            return;
-        }
-    }
     if (bd == 10) k_analysis<W, H, BS, NW, 10><<<grid, NW * 32, 0, st>>>(B, P, n, GpLive{}, GpAnX{});
     else k_analysis<W, H, BS, NW, 8><<<grid, NW * 32, 0, st>>>(B, P, n, GpLive{}, GpAnX{});
 }

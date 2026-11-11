@@ -197,6 +197,7 @@ endif()
 # encoder: analysis, partition DP, wavefront reconstruction, batching
 add_library(av1gpu_encoder STATIC
   encoder/src/k_misc.cu encoder/src/k_imageops.cu encoder/src/k_an_a.cu encoder/src/k_an_b.cu encoder/src/k_an_c.cu encoder/src/k_an_d.cu
+  encoder/src/k_an_x.cu
   encoder/src/k_an_uv.cu ${_av1gpu_recon_objects} encoder/src/k_recon_order.cu encoder/src/k_lossless.cu encoder/src/k_pal.cu encoder/src/pipeline.cpp
   encoder/src/imageio.cpp encoder/src/imageops.cpp encoder/src/entropy_gpu.cpp encoder/src/entropy_dev.cu encoder/src/batch.cpp)
 target_include_directories(av1gpu_encoder PUBLIC encoder/src)

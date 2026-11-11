@@ -7,9 +7,11 @@
 size_t gp_recon_scratch_bytes();   // k_recon.cu (W5/W3)
 void gp_recon_order(const GpBatch &B, uint32_t *dSteps, const uint32_t *dSeg, int nSeg, uint32_t maxSeg, cudaStream_t st);   // k_recon_order.cu
 #include "an_stage.h"
-// the staged analysis (opt-in, an_stage.h), in place of gp_launch_analysis + gp_launch_pal_analysis (k_misc.cu)
+// the staged analysis (opt-in, an_stage.h), in place of gp_launch_analysis + gp_launch_pal_analysis (k_an_x.cu); its
+// module's tables, once per process before the first staged batch (k_misc.cu; 0, or -1)
 void gp_launch_analysis_staged(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st, int bd,
                                const GpLive *live, const GpAnRun &R);
+int gp_staged_prepare();
 #include "av1g/av1g.h"
 #include "av1g/blockinfo.h"
 #include "av1g/dsp.h"
@@ -263,6 +265,11 @@ int GpEncoder::init(const GpConfig &cfg, std::string &err) {
     // frames beside them, as 4:2:0); encode prepares any other one on first use
     if (!cfg_.lossless && gp_recon_prepare(cfg_.depth == 10 ? 10 : 8, !cfg_.yuv444, cfg_.yuv444 != 0)) {
         err = "k_recon table upload failed";
+        return -1;
+    }
+    // the staged analysis' module (k_an_x.cu), only with its switches (encode runs it under the same condition)
+    if (!cfg_.lossless && (cfg_.an.topdown || cfg_.an.prune41 >= 0.f) && gp_staged_prepare()) {
+        err = "staged analysis table upload failed";
         return -1;
     }
     for (auto &e : ev_) GPCK(cudaEventCreate(&e));
@@ -627,7 +634,7 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
         if (run.topdown || run.gateMul > 0.f) {
             for (int s = 0; s < GP_NSHAPES; s++) {
                 const int w = 4 * AV1G_T(Num_4x4_Blocks_Wide)[s], h = 4 * AV1G_T(Num_4x4_Blocks_High)[s];
-                if (shTotal[s] && an_stage_of(run.topdown, run.gateMul, w, h) >= 2) GPCK(A.get(run.list[s], shTotal[s]));
+                if (shTotal[s] && an_stage_of(run.topdown, run.gateMul, P.smallKernel, w, h) >= 2) GPCK(A.get(run.list[s], shTotal[s]));
             }
             GPCK(A.get(run.count, GP_NSHAPES));
             if (run.topdown) {

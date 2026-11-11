@@ -1,10 +1,8 @@
-// open-loop analysis kernels (4x4, 4x8, 8x4, 8x8, 4x16, 16x4), the live 16x16 cells they take their blocks from, and the
-// block lists of the staged analysis (k_an_list, an_stage.h).
+// open-loop analysis kernels (4x4, 4x8, 8x4, 8x8, 4x16, 16x4) and the live 16x16 cells they take their blocks from.
 #include "kernels.h"
 #include "dev_common.cuh"
 #include "k_analysis.cuh"
 #include "k_analysis_small.cuh"
-#include "k_an_list.cuh"
 
 GP_DEFINE_TABLE_UPLOAD(gp_upload_tables_an_a)
 
@@ -64,92 +62,32 @@ void gp_launch_live16(const GpBatch &B, const GpParams &P, const GpLive &L, cuda
     else k_live16<8><<<(L.nCells + 127) / 128, 128, 0, st>>>(B, P, L);
 }
 
-// The blocks of one stage's shapes (one per blockIdx.y) that the staged analysis analyses (an_list_alive): appended to
-// the shape's list as shape-global indices, a warp's in one atomic (the list order only changes which unit analyses
-// which block); the others inside the grid get J = GP_INF, ncand = 0, as the analysis kernels write pruned blocks.
-template <int BD>
-__global__ void k_an_list(GpBatch B, GpParams P, GpAnListStage L) {
-    const GpAnListShape &sh = L.s[blockIdx.y];
-    const uint32_t g = blockIdx.x * blockDim.x + threadIdx.x;
-    bool live = false;
-    if (g < sh.total) {
-        const uint32_t *starts = B.shImgStart + (size_t)sh.bs * (B.nimg + 1);
-        int lo = 0, hi = B.nimg - 1;
-        while (lo < hi) {
-            const int mid = (lo + hi + 1) >> 1;
-            if (starts[mid] <= g) lo = mid; else hi = mid - 1;
-        }
-        const GpImage &I = B.img[lo];
-        const uint32_t li = g - starts[lo];
-        const int nbx = I.shNbx[sh.bs];
-        const int x = (int)(li % nbx) * bw_px(sh.bs), y = (int)(li / nbx) * bh_px(sh.bs);
-        live = x < I.MiCols * 4 && y < I.MiRows * 4 && an_list_alive<BD>(P, L, sh, I, x, y);
-        if (!live) {
-            GpBlockRes &o = B.blk[I.shOff[sh.bs] + li];
-            o.J = GP_INF;
-            o.ncand = 0;
-        }
-    }
-    const unsigned m = __ballot_sync(0xffffffffu, live);
-    if (!m) return;
-    const int lane = threadIdx.x & 31;
-    uint32_t base = 0;
-    if (lane == 0) base = atomicAdd(sh.count, (uint32_t)__popc(m));
-    base = __shfl_sync(0xffffffffu, base, 0);
-    if (live) sh.list[base + __popc(m & ((1u << lane) - 1))] = g;
-}
+// the staged analysis' MODE 1 kernels (k_an_x.cu), for a shape whose GpAnX is on
+void gp_launch_an_x(const GpBatch &B, const GpParams &P, int bs, uint32_t n, const GpLive &L, cudaStream_t st, int bd, const GpAnX &x);
 
-void gp_launch_an_list(const GpBatch &B, const GpParams &P, const GpAnListStage &L, cudaStream_t st, int bd) {
-    uint32_t mx = 0;
-    for (int k = 0; k < L.n; k++) mx = L.s[k].total > mx ? L.s[k].total : mx;
-    if (!mx) return;
-    const dim3 grid((mx + 127) / 128, (unsigned)L.n);
-    if (bd == 10) k_an_list<10><<<grid, 128, 0, st>>>(B, P, L);
-    else k_an_list<8><<<grid, 128, 0, st>>>(B, P, L);
-}
-
-// x (may be null): the shape's options of the staged analysis; the MODE 1 kernel when it sets any (an_x_on)
+// (--small-kernel 0; no MODE 1 version: the staged analysis keeps these shapes in stage 1, an_stage_of)
 template <int W, int H, int BS, int NW>
-static void launch_an(const GpBatch &B, const GpParams &P, const GpLive &L, uint32_t n, cudaStream_t st, int bd, const GpAnX *x) {
+static void launch_an(const GpBatch &B, const GpParams &P, const GpLive &L, uint32_t n, cudaStream_t st, int bd) {
     n = an_units<W, H>(L, n);
     if (!n) return;
     uint32_t grid = (n + NW - 1) / NW;
     // non-persistent grid: short CTAs let the hardware scheduler interleave other streams (recon wavefronts)
     if (grid > (1u << 30)) grid = 1u << 30;
-    if constexpr (an_staged_shape(W, H)) {   // (no MODE 1 instance for the others)
-        if (an_x_on(x)) {
-            if (bd == 10) k_analysis<W, H, BS, NW, 10, 1><<<grid, NW * 32, 0, st>>>(B, P, n, L, *x);
-            else k_analysis<W, H, BS, NW, 8, 1><<<grid, NW * 32, 0, st>>>(B, P, n, L, *x);
-            return;
-        }
-    }
     if (bd == 10) k_analysis<W, H, BS, NW, 10><<<grid, NW * 32, 0, st>>>(B, P, n, L, GpAnX{});
     else k_analysis<W, H, BS, NW, 8><<<grid, NW * 32, 0, st>>>(B, P, n, L, GpAnX{});
 }
 
+// x (may be null): the shape's options of the staged analysis; its MODE 1 kernel (k_an_x.cu) when it sets any
 template <int W, int H, int BS>
 static void launch_small(const GpBatch &B, const GpParams &P, const GpLive &L, uint32_t n, cudaStream_t st, int bd, const GpAnX *x) {
     n = an_units<W, H>(L, n);
     if (!n) return;
+    if (an_x_on(x)) { gp_launch_an_x(B, P, BS, n, L, st, bd, *x); return; }
     const uint32_t grid = (n + 127) / 128;
     if constexpr (W == 4 && H <= 8) {   // 4x4, 4x8: 6 CTAs per SM (k_analysis_small.cuh)
-        if constexpr (an_staged_shape(W, H)) {   // (no MODE 1 instance for the others)
-            if (an_x_on(x)) {
-                if (bd == 10) k_analysis_small6<W, H, BS, 10, 1><<<grid, 128, 0, st>>>(B, P, n, L, *x);
-                else k_analysis_small6<W, H, BS, 8, 1><<<grid, 128, 0, st>>>(B, P, n, L, *x);
-                return;
-            }
-        }
         if (bd == 10) k_analysis_small6<W, H, BS, 10><<<grid, 128, 0, st>>>(B, P, n, L, GpAnX{});
         else k_analysis_small6<W, H, BS, 8><<<grid, 128, 0, st>>>(B, P, n, L, GpAnX{});
     } else {
-        if constexpr (an_staged_shape(W, H)) {   // (no MODE 1 instance for the others)
-            if (an_x_on(x)) {
-                if (bd == 10) k_analysis_small<W, H, BS, 10, 1><<<grid, 128, 0, st>>>(B, P, n, L, *x);
-                else k_analysis_small<W, H, BS, 8, 1><<<grid, 128, 0, st>>>(B, P, n, L, *x);
-                return;
-            }
-        }
         if (bd == 10) k_analysis_small<W, H, BS, 10><<<grid, 128, 0, st>>>(B, P, n, L, GpAnX{});
         else k_analysis_small<W, H, BS, 8><<<grid, 128, 0, st>>>(B, P, n, L, GpAnX{});
     }
@@ -169,10 +107,10 @@ void gp_launch_an_a(const GpBatch &B, const GpParams &P, const uint32_t *shTotal
         launch_small<16, 4, AV1G_BLOCK_16X4>(B, P, L, n(AV1G_BLOCK_16X4), st, bd, x(AV1G_BLOCK_16X4));
         return;
     }
-    launch_an<4, 4, AV1G_BLOCK_4X4, 4>(B, P, L, n(AV1G_BLOCK_4X4), st, bd, x(AV1G_BLOCK_4X4));
-    launch_an<4, 8, AV1G_BLOCK_4X8, 4>(B, P, L, n(AV1G_BLOCK_4X8), st, bd, x(AV1G_BLOCK_4X8));
-    launch_an<8, 4, AV1G_BLOCK_8X4, 4>(B, P, L, n(AV1G_BLOCK_8X4), st, bd, x(AV1G_BLOCK_8X4));
-    launch_an<8, 8, AV1G_BLOCK_8X8, 4>(B, P, L, n(AV1G_BLOCK_8X8), st, bd, x(AV1G_BLOCK_8X8));
-    launch_an<4, 16, AV1G_BLOCK_4X16, 4>(B, P, L, n(AV1G_BLOCK_4X16), st, bd, x(AV1G_BLOCK_4X16));
-    launch_an<16, 4, AV1G_BLOCK_16X4, 4>(B, P, L, n(AV1G_BLOCK_16X4), st, bd, x(AV1G_BLOCK_16X4));
+    launch_an<4, 4, AV1G_BLOCK_4X4, 4>(B, P, L, n(AV1G_BLOCK_4X4), st, bd);
+    launch_an<4, 8, AV1G_BLOCK_4X8, 4>(B, P, L, n(AV1G_BLOCK_4X8), st, bd);
+    launch_an<8, 4, AV1G_BLOCK_8X4, 4>(B, P, L, n(AV1G_BLOCK_8X4), st, bd);
+    launch_an<8, 8, AV1G_BLOCK_8X8, 4>(B, P, L, n(AV1G_BLOCK_8X8), st, bd);
+    launch_an<4, 16, AV1G_BLOCK_4X16, 4>(B, P, L, n(AV1G_BLOCK_4X16), st, bd);
+    launch_an<16, 4, AV1G_BLOCK_16X4, 4>(B, P, L, n(AV1G_BLOCK_16X4), st, bd);
 }
