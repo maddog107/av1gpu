@@ -15,8 +15,9 @@ These measurements were taken during development, before the code was extracted 
 repository. The encoder source is the same; only the CLI and build were reorganized. The test images
 were private and are not distributed. `bench/` runs the same kind of comparison on public images,
 and results from other GPUs are welcome. They were taken with the tiling of v0.3.0 and earlier (2 × 2 tiles for
-images of 2 MP and more); the default now uses 4 × 4, which cost 0.2 points on the L4's size-range photos
-([below](#compression)).
+images of 2 MP and more); the default now uses 4 × 4, which cost 0.2 points on the L4's size-range photos, and
+since v0.13.0 the `base` and `turbo` presets also use staged analysis and mode shortlists, which cost about
+another 0.4 points there ([below](#compression-1)).
 
 ### Setup
 
@@ -105,18 +106,20 @@ The first run outside the development machine (2026-10-25), with this repository
 image sets in `bench/`. Raw results: `bench/results/aws-g6-l4*/` (`summary.md`, `results.json`); correctness,
 sanitizer, power and version logs: `bench/results/aws-g6-l4/logs/`.
 
-When the default changed to 4 × 4 tiles (2026-10-31), av1gpu's side of every compression result below was
-re-encoded and re-scored on an L4 against the stored CPU baselines: `bench/results/aws-g6-l4-tiles4x4/`. The
-av1gpu speeds below are v0.9.0's where they name no other version (main c553ffb: faster start-up,
-reconstruction, analysis and entropy kernels, byte-identical to v0.8.0), re-run on 2026-11-03 on a g6.4xlarge
-(on demand, driver 595.112.07) with v0.8.0 alternating in the same session: `bench/results/aws-g6-g7-v090-check/`
-(v0.6 against v0.5.0: `bench/results/aws-g6-l4-speed-v06/`; v0.4 against v0.3.0: `bench/results/aws-g6-l4-speed-v04/`).
-The CPU encoders' speeds are from the earlier runs.
+av1gpu's speeds and file sizes below are v0.13.0's where they name no other version. On 2026-11-11 the published
+v0.13.0 Linux package (CUDA 13) was run on a g6.4xlarge (on demand, driver 595.112.07, CUDA 13.2) with the
+published v0.12.0 package alternating in the same session: the speed list below, and av1gpu's side of every
+compression result re-encoded and re-scored against the stored CPU baselines
+([v0.13.0](#v0130-staged-analysis-and-shortlists-in-base-and-turbo), `bench/results/aws-g6-l4-v0130/`). Earlier
+re-runs: the 4 × 4-tile default's files (2026-10-31, `bench/results/aws-g6-l4-tiles4x4/`), v0.9.0's speeds
+(2026-11-03, `bench/results/aws-g6-g7-v090-check/`), v0.6 against v0.5.0 (`bench/results/aws-g6-l4-speed-v06/`) and
+v0.4 against v0.3.0 (`bench/results/aws-g6-l4-speed-v04/`). The CPU encoders' speeds are from the earlier runs.
 
 ### Setup
 
-- **GPU:** NVIDIA L4 (Ada, compute capability 8.9, 58 SMs, 23 GB, 72 W board power), driver 595.91.07,
-  CUDA 13.2 (V13.2.51), built with `-DCMAKE_CUDA_ARCHITECTURES=native`. AWS g6.4xlarge spot instance,
+- **GPU:** NVIDIA L4 (Ada, compute capability 8.9, 58 SMs, 23 GB, 72 W board power), driver 595.91.07 in the first
+  run (595.112.07 for the v0.13.0 rows),
+  CUDA 13.2 (V13.2.51), built with `-DCMAKE_CUDA_ARCHITECTURES=native` (v0.13.0: the release package). AWS g6.4xlarge spot instance,
   Deep Learning Base OSS Nvidia Driver GPU AMI (Ubuntu 24.04.5, kernel 7.0.0-1014-aws, gcc 13.3, CMake 3.28).
 - **CPU:** AMD EPYC 7R13, 16 vCPUs (8 cores with SMT).
 - **Baselines:** avifenc 1.4.0 with libaom 3.13.1, both built from source, `-y 420 -j 1`, `tune=iq`; one
@@ -134,50 +137,57 @@ The CPU encoders' speeds are from the earlier runs.
 
 ### Speed
 
-MP/s at quality 60. The CPU rows use the whole machine; av1gpu uses about 0.2–0.4 CPU cores.
+MP/s at quality 60, v0.13.0. The CPU rows use the whole machine; av1gpu uses about 0.2–0.5 CPU cores.
 
 | Encoder | standard (~1 MP) | size range | CPU cores |
 |---|---:|---:|---:|
-| av1gpu default (`GP_ENCODERS=3`) | 81.2 | 252.4 | 0.2–0.3 |
-| av1gpu default, `GP_ENCODERS=2` | 77.1 | 225.6 | 0.2–0.3 |
-| av1gpu default, `GP_ENCODERS=4` | 80.9 | **260.7** | 0.2–0.3 |
-| av1gpu `--small-preset none` (`turbo` for every image), `GP_ENCODERS=4` | **191.0** | **298.9** | 0.3 |
-| av1gpu `--preset turbo3`, `GP_ENCODERS=4` | | 331.0 | 0.4 |
-| av1gpu `--preset turbo3 --small-preset none`, `GP_ENCODERS=4` | | **419.5** | 0.4 |
+| av1gpu default (`GP_ENCODERS=3`) | 113.7 | 325.4 | 0.2–0.3 |
+| av1gpu default, `GP_ENCODERS=2` | 108.4 | 295.3 | 0.2–0.3 |
+| av1gpu default, `GP_ENCODERS=4` | 114.3 | **337.4** | 0.2–0.4 |
+| av1gpu `--small-preset none` (`turbo` for every image), `GP_ENCODERS=4` | **237.4** | **379.1** | 0.3–0.4 |
+| av1gpu `--preset turbo3`, `GP_ENCODERS=4` | | 387.9 | 0.4 |
+| av1gpu `--preset turbo3 --small-preset none`, `GP_ENCODERS=4` | | **459.7** | 0.5 |
 | libaom speed 6, 16 × avifenc `-j 1` | 21.1 | 28.8 | 16 |
 | libaom speed 9, 16 × avifenc `-j 1` | 166.1 | 187.6 | 16 |
 
 libaom speed 10 gave the same files and speed as speed 9. While encoding the size range, the L4 averaged
-96–100 % SM utilisation at 68–71 W (`nvidia-smi dmon`, 1 s samples), about 0.27 J/MP at 261 MP/s (v0.8.0: 0.29).
-It runs at its 72 W cap with either version, at 1,600–1,820 MHz. Four concurrent encoders ran 3 % faster than
-three on the size range and the same on the standard set; two were 11 % and 5 % slower.
+95–100 % SM utilisation at 67–72 W (`nvidia-smi dmon`, 1 s samples), about 0.21 J/MP at 337 MP/s (v0.12.0:
+0.24 at 300). It runs at its 72 W cap with either version, at about 1,590–1,830 MHz. Four concurrent encoders ran
+4 % faster than three on the size range and the same on the standard set; two were 9 % and 5 % slower.
 
-v0.8.0 in the same session ran the size range at 231.5 / 213.8 / 236.4 MP/s with 3 / 2 / 4 encoders, 276.9
-with `--small-preset none`, 294.6 with `turbo3` and 376.9 with `turbo3 --small-preset none`. It ran the
-standard set at 76.2 and 179.0. Against v0.8.0, v0.9.0 is:
-- 9.0 % faster on the size range with the default 3 encoders, 10.3 % with 4 and 5.5 % with 2;
-- 7.9 % faster with `--small-preset none`, 12.4 % with `turbo3` and 11.3 % with `turbo3 --small-preset none`;
-- 6.6 % faster on the standard set, and 6.7 % with `--small-preset none`.
+v0.12.0 in the same session ran the size range at 292.7 / 266.6 / 299.7 MP/s with 3 / 2 / 4 encoders, 349.3
+with `--small-preset none`, 371.0 with `turbo3` and 459.1 with `turbo3 --small-preset none`. It ran the
+standard set at 90.2 and 217.2. Against v0.12.0, v0.13.0 is:
+- 11.2 % faster on the size range with the default 3 encoders, 12.6 % with 4 and 10.7 % with 2;
+- 8.5 % faster with `--small-preset none`, 4.6 % with `turbo3` (whose images below 1 MP use `base`), and the same
+  (+0.1 %, byte-identical files) with `turbo3 --small-preset none`;
+- 26.0 % faster on the standard set, where most images are below 1 MP and so use `base`, and 9.3 % with
+  `--small-preset none`.
 
-v0.8.0 against a second copy of itself in the same session moved by 0.2–0.7 %, so every gain is outside the
-noise. Every output is byte-identical to v0.8.0's. The gains come from #56–#58: no CDEF apply and no
-reconstruction download when nothing reads them, and one variance-boost row per encoder (#56); 32-bit inverse
-transforms and unrolled forward-transform loops in the reconstruction (#57); a warp-parallel edge filter and less
-shared memory in the analysis (#58). Counted over the whole process's wall time, CUDA start-up included, the size
-range runs at 217 MP/s against 201.
+For every setting above except `turbo3 --small-preset none`, all six v0.13.0 runs were faster than all six
+v0.12.0 runs. v0.13.0 changes what `base` and `turbo` decide (staged analysis and mode shortlists,
+[below](#v0130-staged-analysis-and-shortlists-in-base-and-turbo)), so their files differ from v0.12.0's; the
+other presets write the same bytes. Counted over the whole process's wall time, CUDA start-up included, the size
+range runs at 267 MP/s against 246.
+
+v0.9.0 (2026-11-03, `bench/results/aws-g6-g7-v090-check/`) ran the size range at 252.4 / 225.6 / 260.7 MP/s with
+3 / 2 / 4 encoders and the standard set at 81.2. v0.12.0 writes the same bytes as v0.9.0 on these sets
+(67,615,929 for the repeated size range in both runs); its figures here are 15–18 % above v0.9.0's on the size
+range and 11 % on the standard set, measured in different sessions.
 
 Small images:
 - **Thumbnails:** 280 made from the size range (512 × 384 crops and downscales, and thumbnails within
-  320 × 320) run at 67.5 MP/s (445 images/s) by default and 161.0 (1,062 images/s) with `--small-preset none`
-  (v0.8.0: 62.8 and 148.3).
-- **Kodak:** the 24 PNGs (0.39 MP each) run at 59.6, 143.4 and 253.8 MP/s with the default,
-  `--small-preset none` and `turbo3 --small-preset none`, which is 152, 365 and 645 images per second.
+  320 × 320) run at 94.8 MP/s (625 images/s) by default and 202.4 (1,334 images/s) with `--small-preset none`
+  (v0.12.0: 75.5 and 186.3).
+- **Kodak:** the 24 PNGs (0.39 MP each) run at 84.4, 193.9 and 275.8 MP/s with the default,
+  `--small-preset none` and `turbo3 --small-preset none`, which is 215, 493 and 701 images per second (v0.12.0:
+  178, 459 and 694).
 
 The default sends images below 1 MP to the slower `base` preset (`--small-preset`), for better compression
 on small images. On a set of nothing but ~1 MP images that dominates the speed: `--small-preset none` is
-2.4× faster there, for files 3 % larger (below).
+2.1× faster there, for files about 3 % larger (below).
 
-`turbo3 --small-preset none` runs at about 420 MP/s, 1.6× the default and 2.2× libaom
+`turbo3 --small-preset none` runs at about 460 MP/s, 1.4× the default and 2.5× libaom
 speed 9 (188).
 
 ### Single-image start-up
@@ -230,21 +240,42 @@ to v0.9.0's on each GPU):
 - **`--batch` is unchanged:** batch mode still loads every module when it starts, so that loading one mid-run cannot
   stall the other encoders (#36).
 
+v0.13.0 against v0.12.0, the same way (the v0.9.0 check's inputs, byte-identical; median of 12, a second copy of
+v0.12.0 alternating as well; L4 only, `bench/results/aws-g6-l4-v0130/`):
+
+| Input | L4, v0.13.0 | L4, v0.12.0 | L4, v0.12.0 again |
+|---|---:|---:|---:|
+| 2.5 MP JPEG (1280 × 1920) | 380 ms | 361 | 361 |
+| 10.5 MP JPEG (4320 × 2432) | 458 | 464 | 455 |
+| 512 × 384 thumbnail of the 2.5 MP photo | 367 | 347 | 343 |
+| 320 × 196 thumbnail | 382 | 365 | 364 |
+| the photo and its 512 × 384 thumbnail as one `--batch` | 593 | 565 | 563 |
+
+v0.13.0 takes 17–28 ms longer to start for the photo, the two thumbnails and the pair; on the 10.5 MP photo the two
+versions are within the noise of the two v0.12.0 copies (9 ms there). Every setting of the speed list shows the
+same kind of difference before av1gpu's own timer starts (the process's wall time minus `--stats`' own): 0.95–0.97 s
+against 0.92–0.94 s on the JPEG sets (+28 to +43 ms), 18–35 ms more on the lossless and RGBA sets. A measurement on a
+pre-release build of the same code (12 alternating rounds) found +30 ms for a batch of one image, where batch mode
+loads every kernel module including the new staged-analysis ones, and no change for a single JPEG; this run's
++19 ms for the single photo does not match that, and it does not establish the cause.
+
 ### Compression
 
-BD-rate on SSIMULACRA2 against libaom speed 6, median over images (mean in brackets):
+BD-rate on SSIMULACRA2 against libaom speed 6, median over images (mean in brackets); av1gpu rows v0.13.0:
 
 | Encoder | standard | size range |
 |---|---:|---:|
-| **av1gpu default** | **+0.3 %** (−0.1 %) | **+0.1 %** (−0.1 %) |
-| av1gpu `--small-preset none` | +3.4 % (+2.9 %) | +2.2 % (+1.4 %) |
-| av1gpu `--preset turbo3 --small-preset none` | | +5.7 % (+5.6 %)¹ |
+| **av1gpu default** | **+1.0 %** (+0.4 %) | **+0.5 %** (+0.2 %) |
+| av1gpu `--small-preset none` | +3.8 % (+3.5 %) | +2.5 % (+1.7 %) |
+| av1gpu `--preset turbo3 --small-preset none` | +8.2 % (+8.2 %) | +5.7 % (+5.6 %)¹ |
 | libaom speed 9 | +17.7 % (+20.7 %) | +15.0 % (+17.2 %) |
 | SVT-AV1 preset 2 / 4 / 6 / 8 / 9 (below) | | −5.1 / −2.6 / +2.1 / +7.7 / +9.8 % |
 | WebP³ | +40.4 % (+44.3 %) | +42.1 % (+44.9 %) |
 | NVENC AV1 (ffmpeg `av1_nvenc` p7, below) | | +29.5 % (+46.6 %)² |
 
-¹ `turbo3` with the small-image preset left on: +1.2 % (+2.0 %).
+¹ `turbo3` with the small-image preset left on: +1.5 % (+2.2 %). v0.12.0's files gave +0.3 % (−0.1 %) and +0.1 %
+(−0.1 %) for the default, +3.4 % (+2.9 %) and +2.2 % (+1.4 %) with `--small-preset none`, and +1.2 % (+2.0 %) for
+`turbo3`; `turbo3 --small-preset none` writes the same files in both versions.
 
 ² 94 of the 99 photos (on the other 5 its quality range does not overlap libaom's), scored on the L4 with
 the same tools as the rest of the table; see [NVENC AV1 on the same L4](#nvenc-av1-on-the-same-l4). The image
@@ -258,13 +289,14 @@ range (13). `bench.py` now copies the profile back. The standard set was re-scor
 pointed at it ([discussion #19](https://github.com/maddog107/av1gpu/discussions/19)); its .webp files were
 byte-identical to the L4 run's (`bench/results/webp-icc-standard/`).
 
-Against WebP at each image's WebP quality, the default is 29.7 % (standard) and 30.6 % (size range)
-smaller (30.0 % and 31.2 % before the WebP ICC correction). Size range by image size (median, images in brackets):
+Against WebP at each image's WebP quality, the default is 29.4 % (standard) and 30.5 % (size range)
+smaller (v0.12.0's files: 29.7 % and 30.6 %; before the WebP ICC correction, 30.0 % and 31.2 %). Size range by
+image size (median, images in brackets):
 
 | Encoder | < 1 MP | 1–5 MP | 5–10 MP | ≥ 10 MP |
 |---|---:|---:|---:|---:|
-| av1gpu default | +0.1 % (40) | +1.9 % (20) | +0.2 % (23) | −2.1 % (17) |
-| av1gpu `--small-preset none` | +3.9 % (40) | +1.9 % (20) | +0.2 % (23) | −2.1 % (17) |
+| av1gpu default | +0.5 % (40) | +2.1 % (20) | +0.5 % (23) | −1.9 % (17) |
+| av1gpu `--small-preset none` | +4.7 % (40) | +2.1 % (20) | +0.5 % (23) | −1.9 % (17) |
 | libaom speed 9 | +20.1 % (40) | +18.5 % (20) | +12.8 % (23) | +13.4 % (17) |
 | NVENC AV1 | +35.7 % (38) | +29.2 % (18) | +28.5 % (21) | +22.2 % (17) |
 | SVT-AV1 preset 4 | −2.0 % (39) | −2.2 % (20) | −3.4 % (23) | −3.9 % (17) |
@@ -277,9 +309,10 @@ same trend as the held-out set: av1gpu compares best on large images.
 **Tiling.** These av1gpu rows use the 4 × 4-tile default (since 2026-10-31). With v0.3.0's tiling (2 × 2 tiles
 for images of 2 MP and more, `turbo3` 4 × 2) the same photos gave −0.1 % (−0.4 %) for the default, +2.1 %
 (+1.1 %) with `--small-preset none` and +5.6 % (+5.4 %) for `turbo3 --small-preset none` (+1.1 % with the
-small-image preset on), and 1–5, 5–10 and ≥ 10 MP gave +1.1, −0.6 and −2.4 %. Files below 2 MP are
-byte-identical either way (the standard set entirely); at 2 MP and more the default's files grew 0.26 % at the
-same quality settings. The speed this buys is in the README's tiles paragraph (about +12 % on this set).
+small-image preset on), and 1–5, 5–10 and ≥ 10 MP gave +1.1, −0.6 and −2.4 % (v0.3.0's files). Files below 2 MP
+were byte-identical either way (the standard set entirely); at 2 MP and more the default's files grew 0.26 % at the
+same quality settings. The speed this buys: v0.13.0 runs the size range at 325.4 MP/s by default and at 290.7 with
+2 × 2 tiles (`--tiles 2,1,1`), 12 % more, and at 339.4 with 8 × 8 (`2,3,3`), 4 % more again.
 
 ### SVT-AV1 on the same CPU
 
@@ -309,10 +342,11 @@ SVT-AV1 is a better trade than libaom at every speed: at libaom speed 6's file s
 same speed (interpolating between presets 4 and 6 gives about 29 MP/s), and at speed 9's speed its files
 are 5 points smaller. Against av1gpu on one L4:
 
-- at about libaom speed 6's file size, av1gpu's default (261 MP/s, +0.1 %) is 8.6× faster than SVT-AV1
-  interpolated to the same size (30 MP/s);
-- at +2.2 %, av1gpu with `--small-preset none` (299 MP/s) is 6.1× faster than preset 6 (49 MP/s, +2.1 %);
-- at the fast end, `turbo3` (420 MP/s, +5.7 %) is 2.3× as fast as preset 9 (183 MP/s, +9.8 %), with smaller files;
+- at about libaom speed 6's file size, av1gpu's default (v0.13.0: 337 MP/s, +0.5 %) is 10.2× faster than SVT-AV1
+  interpolated to the same size (33 MP/s);
+- at +2.5 %, av1gpu with `--small-preset none` (379 MP/s) is 7.1× faster than SVT-AV1 interpolated to that size
+  (53 MP/s; preset 6 is +2.1 % at 49 MP/s);
+- at the fast end, `turbo3` (460 MP/s, +5.7 %) is 2.5× as fast as preset 9 (183 MP/s, +9.8 %), with smaller files;
 - SVT-AV1's slow presets make smaller files than any av1gpu setting measured on the L4 (preset 2: −5.1 %,
   at 4.6 MP/s). av1gpu's `--preset slow` measured −4.8 % on the development set but has not been run here.
 
@@ -371,8 +405,8 @@ untiled libaom speed 6 anchor every comparison moves by about half a point:
 
 | Median BD-rate | vs libaom speed 6, avifenc default (tiled) | vs libaom speed 6, one tile |
 |---|---:|---:|
-| av1gpu default | +0.1 % | +0.7 % |
-| av1gpu `--small-preset none` | +2.2 % | +2.5 % |
+| av1gpu default (v0.13.0) | +0.5 % | +1.1 % |
+| av1gpu `--small-preset none` (v0.13.0) | +2.5 % | +2.8 % |
 | libaom speed 9, one tile | +14.3 % | +14.7 % |
 | SVT-AV1 preset 4, one tile | −3.2 % | −2.9 % |
 | SVT-AV1 preset 6, one tile | +1.8 % | +2.6 % |
@@ -380,11 +414,12 @@ untiled libaom speed 6 anchor every comparison moves by about half a point:
 | NVENC AV1 | +29.5 % | +30.3 % |
 | WebP (with its ICC profiles) | +42.1 % | +43.5 % |
 
-**What it means for av1gpu.** At its own file size (+0.7 % against untiled libaom speed 6), av1gpu's
-261 MP/s (v0.9.0) is 9.1× stock libaom speed 6, 8.8× the tuned build and 8.4× the tuned build at 8 × `-j 2`
-(31.1 MP/s, tiled). Interpolating between SVT-AV1 presets 4 and 6 at the same size gives 33.3 MP/s for the
-stock build (7.8×) and 37.0 MP/s with PGO (7.0×), both untiled at 16 × `-j 1`; with tiling, PGO and
-8 × `-j 2`, 34.5 MP/s (7.6×). The fastest CPU configuration we found is about 7.0× slower than one L4.
+**What it means for av1gpu.** At its own file size (+1.1 % against untiled libaom speed 6), av1gpu's
+337 MP/s (v0.13.0) is 11.8× stock libaom speed 6, 11.4× the tuned build and 10.9× the tuned build at 8 × `-j 2`
+(31.1 MP/s, tiled). Interpolating between SVT-AV1 presets 4 and 6 at the same size gives 36.4 MP/s for the
+stock build (9.3×) and 40.5 MP/s with PGO (8.3×), both untiled at 16 × `-j 1`; with tiling, PGO and
+8 × `-j 2`, 37.7 MP/s (9.0×). The fastest CPU configuration we found is about 8.3× slower than one L4. (v0.9.0,
+261 MP/s at +0.7 %: 9.1×, 8.8×, 8.4×; 7.8×, 7.0× and 7.6×.)
 
 ### NVENC AV1 on the same L4
 
@@ -412,17 +447,18 @@ ffmpeg n8.1.3 (BtbN static build; the 9.0 and master builds need NVENC API 13.1,
 | 16 | 14.1 | 14.1 | 4.2 |
 
 It levels off at about 16 MP/s once both engines are busy. av1gpu's default (v0.3.0 then), timed in the same
-session with `bench.gpu_speed`, ran at 115.6 and 117.1 MP/s on 0.12 cores, 7.4× faster; v0.9.0 runs at
-261 MP/s on 0.3 cores, **16.6× NVENC's best**. The CPU cores are
+session with `bench.gpu_speed`, ran at 115.6 and 117.1 MP/s on 0.12 cores, 7.4× faster; v0.13.0 runs at
+337 MP/s on 0.4 cores, **21.5× NVENC's best** (v0.9.0: 261 MP/s, 16.6×). The CPU cores are
 ffmpeg decoding JPEGs and converting to 4:2:0 for the encoder; av1gpu decodes on the GPU.
 
 **Compression:** six points, CQ 18, 25, 32, 38, 44 and 50, decoded with avifdec 1.4.0 and scored with the
 same `ssimulacra2` as everything else. Against libaom speed 6 its files are **+29.5 %** (median; mean
 +46.6 %) at equal quality, worse than libaom speed 9 (+15.0 %), and still 11.3 % smaller than WebP (85
-photos, with WebP's ICC profiles); measured the other way, av1gpu's default files are 22.7 % smaller than
-NVENC's (96 photos). Part of that is a bug in the image pipeline, not in NVENC: photos with an odd height
-decode with wrong chroma (below). On the 76 even-height photos NVENC is +27.9 % against libaom speed 6, and
-av1gpu's files are 20.6 % smaller than NVENC's. The 61 photos without an ICC profile (the pipeline drops ICC)
+photos, with WebP's ICC profiles); measured the other way, av1gpu's default files (v0.13.0) are 22.5 % smaller
+than NVENC's (96 photos; v0.12.0's: 22.7 %). Part of that is a bug in the image pipeline, not in NVENC: photos with
+an odd height decode with wrong chroma (below). On the 76 even-height photos NVENC is +27.9 % against libaom speed
+6, and av1gpu's files are 20.6 % smaller than NVENC's (75 photos with both curves overlapping). The 61 photos without
+an ICC profile (the pipeline drops ICC)
 give +29.1 %, so that is not the cause. Totals
 per CQ:
 
@@ -435,8 +471,8 @@ per CQ:
 | 44 | 10.8 MB | 46.5 |
 | 50 | 6.1 MB | 28.5 |
 
-For comparison, av1gpu's default quality gives 22.5 MB at 72.0 on the same photos, and libaom speed 6
-28.9 MB at 75.9.
+For comparison, av1gpu's default quality gives 22.5 MB at 71.9 on the same photos (v0.13.0; v0.12.0: 22.5 MB at
+72.0), and libaom speed 6 28.9 MB at 75.9.
 
 Other things we noticed:
 
@@ -454,7 +490,7 @@ Other things we noticed:
 
 The same pipeline on the development machine's RTX PRO 2000 Blackwell (one NVENC engine) peaked at
 about 9.4 MP/s (4 encodes at once; 9.5 MP/s with the JPEGs decoded to raw 4:2:0 in RAM beforehand, so the
-engine itself is the limit), against av1gpu's 104 MP/s there, and scored about +25 % against libaom speed 6
+engine itself is the limit), against av1gpu's 104 MP/s there (an earlier version, during development), and scored about +25 % against libaom speed 6
 (scored on a different machine, so not directly comparable with the L4's +29.5 %).
 
 ### FPGA: Bluedot Pulsar-AVIF
@@ -467,14 +503,14 @@ at its 2018 launch). Its only published speed is in Google's
 18.11 (SVT-AV1) frames/s on a 32-core Xeon Platinum 8370C, and the article says Pulsar-AVIF has "similar
 compression efficiency" without numbers or settings.
 
-av1gpu v0.9.0 on the L4 with the same 24 PNGs at quality 60, repeated to 1,000 MP (2,544 images) in batch mode,
-median of 6 runs (`bench/results/aws-g6-g7-v090-check/`; v0.8.0 in the same session: 141, 344 and 585 images/s):
+av1gpu v0.13.0 on the L4 with the same 24 PNGs at quality 60, repeated to 1,000 MP (2,544 images) in batch mode,
+median of 6 runs (`bench/results/aws-g6-l4-v0130/`; v0.12.0 in the same session: 178, 459 and 694 images/s):
 
 | Encoder | images/s | with CUDA start-up | CPU cores | bytes, the 24 images |
 |---|---:|---:|---:|---:|
-| av1gpu default | 152 | 144 | 3.4 | 912,368 |
-| av1gpu `--small-preset none` | 365 | 322 | 7.0 | 917,825 |
-| av1gpu `--preset turbo3 --small-preset none` | **645** | **522** | 11.9 | 946,869 |
+| av1gpu default | 215 | 198 | 4.4 | 912,567 |
+| av1gpu `--small-preset none` | 493 | 416 | 9.0 | 919,657 |
+| av1gpu `--preset turbo3 --small-preset none` | **701** | **554** | 12.9 | 946,869 |
 | Pulsar-AVIF (published) | 409.85 | | 3.05 | not published |
 
 - **Speed only.** Pulsar's quality setting and file sizes aren't published, so there is no equal-quality
@@ -492,22 +528,22 @@ median of 6 runs (`bench/results/aws-g6-g7-v090-check/`; v0.8.0 in the same sess
 (10-bit outputs decoded to 16-bit PNGs), and libaom speed 6 through avifenc 1.4.0 in the same format
 (`-y 444`, `-d 10`; `tune=iq`, avifenc defaults, 16 × `-j 1`). The libaom 8-bit 4:2:0 encodes in the same
 session reproduced the published files and scores (600/600). Raw results: `bench/results/aws-g6-l4-formats/`.
-The BD-rates below are the 4 × 4 default's (`bench/results/aws-g6-l4-tiles4x4/`; with v0.3.0's 2 × 2 tiles:
-−0.1, +0.3, +0.1 and +0.0 %). av1gpu's speeds are v0.9.0's, `GP_ENCODERS=4` (`bench/results/aws-g6-g7-v090-check/`;
-v0.8.0 in the same session: 236.4, 174.7, 231.4 and 172.3 MP/s); libaom's are from the formats run.
+The BD-rates and speeds below are v0.13.0's, `GP_ENCODERS=4` (`bench/results/aws-g6-l4-v0130/`; v0.12.0, the
+4 × 4 default: +0.1, +0.4, +0.3 and +0.4 %, and 299.7, 228.3, 291.1 and 224.6 MP/s in the same session; with
+v0.3.0's 2 × 2 tiles: −0.1, +0.3, +0.1 and +0.0 %); libaom's speeds are from the formats run.
 
 | Format | av1gpu MP/s | libaom speed 6 MP/s | av1gpu vs libaom, same format (median BD-rate) |
 |---|---:|---:|---:|
-| 8-bit 4:2:0 | 260.7 | 28.6 | +0.1 % |
-| 8-bit 4:4:4 | 197.9 | 24.3 | +0.4 % |
-| 10-bit 4:2:0 | 253.3 | 22.0 | +0.3 % |
-| 10-bit 4:4:4 | 193.9 | 18.9 | +0.4 % |
+| 8-bit 4:2:0 | 337.4 | 28.6 | +0.5 % |
+| 8-bit 4:4:4 | 248.0 | 24.3 | +1.1 % |
+| 10-bit 4:2:0 | 326.8 | 22.0 | +0.7 % |
+| 10-bit 4:4:4 | 241.9 | 18.9 | +0.8 % |
 
-- **Speed:** 4:4:4 codes twice the chroma samples of 4:2:0, so av1gpu runs about 24 % slower; 10-bit costs it
-  2–3 %. libaom loses 23 % at 10 bits, so av1gpu's lead grows from 9.1× to 11.5×.
-- **10-bit vs 8-bit:** −2.2 % for av1gpu and −2.0 % for libaom in 4:2:0, −2.0 % and −1.8 % in 4:4:4, at equal
+- **Speed:** 4:4:4 codes twice the chroma samples of 4:2:0, so av1gpu runs about 26 % slower; 10-bit costs it
+  2–3 %. libaom loses 23 % at 10 bits, so av1gpu's lead grows from 11.8× to 14.9×.
+- **10-bit vs 8-bit:** −2.1 % for av1gpu and −2.0 % for libaom in 4:2:0, −2.1 % and −1.8 % in 4:4:4, at equal
   SSIMULACRA2. The sources are 8-bit JPEGs, so this comes from the extra precision inside the codec.
-- **4:4:4 vs 4:2:0:** +0.4 % for av1gpu and −0.8 % for libaom (8-bit). These photos were 4:2:0 JPEGs (or
+- **4:4:4 vs 4:2:0:** +0.3 % for av1gpu and −0.8 % for libaom (8-bit). These photos were 4:2:0 JPEGs (or
   upsampled to 4:4:4 from them), so there is little full-resolution colour to keep; 4:4:4 is for sources that
   have it, such as PNG screenshots and graphics.
 - SVT-AV1 has no 4:4:4. At 10-bit 4:2:0, preset 6 ran at 43.5 MP/s and +1.1 % against libaom speed 6.
@@ -540,18 +576,22 @@ frames use tiles of at most 256K pixels so the entropy coder has more work in fl
   18 runs each).
 - **Not affected by the 4 × 4 default:** lossless frames are tiled by `--ll-tile-area`, and all 197 lossless test
   files (the 63 size-range JPEGs it accepts, the comparison PNGs in GBR and YCgCo-Re, the misc and JPEG sets,
-  including a 25 MP PNG) are byte-identical to v0.3.0's.
+  including a 25 MP PNG) are byte-identical to v0.3.0's. v0.13.0's staged analysis and shortlists do not touch
+  lossless either: the comparison PNGs in GBR and YCgCo-Re (51 each) and the misc set (13) are byte-identical to
+  v0.12.0's.
 
 On 47 8-bit RGB PNGs, 42.7 MP: the 24 Kodak photos and 23 graphics (this repository's 16 SVG charts rendered at
 2× and 7 synthetic 1920 × 1080 screenshots). CPU encoders ran as 16 single-threaded processes on the
 g6.4xlarge's 16 vCPUs. av1gpu ran in batch mode; its first column is one pass including CUDA start-up, the
 second the set repeated 4× (v0.6; v0.5.0 in the same session: 17.4 / 39.3 and 17.8 / 39.9). Lossless is
 9–11 % faster. Its frames go through the same entropy coder and batch mode as lossy ones, but not the lossy
-analysis, reconstruction or loop filters. v0.9.0 (2026-11-03, `bench/results/aws-g6-g7-v090-check/`) ran the set as
-`mk_ll_sets.py` makes it today, 51 PNGs and 49.1 MP (the repository has more charts now), at 21.8 / 45.3 MP/s, and
-22.1 / 44.3 with `--ycgco-re`, with palette mode (the default); v0.8.0 in the same session at 20.3 / 43.7 and
-20.6 / 42.7. Without palette mode (`--palette off`), as in the table, the set 4× ran at 49.8 and 49.1 MP/s (v0.8.0:
-46.8 and 47.2).
+analysis, reconstruction or loop filters. v0.13.0 (2026-11-11, `bench/results/aws-g6-l4-v0130/`) ran the set as
+`mk_ll_sets.py` makes it today, 51 PNGs and 49.1 MP (the repository has more charts now), at 21.4 / 44.7 MP/s, and
+22.0 / 44.2 with `--ycgco-re`, with palette mode (the default); v0.12.0 in the same session at 22.0 / 45.6 and
+22.5 / 44.6, 1–3 % faster with the same files (see [v0.13.0](#v0130-staged-analysis-and-shortlists-in-base-and-turbo)).
+v0.9.0 ran it at 21.8 / 45.3 and 22.1 / 44.3 (2026-11-03, `bench/results/aws-g6-g7-v090-check/`; 12 of the chart
+renders differed). Without palette mode (`--palette off`), as in the table, the set 4× ran at 49.8 and 49.1 MP/s
+(measured with v0.9.0; v0.8.0: 46.8 and 47.2).
 
 | Encoder | Total bytes | vs PNG | Photos | Graphics | MP/s |
 |---|---:|---:|---:|---:|---:|
@@ -578,7 +618,8 @@ palette search. `--palette on` searches every image, `--palette off` none. Desig
 measurements: [docs/PALETTE.md](PALETTE.md); data: [bench/results/aws-g6-l4-palette-study/](../bench/results/aws-g6-l4-palette-study/summary.md).
 
 BD-rate on SSIMULACRA2 against the same encoder without palettes, the median over images (mean in brackets),
-default settings, quality 30–90:
+default settings, quality 30–90 (the palette study, before v0.8.0; not re-measured with v0.13.0's new `base` and
+`turbo` decisions):
 
 | Images | n | 8-bit 4:2:0 | 10-bit 4:4:4 | vs libaom speed 6 with palette (C) |
 |---|---:|---:|---:|---:|
@@ -594,7 +635,7 @@ with `--ycgco-re` (4.84 → 4.36 MB). The whole screen set (40) is 8.7 % smaller
 unchanged.
 
 Speed, MP/s, with the method of the v0.6 speed check (each set repeated to at least 1,000 MP, 2 rounds with
-alternating order, the median of 6 runs):
+alternating order, the median of 6 runs; measured before v0.8.0, not re-run since):
 
 | Images | main | palette | change |
 |---|---:|---:|---:|
@@ -663,15 +704,18 @@ extras: logos with soft edges, icons with shadows, photo stickers, UI controls, 
 | cwebp default (q75, lossless alpha) | 1,059,014 | | | exact | 62.7 |
 | cwebp `-lossless` | 4,754,430 | | | exact | 27.4 |
 
-The av1gpu sizes were re-measured with the 4 × 4 default; only `ui_hud_1080p.png` (1920 × 1080) is big enough
-to get more tiles, and its colour and lossy alpha grew by 235 and 211 bytes. The lossy colour columns are not
-matched for quality. The exact alpha planes are directly comparable:
-av1gpu's are about 9 % smaller than libaom's. Speeds are for the set repeated 20× (202 MP), wall time
-including start-up, `GP_ENCODERS=4`. The av1gpu rows are without palette mode (`--palette off`), with v0.9.0's
-speeds; it ran without alpha (`--no-alpha`) at 57.3 MP/s (v0.8.0 in the same session: 44.4, 39.3, 28.1 and 49.8).
-By default palette mode (`--palette auto`, since v0.8.0) takes 15 of the 39 images: the default set is then
-685,414 bytes for the default row, and v0.9.0 encodes the set at 31.5, 30.1, 29.3 and 36.8 MP/s (`bench/results/aws-g6-g7-v090-check/`).
-Mostly small images and PNG decoding keep the GPU less busy than the photo sets.
+The av1gpu rows of the table are without palette mode (`--palette off`): sizes measured with the 4 × 4 default
+(v0.4.0; only `ui_hud_1080p.png`, 1920 × 1080, is big enough to get more tiles, and its colour and lossy alpha grew
+by 235 and 211 bytes), speeds measured with v0.9.0; it ran without alpha (`--no-alpha`) at 57.3 MP/s (v0.8.0 in the
+same session: 44.4, 39.3, 28.1 and 49.8). The lossy colour columns are not matched for quality. The exact alpha
+planes are directly comparable: av1gpu's are about 9 % smaller than libaom's. Speeds are for the set repeated 20×
+(202 MP), wall time including start-up, `GP_ENCODERS=4`.
+By default palette mode (`--palette auto`, since v0.8.0) takes 15 of the 39 images. With it, v0.13.0's default
+row is 687,225 bytes (colour 580,413, alpha 91,344, alpha PSNR 50.2 dB; v0.12.0: 685,414, 579,335 and 90,611),
+`--alpha-quality 100` 1,073,452 (v0.12.0: 1,072,374) and `--lossless` 7,489,058 in both, and v0.13.0 encodes the
+set at 35.9, 33.8, 29.1 and 43.2 MP/s (v0.12.0 in the same session: 33.8, 31.5, 29.2 and 39.1;
+`bench/results/aws-g6-l4-v0130/`, with the RGBA set rebuilt from its recipe, all 39 PNGs byte-identical to the
+earlier runs' inputs). Mostly small images and PNG decoding keep the GPU less busy than the photo sets.
 
 **Fixed along the way.** In 8-bit mode, 16-bit PNGs without a gAMA or sRGB chunk were read as linear light by
 libpng's simplified API and came out brightened (mid-grey 30000/65535 became 179 instead of 117). They are now
@@ -680,7 +724,7 @@ unaffected. PNG and WebP ICC profiles and EXIF orientation are still not read.
 
 ### CPU threads (PNG and WebP input)
 
-JPEGs are decoded by the L4's hardware JPEG engine, so a JPEG batch keeps only 0.1–0.4 CPU cores busy.
+JPEGs are decoded by the L4's hardware JPEG engine, so a JPEG batch keeps only 0.2–0.5 CPU cores busy (v0.13.0).
 PNG and WebP files are decoded on the CPU. Since 2026-11-01 batch mode gives that decoding one thread per CPU
 it may use, instead of 4. JPEG parsing and the CPU entropy decode (`GP_INGEST_DECODER=1`, used on GPUs without
 the engine) also get one thread per CPU, as do the writer threads of `--cpu-entropy`. "May use" means the
@@ -742,7 +786,8 @@ mixed and PNG lists):
   with JPEG or PNG input alike. Runs now finish with 24 and 48, and with `GP_INGEST_INFLIGHT=1`.
 
 On a real g6.4xlarge, the size-range JPEGs ran at 128.0 MP/s with the default 3 encoders with v0.4, and run
-at 252.4 MP/s with v0.9.0 (the speed tables above). Raw results and scripts: `bench/results/aws-g6-l4-threads/`
+at 325.4 MP/s with v0.13.0 (the speed tables above). The measurements of this section were taken with v0.5/v0.6
+code and were not repeated. Raw results and scripts: `bench/results/aws-g6-l4-threads/`
 (first round) and its `followup/` (the table above, batch logs).
 
 ### Crop and resize (contributed by pickae)
@@ -751,7 +796,8 @@ at 252.4 MP/s with v0.9.0 (the speed tables above). Raw results and scripts: `be
 options of `--batch` lists are pickae's ([discussion #16](https://github.com/maddog107/av1gpu/discussions/16)),
 written to shrink comic scans to a tablet's 2,960 rows on the GPU. They were ported to v0.6 and checked on a
 g6.4xlarge (2026-11-02, the [Setup](#setup-1) instance type; ImageMagick 7.1.2-35 Q16 HDRI). Scripts and raw
-results: `bench/results/aws-g6-l4-crop-resize/`.
+results: `bench/results/aws-g6-l4-crop-resize/`. The speeds below are v0.6's and were not repeated for later
+versions.
 
 - **Nothing changes without the options:** 29 runs, 1,748 output files byte-identical to `main` (d7d94b3): the
   size range (default, `turbo3 --small-preset none`, 10-bit, 4:4:4 10-bit; the CPU JPEG decode route too), the
@@ -813,11 +859,13 @@ All 4,752 files were re-encoded on an L4 and were byte-identical to the publishe
 SSIMULACRA2 scores were identical too. Raw results: `bench/results/aws-g6-l4-cvvdp/`
 (`bench.py --cvvdp standard_fhd`). For the 4 × 4 default, av1gpu's files were encoded and scored again the same
 way (`bench/results/aws-g6-l4-tiles4x4/`); its unchanged files below 2 MP got the same scores to the last digit.
+v0.13.0's files were scored again too (`bench/results/aws-g6-l4-v0130/`); eight v0.12.0 control photos at all
+eight points, byte-identical to the published files, got the published scores exactly (64/64).
 
 | Encoder | BD-rate vs libaom speed 6, JOD | SSIMULACRA2 | Bits per pixel at 9.5 JOD | Photos reaching 9.5 JOD |
 |---|---:|---:|---:|---:|
 | libaom speed 6 | 0 | 0 | 0.448 | 99/99 |
-| **av1gpu default** | **+4.2 %** | +0.1 % | 0.462 | 99/99 |
+| **av1gpu default** (v0.13.0) | **+4.2 %** | +0.5 % | 0.467 | 99/99 |
 | libaom speed 9 | +14.5 % | +15.0 % | 0.522 | 99/99 |
 | SVT-AV1 preset 4 | −2.0 % | −2.6 % | 0.430 | 99/99 |
 | SVT-AV1 preset 6 | +2.0 % | +2.1 % | 0.468 | 99/99 |
@@ -828,15 +876,19 @@ way (`bench/results/aws-g6-l4-tiles4x4/`); its unchanged files below 2 MP got th
 (Median BD-rates over 99 photos, NVENC 97; quality points as published plus q85/q90 and matching higher
 WebP/NVENC points. Bits per pixel are medians, interpolated per photo.)
 
-- **The metrics agree on every encoder except av1gpu.** CVVDP rates av1gpu worse than SSIMULACRA2 does on 84
-  of the 99 photos, and the gap grows with image size (+2.1 % below 1 MP, +6.1 % at 10 MP and over). Scored
-  without colour, CVVDP puts it at +6.2 %, so the difference is in luma. av1gpu's search was tuned with
-  SSIMULACRA2; CVVDP suggests its luma decisions on large photos leave some quality behind.
+- **The metrics agree on every encoder except av1gpu.** CVVDP rates av1gpu worse than SSIMULACRA2 does on 81
+  of the 99 photos, and the gap grows with image size (+2.1 % below 1 MP, +6.3 % at 10 MP and over). Scored
+  without colour, CVVDP put the 4 × 4 default's files (v0.4.0 to v0.12.0) at +6.2 % (not re-scored for v0.13.0),
+  so the difference is in luma. av1gpu's search was tuned with SSIMULACRA2; CVVDP suggests its luma decisions on
+  large photos leave some quality behind.
 - **Speed at CVVDP's file sizes:** at av1gpu's +4.2 %, interpolating between presets and speeds, SVT-AV1 runs
-  at about 73 MP/s (between presets 6 and 9) and libaom at about 49 MP/s, so av1gpu (v0.9.0, 261 MP/s) is about
-  3.6× and 5.3× faster. On SSIMULACRA2 the same comparison gives about 8.6×.
+  at about 73 MP/s (between presets 6 and 9) and libaom at about 50 MP/s, so av1gpu (v0.13.0, 337 MP/s) is about
+  4.6× and 6.8× faster. On SSIMULACRA2 the same comparison gives about 10.2×.
+- **v0.12.0's files** (the 4 × 4 default's) were also +4.2 % on CVVDP (+4.16 % against v0.13.0's +4.22 %; 0.462
+  bits per pixel at 9.5 JOD against 0.467), so v0.13.0's shortlists cost under a tenth of a point on CVVDP,
+  against 0.4 points on SSIMULACRA2.
 - **With v0.3.0's 2 × 2 tiles** av1gpu was +3.9 % on CVVDP (0.459 bits per pixel at 9.5 JOD; +5.9 % at 10 MP and
-  over), so the 4 × 4 default costs about a quarter of a point on both metrics.
+  over), so the 4 × 4 default cost about a quarter of a point on both metrics.
 - 9.5 JOD is a "high fidelity" threshold suggested on Reddit for a 27-inch 1080p screen at about 20 inches,
   which works out to about 28.5 pixels per degree, so artefacts there are easier to see than in this run.
 
@@ -868,6 +920,9 @@ WebP/NVENC points. Bits per pixel are medians, interpolated per photo.)
 | v0.9.0: `tests/decoder_gate.py`, 18 runs on each GPU (30 photos at qindex 60/120/200 and 4:4:4 10-bit, thumbnails, RGBA, odd sizes, monochrome, Kodak lossless, the palette sets at default, `--palette on`, 4:4:4 10-bit and lossless) | 691/691 encodes and 35/35 alpha items identical in dav1d and aomdec, on both GPUs |
 | v0.9.0: compute-sanitizer memcheck, racecheck and synccheck on 8 jobs per GPU (3 photos in batch mode at default and 4:4:4 10-bit, a photo and its thumbnail in batch mode, single-file mode on a photo, two thumbnails, a screen PNG and a lossless PNG) | memcheck 0 access errors (batch mode lists only the variance-boost tables, as since v0.6); racecheck only the `k_entropy_win` reports; synccheck 0 errors. On Blackwell, memcheck needs compute-sanitizer 2026.3 (CUDA 13.4): 2026.1 misreports CUB 3.4's scan kernel in the CUDA 13.4 builds there, also in a standalone test of CUB alone |
 | v0.10.0 (#63, the release workflow's Linux packages of 3739ede) against the v0.9.0 tarballs, every output file: batch mode (size range at 4:2:0 / 4:4:4 × 8 / 10 bits, standard set, thumbnails, grayscale, grayscale + photos at 4:4:4, RGBA, lossless), single-file mode (26 files at four settings, 14 lossless, repeated runs where a second reconstruction variant loads mid-encode), CUDA 12, on the L4 and on an RTX PRO 4500 | byte-identical: 1,155 / 1,155 files on each GPU (`bench/results/aws-g6-g7-recon-lazy/`) |
+| v0.13.0 (the published Linux CUDA 13 package, 2026-11-11): `tests/decoder_gate.py`, size range, default at qindex 60/120/180, `--yuv 444 --depth 10` and `turbo3 --small-preset none` at 120 | 500/500 identical in dav1d and aomdec (`bench/results/aws-g6-l4-v0130/`) |
+| v0.13.0 against the v0.12.0 package, presets whose decisions did not change: `turbo3 --small-preset none` on both photo sets at six quality points, `turbo3` at 1 MP and more, lossless (GBR, YCgCo-Re, misc), RGBA `--lossless` | byte-identical: 1,200 + 360 lossy files, 115 lossless, 42 RGBA |
+| v0.13.0, both Linux packages (CUDA 13 and `-cuda12`): `tools/sanity.py`, the 311 golden hashes | 311/311 each |
 
 **`gpu_fuzz_test` failure.** The test failed with `device error 1` (`AV1G_GPU_ERR_SYMBOLS`) at a different
 batch from run to run (seed 521, 1481, ...), never under initcheck, which serialises GPU work. The test
@@ -903,15 +958,114 @@ The image sets differ, so this is a rough comparison. The development set was pr
 originals. With that caveat:
 
 - **Speed was about the same with the same code:** 104–116 MP/s with the default settings of v0.3.0 and
-  earlier on the L4 against 110.8 MP/s on the RTX PRO 2000. Both cards are power-limited (70–72 W). v0.9.0 runs
-  at 226–261 MP/s on the L4.
-- **Compression matches:** +0.1 % against libaom speed 6 here (−0.1 % with v0.3.0's 2 × 2 tiles, the tiling
-  the held-out set was measured with), −0.6 % on the held-out set. libaom speed 9 is +15.0 % here, +14.0 % there.
+  earlier on the L4 against 110.8 MP/s on the RTX PRO 2000. Both cards are power-limited (70–72 W). v0.13.0 runs
+  at 295–337 MP/s on the L4.
+- **Compression matches:** −0.1 % against libaom speed 6 here with v0.3.0's 2 × 2 tiles, the tiling and code the
+  held-out set was measured with, and −0.6 % on the held-out set (v0.12.0: +0.1 %; v0.13.0: +0.5 %). libaom speed 9
+  is +15.0 % here, +14.0 % there.
 - **The CPU here is much faster per thread** (libaom speed 6: 1.8 MP/s per vCPU, against 1.27 on the
-  Xeon Silver 4110; speed 9: 11.7 against 8.45). Against the whole 16-vCPU machine, av1gpu (v0.9.0) is 9.1×
-  libaom speed 6 at the same file size, and 1.4× libaom speed 9, whose files are 15 % larger.
+  Xeon Silver 4110; speed 9: 11.7 against 8.45). Against the whole 16-vCPU machine, av1gpu (v0.13.0) is 11.7×
+  libaom speed 6 at about the same file size (+0.5 %), and 1.8× libaom speed 9, whose files are 15 % larger.
 - **Cost of the run:** 1 h 39 min on a g6.4xlarge spot instance at about $0.80/hour, plus about 2 minutes
   on demand, roughly $1.40.
+
+### v0.13.0: staged analysis and shortlists in base and turbo
+
+v0.13.0 (#75, 2026-11-11) changes what the `base` and `turbo` presets decide, so unlike v0.12.0 it changes the
+default's files. Both presets now run `--topdown 1 --prune-41 10 --uv-shortlist 3 --tx-shortlist 4`:
+- **Top-down analysis** (`--topdown`, `--prune-41`): the block shapes are analysed in groups, and a partition
+  search over the shapes analysed so far decides on the GPU which finer blocks are worth analysing at all.
+- **Open-loop shortlists** (`--uv-shortlist`, `--tx-shortlist`): a pass before the reconstruction wavefront screens
+  the chroma prediction modes and ranks the luma transform types of every block of the batch; the closed loop then
+  runs its exact rate-distortion test only on the best few.
+- `slow`, `fast`, `faster`, `turbo2` and `turbo3` decide as before (`turbo3`'s images below 1 MP go to `base`
+  by default, so those change), and lossless is not affected. `--topdown 0 --prune-41 off --uv-shortlist 0
+  --tx-shortlist 0` gives v0.12.0's decisions and bytes.
+
+The published Linux CUDA 13 packages of v0.13.0 and v0.12.0 on a g6.4xlarge (L4, driver 595.112.07), alternating
+in the same session with the method of [Speed](#speed-1); raw results, scripts and logs:
+`bench/results/aws-g6-l4-v0130/`.
+
+| Set, setting (MP/s, median of 6) | v0.13.0 | v0.12.0 | change |
+|---|---:|---:|---:|
+| size range, default (3 encoders) | 325.4 | 292.7 | +11.2 % |
+| size range, default, `GP_ENCODERS=4` | 337.4 | 299.7 | +12.6 % |
+| size range, `--small-preset none` | 379.1 | 349.3 | +8.5 % |
+| size range, `turbo3` | 387.9 | 371.0 | +4.6 % |
+| size range, `turbo3 --small-preset none` (same files) | 459.7 | 459.1 | +0.1 % |
+| size range, `--yuv 444` / `--depth 10` / both | 248.0 / 326.8 / 241.9 | 228.3 / 291.1 / 224.6 | +8.6 / +12.3 / +7.7 % |
+| standard set, default (mostly `base`) | 113.7 | 90.2 | +26.0 % |
+| standard set, `--small-preset none` | 237.4 | 217.2 | +9.3 % |
+| 280 thumbnails, default / `--small-preset none` | 94.8 / 202.4 | 75.5 / 186.3 | +25.5 / +8.6 % |
+| Kodak, default / `turbo3 --small-preset none` | 84.4 / 275.8 | 69.9 / 272.9 | +20.6 / +1.1 % |
+| RGBA × 20, default / `--lossless` | 43.3 / 34.2 | 40.0 / 34.2 | +8.3 / 0.0 % |
+| lossless comparison set × 4, GBR / YCgCo-Re (same files) | 44.7 / 44.2 | 45.6 / 44.6 | −1.9 / −1.0 % |
+
+`--small-preset none` and `turbo3` on the size range and the standard set, the format rows and RGBA ran with
+`GP_ENCODERS=4`, as in the tables above; RGBA and lossless are `--stats` MP/s here, not wall time.
+
+File sizes against v0.12.0, the files of the [compression](#compression-1) tables: median BD-rate on SSIMULACRA2 of
+each v0.13.0 curve against v0.12.0's (mean in brackets), by image size, and the total bytes at the same quality
+settings:
+
+| Setting, 100 photos at six quality points | identical files | BD-rate vs v0.12.0 | < 1 MP | 1–5 MP | 5–10 MP | ≥ 10 MP | bytes |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| size range, default | 0/600 | +0.23 % (+0.35 %) | +0.60 % | +0.20 % | +0.13 % | +0.13 % | +0.01 % |
+| size range, `--small-preset none` | 0/600 | +0.21 % (+0.31 %) | +0.34 % | +0.20 % | +0.13 % | +0.13 % | +0.02 % |
+| size range, `turbo3` | 360/600 | +0.00 % (+0.22 %) | +0.60 % | identical | identical | identical | −0.00 % |
+| size range, `turbo3 --small-preset none` | 600/600 | identical | | | | | |
+| size range, `--yuv 444` | 0/600 | +0.26 % (+0.38 %) | +0.59 % | +0.21 % | +0.07 % | +0.09 % | +0.08 % |
+| size range, `--depth 10` | 0/600 | +0.30 % (+0.41 %) | +0.49 % | +0.28 % | +0.12 % | +0.20 % | +0.00 % |
+| size range, `--yuv 444 --depth 10` | 0/600 | +0.26 % (+0.32 %) | +0.53 % | +0.21 % | +0.01 % | +0.07 % | +0.06 % |
+| standard set, default | 0/600 | +0.39 % (+0.46 %) | | | | | −0.05 % |
+| standard set, `--small-preset none` | 0/600 | +0.33 % (+0.45 %) | | | | | +0.14 % |
+| standard set, `turbo3 --small-preset none` | 600/600 | identical | | | | | |
+
+The bytes barely move because the quality settings stay the same; the files score slightly lower at the same size.
+Against libaom speed 6 the default moved from +0.1 % to +0.5 % (median of per-photo BD-rates, so not the same
+figure as the direct comparison), `--small-preset none` from +2.2 % to +2.5 %, and the standard set from +0.3 % to
++1.0 %. On CVVDP the default moved from +4.16 % to +4.22 % ([CVVDP](#cvvdp-a-second-metric)).
+
+Each switch on its own, measured on a pre-release build of the same code against v0.12.0 (g6.4xlarge, the size
+range; quality at q30/45/60/70/80; median BD-rate against v0.12.0 with the same preset):
+
+| Switches | default preset: MP/s change, 3 encoders | size | `--preset base --small-preset none`: MP/s change | size (50 photos) |
+|---|---:|---:|---:|---:|
+| `--uv-shortlist 3 --tx-shortlist 4` | +4.0 % | +0.23 % | +1.7 % | +0.31 % |
+| `--topdown 1` | +5.6 % | +0.01 % | +36.3 % | +0.06 % |
+| `--prune-41 10` | | | +7.1 % | −0.01 % |
+| all four (the v0.13.0 defaults) | +10.5 % | +0.23 % | +42.9 % (83.0 → 118.6 MP/s) | +0.36 % |
+
+On the standard set (below 1 MP, the small-image preset) the four together gave +0.46 %, the shortlists alone
++0.33 % and top-down with `--prune-41` +0.12 %. Most of the size cost is the chroma shortlist; most of `base`'s gain
+is the top-down analysis.
+
+- **Decoder gates** (`tests/decoder_gate.py`, the published package, size range): default at qindex 60/120/180,
+  `--yuv 444 --depth 10` and `turbo3 --small-preset none` at 120, 500/500 identical in dav1d and aomdec.
+- **Release smoke test** (both published Linux packages, the same instance before the runs above): `tools/sanity.py`
+  311/311 golden hashes for the CUDA 13 and the `-cuda12` package. The CUDA 13 package against v0.12.0's on the size
+  range × 6 (2,867 MP, 5 alternating rounds): 312.6 → 347.6 MP/s with the default 3 encoders (+11.2 %; the five
+  paired rounds +10.8 to +12.1 %) and 185.5 → 203.6 with one encoder (+9.7 %). The process used 0.37 → 0.41 and
+  0.23 → 0.26 CPU cores (user + system over wall time), about the same CPU time per image over a shorter run.
+- **Start-up:** 17–28 ms more for one small image or a photo with its thumbnail, within noise for a 10.5 MP photo
+  ([Single-image start-up](#single-image-start-up)).
+- **Lossless speed:** the lossless files are byte-identical (51/51 in GBR and in YCgCo-Re, 13/13 misc), but
+  `--stats` MP/s on the comparison set is 1.0–2.5 % lower than v0.12.0's (37.3 against 38.2 MP/s one pass, 44.7
+  against 45.6 for the set 4×). Inside av1gpu's timed region these runs take 16–85 ms longer (runs of 1.3 and 4.4 s),
+  so it is not only the 18–43 ms more that every v0.13.0 run spends before its timer starts (that is outside
+  `--stats`).
+  The six runs of each spread by about ±4 %; in the second round of the 4× runs the two versions are equal (45.4 and
+  45.4), and the RGBA set with `--lossless` (6 s runs) shows no change (34.2 and 34.2). This run does not establish a
+  cause.
+- **Scorer:** the 5,160 files whose bytes are the published ones (all of v0.12.0's, whose sizes equal the stored
+  rows', and v0.13.0's `turbo3 --small-preset none` and large `turbo3` files, which match v0.12.0's md5) got exactly
+  the published SSIMULACRA2 scores, and the 64 CVVDP control files exactly the published CVVDP scores. v0.12.0's
+  BD-rates recomputed from this run equal the published ones in every row. A size-based check also flagged 10
+  v0.13.0 files that merely have a stored row's byte count; they are different bitstreams (md5 unlike v0.12.0's), so
+  their scores differ as different files' do. No v0.13.0 number depends on a scorer change.
+- **RGBA set:** rebuilt from its recipe of 2026-10-31 (the original archive was lost); all 39 PNGs are byte-identical
+  to the inputs of the earlier runs. `--lossless` gives the same 42 files as v0.12.0; the default and
+  `--alpha-quality 100` change the colour of all but 2 of the 43 files.
 
 ### Windows
 
@@ -1010,6 +1164,11 @@ Linux, 528+ on Windows) for Linux and Windows. AWS, 2026-11-02; scripts, logs an
   others in the `-cuda12` one. Run on an L4, both Linux packages wrote the same files as v0.8.0's and as each other
   (4,394 outputs), and passed the decoder gate. memcheck was clean, and racecheck reported only `k_entropy_win`'s
   known hand-off.
+- **v0.13.0's published packages** (2026-11-11, `bench/results/aws-g6-l4-v0130/`): on an L4 (driver 595.112.07),
+  both Linux packages passed `tools/sanity.py` (311/311 golden hashes), and the CUDA 13 one ran the size range × 6
+  11.2 % faster than v0.12.0's with 3 encoders and 9.7 % with one
+  ([v0.13.0](#v0130-staged-analysis-and-shortlists-in-base-and-turbo)). The Windows zips and Blackwell were not
+  tested for v0.13.0.
 - **Driver 580:** the CUDA 13.4 build ran on 580.196.07 (L4) with identical output.
 - **GPUs newer than the SASS:** a forced PTX JIT (`CUDA_FORCE_PTX_JIT=1`) of the 13.4 build was still compiling
   after 10 minutes on the RTX PRO 4500. That is the first run on a GPU with no compiled code (README:
@@ -1024,8 +1183,10 @@ Linux, 528+ on Windows) for Linux and Windows. AWS, 2026-11-02; scripts, logs an
 Contributed by pickae ([discussion #19](https://github.com/maddog107/av1gpu/discussions/19)) and measured on
 their machine, not by us. The first run (v0.2.0, below) was speed only: avifenc, libaom and `ssimulacra2` were not
 installed there, so it has no CPU baselines or BD-rates. The output was byte-identical to the L4's (see
-Correctness), so the L4's compression results apply unchanged. A second run with v0.9.0 added the CPU baselines
-and BD-rates ([v0.9.0](#v090-the-full-benchpy)). The raw results are not in `bench/results/`.
+Correctness), so the L4's compression results of that version applied unchanged. A second run with v0.9.0 added the
+CPU baselines and BD-rates ([v0.9.0](#v090-the-full-benchpy)). The raw results are not in `bench/results/`. Both
+runs predate v0.13.0, which changes the default's files and speed; the L4 figures quoted beside them below are those
+of the same versions (v0.2.0 and v0.9.0), not the current ones.
 
 ### Setup
 
@@ -1155,7 +1316,8 @@ measurement). It calls `av1gpu --batch` with `--crop` / `--max-size` per line, `
 ImageMagick's geometry; `--auto-level`, `--level`, `--gamma`, `--negate`; `--grayscale` / `--colorspace Gray`. These
 are pickae's measurements of their version of the options; the review for v0.11.0 corrected that version in several
 places and measured it again on an L4 ([below](#trim-resize-tone-and-gray-checked-on-an-l4)). Where the two disagree,
-the L4 section is the current one.
+the L4 section is the current one. Both were measured with v0.11.0-era code, before v0.13.0's new `base` and
+`turbo` decisions, and were not repeated.
 The trim is the comic converter's page sorting from the run above, moved onto the card: until now an ImageMagick
 decode per page on the CPU found the margin, and av1gpu was handed the crop. Measured on the same machine
 (2026-11-06, av1gpu `main` 4721191 for the reference; ImageMagick 7.1.2-18 Q16; a media server transcoding on the
