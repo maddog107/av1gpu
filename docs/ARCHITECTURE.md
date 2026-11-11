@@ -77,6 +77,11 @@ Two expert switches, off by default, take work out of the wavefront (`k_leafprep
 first step, over every leaf of the batch at once): `--uv-shortlist N` screens the chroma modes on source edges and the
 closed loop then runs the exact rate-distortion test only on those N and CfL; `--tx-shortlist N` ranks the luma
 transform types open loop and the closed loop tries only the N best. They change decisions, not validity.
+`--uv-shortlist` replaces `--uvK` in every preset (`--uvK` has no effect while it is on), and chroma transforms above
+8x8 without a CfL candidate take at most 2 modes; turbo2 and turbo3 already use `--uvK 1`, so there only N = 1 saves
+time. `--tx-shortlist` has no effect where the closed loop has no separate tx-type search (turbo2 and turbo3, which
+turn it off, and slow, which uses `--tx-all`), on `--tx-size`'s split blocks, or with N of 7 or more; in base, fast and
+faster it applies where the closed loop keeps the analysis' first candidate.
 
 The wavefront has long serial chains. They are hidden by having many images in flight and by
 running several encoders (CUDA streams) at once. The wavefront kernels go on a high-priority stream,

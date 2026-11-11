@@ -1446,8 +1446,8 @@ __device__ __noinline__ void rc_chroma(int W, int H, RcShared<BD> &S, const GpBa
     // ---- exact RD: top uvK modes (or the shortlist) (+ CfL) for U and V ----
     if (!screen) {
         if (tid == 0) {
-            // never more RD rounds than uvK 2: tx blocks above 8x8 run one task per warp (4 per round), so without a CfL
-            // task they take 2 candidates (4 tasks), with one 3 (8 tasks; uvK 2 + CfL: 6, also two rounds)
+            // tx blocks above 8x8 run one task per warp (4 per round): without a CfL task at most 2 candidates (4 tasks, one
+            // round, as uvK 2); with one all N (N 3: 8 tasks, two rounds as uvK 2 + CfL's 6; N 6: 14 tasks, four rounds)
             const bool cflTask = cflOk && (S.cflAlpha[0] || S.cflAlpha[1]);
             const int nMax = (W <= 8 && H <= 8) || cflTask ? P.uvShortlist : min(P.uvShortlist, 2);
             const uint8_t *sl = B.uvShort + gp_short_slot(sb, mi_row, mi_col) * P.uvShortlist;

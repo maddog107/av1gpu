@@ -95,6 +95,10 @@ __global__ void __launch_bounds__(LP_IX_NT) k_lp_index(GpBatch B, GpParams P, Lp
     const GpLeaf *lv = B.leaves + (size_t)sb * GP_MAX_LEAVES;
     for (int i = tid; i < 2 * 16 * 16; i += LP_IX_NT) own[i >> 8][i & 255] = 0xFFFF;
     __syncthreads();
+    // Luma assumes tx depth 0 (the whole block marked).  With --tx-size, k_recon does not mark the split tx blocks that
+    // lie outside the frame, so a later block's above-right / below-left flag can be 1 here and 0 there (7 of 908,087
+    // blocks in one review run).  Harmless: such a unit lies beyond the frame's last column / row, and build_edges_par
+    // clamps its reads to maxX / maxY, so the edges come out the same (and the luma flags feed nothing else).
     for (int li = tid; li < nLeaves; li += LP_IX_NT) {
         const GpLeaf lf = lv[li];
         const int bw4 = av1g_bw4(lf.bsize), bh4 = av1g_bh4(lf.bsize);
