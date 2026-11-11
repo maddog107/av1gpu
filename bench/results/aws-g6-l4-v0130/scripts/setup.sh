@@ -3,7 +3,7 @@
 #   packages; the release source tree (~/src.tar.gz -> ~/src, also ~/br for the set builders); the binaries
 #   NEW = published v0.13.0 Linux CUDA 13 package, OLD = published v0.12.0 one (downloaded, sha256sum -c against the
 #   release's .sha256; NEW_BIN=/path or OLD_BIN=/path stands in a local build; NEW_VER / OLD_VER pick other tags);
-#   tools: libavif 1.4.0 avifdec (system dav1d), libjxl 0.11.1 ssimulacra2 (setup_p2.sh's recipe: deps.sh + skcms),
+#   tools: libavif 1.4.0 avifdec (system dav1d), libjxl 0.11.1 ssimulacra2 (system lcms2, as the published scores),
 #   ~/venv with cvvdp 0.5.7 + torch 2.15.0 (the versions of the published CVVDP run, aws-g6-l4-tiles4x4);
 #   the size-range photos (~/images, gamut manifest) and the standard set (~/images_std) via bench/fetch_images.py;
 #   the generated sets of the docs speed list (aws-g6-l4-speed-v06/scripts: mk_ll_sets.py -> ~/ll incl. Kodak,
@@ -45,11 +45,22 @@ fi
     ~/venv/bin/pip install cvvdp==0.5.7 >> $L/pip.log 2>&1
   echo "pip exit $?" >> $L/pip.log ) &
 ( [ -x ~/opt/bin/ssimulacra2 ] && exit 0
-  cd ~/tools && rm -rf libjxl && git clone -q --depth 1 -b v0.11.1 https://github.com/libjxl/libjxl && cd libjxl && ./deps.sh > $L/jxl.deps.log 2>&1
-  nice cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DJPEGXL_ENABLE_DEVTOOLS=ON -DJPEGXL_ENABLE_BENCHMARK=OFF \
-    -DJPEGXL_ENABLE_EXAMPLES=OFF -DJPEGXL_ENABLE_MANPAGES=OFF -DJPEGXL_ENABLE_JNI=OFF -DJPEGXL_ENABLE_SJPEG=OFF -DJPEGXL_ENABLE_OPENEXR=OFF \
-    -DJPEGXL_ENABLE_SKCMS=ON > $L/jxl.cfg.log 2>&1
+  # the published scores' build (tiles4x4/scripts/setup.sh): system highway / brotli / lcms2, no skcms.  Fallback, flagged
+  # in env.txt and summary.md, only if that build fails: deps.sh + skcms (setup_p2.sh's recipe)
+  cd ~/tools && rm -rf libjxl && git clone -q --depth 1 -b v0.11.1 https://github.com/libjxl/libjxl && cd libjxl
+  nice cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DJPEGXL_ENABLE_DEVTOOLS=ON \
+    -DJPEGXL_FORCE_SYSTEM_HWY=ON -DJPEGXL_FORCE_SYSTEM_BROTLI=ON -DJPEGXL_FORCE_SYSTEM_LCMS2=ON \
+    -DJPEGXL_ENABLE_SKCMS=OFF -DJPEGXL_ENABLE_JPEGLI=OFF -DJPEGXL_ENABLE_SJPEG=OFF > $L/jxl.cfg.log 2>&1
   nice cmake --build build --target ssimulacra2 -j 8 > $L/jxl.log 2>&1; echo "ssimulacra2 exit $?" >> $L/jxl.log
+  echo lcms2 > ~/opt/ssimulacra2.cms
+  if [ ! -x build/tools/ssimulacra2 ]; then
+    ./deps.sh > $L/jxl.deps.log 2>&1; rm -rf build
+    nice cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DJPEGXL_ENABLE_DEVTOOLS=ON -DJPEGXL_ENABLE_BENCHMARK=OFF \
+      -DJPEGXL_ENABLE_EXAMPLES=OFF -DJPEGXL_ENABLE_MANPAGES=OFF -DJPEGXL_ENABLE_JNI=OFF -DJPEGXL_ENABLE_SJPEG=OFF -DJPEGXL_ENABLE_OPENEXR=OFF \
+      -DJPEGXL_ENABLE_SKCMS=ON >> $L/jxl.cfg.log 2>&1
+    nice cmake --build build --target ssimulacra2 -j 8 >> $L/jxl.log 2>&1; echo "ssimulacra2 (skcms fallback) exit $?" >> $L/jxl.log
+    echo "skcms (FALLBACK: not the published scores' build)" > ~/opt/ssimulacra2.cms
+  fi
   cp build/tools/ssimulacra2 ~/opt/bin/ 2>> $L/jxl.log ) &
 ( [ -x ~/opt/bin/avifdec ] && exit 0
   set -e; cd ~/tools; rm -rf libavif avif-build
@@ -99,7 +110,7 @@ set +x
 { date -u; nvidia-smi --query-gpu=name,driver_version,memory.total,power.limit,clocks.max.sm,compute_cap --format=csv,noheader
   /usr/local/cuda/bin/nvcc --version | tail -1
   ~/opt/bin/avifdec --version 2>&1 | head -3; echo "dav1d $(dav1d --version)"; aomdec --help 2>&1 | grep -m1 -i 'aom'
-  echo "ssimulacra2: libjxl v0.11.1 (deps.sh, skcms) $(ls -la ~/opt/bin/ssimulacra2 2>&1)"
+  echo "ssimulacra2: libjxl v0.11.1, colour management $(cat ~/opt/ssimulacra2.cms 2>/dev/null) $(ls -la ~/opt/bin/ssimulacra2 2>&1)"
   ~/venv/bin/pip list 2>/dev/null | grep -i -E "^(cvvdp|torch|numpy|pillow|scipy) "
   ~/venv/bin/python -c "import torch; print('torch', torch.__version__, 'cuda', torch.version.cuda, torch.cuda.is_available(), torch.cuda.get_device_name(0))"
   python3 -c "import PIL, numpy; print('system pillow', PIL.__version__, 'numpy', numpy.__version__)"
