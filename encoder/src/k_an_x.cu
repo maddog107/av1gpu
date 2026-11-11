@@ -1,4 +1,4 @@
-// The staged analysis (opt-in: --topdown / --prune-41, an_stage.h): its MODE 1 analysis kernels (the listed shapes'),
+// The staged analysis (--topdown / --prune-41, an_stage.h): its MODE 1 analysis kernels (the listed shapes'),
 // the block lists (k_an_list), the DP stages (k_dp<BD, true>) and the host sequence of stages.  A module of its own:
 // its tables are uploaded by gp_staged_prepare (k_misc.cu) only for an encoder with a switch on, so a process without
 // the switches never loads this code (lazy module loading, the default outside batch mode).

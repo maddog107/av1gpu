@@ -1,4 +1,4 @@
-// Staged open-loop analysis (opt-in: GpAnOpts in pipeline.h, --topdown / --prune-41; off by default): the shapes are
+// Staged open-loop analysis (GpAnOpts in pipeline.h, --topdown / --prune-41; on in the presets base and turbo): the shapes are
 // analysed group by group, and a partition DP over the groups done so far decides on the device which blocks of the next
 // group are analysed at all.  Device-side lists and fixed worst-case launch sizes: no host synchronisation.
 //

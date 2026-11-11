@@ -214,26 +214,28 @@ static void usage(FILE *to = stderr) {
             "  --uv-in-dp              add an open-loop chroma term to the analysis (chroma-aware partitioning)\n"
             "  --uv-shortlist N        chroma modes: the closed loop runs its exact RD on the N best modes of an open-loop SATD\n"
             "                          screen (source edges, every block at once before the wavefront) plus CfL instead of\n"
-            "                          screening the modes itself.  It replaces --uvK in every preset (--uvK has no effect\n"
-            "                          then); chroma transforms above 8x8 without a CfL candidate take at most 2.  In turbo2\n"
-            "                          and turbo3 (--uvK 1) only N 1 saves time.  0: off (the default), 1..6\n"
+            "                          screening the modes itself.  It replaces --uvK (--uvK alone switches it off);\n"
+            "                          chroma transforms above 8x8 without a CfL candidate take at most 2.  In turbo2 and\n"
+            "                          turbo3 (--uvK 1) only N 1 saves time.  0: off, 1..6 (base and turbo: 3; other presets: 0)\n"
             "  --tx-shortlist N        luma: the closed loop's tx-type search tries only the N best types of an open-loop\n"
             "                          ranking (source edges, transform-domain L1, before the wavefront).  No effect in turbo2\n"
             "                          and turbo3 (no closed-loop tx search), slow (--tx-all), on --tx-size's split blocks or\n"
             "                          with N >= 7; in base, fast and faster only where the closed loop keeps the analysis'\n"
-            "                          first candidate.  0: off (the default), 1..16\n"
+            "                          first candidate.  0: off, 1..16 (base and turbo: 4; other presets: 0)\n"
             "  --k-large K             analysis top-K for shapes of 1024 pixels or more\n"
             "  --deltas-max-area A     angle-delta screening only for shapes up to A pixels (0: all)\n"
-            "  (the next two trade compression for analysis speed: they change decisions and output.  Off by default in every\n"
-            "  preset; given on the command line they apply to every preset, the small-image one included, wherever they\n"
-            "  stand among the options.  Lossless frames ignore both; with --small-kernel 0 the shapes of up to 64 pixels are\n"
-            "  analysed in full, as without them)\n"
+            "  (the next two and the two shortlists above trade a little compression for speed: they change decisions and\n"
+            "  output.  On in the presets base and turbo, so with the defaults (--topdown 1 --prune-41 10 --uv-shortlist 3\n"
+            "  --tx-shortlist 4), off in the other presets; given on the command line they apply to every preset, the\n"
+            "  small-image one included, wherever they stand among the options.  --topdown 0 --prune-41 off --uv-shortlist 0\n"
+            "  --tx-shortlist 0 gives the decisions of v0.12.  Lossless frames ignore all four; with --small-kernel 0 the\n"
+            "  shapes of up to 64 pixels are analysed in full)\n"
             "  --topdown 0|1           top-down analysis: the shapes with a side of 8 only in the 16x16 cells where a partition\n"
             "                          DP over the larger shapes picks a block with a side of 16 (or next to such a cell), then\n"
-            "                          the shapes with a side of 4 likewise in 8x8 cells (0: off, the default)\n"
+            "                          the shapes with a side of 4 likewise in 8x8 cells (0: off; base and turbo: 1)\n"
             "  --prune-41 off|PCT      analyse a node's 4:1 shapes (16x4 .. 64x16) only where its 2:1 partition costs at most\n"
-            "                          PCT %% more than the best of its other partitions; PCT 0..1000, e.g. 10 (off: the\n"
-            "                          default).  Only presets with 4:1 shapes have any to prune (slow, base: with the defaults,\n"
+            "                          PCT %% more than the best of its other partitions; PCT 0..1000 or off (base and turbo:\n"
+            "                          10).  Only presets with 4:1 shapes have any to prune (slow, base: with the defaults,\n"
             "                          the images below --small-mp); in fast .. turbo3 it changes nothing\n"
             "  --no-lossless-cfl       with --lossless: no CfL on 4x4 chroma blocks\n"
             "  --prof                  per-phase cycle accounting in k_recon\n"
@@ -263,6 +265,9 @@ struct Opts {
     // --topdown / --prune-41 given (applied after all options to every preset, the small-image one included)
     bool topdownSet = false, prune41Set = false;
     GpAnOpts an;
+    // --uv-shortlist / --tx-shortlist given (likewise: every preset, wherever they stand); --uvK given
+    bool uvShortSet = false, txShortSet = false, uvKSet = false;
+    int uvShortlist = 0, txShortlist = 0;
 };
 
 // --topdown: 0 or 1 exactly
@@ -298,7 +303,15 @@ static bool apply_preset(GpConfig &cfg, const char *v) {
     cfg.P.deltas = d.P.deltas; cfg.P.uvDeltas = d.P.uvDeltas;
     cfg.P.filterIntra = d.P.filterIntra; cfg.P.txAllCL = d.P.txAllCL; cfg.P.txSizeSearch = d.P.txSizeSearch;
     cfg.tileMinMp = d.tileMinMp; cfg.tileColsLog2 = d.tileColsLog2; cfg.tileRowsLog2 = d.tileRowsLog2;
-    cfg.an = d.an;   // the staged-analysis switches: off in every preset (explicit options override, see parse)
+    // the decision-changing speed switches (staged analysis: --topdown 1 --prune-41 10; open-loop shortlists:
+    // --uv-shortlist 3 --tx-shortlist 4): on in base and turbo, the two presets of the defaults, where they were measured
+    // (v0.13.0: turbo +10 % MP/s for +0.3 % BD-rate, base +43 % for +0.4 %); off in the others.  Explicit options
+    // override every preset, wherever they stand (see parse)
+    cfg.an = d.an; cfg.P.uvShortlist = 0; cfg.P.txShortlist = 0;
+    if (!strcmp(v, "base") || !strcmp(v, "turbo")) {
+        cfg.an.topdown = 1; cfg.an.prune41 = 10.f;
+        cfg.P.uvShortlist = 3; cfg.P.txShortlist = 4;
+    }
     if (!strcmp(v, "base")) return true;
     if (!strcmp(v, "slow")) {
         // max quality (round 4): closed-loop tx-size search (largest vs one split), every tx type for
@@ -382,14 +395,15 @@ static bool parse(int argc, char **argv, GpConfig &cfg, Opts &o) {
         else if (a == "--no-txsearch-cl") cfg.P.txSearchCL = 0;
         else if (a == "--no-deltas") cfg.P.deltas = 0;
         else if (a == "--no-cfl") cfg.P.cfl = 0;
-        else if (a == "--uvK") cfg.P.uvK = atoi(nxt());
+        else if (a == "--uvK") { cfg.P.uvK = atoi(nxt()); o.uvKSet = true; }
         else if (a == "--uv-shortlist" || a == "--tx-shortlist") {
             const char *v = nxt();
             char *end = nullptr;
             const long n = strtol(v, &end, 10);
             const int hi = a == "--uv-shortlist" ? GP_UV_SHORT_MAX : 16;
             if (!*v || *end || n < 0 || n > hi) { fprintf(stderr, "%s must be a whole number 0..%d, not %s\n", a.c_str(), hi, v); return false; }
-            (a == "--uv-shortlist" ? cfg.P.uvShortlist : cfg.P.txShortlist) = (int)n;
+            if (a == "--uv-shortlist") o.uvShortlist = (int)n, o.uvShortSet = true;
+            else o.txShortlist = (int)n, o.txShortSet = true;
         }
         else if (a == "--shapes") cfg.P.shapeMask = (int)strtol(nxt(), nullptr, 16);
         else if (a == "--part8") cfg.P.partMask8 = (int)strtol(nxt(), nullptr, 16);
@@ -620,9 +634,11 @@ static bool parse(int argc, char **argv, GpConfig &cfg, Opts &o) {
     if (o.batch.empty() && o.qlist.size() > 1) { fprintf(stderr, "several qindex values need --batch\n"); return false; }
     cfg.P.K = std::max(1, std::min(cfg.P.K, GP_MAXK));
     cfg.P.Krecheck = std::max(1, std::min(cfg.P.Krecheck, cfg.P.K));
-    // (not speed knobs of the presets: they apply to every image, --small-preset ones too)
-    cfg.Psmall.uvShortlist = cfg.P.uvShortlist;
-    cfg.Psmall.txShortlist = cfg.P.txShortlist;
+    // --uv-shortlist / --tx-shortlist given: for every preset (the main one and the small-image one), wherever they
+    // stand.  --uvK given without --uv-shortlist: the chroma shortlist of the presets is off, so --uvK keeps its meaning
+    if (o.uvShortSet) cfg.P.uvShortlist = cfg.Psmall.uvShortlist = o.uvShortlist;
+    else if (o.uvKSet) cfg.P.uvShortlist = cfg.Psmall.uvShortlist = 0;
+    if (o.txShortSet) cfg.P.txShortlist = cfg.Psmall.txShortlist = o.txShortlist;
     return true;
 }
 

@@ -32,7 +32,7 @@ struct GpXform {
     }
 };
 
-// Staged analysis (an_stage.h): decision-changing speed knobs of a preset, all off by default in every preset.  Not in
+// Staged analysis (an_stage.h): decision-changing speed knobs of a preset: off here, on in the CLI's presets base and turbo.  Not in
 // GpParams, which every kernel takes by value (the default analysis kernels and the closed loop stay as they are), but
 // carried the same way: GpConfig::an with P, anSmall with Psmall.  Lossless frames ignore them.
 struct GpAnOpts {

@@ -1,19 +1,20 @@
 #!/usr/bin/env python3
-"""The opt-in analysis switches (--topdown, --prune-41): they work, deterministically, and decode.
+"""The staged-analysis switches (--topdown, --prune-41; on in the presets base and turbo): they work, deterministically,
+and decode.
 
 Inputs, generated: a 1.1 MP picture (the default settings encode it with turbo; frame edges that cut 16x16 cells;
 flat sky, a gradient, fine and coarse texture), a 640x480 and a 333x250 one (base below 1 MP), a 320x240 RGBA one
 (alpha item); plus tests/gate_images.  Checked, with the default settings and with --preset base:
 
 - function: each switch alone changes the output where it applies (--topdown in both presets, --prune-41 in base;
-  in the default turbo preset --prune-41 has no 4:1 shape to prune); total bytes within 2 % of the run without the
-  switches at the same qindex; the work actually skipped (GP_DEBUG_STAGES: listed blocks per staged shape, a
+  in the default turbo preset --prune-41 has no 4:1 shape to prune); total bytes within 2 % of the run with both
+  off (--topdown 0 --prune-41 off) at the same qindex; the work actually skipped (GP_DEBUG_STAGES: listed blocks per staged shape, a
   deterministic count) between bounds that both "refine nothing" and "refine everything" break: with --topdown in
   base, the side-4 shapes are listed for 8..92 % of their blocks, the side-8 shapes for 30..99 %; with --prune-41 in
   base, the 4:1 shapes for 5..95 %;
 - determinism: both switches give the same bytes with three encoders in list order as with one encoder and the list
   reversed (and --topdown alone in the default preset); with every allocation poisoned (GP_POISON=255) the same bytes;
-- off values (--topdown 0 --prune-41 off) give the bytes of a run without the options;
+- a run without the options gives the bytes of --topdown 1 --prune-41 10 (the defaults of base and turbo);
 - --small-kernel 0 (base, both switches): no shape of up to 64 pixels is listed (they have no list-driven kernel and
   are analysed in full), the larger staged shapes are, and the output changes;
 - tests/decoder_gate.py (dav1d + aomdec reproduce the encoder's reconstruction, alpha items included) with each
@@ -37,9 +38,10 @@ import tempfile
 import zlib
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-TD = ["--topdown", "1"]
-G = ["--prune-41", "10"]
-BOTH = TD + G
+# each switch alone (the presets base and turbo have both on: --topdown 1 --prune-41 10)
+TD = ["--topdown", "1", "--prune-41", "off"]
+G = ["--topdown", "0", "--prune-41", "10"]
+BOTH = ["--topdown", "1", "--prune-41", "10"]
 OFF = ["--topdown", "0", "--prune-41", "off"]
 
 
@@ -128,14 +130,14 @@ def main():
             return h, nbytes(od), err
 
         for preset, pname, switches in (([], "default", {"topdown": TD}), (["--preset", "base"], "base", {"topdown": TD, "prune41": G})):
-            none, b0, _ = batch(f"{pname}_none", preset, [])
-            off, _, _ = batch(f"{pname}_off", preset, OFF)
-            if off != none:
-                fails.append(f"{pname}: the switches at their off values change the output")
+            none, b0, _ = batch(f"{pname}_none", preset, OFF)
+            dflt, _, _ = batch(f"{pname}_dflt", preset, [])
             for name, opts in list(switches.items()) + [("both", BOTH)]:
                 h, b, err = batch(f"{pname}_{name}", preset, opts, env={"GP_DEBUG_STAGES": "1"})
                 if h == none:
                     fails.append(f"{pname} {name}: leaves every output unchanged")
+                if name == "both" and h != dflt:
+                    fails.append(f"{pname}: a run without the options differs from --topdown 1 --prune-41 10 (the preset's defaults)")
                 if abs(b / b0 - 1) > 0.02:
                     fails.append(f"{pname} {name}: {b} bytes against {b0} without it ({100 * (b / b0 - 1):+.2f} %)")
                 s = listed(err)
@@ -164,7 +166,7 @@ def main():
         # --small-kernel 0: the shapes of up to 64 pixels have no list-driven kernel, so they are analysed in full (stage
         # 1); the larger staged shapes are still listed
         sk0 = ["--preset", "base", "--small-kernel", "0"]
-        h0, _, _ = batch("base_sk0_none", sk0, [])
+        h0, _, _ = batch("base_sk0_none", sk0, OFF)
         h, _, err = batch("base_sk0_both", sk0, BOTH, env={"GP_DEBUG_STAGES": "1"})
         s = listed(err)
         print("base --small-kernel 0 both: listed " + ", ".join(f"{w}x{hh} {v[0]}/{v[1]}" for (w, hh), v in sorted(s.items())), flush=True)

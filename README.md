@@ -513,6 +513,11 @@ but briefly: on the L4 a cold `av1gpu photo.jpg photo.avif` takes 0.36 s for a 2
 `av1gpu --help` lists every option, the expert tuning ones too. The defaults are `--quality 60 --tune iq
 --edge-filter --preset turbo --small-preset base --gpu-entropy`.
 
+Since v0.13 the presets `turbo` and `base` (so the defaults) analyse top-down and shortlist chroma modes and
+transform types before the closed loop (`--topdown 1 --prune-41 10 --uv-shortlist 3 --tx-shortlist 4`): about 10 %
+faster on large photos and 40 % faster on images below 1 MP on an L4, for files about 0.3–0.5 % larger at the same
+quality. `--topdown 0 --prune-41 off --uv-shortlist 0 --tx-shortlist 0` gives v0.12's decisions (and bytes).
+
 Tiles: the default preset, `turbo`, splits images of 2 MP and more into 4 × 4 tiles (`--tiles 2,2,2`;
 `turbo2` and `turbo3` too). `base`, `slow` and the other presets use only the tiles AV1
 requires (for frames wider than 4,096 pixels or larger than 9.4 MP), which is also what MIN_MP `0` means.

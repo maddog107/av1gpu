@@ -491,7 +491,7 @@ constexpr int an_thread_budget() {
 }
 
 // BD: bit depth of the batch (distortions and lambda in native units, see gp_lambda).  MODE 0: the default analysis
-// (X unused).  MODE 1: the opt-in variant of the staged analysis (an_stage.h): the blocks of X.list (X.count of them)
+// (X unused).  MODE 1: the list variant of the staged analysis (an_stage.h): the blocks of X.list (X.count of them)
 // instead of the shape's grid
 template <int W, int H, int BS, int NW, int BD = 8, int MODE = 0>
 __global__ void __launch_bounds__(NW * 32, an_thread_budget<W, H>() / (NW * 32))

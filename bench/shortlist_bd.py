@@ -4,9 +4,10 @@
   bench/shortlist_bd.py --av1gpu build/av1gpu [--ref RELEASE_BINARY] --images bench/images_gamut --out OUT \\
       [--common "--preset turbo2"] [--avifdec-codec dav1d]
 
-Variants (--variants NAME=OPTS,... to change them; OPTS space-separated; the first must be off=): off (no option; run
-with --ref when given, e.g. the release, else with --av1gpu), uv3 (--uv-shortlist 3), tx4 (--tx-shortlist 4), uv3_tx4
-(both), uvk1 (--uvK 1, an existing option, for comparison).  --common adds options to every run of every variant: the
+Variants (--variants NAME=OPTS,... to change them; OPTS space-separated; the first must be off=...): off (--uv-shortlist 0
+--tx-shortlist 0: base and turbo have 3 / 4 by default; run with --ref when given, else with --av1gpu; a --ref older
+than v0.13 needs --variants with an empty off=), uv3, tx4, uv3_tx4 (each with the other at 0 or both), uvk1 (--uvK 1,
+which switches the chroma shortlist off, with --tx-shortlist 0).  --common adds options to every run of every variant: the
 switches behave differently per preset (--uv-shortlist replaces --uvK, so with turbo2 / turbo3's --uvK 1 only N = 1
 saves time; --tx-shortlist does nothing in turbo2, turbo3 and slow), so time each preset you care about.
 - Speed (the headline): the set repeated to --min-mp megapixels; one warm-up run of each variant, then --rounds rounds
@@ -36,8 +37,9 @@ import tempfile
 
 import bench
 
-VARIANTS = [("off", []), ("uv3", ["--uv-shortlist", "3"]), ("tx4", ["--tx-shortlist", "4"]),
-            ("uv3_tx4", ["--uv-shortlist", "3", "--tx-shortlist", "4"]), ("uvk1", ["--uvK", "1"])]
+VARIANTS = [("off", ["--uv-shortlist", "0", "--tx-shortlist", "0"]), ("uv3", ["--uv-shortlist", "3", "--tx-shortlist", "0"]),
+            ("tx4", ["--uv-shortlist", "0", "--tx-shortlist", "4"]), ("uv3_tx4", ["--uv-shortlist", "3", "--tx-shortlist", "4"]),
+            ("uvk1", ["--uvK", "1", "--tx-shortlist", "0"])]
 
 
 def stats_line(p):

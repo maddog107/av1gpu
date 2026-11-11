@@ -34,7 +34,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import decoder_gate  # noqa: E402
 
-BOTH = ["--uv-shortlist", "3", "--tx-shortlist", "4"]
+BOTH = ["--uv-shortlist", "3", "--tx-shortlist", "4"]   # the defaults of the presets base and turbo
+OFF = ["--uv-shortlist", "0", "--tx-shortlist", "0"]
 # total bytes at qindex 120 against no shortlist: the most each setting may add.  On an L4: the correct build +0.06 % (uv),
 # +0.06 % (tx), +0.19 % (both); with both rankings negated +14.6 %, +4.0 %, +18.5 %
 MAX_GROWTH = {"uv": 0.010, "tx": 0.005, "both": 0.010}
@@ -131,10 +132,11 @@ def main():
         q = ["--qindex", "120"]
 
         # ---- ranking: bytes against no shortlist, each switch alone and both
-        off = batch(a.bin, lst, os.path.join(t, "off"), q)
+        off = batch(a.bin, lst, os.path.join(t, "off"), q + OFF)
         check(off is not None and len(off) == len(files), f"no shortlist: {len(off or {})} outputs")
         b0 = total(os.path.join(t, "off"))
-        for key, opts in (("uv", ["--uv-shortlist", "3"]), ("tx", ["--tx-shortlist", "4"]), ("both", BOTH)):
+        for key, opts in (("uv", ["--uv-shortlist", "3", "--tx-shortlist", "0"]), ("tx", ["--uv-shortlist", "0", "--tx-shortlist", "4"]),
+                          ("both", BOTH)):
             d = os.path.join(t, "r_" + key)
             got = batch(a.bin, lst, d, q + opts + (["--debug-outputs"] if key == "both" else []))
             g = total(d) / b0 - 1 if got and b0 else float("inf")
@@ -155,8 +157,11 @@ def main():
                   f"gate {name}: {len(res) - len(bad)}/{len(res)} identical in dav1d and aomdec ({', '.join(fm)}; "
                   f"{sum(1 for r in res if r.get('alpha'))} with alpha)" + (f"; {bad[0]}" if bad else ""))
 
-        # ---- determinism, batch independence
+        # ---- determinism, batch independence; the presets' defaults are BOTH; --uvK alone switches the chroma shortlist off
         ref = batch(a.bin, lst, os.path.join(t, "d0"), q + BOTH)
+        check(ref is not None and batch(a.bin, lst, os.path.join(t, "dflt"), q) == ref, "no option: the bytes of --uv-shortlist 3 --tx-shortlist 4")
+        check(batch(a.bin, lst, os.path.join(t, "uvk"), q + ["--uvK", "2"]) == batch(a.bin, lst, os.path.join(t, "uvk0"), q + ["--uvK", "2", "--uv-shortlist", "0"]),
+              "--uvK 2: the bytes of --uvK 2 --uv-shortlist 0")
         check(ref is not None and batch(a.bin, lst, os.path.join(t, "d1"), q + BOTH) == ref, "both: same bytes in a second run")
         check(batch(a.bin, lst, os.path.join(t, "d2"), q + BOTH, {"GP_ENCODE_MP": "0.01", "GP_ENCODERS": "1"}) == ref,
               "both: same bytes with one image per batch, one encoder")
@@ -169,7 +174,7 @@ def main():
         check(p.returncode == 0 and "device entropy == CPU writer" in p.stderr, f"both: --check-entropy: {p.stderr.strip()[-120:]}")
 
         # ---- --tx-shortlist 7 = no shortlist
-        check(batch(a.bin, lst, os.path.join(t, "tx7"), q + ["--tx-shortlist", "7"]) == off,
+        check(batch(a.bin, lst, os.path.join(t, "tx7"), q + ["--uv-shortlist", "0", "--tx-shortlist", "7"]) == off,
               "--tx-shortlist 7: the bytes of the run without a shortlist")
 
         # ---- option values

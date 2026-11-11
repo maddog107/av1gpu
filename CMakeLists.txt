@@ -309,7 +309,7 @@ if(AV1GPU_TESTS)
     # --help prints every option the parser takes
     add_test(NAME help_lists_options COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/help_test.py
              --bin $<TARGET_FILE:av1gpu> --source ${PROJECT_SOURCE_DIR}/encoder/apps/av1gpu.cpp)
-    # the opt-in analysis switches (--topdown, --prune-41): the same bytes with one encoder and the list reversed, their
+    # the staged-analysis switches (--topdown, --prune-41; on in base and turbo): the same bytes with one encoder and the list reversed, their
     # off values = no switches, and decoder identity with both (default and base presets)
     add_test(NAME staged_analysis COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/staged_analysis_test.py
              --bin $<TARGET_FILE:av1gpu>)

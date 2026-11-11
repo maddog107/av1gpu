@@ -54,15 +54,18 @@ down to 2 colours (the most frequent values, and k-means) with their index-map a
 rebuilds the winning palette from the source. Photos do not pass the detection and skip all of this. Details:
 [PALETTE.md](PALETTE.md).
 
-### Staged analysis (opt-in: `--topdown`, `--prune-41`; `an_stage.h`, `k_an_list.cuh`, `k_an_x.cu`)
+### Staged analysis (`--topdown`, `--prune-41`; `an_stage.h`, `k_an_list.cuh`, `k_an_x.cu`)
 
-Two expert options trade a little compression for analysis speed. Both are off in every preset and change
-decisions (not just speed); lossless frames ignore them. With either, the shapes are analysed in groups, and
+Two options trade a little compression for analysis speed. Both are on in the presets `base` and `turbo`
+(`--topdown 1 --prune-41 10`, so with the defaults) and off in the others; they change decisions (not just speed), and
+lossless frames ignore them. Measured on an L4 against v0.12.0: `turbo` +5.6 % MP/s for +0.02 % BD-rate, `base` +38 %
+for +0.06 % (large photos) to +0.13 % (photos below 1 MP). With either, the shapes are analysed in groups, and
 between groups a DP stage (the partition DP below, over the shapes analysed so far) decides on the GPU which
 blocks of the next group are worth analysing. A list kernel (`k_an_list`) collects those blocks per shape, and
 the analysis kernels' list-driven instances take only them. Nothing is read back to the host. These kernels
 (and the DP stages) are a module of their own, `k_an_x.cu`, whose tables are uploaded only for an encoder with a
-switch on: without the switches a process never loads that code (lazy module loading, outside batch mode). With
+switch on: an encoder without them (the other presets, lossless) never loads that code (lazy module loading, outside
+batch mode). With
 `--small-kernel 0` the shapes of up to 64 pixels are analysed in full, as without the options.
 
 - `--topdown 1`: the shapes whose smaller side is 16 or more first; the shapes with a side of 8 only in the 16×16
@@ -98,7 +101,8 @@ superblock. Each thread block:
 
 The reconstruction is bit-exact with what any conforming decoder produces, and the tests check that.
 
-Two expert switches, off by default, take work out of the wavefront (`k_leafprep.cu`, between the partition DP and the
+Two switches, on in the presets `base` and `turbo` (`--uv-shortlist 3 --tx-shortlist 4`: about +4 % MP/s for +0.3 %
+BD-rate on an L4) and off in the others, take work out of the wavefront (`k_leafprep.cu`, between the partition DP and the
 first step, over every leaf of the batch at once): `--uv-shortlist N` screens the chroma modes on source edges and the
 closed loop then runs the exact rate-distortion test only on those N and CfL; `--tx-shortlist N` ranks the luma
 transform types open loop and the closed loop tries only the N best. They change decisions, not validity.

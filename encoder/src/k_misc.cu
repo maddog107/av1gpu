@@ -664,7 +664,7 @@ int gp_recon_prepare(int bd, bool k420, bool k444) {
     return 0;
 }
 
-// The staged analysis' module (k_an_x.cu: MODE 1 analysis, k_an_list, the DP stages; opt-in, an_stage.h), likewise
+// The staged analysis' module (k_an_x.cu: MODE 1 analysis, k_an_list, the DP stages; an_stage.h), likewise
 // once per process, by GpEncoder::init of an encoder with --topdown / --prune-41 on (after gp_init_tables): a process
 // without the switches never touches it, so lazy loading never loads it.
 int gp_staged_prepare() {
