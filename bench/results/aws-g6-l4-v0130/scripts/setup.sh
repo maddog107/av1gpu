@@ -124,7 +124,7 @@ OK=1
 bad() { echo "SETUP_FAILED: $*"; OK=""; }
 [ -x ~/bin/new ] || bad "no NEW binary (v$NEW_VER package not published yet? see $L/rel.log; or set NEW_BIN)"
 [ -x ~/bin/old ] || bad "no OLD binary (see $L/rel.log; or set OLD_BIN)"
-~/bin/new --version > /dev/null 2>&1 || bad "NEW binary does not run"
+~/bin/new --help > /dev/null 2>&1 || bad "NEW binary does not run"   # (av1gpu has no --version)
 [ "$(ls ~/images/*.jpg 2>/dev/null | wc -l)" = 100 ] || bad "~/images does not hold 100 photos ($L/fetch.log)"
 [ "$(ls ~/images_std/*.jpg 2>/dev/null | wc -l)" = 100 ] || bad "~/images_std does not hold 100 photos ($L/fetch_std.log)"
 [ -x ~/opt/bin/ssimulacra2 ] || bad "no ssimulacra2 ($L/jxl.log)"
