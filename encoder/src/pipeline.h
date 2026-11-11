@@ -93,6 +93,8 @@ struct GpConfig {
     // Staged analysis (an_stage.h): decision-changing speed knobs, all off by default, for every preset (not in GpParams,
     // so the default analysis and the closed loop are unchanged).  Lossless frames ignore them.
     int anTopdown = 0;        // --topdown 1: shapes with a side of 8 / 4 only where a DP over the larger shapes asks
+    float anPrune41 = -1;     // --prune-41 PCT (>= 0): 4:1 shapes of a node only where its 2:1 partition costs at most
+                              // 1 + PCT / 100 times the best of the node's other partitions
     GpConfig();
 };
 

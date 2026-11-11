@@ -66,9 +66,9 @@ static __device__ __noinline__ int dp_net8(const GpBatch &B, const GpImage &I, i
 }
 
 // ST: a DP stage of the staged analysis (an_stage.h): only the shapes of S.shapeMask (the others count as GP_INF), and
-// instead of the leaves (and B.sbJ) it writes S.core (the cells under leaves whose smaller side is at most S.coreSide).
-// The default DP is ST = false (S unused).  (The body stays in the kernel: as a device function it cost the default DP
-// 8 registers.)
+// instead of the leaves (and B.sbJ) it writes S.core (the cells under leaves whose smaller side is at most S.coreSide)
+// and S.gate (the 4:1 shapes worth analysing per node).  The default DP is ST = false (S unused).  (The body stays in
+// the kernel: as a device function it cost the default DP 8 registers.)
 template <int BD = 8, bool ST = false>
 __global__ void k_dp(GpBatch B, GpParams P, GpDpStage S) {
     const uint32_t sb = blockIdx.x * blockDim.x + threadIdx.x;
@@ -84,6 +84,7 @@ __global__ void k_dp(GpBatch B, GpParams P, GpDpStage S) {
     const int FW = I.MiCols * 4, FH = I.MiRows * 4;
     const float lambda = gp_lambda<BD>(sb_qindex(I, sbx, sby), P.lambdaMul);
     DpNode node[85];
+    float sqJ[ST ? 85 : 1];   // stage: each node's best square-only cost (the 4:1 gating)
     const int lvBase[4] = {0, 1, 5, 21};
     for (int L = 3; L >= 0; L--) {
         const int n = 64 >> L, half = n >> 1, q4 = n >> 2, per = 1 << L;
@@ -93,7 +94,13 @@ __global__ void k_dp(GpBatch B, GpParams P, GpDpStage S) {
             for (int nx = 0; nx < per; nx++) {
                 DpNode &nd = node[lvBase[L] + ny * per + nx];
                 const int x = sbx + nx * n, y = sby + ny * n;
-                if (x >= FW || y >= FH) { nd.J = 0.f; nd.p = -1; continue; }
+                if (x >= FW || y >= FH) {
+                    if constexpr (ST) {
+                        if (S.gate && n >= 16) S.gate[(size_t)sb * GP_DP_GATE_NODES + lvBase[L] + ny * per + nx] = 3;
+                        sqJ[lvBase[L] + ny * per + nx] = 0.f;
+                    }
+                    nd.J = 0.f; nd.p = -1; continue;
+                }
                 const bool hasRows = (y + half) < FH, hasCols = (x + half) < FW;
                 // SPLIT cost
                 float splitJ = 0.f;
@@ -162,6 +169,38 @@ __global__ void k_dp(GpBatch B, GpParams P, GpDpStage S) {
                 } else {
                     consider(AV1G_PARTITION_SPLIT, splitJ, 0.f);
                 }
+                if constexpr (ST) {
+                    const float *pb = g_avgPart[bsl];
+                    const float tN = (pmask & (1 << AV1G_PARTITION_NONE)) && !big
+                                         ? dpJ(sq_bsize(n), x, y) * P.splitBias + lamN * pb[AV1G_PARTITION_NONE] : GP_INF;
+                    // the square-only cost of the node (NONE or SPLIT into square-only children)
+                    float sqSplit = splitJ;
+                    if (n > 8) {
+                        const int cb = lvBase[L + 1], cper = per * 2;
+                        sqSplit = 0.f;
+                        for (int k = 0; k < 4; k++) sqSplit += sqJ[cb + (ny * 2 + (k >> 1)) * cper + nx * 2 + (k & 1)];
+                    }
+                    sqJ[lvBase[L] + ny * per + nx] = hasRows && hasCols ? fminf(tN, sqSplit + lamN * pb[AV1G_PARTITION_SPLIT]) : best;
+                    // 4:1 gating: a node inside the frame keeps its n x n/4 blocks where HORZ costs at most gateMul x
+                    // the best of NONE, VERT and SPLIT into square-only children (n/4 x n likewise with VERT; the
+                    // children's own best, rectangles included, made the gate stricter at the same saving: emulation in
+                    // the research notes); a partition without blocks (GP_INF: shape or partition type off) leaves its
+                    // 4:1 shapes on
+                    if (S.gate && n >= 16) {
+                        int g = 3;
+                        if (x + n <= FW && y + n <= FH && !big) {
+                            const int hz = sub_bsize(AV1G_PARTITION_HORZ, n), vt = sub_bsize(AV1G_PARTITION_VERT, n);
+                            const float tH = (pmask & (1 << AV1G_PARTITION_HORZ))
+                                                 ? dpJ(hz, x, y) + dpJ(hz, x, y + half) + lamN * pb[AV1G_PARTITION_HORZ] : GP_INF;
+                            const float tV = (pmask & (1 << AV1G_PARTITION_VERT))
+                                                 ? dpJ(vt, x, y) + dpJ(vt, x + half, y) + lamN * pb[AV1G_PARTITION_VERT] : GP_INF;
+                            const float tS = sqSplit + lamN * pb[AV1G_PARTITION_SPLIT];
+                            if (tH < GP_INF && !(tH <= S.gateMul * fminf(fminf(tN, tS), tV))) g &= ~1;
+                            if (tV < GP_INF && !(tV <= S.gateMul * fminf(fminf(tN, tS), tH))) g &= ~2;
+                        }
+                        S.gate[(size_t)sb * GP_DP_GATE_NODES + lvBase[L] + ny * per + nx] = (uint8_t)g;
+                    }
+                }
                 nd.J = best;
                 nd.p = (int8_t)bp;
             }
@@ -174,8 +213,10 @@ __global__ void k_dp(GpBatch B, GpParams P, GpDpStage S) {
     // a stage marks the cells (coreCell x coreCell, raster in the SB) under its leaves with a smaller side <= coreSide
     const int cpr = ST && S.core ? 64 / S.coreCell : 0;
     uint8_t *core = ST && S.core ? S.core + (size_t)sb * cpr * cpr : nullptr;
-    if constexpr (ST)
+    if constexpr (ST) {
+        if (!core) return;   // a gating stage: no leaves needed
         for (int k = 0; k < cpr * cpr; k++) core[k] = 0;
+    }
     auto leaf = [&](int bs, int x, int y) {
         if (x >= FW || y >= FH) return;
         if constexpr (ST) {

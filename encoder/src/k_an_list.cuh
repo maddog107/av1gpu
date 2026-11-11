@@ -36,5 +36,14 @@ __device__ __forceinline__ bool an_list_alive(const GpParams &P, const GpAnListS
             for (int xx = x; xx < x + w && !ok; xx += sh.cell) ok = an_cell_ok(I, core, sh.cell, L.neigh, xx / sh.cell, yy / sh.cell);
         if (!ok) return false;
     }
+    if (sh.gate) {
+        // the node of a 4:1 block: n x n/4 (bit 0) at (x, y rounded down to n), n/4 x n (bit 1) at (x rounded down, y)
+        const bool hz = w > h;
+        const int n = hz ? w : h, nx0 = hz ? x : x & ~(n - 1), ny0 = hz ? y & ~(n - 1) : y;
+        const int lv = n == 64 ? 0 : n == 32 ? 1 : 2, per = 1 << lv, base = lv == 0 ? 0 : lv == 1 ? 1 : 5;
+        const uint32_t sb = I.sbBase + (uint32_t)((ny0 >> 6) * I.sbCols + (nx0 >> 6));
+        const int node = base + ((ny0 & 63) / n) * per + (nx0 & 63) / n;
+        if (!(L.gate[(size_t)sb * GP_DP_GATE_NODES + node] & (hz ? 1 : 2))) return false;
+    }
     return true;
 }

@@ -620,16 +620,22 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
     // (top-down: the shapes below 16x16 come from these lists, not from the live cells)
     GpAnRun run;
     memset(&run, 0, sizeof run);
-    const bool anRun = !ll && cfg_.anTopdown;
+    const bool anRun = !ll && (cfg_.anTopdown || cfg_.anPrune41 >= 0.f);
     if (anRun) {
-        run.topdown = 1;
-        for (int s = 0; s < GP_NSHAPES; s++) {
-            const int w = 4 * AV1G_T(Num_4x4_Blocks_Wide)[s], h = 4 * AV1G_T(Num_4x4_Blocks_High)[s];
-            if (shTotal[s] && an_stage_of(run.topdown, w, h) >= 2) GPCK(A.get(run.list[s], shTotal[s]));
+        run.topdown = cfg_.anTopdown ? 1 : 0;
+        run.gateMul = cfg_.anPrune41 >= 0.f ? 1.f + cfg_.anPrune41 / 100.f : 0.f;
+        if (run.topdown || run.gateMul > 0.f) {
+            for (int s = 0; s < GP_NSHAPES; s++) {
+                const int w = 4 * AV1G_T(Num_4x4_Blocks_Wide)[s], h = 4 * AV1G_T(Num_4x4_Blocks_High)[s];
+                if (shTotal[s] && an_stage_of(run.topdown, run.gateMul, w, h) >= 2) GPCK(A.get(run.list[s], shTotal[s]));
+            }
+            GPCK(A.get(run.count, GP_NSHAPES));
+            if (run.topdown) {
+                GPCK(A.get(run.core16, (size_t)nSb * 16));
+                GPCK(A.get(run.core8, (size_t)nSb * 64));
+            }
+            if (run.gateMul > 0.f) GPCK(A.get(run.gate, (size_t)nSb * GP_DP_GATE_NODES));
         }
-        GPCK(A.get(run.count, GP_NSHAPES));
-        GPCK(A.get(run.core16, (size_t)nSb * 16));
-        GPCK(A.get(run.core8, (size_t)nSb * 64));
     }
     if (!ll && P.pruneFlat > 0.f && !run.topdown) {
         cellStart.assign(n + 1, 0);

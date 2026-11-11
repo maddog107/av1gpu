@@ -217,6 +217,8 @@ static void usage(FILE *to = stderr) {
             "  --topdown 0|1           top-down analysis: the shapes with a side of 8 only in the 16x16 cells where a partition\n"
             "                          DP over the larger shapes picks a block with a side of 16 (or next to such a cell), then\n"
             "                          the shapes with a side of 4 likewise in 8x8 cells\n"
+            "  --prune-41 PCT          analyse a node's 4:1 shapes (16x4 .. 64x16) only where its 2:1 partition costs at most\n"
+            "                          PCT %% more than the best of its other partitions (e.g. 10)\n"
             "  --no-lossless-cfl       with --lossless: no CfL on 4x4 chroma blocks\n"
             "  --prof                  per-phase cycle accounting in k_recon\n"
             "  --check                 compare the reconstruction with av1core's CPU decode of the record\n"
@@ -498,6 +500,7 @@ static bool parse(int argc, char **argv, GpConfig &cfg, Opts &o) {
         }
         else if (a == "--deltas-max-area") cfg.P.deltasMaxArea = atoi(nxt());
         else if (a == "--topdown") cfg.anTopdown = atoi(nxt());
+        else if (a == "--prune-41") cfg.anPrune41 = (float)atof(nxt());
         else if (a == "--prof") cfg.P.profile = 1;
         else if (a == "--uv-in-dp") { cfg.P.uvInDp = 1; cfg.P.uvOverheadBits = 0.f; }
         else if (a == "--vb-order") { const char *v = nxt(); cfg.vbOrder = !strcmp(v, "row") ? 1 : !strcmp(v, "nearest") ? 2 : 0; }

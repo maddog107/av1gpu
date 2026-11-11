@@ -471,19 +471,20 @@ static void gp_launch_dp_stage(const GpBatch &B, const GpParams &P, const GpDpSt
 
 void gp_launch_analysis_staged(const GpBatch &B, const GpParams &P, const uint32_t *shTotal, cudaStream_t st, int bd,
                                const GpLive *live, const GpAnRun &R) {
+    const bool staged = R.topdown || R.gateMul > 0.f;
     // the k_live16 cells serve the cell-wise shapes only without the top-down stages (which list those shapes' blocks)
     const GpLive L0 = live && !R.topdown ? *live : GpLive{};
     GpAnX xs[GP_NSHAPES];
     memset(xs, 0, sizeof xs);
-    uint32_t stage[4] = {0, 0, 0, 0};
+    uint32_t stage[8] = {0, 0, 0, 0, 0, 0, 0, 0};
     for (int s = 0; s < GP_NSHAPES; s++) {
         if (!shTotal[s]) continue;
         const int w = 4 * AV1G_T(Num_4x4_Blocks_Wide)[s], h = 4 * AV1G_T(Num_4x4_Blocks_High)[s];
-        const int sg = an_stage_of(R.topdown, w, h);
+        const int sg = an_stage_of(R.topdown, R.gateMul, w, h);
         stage[sg] |= 1u << s;
         if (sg >= 2) { xs[s].list = R.list[s]; xs[s].count = R.count + s; }
     }
-    if (R.topdown) cudaMemsetAsync(R.count, 0, GP_NSHAPES * sizeof(uint32_t), st);
+    if (staged) cudaMemsetAsync(R.count, 0, GP_NSHAPES * sizeof(uint32_t), st);
     uint32_t done = 0;
     // a stage's shapes (large to small, as gp_launch_analysis), then their chroma term and palette candidates, which the
     // next DP stage sees
@@ -500,26 +501,38 @@ void gp_launch_analysis_staged(const GpBatch &B, const GpParams &P, const uint32
         done |= mask;
     };
     // a DP stage over the shapes done, then the block lists of the next stage's shapes
-    auto next = [&](uint32_t mask, uint8_t *core, int cell) {
+    auto next = [&](uint32_t mask, uint8_t *core, int cell, uint8_t *gate) {
         GpDpStage S;
         memset(&S, 0, sizeof S);
-        S.shapeMask = done; S.core = core; S.coreCell = cell; S.coreSide = cell;
+        S.shapeMask = done; S.core = core; S.coreCell = cell; S.coreSide = cell; S.gate = gate; S.gateMul = R.gateMul;
         gp_launch_dp_stage(B, P, S, st, bd);
         GpAnListStage Ls;
         memset(&Ls, 0, sizeof Ls);
-        Ls.core16 = R.core16; Ls.core8 = R.core8; Ls.neigh = 1;
+        Ls.core16 = R.core16; Ls.core8 = R.core8; Ls.gate = R.gate; Ls.neigh = 1;
         for (int s = 0; s < GP_NSHAPES; s++) {
             if (!((mask >> s) & 1)) continue;
             const int w = 4 * AV1G_T(Num_4x4_Blocks_Wide)[s], h = 4 * AV1G_T(Num_4x4_Blocks_High)[s], m = std::min(w, h);
             GpAnListShape &sh = Ls.s[Ls.n++];
             sh.bs = s; sh.total = shTotal[s]; sh.list = R.list[s]; sh.count = R.count + s; sh.flat = 1;
-            sh.cell = m == 8 ? 16 : 8;
+            sh.cell = R.topdown ? (m == 8 ? 16 : m == 4 ? 8 : 0) : 0;
+            sh.gate = gate != nullptr;
         }
         gp_launch_an_list(B, P, Ls, st, bd);
     };
+    // stages in the order of an_stage_of: 1, 5, 2, 6, 3, 7 with the top-down stages, else 1, 4
     launch(stage[1], L0);
-    if (stage[2]) { next(stage[2], R.core16, 16); launch(stage[2], GpLive{}); }
-    if (stage[3]) { next(stage[3], R.core8, 8); launch(stage[3], GpLive{}); }
+    // (a gated group without the group before it in the shape set maps the cells its blocks need in the gating DP)
+    const int order[] = {5, 2, 6, 3, 7, 4};
+    bool have16 = false, have8 = false;
+    for (int sg : order) {
+        if (!stage[sg]) continue;
+        uint8_t *core = nullptr;
+        int cell = 16;
+        if (sg == 2 || (sg == 6 && !have16)) { core = R.core16; have16 = true; }
+        if (sg == 3 || (sg == 7 && !have8)) { core = R.core8; cell = 8; have8 = true; }
+        next(stage[sg], core, cell, sg >= 4 ? R.gate : nullptr);
+        launch(stage[sg], GpLive{});
+    }
 }
 
 void gp_launch_pack(const GpBatch &B, const GpPackOff *dOff, av1g_block *oB, uint32_t *oBT, av1g_txb *oT, int16_t *oC,
