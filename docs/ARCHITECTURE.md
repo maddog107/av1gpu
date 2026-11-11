@@ -73,6 +73,10 @@ superblock. Each thread block:
 
 The reconstruction is bit-exact with what any conforming decoder produces, and the tests check that.
 
+An expert switch, off by default, takes work out of the wavefront (`k_leafprep.cu`, between the partition DP and the
+first step, over every leaf of the batch at once): `--uv-shortlist N` screens the chroma modes on source edges and the
+closed loop then runs the exact rate-distortion test only on those N and CfL. It changes decisions, not validity.
+
 The wavefront has long serial chains. They are hidden by having many images in flight and by
 running several encoders (CUDA streams) at once. The wavefront kernels go on a high-priority stream,
 so the next batch's analysis fills the gaps.
@@ -130,6 +134,7 @@ On the L4's size-range photos (40 of the 100 below 1 MP), v0.6's default runs 14
 | `encoder/src/imageops.cpp`, `k_imageops.cu` | `--trim`, tone and gray: option parsing, the trim decision, kernels |
 | `encoder/src/gp.h` | shared host/device structures and tunables |
 | `encoder/src/k_pal.cu`, `pal_dev.cuh` | palette candidates of screen-content images (analysis and closed loop) |
+| `encoder/src/k_leafprep.cu` | open-loop chroma-mode shortlists for the closed loop (`--uv-shortlist`) |
 | `av1core/include/av1g/decisions.h` | the DecisionRecord: every coding decision of a frame |
 | `av1core/src/encoder.cpp` | CPU bitstream writer and reference reconstruction |
 | `av1core/include/av1g/dsp.h` | prediction, transforms, quantization shared by CPU and GPU |

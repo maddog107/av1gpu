@@ -211,6 +211,10 @@ static void usage(FILE *to = stderr) {
             "  --tx-size               closed-loop transform size search (largest against one split)\n"
             "  --uv-deltas 0|1         chroma angle deltas in the closed loop\n"
             "  --uv-in-dp              add an open-loop chroma term to the analysis (chroma-aware partitioning)\n"
+            "  --uv-shortlist N        chroma modes: the closed loop evaluates the N best of an open-loop SATD screen (source\n"
+            "                          edges, every block at once before the wavefront) plus CfL, and does not screen\n"
+            "                          the modes itself; replaces --uvK (chroma transforms above 8x8 without a CfL\n"
+            "                          candidate take at most 2: one RD round) (0: off, the default; 1..6; every preset)\n"
             "  --k-large K             analysis top-K for shapes of 1024 pixels or more\n"
             "  --deltas-max-area A     angle-delta screening only for shapes up to A pixels (0: all)\n"
             "  --no-lossless-cfl       with --lossless: no CfL on 4x4 chroma blocks\n"
@@ -341,6 +345,7 @@ static bool parse(int argc, char **argv, GpConfig &cfg, Opts &o) {
         else if (a == "--no-deltas") cfg.P.deltas = 0;
         else if (a == "--no-cfl") cfg.P.cfl = 0;
         else if (a == "--uvK") cfg.P.uvK = atoi(nxt());
+        else if (a == "--uv-shortlist") cfg.P.uvShortlist = atoi(nxt());
         else if (a == "--shapes") cfg.P.shapeMask = (int)strtol(nxt(), nullptr, 16);
         else if (a == "--part8") cfg.P.partMask8 = (int)strtol(nxt(), nullptr, 16);
         else if (a == "--partN") cfg.P.partMaskN = (int)strtol(nxt(), nullptr, 16);
@@ -556,6 +561,9 @@ static bool parse(int argc, char **argv, GpConfig &cfg, Opts &o) {
     if (o.batch.empty() && o.qlist.size() > 1) { fprintf(stderr, "several qindex values need --batch\n"); return false; }
     cfg.P.K = std::max(1, std::min(cfg.P.K, GP_MAXK));
     cfg.P.Krecheck = std::max(1, std::min(cfg.P.Krecheck, cfg.P.K));
+    // (not speed knobs of the presets: they apply to every image, --small-preset ones too)
+    cfg.P.uvShortlist = std::max(0, std::min(cfg.P.uvShortlist, GP_UV_SHORT_MAX));
+    cfg.Psmall.uvShortlist = cfg.P.uvShortlist;
     return true;
 }
 

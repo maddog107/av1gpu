@@ -9,6 +9,7 @@
 //           transform (av1core dsp.h) + reconstruction
 //   chroma  SATD screening of the 13 UV modes with real edges -> top uvK + CfL (least-squares alpha
 //           from the reconstructed luma) -> exact RD of U+V -> final quantization + reconstruction
+//           (GpParams::uvShortlist: no screening; the RD takes the open-loop shortlist of k_leafprep.cu + CfL)
 //           (4:2:0 or 4:4:4: the kernel and its chroma helpers are instantiated per subsampling SS - 1 for
 //           4:2:0 (and monochrome), 0 for 4:4:4 - so the 4:2:0 code has no runtime layout checks; 4:4:4
 //           blocks with a 64-sample side have several chroma tx blocks per plane, decided on the first
@@ -1351,11 +1352,13 @@ __device__ __noinline__ void rc_chroma(int W, int H, RcShared<BD> &S, const GpBa
     }
     rc_tick(B, P, 4);  // chroma edges + CfL
     // ---- SATD screening of the 13 UV modes (real edges), then angle deltas +-1..3 around the best
-    //      directional UV mode ----
+    //      directional UV mode.  Not with an open-loop shortlist (B.uvShort, k_leafprep.cu): its candidates go to the
+    //      RD as they are ----
+    const bool screen = !B.uvShort;
     if (tid < 13) S.uvc[tid] = cand_pack(tid, 0);
     __syncthreads();
     int nuv = 13;
-    for (int pass = 0; pass < 2; pass++) {
+    for (int pass = 0; screen && pass < 2; pass++) {
         const int c0 = pass ? 13 : 0, c1 = pass ? 19 : 13;
         if (pass) {
             if (!uvDeltaOk) break;
@@ -1437,8 +1440,25 @@ __device__ __noinline__ void rc_chroma(int W, int H, RcShared<BD> &S, const GpBa
         __syncthreads();
     }
     rc_tick(B, P, 5);  // chroma SATD screening
-    // ---- exact RD: top uvK modes (+ CfL) for U and V ----
-    if (tid < 32) {
+    // ---- exact RD: top uvK modes (or the shortlist) (+ CfL) for U and V ----
+    if (!screen) {
+        if (tid == 0) {
+            // never more RD rounds than uvK 2: tx blocks above 8x8 run one task per warp (4 per round), so without a CfL
+            // task they take 2 candidates (4 tasks), with one 3 (8 tasks; uvK 2 + CfL: 6, also two rounds)
+            const bool cflTask = cflOk && (S.cflAlpha[0] || S.cflAlpha[1]);
+            const int nMax = (W <= 8 && H <= 8) || cflTask ? P.uvShortlist : min(P.uvShortlist, 2);
+            const uint8_t *sl = B.uvShort + gp_short_slot(sb, mi_row, mi_col) * P.uvShortlist;
+            int n = 0;
+            for (int k = 0; k < nMax && sl[k] != 0xFF; k++)
+                for (int pl = 1; pl <= 2; pl++) {
+                    S.taskC[n] = sl[k];
+                    S.taskT[n] = av1g_chroma_tx_type(txSz, cand_mode(sl[k]), 0);
+                    S.taskP[n] = pl;
+                    n++;
+                }
+            S.nTask = n;
+        }
+    } else if (tid < 32) {
         // top K by SATD cost (candidate ci on lane ci): K rounds of warp_argmin give the K smallest in (cost, index) order,
         // the order of the serial insertion (strict <: an equal cost goes after the earlier candidate)
         const int K = max(1, min(P.uvK, 6));
