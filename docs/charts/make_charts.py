@@ -3,6 +3,9 @@
 
   docs/charts/make_charts.py
 
+av1gpu's speeds and file sizes come from bench/results/aws-g6-l4-v0130 (v0.13.0: its scripts/analyze.py writes
+results.json); the CPU and NVENC baselines stay in their own result directories.
+
 Writes <chart>-light.svg and <chart>-dark.svg next to this script; the README picks one with <picture>.
 """
 import csv
@@ -33,6 +36,30 @@ def load(name):
     return json.load(open(os.path.join(RES, name, "results.json")))
 
 
+AV1GPU = "aws-g6-l4-v0130"   # av1gpu's speeds and file sizes (v0.13.0)
+
+
+def av1gpu_l4():
+    """av1gpu v0.13.0 on the L4 (bench/results/aws-g6-l4-v0130): speeds in "speed" (the keys of aws-g6-g7-v090-check),
+    its files re-encoded and scored against the stored CPU baselines in "quality" / "bd_rate" / ... (the keys of
+    aws-g6-l4-tiles4x4)"""
+    p = os.path.join(RES, AV1GPU, "results.json")
+    if not os.path.exists(p):
+        sys.exit(f"make_charts.py: {p} is missing: run the v0.13.0 benchmark ({AV1GPU}/scripts: setup.sh, run.sh on the "
+                 "instance, then analyze.py on the pulled results) before drawing the charts")
+    return json.load(open(p))
+
+
+def need(r, *keys):
+    """r[k0][k1]...: or a clear failure naming what the v0.13.0 results lack (a part of run.sh that was skipped)"""
+    for i, k in enumerate(keys):
+        if not isinstance(r, dict) or k not in r:
+            sys.exit(f"make_charts.py: {AV1GPU}/results.json has no {'/'.join(keys[:i + 1])} (was that part of run.sh "
+                     "skipped? see its not_measured list)")
+        r = r[k]
+    return r
+
+
 def nvenc():
     """NVENC AV1 on the same L4 (bench/results/aws-g6-l4-nvenc): best speed, per-image scores, BD-rate vs speed 6."""
     r = load("aws-g6-l4-nvenc")
@@ -41,9 +68,9 @@ def nvenc():
 
 
 def tiles4x4():
-    """av1gpu with the 4x4-tile default (bench/results/aws-g6-l4-tiles4x4): its files re-encoded on an L4 and scored
-    against the stored CPU baselines. Below 2 MP they are the same files as before."""
-    return load("aws-g6-l4-tiles4x4")
+    """av1gpu's file sizes: v0.13.0's files re-encoded on the L4 and scored against the stored CPU baselines
+    (bench/results/aws-g6-l4-v0130; until v0.12.0 they came from aws-g6-l4-tiles4x4, same keys)"""
+    return av1gpu_l4()
 
 
 def svt():
@@ -114,9 +141,9 @@ def files(bd):
 
 
 def l4_speed(setting):
-    """av1gpu's speed with v0.9.0 on the L4, as (MP/s, CPU cores): the median of 6 runs
-    (bench/results/aws-g6-g7-v090-check). setting: e.g. "jpeg/size_range/default_enc4", "formats/444_10"."""
-    r = load("aws-g6-g7-v090-check")["speed"][setting + "/new"]
+    """av1gpu's speed with v0.13.0 on the L4, as (MP/s, CPU cores): the median of 6 runs
+    (bench/results/aws-g6-l4-v0130). setting: e.g. "jpeg/size_range/default_enc4", "formats/444_10"."""
+    r = need(av1gpu_l4(), "speed", setting + "/new")
     return r["mp_s"], r["cpu_cores"]
 
 
@@ -297,8 +324,8 @@ def formats_chart(t):
 def metrics_chart(t):
     """median BD-rate vs libaom speed 6 on SSIMULACRA2 and on CVVDP (bench/results/aws-g6-l4-cvvdp)"""
     r, t4 = load("aws-g6-l4-cvvdp"), tiles4x4()
-    s2 = dict(r["bd_rate_ssimulacra2_as_published"], av1gpu_vs_aom_s6=t4["bd_rate"]["av1gpu_vs_aom_s6"])
-    jod = dict(r["bd_rate_cvvdp"], av1gpu_vs_aom_s6=t4["bd_rate_cvvdp"]["av1gpu_vs_aom_s6"])
+    s2 = dict(r["bd_rate_ssimulacra2_as_published"], av1gpu_vs_aom_s6=need(t4, "bd_rate", "av1gpu_vs_aom_s6"))
+    jod = dict(r["bd_rate_cvvdp"], av1gpu_vs_aom_s6=need(t4, "bd_rate_cvvdp", "av1gpu_vs_aom_s6"))
     enc = [("av1gpu", "av1gpu default", "av1gpu"), ("svt_p4", "SVT-AV1 preset 4", "svt"),
            ("svt_p6", "SVT-AV1 preset 6", "svt"), ("svt_p9", "SVT-AV1 preset 9", "svt"),
            ("aom_s9", "libaom speed 9", "aom_s9"), ("nvenc", "NVENC AV1", "nvenc")]
@@ -478,7 +505,7 @@ def pipeline_diagram(t):
           f'fill="{t["muted"]}" fill-opacity="0.08"/>')
     s.add(f'<rect x="{x0 - 16}" y="{gpu_y - 26}" width="{900 - 2 * (x0 - 16)}" height="{bh + 40}" rx="10" '
           f'fill="{t["av1gpu"]}" fill-opacity="0.10"/>')
-    s.text(xs[1], cpu_y - 10, "CPU · about 0.3 cores", 12, "ink2", weight=600)
+    s.text(xs[1], cpu_y - 10, f"CPU · about {l4_speed('jpeg/size_range/default_enc4')[1]:.1f} cores", 12, "ink2", weight=600)
     s.text(xs[1], gpu_y - 10, "GPU · CUDA cores, no NVENC", 12, "ink2", weight=600)
     box(xs[0], cpu_y, "Read JPEGs", "parse headers")
     box(xs[-1], cpu_y, "Write AVIF", "OBUs + container")
