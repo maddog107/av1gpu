@@ -211,6 +211,16 @@ static void usage(FILE *to = stderr) {
             "  --tx-size               closed-loop transform size search (largest against one split)\n"
             "  --uv-deltas 0|1         chroma angle deltas in the closed loop\n"
             "  --uv-in-dp              add an open-loop chroma term to the analysis (chroma-aware partitioning)\n"
+            "  --uv-shortlist N        chroma modes: the closed loop runs its exact RD on the N best modes of an open-loop SATD\n"
+            "                          screen (source edges, every block at once before the wavefront) plus CfL instead of\n"
+            "                          screening the modes itself.  It replaces --uvK in every preset (--uvK has no effect\n"
+            "                          then); chroma transforms above 8x8 without a CfL candidate take at most 2.  In turbo2\n"
+            "                          and turbo3 (--uvK 1) only N 1 saves time.  0: off (the default), 1..6\n"
+            "  --tx-shortlist N        luma: the closed loop's tx-type search tries only the N best types of an open-loop\n"
+            "                          ranking (source edges, transform-domain L1, before the wavefront).  No effect in turbo2\n"
+            "                          and turbo3 (no closed-loop tx search), slow (--tx-all), on --tx-size's split blocks or\n"
+            "                          with N >= 7; in base, fast and faster only where the closed loop keeps the analysis'\n"
+            "                          first candidate.  0: off (the default), 1..16\n"
             "  --k-large K             analysis top-K for shapes of 1024 pixels or more\n"
             "  --deltas-max-area A     angle-delta screening only for shapes up to A pixels (0: all)\n"
             "  --no-lossless-cfl       with --lossless: no CfL on 4x4 chroma blocks\n"
@@ -341,6 +351,14 @@ static bool parse(int argc, char **argv, GpConfig &cfg, Opts &o) {
         else if (a == "--no-deltas") cfg.P.deltas = 0;
         else if (a == "--no-cfl") cfg.P.cfl = 0;
         else if (a == "--uvK") cfg.P.uvK = atoi(nxt());
+        else if (a == "--uv-shortlist" || a == "--tx-shortlist") {
+            const char *v = nxt();
+            char *end = nullptr;
+            const long n = strtol(v, &end, 10);
+            const int hi = a == "--uv-shortlist" ? GP_UV_SHORT_MAX : 16;
+            if (!*v || *end || n < 0 || n > hi) { fprintf(stderr, "%s must be a whole number 0..%d, not %s\n", a.c_str(), hi, v); return false; }
+            (a == "--uv-shortlist" ? cfg.P.uvShortlist : cfg.P.txShortlist) = (int)n;
+        }
         else if (a == "--shapes") cfg.P.shapeMask = (int)strtol(nxt(), nullptr, 16);
         else if (a == "--part8") cfg.P.partMask8 = (int)strtol(nxt(), nullptr, 16);
         else if (a == "--partN") cfg.P.partMaskN = (int)strtol(nxt(), nullptr, 16);
@@ -556,6 +574,9 @@ static bool parse(int argc, char **argv, GpConfig &cfg, Opts &o) {
     if (o.batch.empty() && o.qlist.size() > 1) { fprintf(stderr, "several qindex values need --batch\n"); return false; }
     cfg.P.K = std::max(1, std::min(cfg.P.K, GP_MAXK));
     cfg.P.Krecheck = std::max(1, std::min(cfg.P.Krecheck, cfg.P.K));
+    // (not speed knobs of the presets: they apply to every image, --small-preset ones too)
+    cfg.Psmall.uvShortlist = cfg.P.uvShortlist;
+    cfg.Psmall.txShortlist = cfg.P.txShortlist;
     return true;
 }
 

@@ -73,6 +73,16 @@ superblock. Each thread block:
 
 The reconstruction is bit-exact with what any conforming decoder produces, and the tests check that.
 
+Two expert switches, off by default, take work out of the wavefront (`k_leafprep.cu`, between the partition DP and the
+first step, over every leaf of the batch at once): `--uv-shortlist N` screens the chroma modes on source edges and the
+closed loop then runs the exact rate-distortion test only on those N and CfL; `--tx-shortlist N` ranks the luma
+transform types open loop and the closed loop tries only the N best. They change decisions, not validity.
+`--uv-shortlist` replaces `--uvK` in every preset (`--uvK` has no effect while it is on), and chroma transforms above
+8x8 without a CfL candidate take at most 2 modes; turbo2 and turbo3 already use `--uvK 1`, so there only N = 1 saves
+time. `--tx-shortlist` has no effect where the closed loop has no separate tx-type search (turbo2 and turbo3, which
+turn it off, and slow, which uses `--tx-all`), on `--tx-size`'s split blocks, or with N of 7 or more; in base, fast and
+faster it applies where the closed loop keeps the analysis' first candidate.
+
 The wavefront has long serial chains. They are hidden by having many images in flight and by
 running several encoders (CUDA streams) at once. The wavefront kernels go on a high-priority stream,
 so the next batch's analysis fills the gaps.
@@ -130,6 +140,7 @@ On the L4's size-range photos (40 of the 100 below 1 MP), v0.6's default runs 14
 | `encoder/src/imageops.cpp`, `k_imageops.cu` | `--trim`, tone and gray: option parsing, the trim decision, kernels |
 | `encoder/src/gp.h` | shared host/device structures and tunables |
 | `encoder/src/k_pal.cu`, `pal_dev.cuh` | palette candidates of screen-content images (analysis and closed loop) |
+| `encoder/src/k_leafprep.cu` | open-loop chroma-mode and tx-type shortlists for the closed loop (`--uv-shortlist`, `--tx-shortlist`) |
 | `av1core/include/av1g/decisions.h` | the DecisionRecord: every coding decision of a frame |
 | `av1core/src/encoder.cpp` | CPU bitstream writer and reference reconstruction |
 | `av1core/include/av1g/dsp.h` | prediction, transforms, quantization shared by CPU and GPU |
