@@ -247,6 +247,10 @@ if(AV1GPU_TESTS)
     add_test(NAME gate_cfl_edge COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/decoder_gate.py
              --bin $<TARGET_FILE:av1gpu> --images ${PROJECT_SOURCE_DIR}/tests/gate_images --q 60,120
              -- --preset slow --small-preset none --partN 0xF0)
+    # --maxpart 8 / 4, --partN 0 with the flat pruning (turbo): every leaf of the DP has an analysis record (decoder
+    # identity, the same bytes with device allocations filled with 0 and 120), options without any partition refused
+    add_test(NAME maxpart_flat_pruning COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/maxpart_test.py
+             --bin $<TARGET_FILE:av1gpu>)
     # unreadable inputs (a directory, a missing or empty file) are skipped, the rest is encoded
     add_test(NAME batch_skip_unreadable COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/batch_skip_test.py
              --bin $<TARGET_FILE:av1gpu> --image ${PROJECT_SOURCE_DIR}/tests/gate_images/cfl_edge_211x149.png)
