@@ -258,6 +258,16 @@ if(AV1GPU_TESTS)
     # (GP_DP_UNCHECKED); options without any partition refused, also for the small-image preset
     add_test(NAME maxpart_flat_pruning COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/maxpart_test.py
              --bin $<TARGET_FILE:av1gpu>)
+    # --uv-shortlist / --tx-shortlist (k_leafprep): decoder identity on the gate images, 4:2:0 8-bit and 4:4:4 10-bit;
+    # determinism, independence of the batch, --check / --check-entropy, --tx-shortlist 7 = no shortlist
+    add_test(NAME gate_shortlist COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/decoder_gate.py
+             --bin $<TARGET_FILE:av1gpu> --images ${PROJECT_SOURCE_DIR}/tests/gate_images --q 60,120
+             -- --uv-shortlist 3 --tx-shortlist 4 --small-preset none)
+    add_test(NAME gate_shortlist_444_10 COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/decoder_gate.py
+             --bin $<TARGET_FILE:av1gpu> --images ${PROJECT_SOURCE_DIR}/tests/gate_images --q 60,120 --expect-format 444
+             --expect-depth 10 -- --uv-shortlist 3 --tx-shortlist 4 --yuv 444 --depth 10 --small-preset none)
+    add_test(NAME shortlist COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/shortlist_test.py
+             --bin $<TARGET_FILE:av1gpu> --images ${PROJECT_SOURCE_DIR}/tests/gate_images)
     # unreadable inputs (a directory, a missing or empty file) are skipped, the rest is encoded
     add_test(NAME batch_skip_unreadable COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/batch_skip_test.py
              --bin $<TARGET_FILE:av1gpu> --image ${PROJECT_SOURCE_DIR}/tests/gate_images/cfl_edge_211x149.png)
