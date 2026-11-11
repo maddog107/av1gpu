@@ -20,6 +20,7 @@ void gp_recon_order(const GpBatch &B, uint32_t *dSteps, const uint32_t *dSeg, in
 #include <cmath>
 #include <cstdio>
 #include <cstring>
+#include <set>
 
 #define GPCK(x)                                                                                   \
     do {                                                                                          \
@@ -117,7 +118,15 @@ GpEncoder::~GpEncoder() {
 // differ from the reconstruction.  dp_complete runs k_dp's choice on finiteness alone, for a superblock at every
 // distance from the frame's right and bottom edges (the coded size is a multiple of 8), with every block that the
 // pruning may skip skipped (a flat frame prunes every complete 16x16 cell; any block may exceed the variance limit):
-// true if every superblock of every frame keeps a partition of finite J.
+// true if every superblock of every frame keeps a partition of finite J.  (k_dp's safety net, dp_net8, catches what
+// this model misses: it codes such an 8x8 node from DC_PRED records in 4x4, 8x8, 8x4 or 4x8 blocks, whichever the
+// analysis has, and counts them, GpTimes::dpRepaired.  The FW = FH = 8 case below makes init refuse options with
+// none of the four.)
+// Rule for any future pruning or skipping of analysis blocks:
+// - pruning that depends only on the options and the source (as prune_flat and the variance pruning) must be mirrored
+//   in blk() below, as "the block may have no record", and switched off in init where it makes dp_complete fail;
+// - skipping driven by a DP (analyse only what a coarser stage's partition needs) is allowed only under a partition
+//   that a stage DP with the same GpParams found finite, so that the final DP keeps a finite partition there.
 static bool dp_complete(const GpParams &P, bool flat, bool var) {
     for (int FH = 8; FH <= 64; FH += 8)
         for (int FW = 8; FW <= 64; FW += 8) {
@@ -189,23 +198,59 @@ static bool dp_complete(const GpParams &P, bool flat, bool var) {
     return true;
 }
 
+void gp_warn_dp_net(const char *what, unsigned long long n) {
+    const std::string w = std::string(what ? what : "") + (what ? ": " : "") + (n ? std::to_string(n) + " " : "");
+    fprintf(stderr, "[av1gpu] warning: dp safety net: %sblocks coded where the partition search had nothing of finite cost "
+                    "(DC_PRED where the analysis wrote no record; a gap in the encoder's partition check, please report "
+                    "the options)\n", w.c_str());
+}
+
+int gp_check_partitions(const GpParams &P, std::string &err) {
+    if (dp_complete(P, false, false)) return 0;
+    err = "--shapes / --part8 / --partN / --maxpart leave no partition the analysis evaluates for some blocks (at some "
+          "frame sizes at least; such options are refused for every frame)";
+    return -1;
+}
+
 int GpEncoder::init(const GpConfig &cfg, std::string &err) {
     cfg_ = cfg;
+    // candidate counts clamped as av1gpu's parser does (K <= 0 from a library caller left every record without a
+    // candidate, but with a finite J where the tx search ran)
+    cfg_.P.K = std::max(1, std::min(cfg_.P.K, GP_MAXK));
+    cfg_.P.Krecheck = std::max(1, std::min(cfg_.P.Krecheck, cfg_.P.K));
     // the analysis must leave k_dp a partition of finite J in every superblock (dp_complete).  The flat / variance
     // pruning count on larger / smaller blocks to take over the ones they skip; where the partition options leave none
     // (--maxpart below 16 with the flat pruning of turbo / faster, --partN / --shapes without them, ...) the analysis
     // evaluates every block instead.  Options that leave no partition even then are refused.
     if (!cfg_.lossless) {
         GpParams &P = cfg_.P;
-        if (!dp_complete(P, false, false)) {
-            err = "--shapes / --part8 / --partN / --maxpart leave no partition the analysis evaluates for some blocks";
-            return -1;
-        }
+        if (gp_check_partitions(P, err)) return -1;
         const bool fl = P.pruneFlat > 0.f, vr = P.pruneVar > 0.f;
-        if ((fl || vr) && !dp_complete(P, fl, vr)) {
-            if (fl && dp_complete(P, false, vr)) P.pruneFlat = 0.f;
-            else if (vr && dp_complete(P, fl, false)) P.pruneVar = 0.f;
-            else P.pruneFlat = 0.f, P.pruneVar = 0.f;
+        // debug: GP_DP_UNCHECKED=1 keeps the pruning anyway, for k_dp's safety net to act (tests/maxpart_test.py)
+        static const bool unchecked = getenv("GP_DP_UNCHECKED") && atoi(getenv("GP_DP_UNCHECKED")) != 0;
+        if ((fl || vr) && !unchecked && !dp_complete(P, fl, vr)) {
+            const char *what;
+            if (fl && dp_complete(P, false, vr)) {
+                P.pruneFlat = 0.f;
+                what = "the flat pruning (--prune-flat, on in turbo, turbo2, turbo3 and faster) is off: the partition options "
+                       "(--maxpart below 16, --partN without NONE, --shapes without 16x16, ...) give some flat 16x16 cells no "
+                       "block it keeps";
+            } else if (vr && dp_complete(P, fl, false)) {
+                P.pruneVar = 0.f;
+                what = "--prune-var is off: with the partition options, blocks of --prune-area pixels and up are needed "
+                       "where they exceed the variance limit";
+            } else {
+                P.pruneFlat = 0.f;
+                P.pruneVar = 0.f;
+                what = "the flat pruning (--prune-flat) and --prune-var are off: together they leave some blocks no "
+                       "partition the analysis evaluates";
+            }
+            if (cfg_.verbose) {   // once per message (one per encoder otherwise)
+                static std::mutex mu;
+                static std::set<std::string> said;
+                std::lock_guard<std::mutex> lk(mu);
+                if (said.insert(what).second) fprintf(stderr, "[av1gpu] %s; every block is analysed instead\n", what);
+            }
         }
     }
     char buf[256] = {0};
@@ -742,6 +787,16 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
         if (PS.stage(sbCyc.data(), B.sbCyc, nSb * 4, st)) GPCK(cudaErrorMemoryAllocation);
     }
     if (PS.flush(st)) GPCK(cudaGetLastError() != cudaSuccess ? cudaGetLastError() : cudaErrorUnknown);
+    // k_dp's safety net (dp_net8, k_dp.cuh) coded blocks without an analysis record (stats[5]; 0 unless dp_complete
+    // missed a case): the frames it acted in are those with a superblock of non-finite DP cost.  Only then is it copied.
+    if (stats[5]) {
+        std::vector<float> sbJ(nSb);
+        GPCK(cudaMemcpyAsync(sbJ.data(), B.sbJ, nSb * sizeof(float), cudaMemcpyDeviceToHost, st));
+        GPCK(cudaStreamSynchronize(st));
+        for (int i = 0; i < n; i++)
+            for (uint32_t k = 0; k < (uint32_t)(imgs[i].sbCols * imgs[i].sbRows) && !out[i].dpNet; k++)
+                out[i].dpNet = !(sbJ[imgs[i].sbBase + k] < 3.0e38f);   // GP_INF (dev_common.cuh)
+    }
     if (B.sbCyc) {
         // per-SB recon latency dump for schedule studies: batch img tile sbr sbc step cycles
         static std::mutex dumpMu;
@@ -1066,6 +1121,7 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
     t.setup = ms[0]; t.analysis = ms[1]; t.dp = ms[2]; t.recon = ms[3]; t.pack = msPack; t.postfilter = msPf; t.download = ms[6];
     cudaEventElapsedTime(&t.total, ev_[0], ev_[7]);
     t.blocks = stats[0]; t.skipBlocks = stats[1]; t.cflBlocks = stats[2]; t.rangeFixes = stats[3]; t.txSplit = stats[4];
+    t.dpRepaired = stats[5];
     return 0;
 }
 

@@ -180,7 +180,7 @@ static void usage(FILE *to = stderr) {
             "  --stats                 print one JSON line with timings / counts\n"
             "  --debug-outputs         also write <out>.obu and <out>.recon.yuv (decoder identity tests)\n"
             "  --no-defaults           do not apply the defaults above (expert / research use)\n"
-            "  --verbose               reserved\n"
+            "  --verbose               notes on stderr (pruning the partition options switch off)\n"
             "  -h, --help              print this list\n"
             "\n"
             "expert options:\n"
@@ -190,6 +190,9 @@ static void usage(FILE *to = stderr) {
             "  --K k --Krecheck k      analysis top-K, closed-loop re-check count\n"
             "  --no-txsearch --no-txsearch-cl --no-deltas --no-cfl --uvK k\n"
             "  --shapes HEX --part8 HEX --partN HEX --maxpart N\n"
+            "                          Where they leave the flat / variance pruning no block to fall back on (e.g.\n"
+            "                          --maxpart 8 with turbo), every block is analysed instead (--verbose says so);\n"
+            "                          options without a partition at some frame size are refused.\n"
             "  --rnd R --zbin Z --rndc R --zbinc Z --satd-lambda S --uv-overhead B --split-bias S\n"
             "  --qm L|auto --qm-uv L --edge-filter --no-edge-filter --lf q|LEVEL --lf-mul M\n"
             "  --cdef ypri,ysec,uvpri,uvsec,damp-3\n"
@@ -604,7 +607,13 @@ static int run_single(const GpConfig &cfg0, const Opts &o) {
             ir = ingest_next_batch(ictx, &ib, -1);
         });
     }
-    const int initRc = enc.init(cfg, err);
+    int initRc = enc.init(cfg, err);
+    // the small-image preset's encoder is set up only for a small image: its options are checked now, as batch mode
+    // does by setting up both
+    if (!initRc && cfg.smallMp > 0 && !cfg.lossless && gp_check_partitions(cfg.Psmall, err)) {
+        err += " (--small-preset)";
+        initRc = -1;
+    }
     if (ingestT.joinable()) ingestT.join();
     if (initRc) {
         fprintf(stderr, "init: %s\n", err.c_str());
@@ -759,6 +768,8 @@ static int run_single(const GpConfig &cfg0, const Opts &o) {
     };
     if (E->encode({fin}, outs, tm, err)) return failed("encode");
     if (hasAlpha && encA.encode({afin}, aouts, tma, err)) return failed("encode (alpha)");
+    const uint32_t dpRepaired = tm.dpRepaired + tma.dpRepaired;
+    if (dpRepaired) gp_warn_dp_net(o.in.c_str(), dpRepaired);
 #ifdef _WIN32
     if (ictx) { ingest_release_batch(ictx, ib.batch_id, nullptr); ingest_destroy(ictx); }
 #else
@@ -881,10 +892,10 @@ static int run_single(const GpConfig &cfg0, const Opts &o) {
         printf("{\"file\":\"%s\",\"w\":%d,\"h\":%d,\"q\":%d,\"bytes\":%zu,\"load_ms\":%.2f,\"gpu_total_ms\":%.2f,"
                "\"analysis_ms\":%.2f,\"dp_ms\":%.2f,\"recon_ms\":%.2f,\"pack_ms\":%.2f,\"postfilter_ms\":%.2f,\"download_ms\":%.2f,"
                "\"entropy_ms\":%.2f,\"wall_encode_ms\":%.2f,\"steps\":%u,\"blocks\":%u,\"skip\":%u,\"cfl\":%u,\"fixes\":%u,\"txsplit\":%u,"
-               "\"dev_mb\":%.1f%s}\n",
+               "\"dp_repaired\":%u,\"dev_mb\":%.1f%s}\n",
                o.in.c_str(), f.fp.width, f.fp.height, (int)f.fp.base_q_idx, avif.size(), ms(t0, t1), tm.total, tm.analysis, tm.dp,
                tm.recon, tm.pack, tm.postfilter, tm.download, o.gpuEntropy ? entMs : ms(t2, t3), ms(t1, t2), tm.steps, tm.blocks,
-               tm.skipBlocks, tm.cflBlocks, tm.rangeFixes, tm.txSplit, tm.deviceBytes / 1048576.0,
+               tm.skipBlocks, tm.cflBlocks, tm.rangeFixes, tm.txSplit, dpRepaired, tm.deviceBytes / 1048576.0,
                !fa ? "" : (",\"alpha_q\":" + std::to_string((int)fa->fp.base_q_idx) + ",\"alpha_obu_bytes\":" + std::to_string(aobu.size() > 2 ? aobu.size() - 2 : 0) +
                            ",\"alpha_gpu_total_ms\":" + std::to_string(tma.total)).c_str());
     }

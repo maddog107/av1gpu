@@ -17,6 +17,53 @@ __device__ __forceinline__ float dp_blockJ(const GpBatch &B, const GpImage &I, i
 
 struct DpNode { float J; int8_t p; };
 
+// Safety net of the leaf walk (GpEncoder::init's dp_complete keeps it unreached; B.stats[5] counts what it codes).
+// A node whose every option has a non-finite J keeps PARTITION_SPLIT, down to 8x8 nodes whose 4x4 leaves have no
+// analysis record (J = GP_INF, ncand 0, cand / tx never written).  Every other leaf belongs to a partition of finite
+// cost (NONE only for a block with a record), so these are the only leaves k_recon could code from unwritten memory.
+// The node is coded with the first of these shapes the analysis has record slots for (I.shNbx), each record without a
+// finite J made codable: DC_PRED, delta 0, DCT_DCT, ncand 1 (J stays GP_INF; k_recon reads only cand[0 .. ncand-1]
+// and tx of a leaf's record, k_recon.cuh: br, and nothing after it reads the records):
+// - 4x4: the DP's own SPLIT; counts the records it made up (at least one: else SPLIT would have been finite);
+// - else 8x8 (NONE), 8x4 (HORZ: two leaves) or 4x8 (VERT: two leaves), counting every leaf (a 4x4 leaf's record index
+//   would land in another shape's records).  An 8x8 node is never cut by the frame, so all four partitions are legal
+//   there whatever --part8 says (the mask only restricts the search; the backend derives the partition from the leaves).
+// Options with none of the four shapes are refused at init (dp_complete: a frame corner of 8x8 pixels needs one), so
+// the last return is not reached.  Returns the partition | count << 4.
+static __device__ __noinline__ int dp_net8(const GpBatch &B, const GpImage &I, int x, int y, int FW, int FH) {
+    auto fix = [&](int bs, int bx, int by) {   // 1: the record had no finite J (its candidates, if any, are not trusted)
+        GpBlockRes &r = B.blk[I.shOff[bs] + (uint32_t)(by / bh_px(bs)) * I.shNbx[bs] + bx / bw_px(bs)];
+        if (r.J < GP_INF) return 0;
+        r.cand[0] = (uint8_t)cand_pack(AV1G_DC_PRED, 0);
+        r.ncand = 1;
+        r.tx = AV1G_DCT_DCT;
+        return 1;
+    };
+    if (I.shNbx[AV1G_BLOCK_4X4]) {
+        int n = 0;
+        for (int k = 0; k < 4; k++) {
+            const int xx = x + (k & 1) * 4, yy = y + (k >> 1) * 4;
+            if (xx < FW && yy < FH) n += fix(AV1G_BLOCK_4X4, xx, yy);
+        }
+        return AV1G_PARTITION_SPLIT | n << 4;
+    }
+    if (I.shNbx[AV1G_BLOCK_8X8]) {
+        fix(AV1G_BLOCK_8X8, x, y);
+        return AV1G_PARTITION_NONE | 1 << 4;
+    }
+    if (I.shNbx[AV1G_BLOCK_8X4]) {
+        fix(AV1G_BLOCK_8X4, x, y);
+        fix(AV1G_BLOCK_8X4, x, y + 4);
+        return AV1G_PARTITION_HORZ | 2 << 4;
+    }
+    if (I.shNbx[AV1G_BLOCK_4X8]) {
+        fix(AV1G_BLOCK_4X8, x, y);
+        fix(AV1G_BLOCK_4X8, x + 4, y);
+        return AV1G_PARTITION_VERT | 2 << 4;
+    }
+    return AV1G_PARTITION_SPLIT;
+}
+
 template <int BD = 8>
 __global__ void k_dp(GpBatch B, GpParams P) {
     const uint32_t sb = blockIdx.x * blockDim.x + threadIdx.x;
@@ -109,8 +156,9 @@ __global__ void k_dp(GpBatch B, GpParams P) {
                 nd.p = (int8_t)bp;
             }
     }
-    B.sbJ[sb] = node[0].J;
+    B.sbJ[sb] = node[0].J;   // (not finite exactly where the safety net acts: the host names those frames)
     // ---- leaves in decode order ----
+    uint32_t nRep = 0;   // blocks the safety net (dp_net8) coded
     GpLeaf *out = B.leaves + (size_t)sb * GP_MAX_LEAVES;
     int nl = 0;
     auto leaf = [&](int bs, int x, int y) {
@@ -142,6 +190,16 @@ __global__ void k_dp(GpBatch B, GpParams P) {
         case AV1G_PARTITION_VERT: leaf(sub, x, y); if (hasCols) leaf(sub, x + half, y); break;
         case AV1G_PARTITION_SPLIT:
             if (n == 8) {
+                if (!(nd.J < GP_INF)) {   // safety net (dp_net8)
+                    const int r = dp_net8(B, I, x, y, FW, FH), pt = r & 15;
+                    nRep += (uint32_t)(r >> 4);
+                    if (pt != AV1G_PARTITION_SPLIT) {
+                        const int bs = pt == AV1G_PARTITION_NONE ? AV1G_BLOCK_8X8 : pt == AV1G_PARTITION_HORZ ? AV1G_BLOCK_8X4 : AV1G_BLOCK_4X8;
+                        leaf(bs, x, y);
+                        if (pt != AV1G_PARTITION_NONE) leaf(bs, x + (pt == AV1G_PARTITION_VERT ? 4 : 0), y + (pt == AV1G_PARTITION_HORZ ? 4 : 0));
+                        break;
+                    }
+                }
                 leaf(AV1G_BLOCK_4X4, x, y); leaf(AV1G_BLOCK_4X4, x + 4, y);
                 leaf(AV1G_BLOCK_4X4, x, y + 4); leaf(AV1G_BLOCK_4X4, x + 4, y + 4);
             } else {  // push children in reverse decode order
@@ -163,4 +221,5 @@ __global__ void k_dp(GpBatch B, GpParams P) {
         }
     }
     B.leafCountW[sb] = (uint16_t)nl;
+    if (nRep) atomicAdd(&B.stats[5], nRep);
 }

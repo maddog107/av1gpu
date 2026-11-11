@@ -162,6 +162,7 @@ struct GpFrameOut {
     std::vector<uint8_t> recon[3];   // cropped: Y W x H, U/V ((W+1)/2) x ((H+1)/2) (4:4:4: W x H); 10-bit frames:
                                      // uint16_t samples (2 bytes each, native byte order)
     int orientation = 1;             // EXIF orientation of the source (set by the caller; AVIF irot/imir)
+    bool dpNet = false;              // k_dp's safety net coded blocks of this frame (GpTimes::dpRepaired counts them)
     av1g_decision_record record();   // points into the vectors above
 };
 
@@ -169,6 +170,9 @@ struct GpTimes {  // ms, CUDA events
     float setup = 0, analysis = 0, dp = 0, recon = 0, pack = 0, postfilter = 0, download = 0, total = 0;
     uint32_t steps = 0, sbs = 0, blocks = 0, skipBlocks = 0, cflBlocks = 0, rangeFixes = 0;
     uint32_t txSplit = 0;     // blocks coded with tx_depth 1 (tx-size search)
+    uint32_t dpRepaired = 0;  // blocks k_dp's safety net coded (8x8 areas where the DP had no partition of finite cost;
+                              // 0 unless GpEncoder::init's partition check missed a case; the apps warn and name the
+                              // inputs, GpFrameOut::dpNet; tests/decoder_gate.py fails)
     size_t deviceBytes = 0;
     unsigned long long prof[16] = {0};  // k_recon phase cycles (--prof)
 };
@@ -194,6 +198,14 @@ private:
     uint8_t *vbLuts_ = nullptr;
     uint8_t *vbLuts10_ = nullptr;   // variance-boost LUTs with libaom's 10-bit q tables
 };
+
+// The partition check of GpEncoder::init without the pruning (lossy options): -1 and err when --shapes / --part8 /
+// --partN / --maxpart leave some superblock of some frame size no partition the analysis evaluates.  av1gpu checks
+// the small-image preset's options with it at start (that encoder is only set up for a small image).
+int gp_check_partitions(const GpParams &P, std::string &err);
+// The warning (stderr) for k_dp's safety net: an input's name (or NULL) and / or a block count (0: none given);
+// tests/decoder_gate.py fails a run that prints it.
+void gp_warn_dp_net(const char *what, unsigned long long n);
 
 // Front ends (--depth 10): convert the 8-bit frames of `frames` (bitDepth 8) to 10-bit device planes in place
 // (Y10 = round(Y8 * 1023 / 255), C10 = round((C8 - 128) * 1023 / 255) + 512, libavif's full-range mapping).  One
