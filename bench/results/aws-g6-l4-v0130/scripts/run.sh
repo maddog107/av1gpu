@@ -50,7 +50,9 @@ part_speed_ll() { speed ll; }
 part_speed_extra() { speed extra; }
 part_quality() { $PY $S/qual13.py encode score; }
 part_quality_old() { $PY $S/qual13.py score_old; }
-part_cvvdp() { $PY $S/qual13.py cvvdp; }
+# (without the AMI's LD_LIBRARY_PATH: its CUDA 13.2 libraries shadow the venv's nvrtc, and cuDNN then fails to load its
+# runtime-compiled engines: "CUDNN_STATUS_SUBLIBRARY_LOADING_FAILED")
+part_cvvdp() { env -u LD_LIBRARY_PATH $PY $S/qual13.py cvvdp; }
 part_gates() { $PY $S/qual13.py gates; }
 part_alpha() {
   if [ -z "$(ls ~/data/rgba/set/*.png 2>/dev/null)" ]; then echo "SKIPPED: no ~/data/rgba/set"; return 3; fi
