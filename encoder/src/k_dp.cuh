@@ -171,8 +171,11 @@ __global__ void k_dp(GpBatch B, GpParams P, GpDpStage S) {
                 }
                 if constexpr (ST) {
                     const float *pb = g_avgPart[bsl];
-                    const float tN = (pmask & (1 << AV1G_PARTITION_NONE)) && !big
-                                         ? dpJ(sq_bsize(n), x, y) * P.splitBias + lamN * pb[AV1G_PARTITION_NONE] : GP_INF;
+                    float tN = GP_INF;   // finite only for a block with a record, as NONE above
+                    if ((pmask & (1 << AV1G_PARTITION_NONE)) && !big) {
+                        const float jn = dpJ(sq_bsize(n), x, y);
+                        if (jn < GP_INF) tN = jn * P.splitBias + lamN * pb[AV1G_PARTITION_NONE];
+                    }
                     // the square-only cost of the node (NONE or SPLIT into square-only children)
                     float sqSplit = splitJ;
                     if (n > 8) {
