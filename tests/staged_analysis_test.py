@@ -1,20 +1,31 @@
 #!/usr/bin/env python3
-"""The opt-in analysis switches (--topdown, --prune-41): deterministic, independent of the
-batch, and decodable.
+"""The opt-in analysis switches (--topdown, --prune-41): they work, deterministically, and decode.
 
-On generated PNGs (a 1.1 MP picture that the default encodes with its turbo preset, frame edges that cut 16x16 cells,
-flat areas next to texture; a 640x480 and a 333x250 one for the base preset) plus tests/gate_images: every switch
-alone and both, with the default settings and with --preset base, must give the same bytes with three encoders
-and the list in order as with one encoder and the list reversed; the switches set to their off values must give the
-bytes of a run without them; both together must change the output; then tests/decoder_gate.py (dav1d + aomdec reproduce the
-encoder's reconstruction) on these pictures with both switches, both presets.
+Inputs, generated: a 1.1 MP picture (the default settings encode it with turbo; frame edges that cut 16x16 cells;
+flat sky, a gradient, fine and coarse texture), a 640x480 and a 333x250 one (base below 1 MP), a 320x240 RGBA one
+(alpha item); plus tests/gate_images.  Checked, with the default settings and with --preset base:
+
+- function: each switch alone changes the output where it applies (--topdown in both presets, --prune-41 in base;
+  in the default turbo preset --prune-41 has no 4:1 shape to prune); total bytes within 2 % of the run without the
+  switches at the same qindex; the work actually skipped (GP_DEBUG_STAGES: listed blocks per staged shape, a
+  deterministic count) between bounds that both "refine nothing" and "refine everything" break: with --topdown in
+  base, the side-4 shapes are listed for 8..92 % of their blocks, the side-8 shapes for 30..99 %; with --prune-41 in
+  base, the 4:1 shapes for 5..95 %;
+- determinism: both switches give the same bytes with three encoders in list order as with one encoder and the list
+  reversed (and --topdown alone in the default preset); with every allocation poisoned (GP_POISON=255) the same bytes;
+- off values (--topdown 0 --prune-41 off) give the bytes of a run without the options;
+- tests/decoder_gate.py (dav1d + aomdec reproduce the encoder's reconstruction, alpha items included) with each
+  switch alone, and with both in 4:4:4 10-bit and with 4x4 tiles;
+- option validation: --topdown 2 / -1 and --prune-41 abc / -0 / nan / inf / 1e30 / 1001 are refused.
 
   tests/staged_analysis_test.py --bin build/av1gpu [--keep DIR]
 """
 import argparse
+import collections
 import glob
 import hashlib
 import os
+import re
 import shutil
 import struct
 import subprocess
@@ -23,15 +34,17 @@ import tempfile
 import zlib
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-SWITCHES = {"topdown": ["--topdown", "1"], "prune41": ["--prune-41", "10"]}
-ALL = sum(SWITCHES.values(), [])
-OFF = ["--topdown", "0", "--prune-41", "-1"]
+TD = ["--topdown", "1"]
+G = ["--prune-41", "10"]
+BOTH = TD + G
+OFF = ["--topdown", "0", "--prune-41", "off"]
 
 
-def png(path, w, h, px):
-    rows = b"".join(b"\0" + b"".join(struct.pack("BBB", *px(x, y)) for x in range(w)) for y in range(h))
+def png(path, w, h, px, alpha=False):
+    ch = 4 if alpha else 3
+    rows = b"".join(b"\0" + b"".join(struct.pack("B" * ch, *px(x, y)) for x in range(w)) for y in range(h))
     chunk = lambda t, d: struct.pack(">I", len(d)) + t + d + struct.pack(">I", zlib.crc32(t + d) & 0xFFFFFFFF)
-    open(path, "wb").write(b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0))
+    open(path, "wb").write(b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 6 if alpha else 2, 0, 0, 0))
                            + chunk(b"IDAT", zlib.compress(rows, 6)) + chunk(b"IEND", b""))
 
 
@@ -59,6 +72,26 @@ def hashes(d):
     return {os.path.basename(f): hashlib.sha256(open(f, "rb").read()).hexdigest() for f in sorted(glob.glob(os.path.join(d, "*.avif")))}
 
 
+def nbytes(d):
+    return sum(os.path.getsize(f) for f in glob.glob(os.path.join(d, "*.avif")))
+
+
+def listed(err):
+    """GP_DEBUG_STAGES lines summed over batches: {WxH: [listed, blocks]}"""
+    s = collections.defaultdict(lambda: [0, 0])
+    for m in re.finditer(r"stages: (\d+)x(\d+) listed (\d+) of (\d+)", err):
+        k = (int(m.group(1)), int(m.group(2)))
+        s[k][0] += int(m.group(3))
+        s[k][1] += int(m.group(4))
+    return s
+
+
+def fraction(s, pick):
+    a = sum(v[0] for k, v in s.items() if pick(*k))
+    b = sum(v[1] for k, v in s.items() if pick(*k))
+    return a / b if b else None
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--bin", required=True)
@@ -73,39 +106,76 @@ def main():
         for name, w, h in (("big_1100x1000.png", 1100, 1000), ("mid_640x480.png", 640, 480), ("odd_333x250.png", 333, 250)):
             if not os.path.exists(os.path.join(src, name)):
                 png(os.path.join(src, name), w, h, picture)
+        if not os.path.exists(os.path.join(src, "rgba_320x240.png")):
+            png(os.path.join(src, "rgba_320x240.png"), 320, 240, lambda x, y: picture(x + 400, y + 200) + ((x * 255) // 319,), alpha=True)
         for f in glob.glob(os.path.join(HERE, "gate_images", "*")):
             shutil.copy(f, src)
         files = sorted(glob.glob(os.path.join(src, "*.png")))
         fwd, rev = os.path.join(t, "fwd.lst"), os.path.join(t, "rev.lst")
         open(fwd, "w").write("".join(f + "\n" for f in files))
         open(rev, "w").write("".join(f + "\n" for f in reversed(files)))
-        for preset in ([], ["--preset", "base"]):
-            pname = "base" if preset else "default"
-            base = {}
-            for name, opts in [("none", []), ("off", OFF)] + list(SWITCHES.items()) + [("all", ALL)]:
-                out = {}
-                for how, lst, env in (("enc3", fwd, {"GP_ENCODERS": "3"}), ("enc1rev", rev, {"GP_ENCODERS": "1"})):
-                    od = os.path.join(t, f"{pname}_{name}_{how}")
-                    shutil.rmtree(od, ignore_errors=True)
-                    rc, err = run(a.bin, ["--batch", lst, "--outdir", od] + preset + opts, env)
-                    out[how] = hashes(od)
-                    if rc or len(out[how]) != len(files):
-                        fails.append(f"{pname} {name} {how}: exit {rc}, {len(out[how])} of {len(files)} outputs: {err[-300:]}")
-                if out["enc3"] != out["enc1rev"]:
-                    diff = [k for k in out["enc3"] if out["enc3"].get(k) != out["enc1rev"].get(k)]
-                    fails.append(f"{pname} {name}: three encoders in order and one encoder reversed differ on {diff}")
-                base[name] = out["enc3"]
-                print(f"{pname} {name}: {len(out['enc3'])} outputs, deterministic: {out['enc3'] == out['enc1rev']}", flush=True)
-            if base["off"] != base["none"]:
+
+        def batch(tag, preset, opts, lst=fwd, env=None):
+            od = os.path.join(t, tag)
+            shutil.rmtree(od, ignore_errors=True)
+            rc, err = run(a.bin, ["--batch", lst, "--outdir", od] + preset + opts, env)
+            h = hashes(od)
+            if rc or len(h) != len(files):
+                fails.append(f"{tag}: exit {rc}, {len(h)} of {len(files)} outputs: {err[-300:]}")
+            return h, nbytes(od), err
+
+        for preset, pname, switches in (([], "default", {"topdown": TD}), (["--preset", "base"], "base", {"topdown": TD, "prune41": G})):
+            none, b0, _ = batch(f"{pname}_none", preset, [])
+            off, _, _ = batch(f"{pname}_off", preset, OFF)
+            if off != none:
                 fails.append(f"{pname}: the switches at their off values change the output")
-            if base["all"] == base["none"]:
-                fails.append(f"{pname}: both switches together leave every output unchanged")
-            g = subprocess.run([sys.executable, os.path.join(HERE, "decoder_gate.py"), "--bin", a.bin, "--images", src,
-                                "--q", "60,120", "--keep", os.path.join(t, f"gate_{pname}"), "--"] + preset + ALL,
+            for name, opts in list(switches.items()) + [("both", BOTH)]:
+                h, b, err = batch(f"{pname}_{name}", preset, opts, env={"GP_DEBUG_STAGES": "1"})
+                if h == none:
+                    fails.append(f"{pname} {name}: leaves every output unchanged")
+                if abs(b / b0 - 1) > 0.02:
+                    fails.append(f"{pname} {name}: {b} bytes against {b0} without it ({100 * (b / b0 - 1):+.2f} %)")
+                s = listed(err)
+                print(f"{pname} {name}: {100 * (b / b0 - 1):+.2f} % bytes; listed " +
+                      ", ".join(f"{w}x{hh} {v[0]}/{v[1]}" for (w, hh), v in sorted(s.items())), flush=True)
+                if pname == "base" and name == "topdown":
+                    f4 = fraction(s, lambda w, hh: min(w, hh) == 4)
+                    f8 = fraction(s, lambda w, hh: min(w, hh) == 8)
+                    if f4 is None or not 0.08 <= f4 <= 0.92:
+                        fails.append(f"base topdown: side-4 shapes listed for {f4} of their blocks (expected 0.08 .. 0.92)")
+                    if f8 is None or not 0.30 <= f8 <= 0.99:
+                        fails.append(f"base topdown: side-8 shapes listed for {f8} of their blocks (expected 0.30 .. 0.99)")
+                if pname == "base" and name == "prune41":
+                    f41 = fraction(s, lambda w, hh: w == 4 * hh or hh == 4 * w)
+                    if f41 is None or not 0.05 <= f41 <= 0.95:
+                        fails.append(f"base prune41: 4:1 shapes listed for {f41} of their blocks (expected 0.05 .. 0.95)")
+                if name == "both" or (pname == "default" and name == "topdown"):
+                    r, _, _ = batch(f"{pname}_{name}_enc1rev", preset, opts, lst=rev, env={"GP_ENCODERS": "1"})
+                    if r != h:
+                        fails.append(f"{pname} {name}: one encoder with the list reversed differs on "
+                                     f"{[k for k in h if h.get(k) != r.get(k)]}")
+                if name == "both" and pname == "base":
+                    p, _, _ = batch(f"{pname}_{name}_poison", preset, opts, env={"GP_POISON": "255"})
+                    if p != h:
+                        fails.append(f"{pname} {name}: GP_POISON=255 changes {[k for k in h if h.get(k) != p.get(k)]}")
+        # decoder identity: each switch alone, both in 4:4:4 10-bit, both with 4x4 tiles (alpha items in every run)
+        gates = [("default_topdown", TD, []), ("base_prune41", ["--preset", "base"] + G, []),
+                 ("base_both_444_10", ["--preset", "base", "--yuv", "444", "--depth", "10"] + BOTH,
+                  ["--expect-format", "444", "--expect-depth", "10"]),
+                 ("default_both_tiles", ["--tiles", "0,2,2"] + BOTH, [])]
+        for tag, opts, gopts in gates:
+            g = subprocess.run([sys.executable, os.path.join(HERE, "decoder_gate.py"), "--bin", a.bin, "--images", src, "--q", "120",
+                                "--keep", os.path.join(t, "gate_" + tag)] + gopts + ["--"] + opts,
                                capture_output=True, text=True, timeout=1800)
-            print(g.stdout.strip().splitlines()[-1] if g.stdout.strip() else g.stderr[-300:], flush=True)
+            print(f"gate {tag}: " + (g.stdout.strip().splitlines()[-1] if g.stdout.strip() else g.stderr[-300:]), flush=True)
             if g.returncode:
-                fails.append(f"{pname}: decoder gate failed:\n{g.stdout[-2000:]}{g.stderr[-1000:]}")
+                fails.append(f"gate {tag} failed:\n{g.stdout[-2000:]}{g.stderr[-1000:]}")
+        # option validation (refused before any encode)
+        for bad in (["--topdown", "2"], ["--topdown", "-1"], ["--prune-41", "abc"], ["--prune-41", "-0"], ["--prune-41", "nan"],
+                    ["--prune-41", "inf"], ["--prune-41", "1e30"], ["--prune-41", "1001"]):
+            rc, err = run(a.bin, [files[0], os.path.join(t, "bad.avif")] + bad)
+            if rc == 0 or "bad " + bad[0] not in err:
+                fails.append(f"{' '.join(bad)}: exit {rc}, not refused ({err.strip()[-200:]})")
     finally:
         if not a.keep:
             shutil.rmtree(t, ignore_errors=True)

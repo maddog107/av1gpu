@@ -772,6 +772,17 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
     else if (anRun) {
         gp_launch_live16(B, P, live, st, bd);   // (nothing with the top-down stages: no live cells allocated)
         gp_launch_analysis_staged(B, P, shTotal, st, bd, &live, run);   // palette candidates after each stage
+        // debug (tests/staged_analysis_test.py): the listed blocks per staged shape of this batch (synchronises)
+        static const bool dbgStages = getenv("GP_DEBUG_STAGES") != nullptr;
+        if (dbgStages && run.count) {
+            uint32_t c[GP_NSHAPES];
+            GPCK(cudaMemcpyAsync(c, run.count, sizeof c, cudaMemcpyDeviceToHost, st));
+            GPCK(cudaStreamSynchronize(st));
+            for (int s = 0; s < GP_NSHAPES; s++)
+                if (run.list[s])
+                    fprintf(stderr, "stages: %dx%d listed %u of %u\n", 4 * AV1G_T(Num_4x4_Blocks_Wide)[s],
+                            4 * AV1G_T(Num_4x4_Blocks_High)[s], c[s], shTotal[s]);
+        }
     } else {
         gp_launch_live16(B, P, live, st, bd);
         gp_launch_analysis(B, P, shTotal, st, bd, &live);
