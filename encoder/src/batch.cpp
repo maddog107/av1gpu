@@ -244,6 +244,7 @@ struct Agg {
     double ingestWait = 0, gpuSetup = 0, analysis = 0, dp = 0, recon = 0, pack = 0, postfilter = 0, download = 0, gpuTotal = 0;
     double entropyGpu = 0, entropyWall = 0, writeWall = 0, encodeWall = 0;
     uint64_t images = 0, pixels = 0, bytes = 0, blocks = 0, batches = 0;
+    uint64_t dpRepaired = 0;   // GpTimes::dpRepaired of every encode (colour and alpha)
     uint64_t alphaImages = 0, alphaPixels = 0;   // images with an alpha item (their alpha frames)
     unsigned long long prof[16] = {0};
     size_t peakDev = 0;
@@ -721,7 +722,7 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
         GpTimes ta;
         if (ea.e->encode(al, j->aouts, ta, eerr, s, gpuEntropy ? &j->adev : nullptr)) return false;
         std::lock_guard<std::mutex> lk2(aggMu);
-        A.analysis += ta.analysis; A.recon += ta.recon; A.gpuTotal += ta.total; A.blocks += ta.blocks;
+        A.analysis += ta.analysis; A.recon += ta.recon; A.gpuTotal += ta.total; A.blocks += ta.blocks; A.dpRepaired += ta.dpRepaired;
         A.peakDev = std::max(A.peakDev, ta.deviceBytes);
         A.alphaImages += al.size();
         for (auto &f : al) A.alphaPixels += (uint64_t)f.W * f.H;
@@ -906,7 +907,7 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
                 }
                 {
                     std::lock_guard<std::mutex> lk2(aggMu);
-                    A.analysis += t10.analysis; A.recon += t10.recon; A.gpuTotal += t10.total; A.blocks += t10.blocks;
+                    A.analysis += t10.analysis; A.recon += t10.recon; A.gpuTotal += t10.total; A.blocks += t10.blocks; A.dpRepaired += t10.dpRepaired;
                     A.peakDev = std::max(A.peakDev, t10.deviceBytes);
                     A.images += f10.size();
                     for (auto &f : f10) A.pixels += (uint64_t)f.W * f.H;
@@ -937,7 +938,7 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
                     }
                     {
                         std::lock_guard<std::mutex> lk2(aggMu);
-                        A.analysis += ts2.analysis; A.recon += ts2.recon; A.gpuTotal += ts2.total; A.blocks += ts2.blocks;
+                        A.analysis += ts2.analysis; A.recon += ts2.recon; A.gpuTotal += ts2.total; A.blocks += ts2.blocks; A.dpRepaired += ts2.dpRepaired;
                         A.peakDev = std::max(A.peakDev, ts2.deviceBytes);
                         A.images += fs.size();
                         for (auto &f : fs) A.pixels += (uint64_t)f.W * f.H;
@@ -977,7 +978,7 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
                 std::lock_guard<std::mutex> lk2(aggMu);
                 A.encodeWall += te;
                 A.gpuSetup += tm.setup; A.analysis += tm.analysis; A.dp += tm.dp; A.recon += tm.recon; A.pack += tm.pack; A.postfilter += tm.postfilter;
-                A.download += tm.download; A.gpuTotal += tm.total; A.blocks += tm.blocks;
+                A.download += tm.download; A.gpuTotal += tm.total; A.blocks += tm.blocks; A.dpRepaired += tm.dpRepaired;
                 A.peakDev = std::max(A.peakDev, tm.deviceBytes);
                 for (int k = 0; k < 16; k++) A.prof[k] += tm.prof[k];
                 A.images += fin.size();
@@ -1058,6 +1059,7 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
             (unsigned long long)A.images, mp, wall, A.images * 1e3 / wall, mp * 1e3 / wall, (unsigned long long)A.batches,
             A.bytes / 1e6, A.pixels ? A.bytes * 8.0 / A.pixels : 0.0, cpu, cpu / wall, cpuFallback, gpuFallback, failures);
     if (cfg.trim.on) fprintf(stderr, "[av1gpu] trim: %d images trimmed, %d skipped as blank\n", trimCutA.load(), trimBlankA.load());
+    if (A.dpRepaired) gp_warn_dp_repaired(A.dpRepaired);
     fprintf(stderr,
             "[av1gpu] stage ms: ingest wait %.1f | gpu setup %.1f analysis %.1f dp %.1f recon %.1f pack %.1f postfilter %.1f download %.1f "
             "(gpu total %.1f, encode wall %.1f) | entropy wall %.1f (gpu %.1f) | write %.1f | peak dev %.0f MB\n",
@@ -1089,10 +1091,11 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
         printf("{\"images\":%llu,\"mp\":%.3f,\"wall_ms\":%.1f,\"img_s\":%.3f,\"mp_s\":%.3f,\"cpu_cores\":%.3f,\"bytes\":%llu,"
                "\"ingest_wait_ms\":%.1f,\"analysis_ms\":%.1f,\"dp_ms\":%.1f,\"recon_ms\":%.1f,\"pack_ms\":%.1f,\"postfilter_ms\":%.1f,\"download_ms\":%.1f,"
                "\"gpu_total_ms\":%.1f,\"encode_wall_ms\":%.1f,\"entropy_wall_ms\":%.1f,\"entropy_gpu_ms\":%.1f,\"write_ms\":%.1f,"
-               "\"peak_dev_mb\":%.1f,\"fallback_cpu\":%d,\"cpus\":%d,\"ingest_workers\":%d,\"fallback_workers\":%d%s}\n",
+               "\"peak_dev_mb\":%.1f,\"fallback_cpu\":%d,\"cpus\":%d,\"ingest_workers\":%d,\"fallback_workers\":%d,\"dp_repaired\":%llu%s}\n",
                (unsigned long long)A.images, mp, wall, A.images * 1e3 / wall, mp * 1e3 / wall, cpu / wall,
                (unsigned long long)A.bytes, A.ingestWait, A.analysis, A.dp, A.recon, A.pack, A.postfilter, A.download, A.gpuTotal,
                A.encodeWall, A.entropyWall, A.entropyGpu, A.writeWall, A.peakDev / 1048576.0, cpuFallback, nCpu, ic.n_workers, nfw,
+               (unsigned long long)A.dpRepaired,
                cfg.trim.on ? (",\"trimmed\":" + std::to_string(trimCutA.load()) + ",\"blank\":" + std::to_string(trimBlankA.load())).c_str() : "");
     return failures ? 1 : 0;
 }

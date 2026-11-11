@@ -24,6 +24,7 @@
 #define GP_MAX_TXB_444 768   // per SB in batches with 4:4:4 frames: 3 x 256
 #define GP_SB_COEFFS_444 12288  // 3 x 64*64
 #define GP_RC_BIG_BYTES 18560  // per-CTA global scratch of k_recon for 32/64-point evaluations
+#define GP_SB_FLAGGED (-3.0e38f)  // GpBatch::sbJ of a superblock k_dp's safety net could not give records (-GP_INF)
 #define GP_NCDF (sizeof(av1g_cdfs) / 2)
 
 // Tunables (host -> kernels by value).
@@ -149,7 +150,7 @@ struct GpBatch {
     uint8_t *leafCount;        // [nSb] (0..255 means 1..256: stored as count-1)
     uint16_t *leafCountW;      // [nSb]
     GpLeaf *leaves;            // [nSb * GP_MAX_LEAVES]
-    float *sbJ;                // [nSb] DP cost (stats)
+    float *sbJ;                // [nSb] DP cost (stats); GP_SB_FLAGGED: k_dp's safety net could not code the SB
     // closed-loop outputs
     GpSbOut *sbOut;            // [nSb]
     av1g_block *oBlocks;       // [nSb * GP_MAX_LEAVES]
@@ -157,7 +158,11 @@ struct GpBatch {
     av1g_txb *oTxb;            // [nSb * sbTxbCap]  (coeff_off SB-local)
     int16_t *oCoeffs;          // [nSb * sbCoefCap]
     uint32_t *stats;           // [16] counters
-    // optional external screener: per shape [nblocks][extTopK] candidates, index extOff[s * nimg + img] + local
+    // optional external screener: per shape [nblocks][extTopK] candidates, index extOff[s * nimg + img] + local.
+    // (Nothing sets it today.)  Contract: at least one candidate with mode < 13 for every in-frame block of an analysed
+    // shape.  With none, k_analysis_small writes J = GP_INF, ncand 0 (k_dp's safety net covers its 4x4 leaves), but
+    // k_analysis (shapes above 64 pixels, or all with smallKernel 0) runs its tx search on top[0] unset and can write a
+    // finite record with an undefined candidate.
     const void *extCand[GP_NSHAPES];
     const int64_t *extOff;
     int extTopK;

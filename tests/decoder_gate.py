@@ -18,10 +18,12 @@ the AVIF's items (primary item, and the 'auxl' item with the alpha auxC) must ho
 the alpha stream must be monochrome at the colour's bit depth, and both decoders must reproduce its reconstruction
 too.  --expect-alpha also requires an alpha item exactly for the inputs with transparency (read with Pillow),
 --alpha-lossless every alpha frame to be lossless (as --lossless does).
-A run passes only with N/N.
+A run passes only with N/N, and only if av1gpu did not report blocks coded by k_dp's safety net (blocks without an
+analysis record: a gap in the encoder's partition check; --allow-dp-net lets such a run pass).
 
   tests/decoder_gate.py --bin build/av1gpu --images DIR [--q 120,60 | --lossless] [--jobs 4] [--keep DIR]
-                        [--expect-format 444] [--expect-depth 10] [--expect-alpha] [--alpha-lossless] [-- <av1gpu options>]
+                        [--expect-format 444] [--expect-depth 10] [--expect-alpha] [--alpha-lossless] [--allow-dp-net]
+                        [-- <av1gpu options>]
 
 Decoders come from PATH, or from $AV1G_DAV1D / $AV1G_AOMDEC.  Exit status 0 only if every encoded image passed.
 Images the batch path does not encode (unsupported inputs) are reported separately.
@@ -314,6 +316,8 @@ def main():
     ap.add_argument("--expect-alpha", action="store_true",
                     help="an output must have an alpha item exactly when its input has transparency (Pillow)")
     ap.add_argument("--alpha-lossless", action="store_true", help="every alpha frame must be lossless (base_q_idx 0)")
+    ap.add_argument("--allow-dp-net", action="store_true",
+                    help="pass even when av1gpu reports blocks coded by k_dp's safety net (a failure otherwise)")
     argv = sys.argv[1:]
     cut = argv.index("--") if "--" in argv else len(argv)
     a = ap.parse_args(argv[:cut])
@@ -372,7 +376,11 @@ def main():
                    n_alpha_pass=sum(1 for r in withAlpha if ok_result(r)),
                    alpha_qidx=sorted({r.get("alpha_qidx") for r in withAlpha}, key=str), failures=bad)
         summary["runs"].append(run)
-        ok = p.returncode == 0 and not bad and len(avifs) > 0
+        # k_dp's safety net coded blocks without an analysis record (av1gpu warns): a gap in the encoder's partition
+        # check, so a failure here unless --allow-dp-net (tests/maxpart_test.py makes it act on purpose)
+        dpnet = next((l for l in p.stderr.splitlines() if "dp safety net" in l), "")
+        run["dp_net"] = dpnet
+        ok = p.returncode == 0 and not bad and len(avifs) > 0 and (not dpnet or a.allow_dp_net)
         allok &= ok
         fmts = ", ".join(f"{k} {v}" for k, v in sorted(formats.items(), key=lambda kv: str(kv[0])))
         alpha = (f"; alpha items {run['n_alpha_pass']}/{run['n_alpha']} identical (alpha qindex {', '.join(map(str, run['alpha_qidx']))})"
@@ -380,6 +388,8 @@ def main():
         print(f"[gate] {'lossless' if a.lossless else f'q{q}'}: {run['n_pass']}/{run['n_encoded']} identical in dav1d and aomdec ({fmts}; {run['bytes']} bytes){alpha}, "
               f"{run['n_not_encoded']} not encoded (unsupported input), rc={p.returncode} {'PASS' if ok else 'FAIL'}",
               flush=True)
+        if dpnet:
+            print(f"   {'(allowed) ' if a.allow_dp_net else 'BAD '}{dpnet.strip()}", flush=True)
         if p.returncode:
             print(p.stderr[-2000:], file=sys.stderr)
         for r in bad[:20]:

@@ -244,11 +244,18 @@ if(AV1GPU_TESTS)
   # luma tx on the bottom frame edge (CfL MaxLumaW/H); AB-only partitions make --preset slow reach them
   find_package(Python3 COMPONENTS Interpreter)
   if(Python3_Interpreter_FOUND)
+    # options of the decoder-gate tests below (each runs once more with GP_POISON, after them)
+    set(AV1G_GATE_cfl_edge --preset slow --small-preset none --partN 0xF0)
+    set(AV1G_GATE_crop_resize --crop 171x120+19+13 --max-size 97x97 --small-preset none)
+    set(AV1G_GATE_trim --trim --fuzz 5% --trim-margin 3 --small-preset none)
+    set(AV1G_GATE_imageops --resize 173% --level 5%,90%,1.3 --grayscale Rec709Luma --small-preset none)
     add_test(NAME gate_cfl_edge COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/decoder_gate.py
              --bin $<TARGET_FILE:av1gpu> --images ${PROJECT_SOURCE_DIR}/tests/gate_images --q 60,120
-             -- --preset slow --small-preset none --partN 0xF0)
-    # --maxpart 8 / 4, --partN 0 with the flat pruning (turbo): every leaf of the DP has an analysis record (decoder
-    # identity, the same bytes with device allocations filled with 0 and 120), options without any partition refused
+             -- ${AV1G_GATE_cfl_edge})
+    # partition options that leave the flat / variance pruning nothing to fall back on (--maxpart 8 / 4, --partN 0 or
+    # without NONE, small --prune-area): every leaf of the DP has an analysis record (decoder identity, no k_dp safety
+    # net, the same bytes with device allocations filled with 0 and 120); the safety net when made to act
+    # (GP_DP_UNCHECKED); options without any partition refused, also for the small-image preset
     add_test(NAME maxpart_flat_pruning COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/maxpart_test.py
              --bin $<TARGET_FILE:av1gpu>)
     # unreadable inputs (a directory, a missing or empty file) are skipped, the rest is encoded
@@ -260,14 +267,14 @@ if(AV1GPU_TESTS)
              --bin $<TARGET_FILE:av1gpu> --image ${PROJECT_SOURCE_DIR}/tests/gate_images/cfl_edge_211x149.png)
     add_test(NAME gate_crop_resize COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/decoder_gate.py
              --bin $<TARGET_FILE:av1gpu> --images ${PROJECT_SOURCE_DIR}/tests/gate_images --q 60,120
-             -- --crop 171x120+19+13 --max-size 97x97 --small-preset none)
+             -- ${AV1G_GATE_crop_resize})
     # --trim / --fuzz and the trim conditions: boxes (4:2:0 / 4:4:4, 8 / 10-bit, exact with --lossless), ImageMagick's
     # fuzz threshold, identities, margin / limits / lightness / --skip-blank, the order with --crop / --max-size, alpha,
     # errors and a --batch run; then decoder identity on trimmed frames
     add_test(NAME trim COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/trim_test.py --bin $<TARGET_FILE:av1gpu>)
     add_test(NAME gate_trim COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/decoder_gate.py
              --bin $<TARGET_FILE:av1gpu> --images ${PROJECT_SOURCE_DIR}/tests/gate_images --q 60,120
-             -- --trim --fuzz 5% --trim-margin 3 --small-preset none)
+             -- ${AV1G_GATE_trim})
     # --resize (ImageMagick's geometry, Mitchell when enlarging), --grayscale / --colorspace Gray, --auto-level / --level /
     # --gamma / --negate: sizes, identities, known samples, errors (and ImageMagick's own output when it is installed);
     # then decoder identity on enlarged, grayscaled and tone-mapped frames
@@ -275,7 +282,15 @@ if(AV1GPU_TESTS)
              --bin $<TARGET_FILE:av1gpu> --image ${PROJECT_SOURCE_DIR}/tests/gate_images/cfl_edge_211x149.png)
     add_test(NAME gate_imageops COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/decoder_gate.py
              --bin $<TARGET_FILE:av1gpu> --images ${PROJECT_SOURCE_DIR}/tests/gate_images --q 60,120
-             -- --resize 173% --level 5%,90%,1.3 --grayscale Rec709Luma --small-preset none)
+             -- ${AV1G_GATE_imageops})
+    # the same decoder-gate tests with every device allocation filled with 120 (GP_POISON=120): a decision taken from
+    # unwritten device memory shows there (v0.12.0's record-less leaves passed the gate on zero-filled memory)
+    foreach(g cfl_edge crop_resize trim imageops)
+      add_test(NAME gate_${g}_poison COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/decoder_gate.py
+               --bin $<TARGET_FILE:av1gpu> --images ${PROJECT_SOURCE_DIR}/tests/gate_images --q 60,120
+               -- ${AV1G_GATE_${g}})
+      set_tests_properties(gate_${g}_poison PROPERTIES ENVIRONMENT GP_POISON=120)
+    endforeach()
     # the same operations on JPEGs (the batch path that starts from the ingest): EXIF-turned geometries, the box, blank
     # pages, --negate exact at 4:2:0, the size refusals and their --max-mp hint, one bad list line among good ones
     add_test(NAME imageops_jpeg COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/imageops_jpeg_test.py
