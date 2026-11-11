@@ -119,8 +119,9 @@ GpEncoder::~GpEncoder() {
 // distance from the frame's right and bottom edges (the coded size is a multiple of 8), with every block that the
 // pruning may skip skipped (a flat frame prunes every complete 16x16 cell; any block may exceed the variance limit):
 // true if every superblock of every frame keeps a partition of finite J.  (k_dp's safety net, dp_net8, catches what
-// this model misses: it gives the 4x4 leaves of such a node a DC_PRED record and counts them, GpTimes::dpRepaired, or
-// fails the frame where the 4x4 shape is not analysed.)
+// this model misses: it codes such an 8x8 node from DC_PRED records in 4x4, 8x8, 8x4 or 4x8 blocks, whichever the
+// analysis has, and counts them, GpTimes::dpRepaired.  The FW = FH = 8 case below makes init refuse options with
+// none of the four.)
 // Rule for any future pruning or skipping of analysis blocks:
 // - pruning that depends only on the options and the source (as prune_flat and the variance pruning) must be mirrored
 //   in blk() below, as "the block may have no record", and switched off in init where it makes dp_complete fail;
@@ -197,9 +198,11 @@ static bool dp_complete(const GpParams &P, bool flat, bool var) {
     return true;
 }
 
-void gp_warn_dp_repaired(unsigned long long n) {
-    fprintf(stderr, "[av1gpu] warning: dp safety net: %llu 4x4 blocks had no analysis record and were coded from DC_PRED "
-                    "(a gap in the encoder's partition check; please report the options)\n", n);
+void gp_warn_dp_net(const char *what, unsigned long long n) {
+    const std::string w = std::string(what ? what : "") + (what ? ": " : "") + (n ? std::to_string(n) + " " : "");
+    fprintf(stderr, "[av1gpu] warning: dp safety net: %sblocks coded where the partition search had nothing of finite cost "
+                    "(DC_PRED where the analysis wrote no record; a gap in the encoder's partition check, please report "
+                    "the options)\n", w.c_str());
 }
 
 int gp_check_partitions(const GpParams &P, std::string &err) {
@@ -784,24 +787,15 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
         if (PS.stage(sbCyc.data(), B.sbCyc, nSb * 4, st)) GPCK(cudaErrorMemoryAllocation);
     }
     if (PS.flush(st)) GPCK(cudaGetLastError() != cudaSuccess ? cudaGetLastError() : cudaErrorUnknown);
-    // k_dp's safety net (dp_net8, k_dp.cuh) flagged superblocks it could not give records: their frames fail (the whole
-    // call, as any encode error).  stats[6] stays 0 unless dp_complete missed a case; only then are the costs copied.
-    if (stats[6]) {
+    // k_dp's safety net (dp_net8, k_dp.cuh) coded blocks without an analysis record (stats[5]; 0 unless dp_complete
+    // missed a case): the frames it acted in are those with a superblock of non-finite DP cost.  Only then is it copied.
+    if (stats[5]) {
         std::vector<float> sbJ(nSb);
         GPCK(cudaMemcpyAsync(sbJ.data(), B.sbJ, nSb * sizeof(float), cudaMemcpyDeviceToHost, st));
         GPCK(cudaStreamSynchronize(st));
-        std::string fr;
         for (int i = 0; i < n; i++)
-            for (uint32_t k = 0; k < (uint32_t)(imgs[i].sbCols * imgs[i].sbRows); k++)
-                if (sbJ[imgs[i].sbBase + k] <= GP_SB_FLAGGED) {
-                    fr += (fr.empty() ? "" : ", ") + std::to_string(i) + " (" + std::to_string(imgs[i].W) + "x" + std::to_string(imgs[i].H) + ")";
-                    break;
-                }
-        err = "k_dp: " + std::to_string(stats[6]) + " superblock(s) of frame(s) " + fr + " left 8x8 areas without an analysis "
-              "record and without a 4x4 shape to give them one (a gap in GpEncoder::init's partition check; please report the "
-              "options): not encoded";
-        A.release();
-        return -1;
+            for (uint32_t k = 0; k < (uint32_t)(imgs[i].sbCols * imgs[i].sbRows) && !out[i].dpNet; k++)
+                out[i].dpNet = !(sbJ[imgs[i].sbBase + k] < 3.0e38f);   // GP_INF (dev_common.cuh)
     }
     if (B.sbCyc) {
         // per-SB recon latency dump for schedule studies: batch img tile sbr sbc step cycles

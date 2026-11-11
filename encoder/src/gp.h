@@ -24,7 +24,6 @@
 #define GP_MAX_TXB_444 768   // per SB in batches with 4:4:4 frames: 3 x 256
 #define GP_SB_COEFFS_444 12288  // 3 x 64*64
 #define GP_RC_BIG_BYTES 18560  // per-CTA global scratch of k_recon for 32/64-point evaluations
-#define GP_SB_FLAGGED (-3.0e38f)  // GpBatch::sbJ of a superblock k_dp's safety net could not give records (-GP_INF)
 #define GP_NCDF (sizeof(av1g_cdfs) / 2)
 
 // Tunables (host -> kernels by value).
@@ -150,7 +149,7 @@ struct GpBatch {
     uint8_t *leafCount;        // [nSb] (0..255 means 1..256: stored as count-1)
     uint16_t *leafCountW;      // [nSb]
     GpLeaf *leaves;            // [nSb * GP_MAX_LEAVES]
-    float *sbJ;                // [nSb] DP cost (stats); GP_SB_FLAGGED: k_dp's safety net could not code the SB
+    float *sbJ;                // [nSb] DP cost (stats; not finite: k_dp's safety net coded blocks of the SB)
     // closed-loop outputs
     GpSbOut *sbOut;            // [nSb]
     av1g_block *oBlocks;       // [nSb * GP_MAX_LEAVES]

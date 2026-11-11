@@ -7,17 +7,20 @@ variance is high and counts on smaller ones.  With --maxpart below 16 (or --part
 ...) the DP had no partition of finite cost there and fell back to 4x4 leaves without analysis records, which k_recon
 coded from uninitialised device memory: illegal memory accesses, streams that dav1d / aomdec decode differently from
 the reconstruction, output that changed from run to run.  The encoder now analyses every block for such options
-(GpEncoder::init, dp_complete), refuses options that leave no partition at all, and k_dp gives any leaf still
-without a record a DC_PRED record (counted, reported, and a decoder-gate failure) or fails the frame.
+(GpEncoder::init, dp_complete), refuses options that leave no partition at all, and k_dp codes any 8x8 area still
+without a partition of finite cost from DC_PRED records in 4x4, 8x8, 8x4 or 4x8 blocks, whichever shape the analysis
+has (counted, reported with the input's name, and a decoder-gate failure).
 
 - Every case in CASES is encoded twice through tests/decoder_gate.py, with every device allocation filled with 0 and
   with 120 (GP_POISON; 120 made v0.12.0 fail to encode the flat image): both runs must pass the gate (which also fails
   on any block coded by k_dp's safety net) and give the same bytes.  The cases cover interior superblocks (--maxpart),
   the frame-edge-only route (--partN 0x3FE: flat 16x16 / 48x48 frames) and the variance pruning.
-- GP_DP_UNCHECKED=1 keeps the pruning that init would switch off: with turbo --maxpart 8 the safety net must act
-  (reported, decodable, the same bytes for both fillings); with turbo2 (no 4x4 shape) the frame must fail cleanly.
+- GP_DP_UNCHECKED=1 keeps the pruning that init would switch off, so the safety net must act: with turbo (4x4
+  records), turbo2 (8x8 blocks) and --shapes masks without 4x4 and 8x8 (8x4 / 4x8 blocks) --maxpart 8 must still decode,
+  give the same bytes for both fillings and report the blocks with the input's name (single-file and batch mode).
 - Options without any partition are refused at start, also for the small-image preset of a frame that is not small.
-Inputs (written here): flat 64x64, 16x16 and 48x48 frames, a 200x136 frame with flat and textured areas (partial SBs on
+Inputs (written here): flat 64x64, 16x16 and 48x48 frames, a 64x64 checker of flat 8x8 squares (flat by 8x8 blocks,
+high variance at 16x16: the flat-plus-variance route), a 200x136 frame with flat and textured areas (partial SBs on
 both edges) and a flat 72x40 RGBA frame (its alpha item is coded with the main preset).
 
   tests/maxpart_test.py --bin build/av1gpu
@@ -42,10 +45,18 @@ CASES = [
     ["--preset", "turbo2", "--maxpart", "8"],
     ["--preset", "turbo", "--partN", "0x3FE"],                       # only frame edges at 16 / 48 px are exposed
     ["--prune-var", "0.0001", "--prune-area", "16", "--small-kernel", "0"],
-    ["--preset", "base", "--prune-var", "0.5", "--prune-area", "64", "--prune-flat", "2"],
+    # (palette off: palette candidates would give the pruned blocks of the checker records)
+    ["--preset", "base", "--prune-var", "0.5", "--prune-area", "64", "--prune-flat", "2", "--palette", "off"],
 ]
-NET_CASE = ["--maxpart", "8"]   # with GP_DP_UNCHECKED=1: turbo has the 4x4 shape, the net gives records
-IMAGES = 5
+# with GP_DP_UNCHECKED=1 (the safety net acts): 4x4 records (turbo), 8x8 blocks (turbo2: no 4x4), 8x4 blocks (no 4x4,
+# 8x8), 4x8 blocks (no 4x4, 8x8, 8x4)
+NET_CASES = [
+    ["--maxpart", "8"],
+    ["--preset", "turbo2", "--maxpart", "8"],
+    ["--shapes", "0x13F6", "--maxpart", "8"],
+    ["--shapes", "0x13F2", "--maxpart", "8"],
+]
+IMAGES = 6
 
 
 def png(path, w, h, px, alpha=False):
@@ -112,28 +123,31 @@ def main():
         png(os.path.join(img, "flat_64x64.png"), 64, 64, flat)
         png(os.path.join(img, "flat_16x16.png"), 16, 16, flat)
         png(os.path.join(img, "flat_48x48.png"), 48, 48, flat)
+        png(os.path.join(img, "checker_64x64.png"), 64, 64,
+            lambda x, y: (40, 50, 60) if ((x >> 3) + (y >> 3)) & 1 else (210, 200, 190))
         png(os.path.join(img, "mixed_200x136.png"), 200, 136, mixed)
         png(os.path.join(img, "alpha_72x40.png"), 72, 40, lambda x, y: (200, 60, 30, 255 if x < 40 else 128), alpha=True)
         for k, opts in enumerate(CASES):
             gate_twice(a, img, t, f"c{k}", opts, fails)
         # the safety net, made to act: the pruning kept although the partition check would switch it off
-        outs = gate_twice(a, img, t, "net", NET_CASE, fails, {"GP_DP_UNCHECKED": "1"}, allow_net=True)
-        if not all("dp safety net" in o for o in outs):
-            fails.append("GP_DP_UNCHECKED=1 --maxpart 8: the safety net did not report the blocks it coded")
-        # ... without the 4x4 shape (turbo2): the frame fails, non-zero exit in single-file and batch mode
+        for k, opts in enumerate(NET_CASES):
+            outs = gate_twice(a, img, t, f"net{k}", opts, fails, {"GP_DP_UNCHECKED": "1"}, allow_net=True)
+            if not all("dp safety net" in o for o in outs):
+                fails.append(f"GP_DP_UNCHECKED=1 {' '.join(opts)}: the safety net did not report the blocks it coded")
+        # ... and its warning names the input, in single-file and batch mode (turbo2: 8x8 blocks)
         flat64 = os.path.join(img, "flat_64x64.png")
         one = os.path.join(t, "one")
         os.makedirs(one)
         shutil.copy(flat64, one)
         env = dict(os.environ, GP_DP_UNCHECKED="1", GP_POISON="120")
-        for mode, args in (("single", [flat64, os.path.join(t, "n.avif")]),
-                           ("batch", ["--batch", one, "--outdir", os.path.join(t, "nb")])):
+        for mode, args, name in (("single", [flat64, os.path.join(t, "n.avif")], flat64),
+                                 ("batch", ["--batch", one, "--outdir", os.path.join(t, "nb")], "flat_64x64.png")):
             p = subprocess.run([a.bin] + args + ["--preset", "turbo2", "--maxpart", "8", "--small-preset", "none"],
                                capture_output=True, text=True, env=env, timeout=300)
-            msg = next((l for l in p.stderr.splitlines() if "k_dp:" in l), "")
+            msg = next((l for l in p.stderr.splitlines() if "dp safety net: " + name in l), "")
             print(f"GP_DP_UNCHECKED=1 --preset turbo2 --maxpart 8 ({mode}): exit {p.returncode}: {msg.strip()}", flush=True)
-            if p.returncode == 0 or not msg:
-                fails.append(f"turbo2 safety net ({mode}): the frame must fail with the k_dp message (exit {p.returncode})\n{p.stderr}")
+            if p.returncode != 0 or not msg:
+                fails.append(f"turbo2 safety net ({mode}): exit {p.returncode}, expected 0 and a warning naming {name}\n{p.stderr}")
         # options that leave no partition the analysis evaluates (turbo2 has no 4x4: --maxpart 4 forces 4x4 leaves),
         # for the main preset and for the small-image preset of a frame that is not small
         refused(a, [flat64, os.path.join(t, "x.avif"), "--preset", "turbo2", "--maxpart", "4", "--small-preset", "none"],

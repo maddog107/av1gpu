@@ -769,7 +769,7 @@ static int run_single(const GpConfig &cfg0, const Opts &o) {
     if (E->encode({fin}, outs, tm, err)) return failed("encode");
     if (hasAlpha && encA.encode({afin}, aouts, tma, err)) return failed("encode (alpha)");
     const uint32_t dpRepaired = tm.dpRepaired + tma.dpRepaired;
-    if (dpRepaired) gp_warn_dp_repaired(dpRepaired);
+    if (dpRepaired) gp_warn_dp_net(o.in.c_str(), dpRepaired);
 #ifdef _WIN32
     if (ictx) { ingest_release_batch(ictx, ib.batch_id, nullptr); ingest_destroy(ictx); }
 #else

@@ -17,39 +17,51 @@ __device__ __forceinline__ float dp_blockJ(const GpBatch &B, const GpImage &I, i
 
 struct DpNode { float J; int8_t p; };
 
-// Safety net of the leaf walk (GpEncoder::init's dp_complete keeps it unreached; B.stats[5] / [6] count it).  A node
-// whose every option has a non-finite J keeps PARTITION_SPLIT, down to 8x8 nodes whose 4x4 leaves have no analysis
-// record (J = GP_INF, ncand 0, cand / tx never written).  Every other leaf belongs to a partition of finite cost (NONE
-// only for a block with a record), so these are the only leaves k_recon could code from unwritten memory.
-// Returns how + 4 * (the 4x4 records it gave), how:
-// - 0, 4x4 shape analysed: each in-frame 4x4 of the node whose J is not finite gets a codable record (DC_PRED, delta
-//   0, DCT_DCT, ncand 1; J stays GP_INF); the four 4x4 leaves follow.  k_recon reads only cand[0 .. ncand-1] and tx of
-//   a leaf's record (k_recon.cuh: br), and nothing after it reads the records.
-// - 1, no 4x4 shape (turbo2 / turbo3): a 4x4 leaf's record index would land in another shape's records.  The
-//   superblock is flagged and the host fails the frame; the node is coded as one 8x8 block (its record made codable
-//   the same way) so that the closed loop only reads defined records meanwhile.
-// - 2, no 8x8 shape either: flagged, the 4x4 leaves as before.
-__device__ __noinline__ int dp_net8(const GpBatch &B, const GpImage &I, int x, int y, int FW, int FH) {
-    auto fix = [](GpBlockRes &r) {   // true: the record had no finite J (its candidates, if any, are not trusted)
-        if (r.J < GP_INF) return false;
+// Safety net of the leaf walk (GpEncoder::init's dp_complete keeps it unreached; B.stats[5] counts what it codes).
+// A node whose every option has a non-finite J keeps PARTITION_SPLIT, down to 8x8 nodes whose 4x4 leaves have no
+// analysis record (J = GP_INF, ncand 0, cand / tx never written).  Every other leaf belongs to a partition of finite
+// cost (NONE only for a block with a record), so these are the only leaves k_recon could code from unwritten memory.
+// The node is coded with the first of these shapes the analysis has record slots for (I.shNbx), each record without a
+// finite J made codable: DC_PRED, delta 0, DCT_DCT, ncand 1 (J stays GP_INF; k_recon reads only cand[0 .. ncand-1]
+// and tx of a leaf's record, k_recon.cuh: br, and nothing after it reads the records):
+// - 4x4: the DP's own SPLIT; counts the records it made up (at least one: else SPLIT would have been finite);
+// - else 8x8 (NONE), 8x4 (HORZ: two leaves) or 4x8 (VERT: two leaves), counting every leaf (a 4x4 leaf's record index
+//   would land in another shape's records).  An 8x8 node is never cut by the frame, so all four partitions are legal
+//   there whatever --part8 says (the mask only restricts the search; the backend derives the partition from the leaves).
+// Options with none of the four shapes are refused at init (dp_complete: a frame corner of 8x8 pixels needs one), so
+// the last return is not reached.  Returns the partition | count << 4.
+static __device__ __noinline__ int dp_net8(const GpBatch &B, const GpImage &I, int x, int y, int FW, int FH) {
+    auto fix = [&](int bs, int bx, int by) {   // 1: the record had no finite J (its candidates, if any, are not trusted)
+        GpBlockRes &r = B.blk[I.shOff[bs] + (uint32_t)(by / bh_px(bs)) * I.shNbx[bs] + bx / bw_px(bs)];
+        if (r.J < GP_INF) return 0;
         r.cand[0] = (uint8_t)cand_pack(AV1G_DC_PRED, 0);
         r.ncand = 1;
         r.tx = AV1G_DCT_DCT;
-        return true;
+        return 1;
     };
-    if (const int nbx = I.shNbx[AV1G_BLOCK_4X4]) {
-        int r = 0;
+    if (I.shNbx[AV1G_BLOCK_4X4]) {
+        int n = 0;
         for (int k = 0; k < 4; k++) {
             const int xx = x + (k & 1) * 4, yy = y + (k >> 1) * 4;
-            if (xx < FW && yy < FH && fix(B.blk[I.shOff[AV1G_BLOCK_4X4] + (uint32_t)(yy >> 2) * nbx + (xx >> 2)])) r += 4;
+            if (xx < FW && yy < FH) n += fix(AV1G_BLOCK_4X4, xx, yy);
         }
-        return r;
+        return AV1G_PARTITION_SPLIT | n << 4;
     }
-    if (const int nbx = I.shNbx[AV1G_BLOCK_8X8]) {
-        fix(B.blk[I.shOff[AV1G_BLOCK_8X8] + (uint32_t)(y >> 3) * nbx + (x >> 3)]);
-        return 1;
+    if (I.shNbx[AV1G_BLOCK_8X8]) {
+        fix(AV1G_BLOCK_8X8, x, y);
+        return AV1G_PARTITION_NONE | 1 << 4;
     }
-    return 2;
+    if (I.shNbx[AV1G_BLOCK_8X4]) {
+        fix(AV1G_BLOCK_8X4, x, y);
+        fix(AV1G_BLOCK_8X4, x, y + 4);
+        return AV1G_PARTITION_HORZ | 2 << 4;
+    }
+    if (I.shNbx[AV1G_BLOCK_4X8]) {
+        fix(AV1G_BLOCK_4X8, x, y);
+        fix(AV1G_BLOCK_4X8, x + 4, y);
+        return AV1G_PARTITION_VERT | 2 << 4;
+    }
+    return AV1G_PARTITION_SPLIT;
 }
 
 template <int BD = 8>
@@ -144,9 +156,9 @@ __global__ void k_dp(GpBatch B, GpParams P) {
                 nd.p = (int8_t)bp;
             }
     }
+    B.sbJ[sb] = node[0].J;   // (not finite exactly where the safety net acts: the host names those frames)
     // ---- leaves in decode order ----
-    uint32_t nRep = 0;   // safety net (dp_net8): 4x4 leaves given a record, superblock flagged
-    bool flagged = false;
+    uint32_t nRep = 0;   // blocks the safety net (dp_net8) coded
     GpLeaf *out = B.leaves + (size_t)sb * GP_MAX_LEAVES;
     int nl = 0;
     auto leaf = [&](int bs, int x, int y) {
@@ -178,12 +190,15 @@ __global__ void k_dp(GpBatch B, GpParams P) {
         case AV1G_PARTITION_VERT: leaf(sub, x, y); if (hasCols) leaf(sub, x + half, y); break;
         case AV1G_PARTITION_SPLIT:
             if (n == 8) {
-                const int net = nd.J < GP_INF ? 0 : dp_net8(B, I, x, y, FW, FH);
-                nRep += (uint32_t)(net >> 2);
-                flagged |= (net & 3) != 0;
-                if ((net & 3) == 1) {
-                    leaf(AV1G_BLOCK_8X8, x, y);
-                    break;
+                if (!(nd.J < GP_INF)) {   // safety net (dp_net8)
+                    const int r = dp_net8(B, I, x, y, FW, FH), pt = r & 15;
+                    nRep += (uint32_t)(r >> 4);
+                    if (pt != AV1G_PARTITION_SPLIT) {
+                        const int bs = pt == AV1G_PARTITION_NONE ? AV1G_BLOCK_8X8 : pt == AV1G_PARTITION_HORZ ? AV1G_BLOCK_8X4 : AV1G_BLOCK_4X8;
+                        leaf(bs, x, y);
+                        if (pt != AV1G_PARTITION_NONE) leaf(bs, x + (pt == AV1G_PARTITION_VERT ? 4 : 0), y + (pt == AV1G_PARTITION_HORZ ? 4 : 0));
+                        break;
+                    }
                 }
                 leaf(AV1G_BLOCK_4X4, x, y); leaf(AV1G_BLOCK_4X4, x + 4, y);
                 leaf(AV1G_BLOCK_4X4, x, y + 4); leaf(AV1G_BLOCK_4X4, x + 4, y + 4);
@@ -206,7 +221,5 @@ __global__ void k_dp(GpBatch B, GpParams P) {
         }
     }
     B.leafCountW[sb] = (uint16_t)nl;
-    B.sbJ[sb] = flagged ? -GP_INF : node[0].J;   // -GP_INF: the host fails the frame (pipeline.cpp)
     if (nRep) atomicAdd(&B.stats[5], nRep);
-    if (flagged) atomicAdd(&B.stats[6], 1u);
 }

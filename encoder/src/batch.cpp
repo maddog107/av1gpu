@@ -709,6 +709,14 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
         GpEncoder *e = nullptr;
         ~AlphaEnc() { delete e; }
     };
+    // k_dp's safety net acted (GpTimes::dpRepaired; 0 unless the partition check missed a case): the inputs it coded blocks of
+    auto warnNet = [](const Job *j, bool alpha) {
+        const std::vector<GpFrameOut> &o = alpha ? j->aouts : j->outs;
+        for (size_t i = 0; i < j->names.size(); i++) {
+            const int k = !alpha ? (int)i : i < j->alphaOf.size() ? j->alphaOf[i] : -1;
+            if (k >= 0 && (size_t)k < o.size() && o[k].dpNet) gp_warn_dp_net((j->names[i] + (alpha ? " (alpha)" : "")).c_str(), 0);
+        }
+    };
     auto encodeAlpha = [&](Job *j, AlphaEnc &ea, cudaStream_t s, std::string &eerr) -> bool {
         std::vector<GpFrameIn> al;
         j->alphaOf.assign(j->afin.size(), -1);
@@ -721,6 +729,7 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
         }
         GpTimes ta;
         if (ea.e->encode(al, j->aouts, ta, eerr, s, gpuEntropy ? &j->adev : nullptr)) return false;
+        if (ta.dpRepaired) warnNet(j, true);
         std::lock_guard<std::mutex> lk2(aggMu);
         A.analysis += ta.analysis; A.recon += ta.recon; A.gpuTotal += ta.total; A.blocks += ta.blocks; A.dpRepaired += ta.dpRepaired;
         A.peakDev = std::max(A.peakDev, ta.deviceBytes);
@@ -905,6 +914,7 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
                 if (E->encode(f10, jd->outs, t10, eerr, s, gpuEntropy ? &jd->dev : nullptr) || !encodeAlpha(jd, ea, s, eerr)) {
                     fprintf(stderr, "encode: %s\n", eerr.c_str()); oomHint(eerr); encFail++; delete jd; delete job; return;
                 }
+                if (t10.dpRepaired) warnNet(jd, false);
                 {
                     std::lock_guard<std::mutex> lk2(aggMu);
                     A.analysis += t10.analysis; A.recon += t10.recon; A.gpuTotal += t10.total; A.blocks += t10.blocks; A.dpRepaired += t10.dpRepaired;
@@ -936,6 +946,7 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
                     if (Es->encode(fs, js->outs, ts2, eerr, s, gpuEntropy ? &js->dev : nullptr) || !encodeAlpha(js, ea, s, eerr)) {
                         fprintf(stderr, "encode: %s\n", eerr.c_str()); oomHint(eerr); encFail++; delete js; delete job; return;
                     }
+                    if (ts2.dpRepaired) warnNet(js, false);
                     {
                         std::lock_guard<std::mutex> lk2(aggMu);
                         A.analysis += ts2.analysis; A.recon += ts2.recon; A.gpuTotal += ts2.total; A.blocks += ts2.blocks; A.dpRepaired += ts2.dpRepaired;
@@ -970,6 +981,7 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
             if (E->encode(fin, job->outs, tm, eerr, s, gpuEntropy ? &job->dev : nullptr) || !encodeAlpha(job, ea, s, eerr)) {
                 fprintf(stderr, "encode: %s\n", eerr.c_str()); oomHint(eerr); encFail++; delete job; return;
             }
+            if (tm.dpRepaired) warnNet(job, false);
             const double te = now_ms() - ts;
             for (auto &b : held) ingest_release_batch(ictx, b.batch_id, s);
             for (uint8_t *d : fbHeld) cudaFreeAsync(d, s);
@@ -1059,7 +1071,7 @@ int run_batch_mode(const GpConfig &cfg, const std::string &list, const std::stri
             (unsigned long long)A.images, mp, wall, A.images * 1e3 / wall, mp * 1e3 / wall, (unsigned long long)A.batches,
             A.bytes / 1e6, A.pixels ? A.bytes * 8.0 / A.pixels : 0.0, cpu, cpu / wall, cpuFallback, gpuFallback, failures);
     if (cfg.trim.on) fprintf(stderr, "[av1gpu] trim: %d images trimmed, %d skipped as blank\n", trimCutA.load(), trimBlankA.load());
-    if (A.dpRepaired) gp_warn_dp_repaired(A.dpRepaired);
+    if (A.dpRepaired) gp_warn_dp_net(nullptr, A.dpRepaired);   // (the inputs were named as they were encoded)
     fprintf(stderr,
             "[av1gpu] stage ms: ingest wait %.1f | gpu setup %.1f analysis %.1f dp %.1f recon %.1f pack %.1f postfilter %.1f download %.1f "
             "(gpu total %.1f, encode wall %.1f) | entropy wall %.1f (gpu %.1f) | write %.1f | peak dev %.0f MB\n",
