@@ -3,42 +3,46 @@
 <rect x="0.5" y="0.5" width="759" height="453" rx="12" fill="#fcfcfb" stroke="rgba(11,11,11,0.10)"/>
 <text x="24.0" y="34.0" font-size="17" fill="#0b0b0b" text-anchor="start" font-weight="600">Smallest files: av1gpu default vs libaom speed 6 and SVT-AV1</text>
 <text x="24.0" y="56.0" font-size="13" fill="#52514e" text-anchor="start" font-weight="400">100 photos of 0.18–24 MP on an AWS g6.4xlarge: the CPU encoders on all 16 vCPUs, av1gpu</text>
-<text x="24.0" y="74.0" font-size="13" fill="#52514e" text-anchor="start" font-weight="400">on one NVIDIA L4 and about 0.3 CPU cores. Same file sizes as libaom speed 6, 9.1× the speed;</text>
+<text x="24.0" y="74.0" font-size="13" fill="#52514e" text-anchor="start" font-weight="400">on one NVIDIA L4 and about 0.4 CPU cores. Files +0.5 % against libaom speed 6, 11.7× the speed;</text>
 <text x="24.0" y="92.0" font-size="13" fill="#52514e" text-anchor="start" font-weight="400">SVT-AV1 reaches those sizes between its presets 4 and 6.</text>
 <text x="250.0" y="132.0" font-size="12" fill="#52514e" text-anchor="start" font-weight="600">Speed, MP/s  (higher is better)</text>
 <line x1="250.0" y1="148.0" x2="250.0" y2="420.0" stroke="#e1e0d9" stroke-width="1"/>
 <text x="250.0" y="438.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">0</text>
-<line x1="321.7" y1="148.0" x2="321.7" y2="420.0" stroke="#e1e0d9" stroke-width="1"/>
-<text x="321.7" y="438.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">50</text>
-<line x1="393.3" y1="148.0" x2="393.3" y2="420.0" stroke="#e1e0d9" stroke-width="1"/>
-<text x="393.3" y="438.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">100</text>
+<line x1="303.8" y1="148.0" x2="303.8" y2="420.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="303.8" y="438.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">50</text>
+<line x1="357.5" y1="148.0" x2="357.5" y2="420.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="357.5" y="438.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">100</text>
+<line x1="411.2" y1="148.0" x2="411.2" y2="420.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="411.2" y="438.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">150</text>
 <line x1="465.0" y1="148.0" x2="465.0" y2="420.0" stroke="#e1e0d9" stroke-width="1"/>
-<text x="465.0" y="438.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">150</text>
-<line x1="536.7" y1="148.0" x2="536.7" y2="420.0" stroke="#e1e0d9" stroke-width="1"/>
-<text x="536.7" y="438.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">200</text>
-<line x1="608.3" y1="148.0" x2="608.3" y2="420.0" stroke="#e1e0d9" stroke-width="1"/>
-<text x="608.3" y="438.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">250</text>
+<text x="465.0" y="438.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">200</text>
+<line x1="518.8" y1="148.0" x2="518.8" y2="420.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="518.8" y="438.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">250</text>
+<line x1="572.5" y1="148.0" x2="572.5" y2="420.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="572.5" y="438.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">300</text>
+<line x1="626.2" y1="148.0" x2="626.2" y2="420.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="626.2" y="438.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">350</text>
 <line x1="680.0" y1="148.0" x2="680.0" y2="420.0" stroke="#e1e0d9" stroke-width="1"/>
-<text x="680.0" y="438.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">300</text>
+<text x="680.0" y="438.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">400</text>
 <line x1="250.0" y1="148.0" x2="250.0" y2="420.0" stroke="#c3c2b7" stroke-width="1"/>
 <text x="24.0" y="167.0" font-size="14" fill="#0b0b0b" text-anchor="start" font-weight="600">av1gpu default</text>
 <text x="24.0" y="185.0" font-size="12" fill="#898781" text-anchor="start" font-weight="400">1 GPU, 4 encoders</text>
-<path d="M250.0,158.0 H619.6 Q623.6,158.0 623.6,162.0 V178.0 Q623.6,182.0 619.6,182.0 H250.0 Z" fill="#2a78d6"/>
-<text x="631.6" y="175.0" font-size="14" fill="#0b0b0b" text-anchor="start" font-weight="600">261</text>
+<path d="M250.0,158.0 H608.8 Q612.8,158.0 612.8,162.0 V178.0 Q612.8,182.0 608.8,182.0 H250.0 Z" fill="#2a78d6"/>
+<text x="620.8" y="175.0" font-size="14" fill="#0b0b0b" text-anchor="start" font-weight="600">337</text>
 <text x="24.0" y="223.0" font-size="14" fill="#0b0b0b" text-anchor="start" font-weight="400">libaom speed 6</text>
 <text x="24.0" y="241.0" font-size="12" fill="#898781" text-anchor="start" font-weight="400">16 CPU threads at once</text>
-<path d="M250.0,214.0 H287.2 Q291.2,214.0 291.2,218.0 V234.0 Q291.2,238.0 287.2,238.0 H250.0 Z" fill="#eb6834"/>
-<text x="299.2" y="231.0" font-size="14" fill="#0b0b0b" text-anchor="start" font-weight="600">29</text>
+<path d="M250.0,214.0 H276.9 Q280.9,214.0 280.9,218.0 V234.0 Q280.9,238.0 276.9,238.0 H250.0 Z" fill="#eb6834"/>
+<text x="288.9" y="231.0" font-size="14" fill="#0b0b0b" text-anchor="start" font-weight="600">29</text>
 <text x="24.0" y="279.0" font-size="14" fill="#0b0b0b" text-anchor="start" font-weight="400">SVT-AV1 preset 6</text>
 <text x="24.0" y="297.0" font-size="12" fill="#898781" text-anchor="start" font-weight="400">16 CPU threads; files +2.1 %</text>
-<path d="M250.0,270.0 H316.8 Q320.8,270.0 320.8,274.0 V290.0 Q320.8,294.0 316.8,294.0 H250.0 Z" fill="#008300"/>
-<text x="328.8" y="287.0" font-size="14" fill="#0b0b0b" text-anchor="start" font-weight="600">49</text>
+<path d="M250.0,270.0 H299.1 Q303.1,270.0 303.1,274.0 V290.0 Q303.1,294.0 299.1,294.0 H250.0 Z" fill="#008300"/>
+<text x="311.1" y="287.0" font-size="14" fill="#0b0b0b" text-anchor="start" font-weight="600">49</text>
 <text x="24.0" y="335.0" font-size="14" fill="#0b0b0b" text-anchor="start" font-weight="400">SVT-AV1 preset 4</text>
 <text x="24.0" y="353.0" font-size="12" fill="#898781" text-anchor="start" font-weight="400">16 CPU threads; files −2.6 %</text>
-<path d="M250.0,326.0 H268.3 Q272.3,326.0 272.3,330.0 V346.0 Q272.3,350.0 268.3,350.0 H250.0 Z" fill="#008300"/>
-<text x="280.3" y="343.0" font-size="14" fill="#0b0b0b" text-anchor="start" font-weight="600">16</text>
+<path d="M250.0,326.0 H262.7 Q266.7,326.0 266.7,330.0 V346.0 Q266.7,350.0 262.7,350.0 H250.0 Z" fill="#008300"/>
+<text x="274.7" y="343.0" font-size="14" fill="#0b0b0b" text-anchor="start" font-weight="600">16</text>
 <text x="24.0" y="391.0" font-size="14" fill="#0b0b0b" text-anchor="start" font-weight="400">NVENC AV1, p7</text>
 <text x="24.0" y="409.0" font-size="12" fill="#898781" text-anchor="start" font-weight="400">same L4; files +30 %</text>
-<path d="M250.0,382.0 H268.4 Q272.4,382.0 272.4,386.0 V402.0 Q272.4,406.0 268.4,406.0 H250.0 Z" fill="#e87ba4"/>
-<text x="280.4" y="399.0" font-size="14" fill="#0b0b0b" text-anchor="start" font-weight="600">16</text>
+<path d="M250.0,382.0 H262.8 Q266.8,382.0 266.8,386.0 V402.0 Q266.8,406.0 262.8,406.0 H250.0 Z" fill="#e87ba4"/>
+<text x="274.8" y="399.0" font-size="14" fill="#0b0b0b" text-anchor="start" font-weight="600">16</text>
 </svg>

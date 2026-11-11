@@ -70,11 +70,11 @@
 <circle cx="242.8" cy="180.0" r="4" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"/>
 <circle cx="317.9" cy="161.6" r="4" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"/>
 <circle cx="417.2" cy="147.1" r="4" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"/>
-<path d="M96.9,326.8 L116.8,271.4 L153.2,224.8 L203.6,193.2 L271.1,171.4 L370.1,153.3" fill="none" stroke="#2a78d6" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
-<circle cx="96.9" cy="326.8" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
-<circle cx="116.8" cy="271.4" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
-<circle cx="153.2" cy="224.8" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
-<circle cx="203.6" cy="193.2" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
+<path d="M96.9,327.3 L116.8,272.0 L153.3,225.1 L203.7,193.4 L271.1,171.4 L370.0,153.3" fill="none" stroke="#2a78d6" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="96.9" cy="327.3" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="116.8" cy="272.0" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="153.3" cy="225.1" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="203.7" cy="193.4" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
 <circle cx="271.1" cy="171.4" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
-<circle cx="370.1" cy="153.3" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="370.0" cy="153.3" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
 </svg>

@@ -32,32 +32,32 @@
 <text x="56.0" y="140.0" font-size="12" fill="#898781" text-anchor="end" font-weight="400">+40 %</text>
 <text x="147.2" y="350.0" font-size="13" fill="#52514e" text-anchor="middle" font-weight="400">&lt; 1 MP</text>
 <text x="147.2" y="367.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">40 images</text>
-<path d="M107.2,308.4 V308.2 Q107.2,308.0 107.5,308.0 H131.0 Q131.2,308.0 131.2,308.2 V308.4 Z" fill="#2a78d6"/>
-<text x="119.2" y="302.0" font-size="12" fill="#0b0b0b" text-anchor="middle" font-weight="400">+0.1</text>
+<path d="M107.2,308.4 V307.4 Q107.2,306.4 108.3,306.4 H130.2 Q131.2,306.4 131.2,307.4 V308.4 Z" fill="#2a78d6"/>
+<text x="119.2" y="300.4" font-size="12" fill="#0b0b0b" text-anchor="middle" font-weight="400">+0.5</text>
 <path d="M135.2,308.4 V225.9 Q135.2,221.9 139.2,221.9 H155.2 Q159.2,221.9 159.2,225.9 V308.4 Z" fill="#1baf7a"/>
 <text x="147.2" y="215.9" font-size="12" fill="#0b0b0b" text-anchor="middle" font-weight="400">+20.1</text>
 <path d="M163.2,308.4 V158.7 Q163.2,154.7 167.2,154.7 H183.2 Q187.2,154.7 187.2,158.7 V308.4 Z" fill="#e87ba4"/>
 <text x="175.2" y="148.7" font-size="12" fill="#0b0b0b" text-anchor="middle" font-weight="400">+35.7</text>
 <text x="313.8" y="350.0" font-size="13" fill="#52514e" text-anchor="middle" font-weight="400">1–5 MP</text>
 <text x="313.8" y="367.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">20 images</text>
-<path d="M273.8,308.4 V304.2 Q273.8,300.2 277.8,300.2 H293.8 Q297.8,300.2 297.8,304.2 V308.4 Z" fill="#2a78d6"/>
-<text x="285.8" y="294.2" font-size="12" fill="#0b0b0b" text-anchor="middle" font-weight="400">+1.9</text>
+<path d="M273.8,308.4 V303.4 Q273.8,299.4 277.8,299.4 H293.8 Q297.8,299.4 297.8,303.4 V308.4 Z" fill="#2a78d6"/>
+<text x="285.8" y="293.4" font-size="12" fill="#0b0b0b" text-anchor="middle" font-weight="400">+2.1</text>
 <path d="M301.8,308.4 V232.8 Q301.8,228.8 305.8,228.8 H321.8 Q325.8,228.8 325.8,232.8 V308.4 Z" fill="#1baf7a"/>
 <text x="313.8" y="222.8" font-size="12" fill="#0b0b0b" text-anchor="middle" font-weight="400">+18.5</text>
 <path d="M329.8,308.4 V186.8 Q329.8,182.8 333.8,182.8 H349.8 Q353.8,182.8 353.8,186.8 V308.4 Z" fill="#e87ba4"/>
 <text x="341.8" y="176.8" font-size="12" fill="#0b0b0b" text-anchor="middle" font-weight="400">+29.2</text>
 <text x="480.2" y="350.0" font-size="13" fill="#52514e" text-anchor="middle" font-weight="400">5–10 MP</text>
 <text x="480.2" y="367.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">23 images</text>
-<path d="M440.2,308.4 V308.0 Q440.2,307.6 440.7,307.6 H463.8 Q464.2,307.6 464.2,308.0 V308.4 Z" fill="#2a78d6"/>
-<text x="452.2" y="301.6" font-size="12" fill="#0b0b0b" text-anchor="middle" font-weight="400">+0.2</text>
+<path d="M440.2,308.4 V307.3 Q440.2,306.2 441.4,306.2 H463.1 Q464.2,306.2 464.2,307.3 V308.4 Z" fill="#2a78d6"/>
+<text x="452.2" y="300.2" font-size="12" fill="#0b0b0b" text-anchor="middle" font-weight="400">+0.5</text>
 <path d="M468.2,308.4 V257.2 Q468.2,253.2 472.2,253.2 H488.2 Q492.2,253.2 492.2,257.2 V308.4 Z" fill="#1baf7a"/>
 <text x="480.2" y="247.2" font-size="12" fill="#0b0b0b" text-anchor="middle" font-weight="400">+12.8</text>
 <path d="M496.2,308.4 V189.7 Q496.2,185.7 500.2,185.7 H516.2 Q520.2,185.7 520.2,189.7 V308.4 Z" fill="#e87ba4"/>
 <text x="508.2" y="179.7" font-size="12" fill="#0b0b0b" text-anchor="middle" font-weight="400">+28.5</text>
 <text x="646.8" y="350.0" font-size="13" fill="#52514e" text-anchor="middle" font-weight="400">≥ 10 MP</text>
 <text x="646.8" y="367.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">17 images</text>
-<path d="M606.8,308.4 V313.6 Q606.8,317.6 610.8,317.6 H626.8 Q630.8,317.6 630.8,313.6 V308.4 Z" fill="#2a78d6"/>
-<text x="618.8" y="333.6" font-size="12" fill="#0b0b0b" text-anchor="middle" font-weight="400">−2.1</text>
+<path d="M606.8,308.4 V312.7 Q606.8,316.7 610.8,316.7 H626.8 Q630.8,316.7 630.8,312.7 V308.4 Z" fill="#2a78d6"/>
+<text x="618.8" y="332.7" font-size="12" fill="#0b0b0b" text-anchor="middle" font-weight="400">−1.9</text>
 <path d="M634.8,308.4 V254.5 Q634.8,250.5 638.8,250.5 H654.8 Q658.8,250.5 658.8,254.5 V308.4 Z" fill="#1baf7a"/>
 <text x="646.8" y="244.5" font-size="12" fill="#0b0b0b" text-anchor="middle" font-weight="400">+13.4</text>
 <path d="M662.8,308.4 V216.7 Q662.8,212.7 666.8,212.7 H682.8 Q686.8,212.7 686.8,216.7 V308.4 Z" fill="#e87ba4"/>

@@ -2,7 +2,7 @@
 <title>Fastest: av1gpu turbo3 vs SVT-AV1 preset 9 and libaom speed 9</title>
 <rect x="0.5" y="0.5" width="759" height="323" rx="12" fill="#fcfcfb" stroke="rgba(11,11,11,0.10)"/>
 <text x="24.0" y="34.0" font-size="17" fill="#0b0b0b" text-anchor="start" font-weight="600">Fastest: av1gpu turbo3 vs SVT-AV1 preset 9 and libaom speed 9</text>
-<text x="24.0" y="56.0" font-size="13" fill="#52514e" text-anchor="start" font-weight="400">The same photos at each encoder's fastest useful setting. av1gpu is 2.2–2.3× as fast,</text>
+<text x="24.0" y="56.0" font-size="13" fill="#52514e" text-anchor="start" font-weight="400">The same photos at each encoder's fastest useful setting. av1gpu is 2.5× as fast,</text>
 <text x="24.0" y="74.0" font-size="13" fill="#52514e" text-anchor="start" font-weight="400">and its files grow 6 % where SVT-AV1's grow 10 % and libaom's 15 %.</text>
 <text x="250.0" y="114.0" font-size="12" fill="#52514e" text-anchor="start" font-weight="600">Speed, MP/s  (higher is better)</text>
 <line x1="250.0" y1="130.0" x2="250.0" y2="290.0" stroke="#e1e0d9" stroke-width="1"/>
@@ -30,8 +30,8 @@
 <line x1="520.0" y1="130.0" x2="520.0" y2="290.0" stroke="#c3c2b7" stroke-width="1"/>
 <text x="24.0" y="149.0" font-size="14" fill="#0b0b0b" text-anchor="start" font-weight="600">av1gpu turbo3</text>
 <text x="24.0" y="167.0" font-size="12" fill="#898781" text-anchor="start" font-weight="400">--small-preset none</text>
-<path d="M250.0,140.0 H430.6 Q434.6,140.0 434.6,144.0 V160.0 Q434.6,164.0 430.6,164.0 H250.0 Z" fill="#2a78d6"/>
-<text x="442.6" y="157.0" font-size="14" fill="#0b0b0b" text-anchor="start" font-weight="600">420</text>
+<path d="M250.0,140.0 H448.3 Q452.3,140.0 452.3,144.0 V160.0 Q452.3,164.0 448.3,164.0 H250.0 Z" fill="#2a78d6"/>
+<text x="460.3" y="157.0" font-size="14" fill="#0b0b0b" text-anchor="start" font-weight="600">460</text>
 <path d="M520.0,140.0 H580.6 Q584.6,140.0 584.6,144.0 V160.0 Q584.6,164.0 580.6,164.0 H520.0 Z" fill="#2a78d6"/>
 <text x="592.6" y="157.0" font-size="14" fill="#0b0b0b" text-anchor="start" font-weight="600">+5.7 %</text>
 <text x="24.0" y="205.0" font-size="14" fill="#0b0b0b" text-anchor="start" font-weight="400">SVT-AV1 preset 9</text>
