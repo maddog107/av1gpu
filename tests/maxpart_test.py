@@ -11,10 +11,12 @@ the reconstruction, output that changed from run to run.  The encoder now analys
 without a partition of finite cost from DC_PRED records in 4x4, 8x8, 8x4 or 4x8 blocks, whichever shape the analysis
 has (counted, reported with the input's name, and a decoder-gate failure).
 
-- Every case in CASES is encoded twice through tests/decoder_gate.py, with every device allocation filled with 0 and
-  with 120 (GP_POISON; 120 made v0.12.0 fail to encode the flat image): both runs must pass the gate (which also fails
-  on any block coded by k_dp's safety net) and give the same bytes.  The cases cover interior superblocks (--maxpart),
-  the frame-edge-only route (--partN 0x3FE: flat 16x16 / 48x48 frames) and the variance pruning.
+- Every case in CASES is encoded through tests/decoder_gate.py with every device allocation filled with 0, with 120
+  (GP_POISON; 120 made v0.12.0 fail to encode the flat image) and with 255: every run must pass the gate (which also
+  fails on any block coded by k_dp's safety net) and give the same bytes.  The first N_PLAIN cases run once more with
+  the staged analysis and the shortlists off (P2OFF: the presets base and turbo have them on).  The cases cover interior superblocks (--maxpart),
+  the frame-edge-only route (--partN 0x3FE: flat 16x16 / 48x48 frames), the variance pruning, and the staged analysis
+  (--topdown, --prune-41) on those routes.
 - GP_DP_UNCHECKED=1 keeps the pruning that init would switch off, so the safety net must act: with turbo (4x4
   records), turbo2 (8x8 blocks) and --shapes masks without 4x4 and 8x8 (8x4 / 4x8 blocks) --maxpart 8 must still decode,
   give the same bytes for both fillings and report the blocks with the input's name (single-file and batch mode).
@@ -37,6 +39,9 @@ import tempfile
 import zlib
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+# the decisions of v0.12: no staged analysis, no open-loop shortlists (both are on in the presets base and turbo)
+P2OFF = ["--topdown", "0", "--prune-41", "off", "--uv-shortlist", "0", "--tx-shortlist", "0"]
+N_PLAIN = 8   # the first CASES, which name no staged-analysis option
 CASES = [
     ["--maxpart", "8"],
     ["--maxpart", "8", "--yuv", "444"],
@@ -47,6 +52,15 @@ CASES = [
     ["--prune-var", "0.0001", "--prune-area", "16", "--small-kernel", "0"],
     # (palette off: palette candidates would give the pruned blocks of the checker records)
     ["--preset", "base", "--prune-var", "0.5", "--prune-area", "64", "--prune-flat", "2", "--palette", "off"],
+    # the staged analysis (--topdown / --prune-41, staged_analysis_test.py) on the same routes: its DP stages decide
+    # which finer blocks are analysed, so they must leave the final DP a partition of finite cost wherever the default
+    # analysis has one (the NONE guard in the stage DPs: a pruned 64x64 times --split-bias 0.5 looked finite there)
+    ["--preset", "turbo", "--topdown", "1", "--maxpart", "8"],
+    ["--topdown", "1", "--prune-var", "0.0001", "--prune-area", "256", "--split-bias", "0.5"],
+    ["--preset", "base", "--topdown", "1", "--prune-41", "10", "--prune-var", "0.0001", "--prune-area", "256",
+     "--split-bias", "0.5"],
+    ["--preset", "base", "--prune-var", "0.5", "--prune-area", "64", "--prune-flat", "2", "--topdown", "1", "--palette", "off"],
+    ["--preset", "turbo2", "--topdown", "1"],
 ]
 # with GP_DP_UNCHECKED=1 (the safety net acts): 4x4 records (turbo), 8x8 blocks (turbo2: no 4x4), 8x4 blocks (no 4x4,
 # 8x8), 4x8 blocks (no 4x4, 8x8, 8x4)
@@ -75,10 +89,10 @@ def mixed(x, y):
     return (v, (v * 3) % 256, 255 - v)
 
 
-def gate_twice(a, img, t, tag, opts, fails, env_extra=None, allow_net=False):
-    """The decoder gate with GP_POISON 0 and 120; returns the gate output of both runs."""
+def gate_twice(a, img, t, tag, opts, fails, env_extra=None, allow_net=False, poisons=("0", "120")):
+    """The decoder gate with each GP_POISON fill; returns the gate output of the runs."""
     keep, outs = [], []
-    for poison in ("0", "120"):
+    for poison in poisons:
         d = os.path.join(t, f"{tag}_{poison}")
         env = dict(os.environ, GP_POISON=poison, **(env_extra or {}))
         p = subprocess.run([sys.executable, os.path.join(HERE, "decoder_gate.py"), "--bin", a.bin, "--images", img,
@@ -92,14 +106,15 @@ def gate_twice(a, img, t, tag, opts, fails, env_extra=None, allow_net=False):
         keep.append(d)
         outs.append(p.stdout)
     out0 = sorted(glob.glob(os.path.join(keep[0], "q100", "*.avif")))
-    out1 = sorted(glob.glob(os.path.join(keep[1], "q100", "*.avif")))
     names = [os.path.basename(f) for f in out0]
-    if len(out0) != IMAGES or names != [os.path.basename(f) for f in out1]:
-        fails.append(f"{' '.join(opts)}: outputs {names} / {[os.path.basename(f) for f in out1]}, expected {IMAGES} each")
-    else:
-        diff = [n for f, g, n in zip(out0, out1, names) if not filecmp.cmp(f, g, shallow=False)]
-        if diff:
-            fails.append(f"{' '.join(opts)}: output depends on uninitialised memory (GP_POISON 0 / 120): {diff}")
+    for k in range(1, len(keep)):
+        out1 = sorted(glob.glob(os.path.join(keep[k], "q100", "*.avif")))
+        if len(out0) != IMAGES or names != [os.path.basename(f) for f in out1]:
+            fails.append(f"{' '.join(opts)}: outputs {names} / {[os.path.basename(f) for f in out1]}, expected {IMAGES} each")
+        else:
+            diff = [n for f, g, n in zip(out0, out1, names) if not filecmp.cmp(f, g, shallow=False)]
+            if diff:
+                fails.append(f"{' '.join(opts)}: output depends on uninitialised memory (GP_POISON {poisons[0]} / {poisons[k]}): {diff}")
     return outs
 
 
@@ -127,11 +142,15 @@ def main():
             lambda x, y: (40, 50, 60) if ((x >> 3) + (y >> 3)) & 1 else (210, 200, 190))
         png(os.path.join(img, "mixed_200x136.png"), 200, 136, mixed)
         png(os.path.join(img, "alpha_72x40.png"), 72, 40, lambda x, y: (200, 60, 30, 255 if x < 40 else 128), alpha=True)
+        # (255 as well: in a stage DP of the staged analysis, records not yet analysed read as finite costs with 0 / 120)
         for k, opts in enumerate(CASES):
-            gate_twice(a, img, t, f"c{k}", opts, fails)
+            gate_twice(a, img, t, f"c{k}", opts, fails, poisons=("0", "120", "255"))
+        # base and turbo run the staged analysis and the shortlists by default: the first routes once more without them
+        for k, opts in enumerate(CASES[:N_PLAIN]):
+            gate_twice(a, img, t, f"p{k}", P2OFF + opts, fails)
         # the safety net, made to act: the pruning kept although the partition check would switch it off
         for k, opts in enumerate(NET_CASES):
-            outs = gate_twice(a, img, t, f"net{k}", opts, fails, {"GP_DP_UNCHECKED": "1"}, allow_net=True)
+            outs = gate_twice(a, img, t, f"net{k}", P2OFF + opts, fails, {"GP_DP_UNCHECKED": "1"}, allow_net=True)
             if not all("dp safety net" in o for o in outs):
                 fails.append(f"GP_DP_UNCHECKED=1 {' '.join(opts)}: the safety net did not report the blocks it coded")
         # ... and its warning names the input, in single-file and batch mode (turbo2: 8x8 blocks)

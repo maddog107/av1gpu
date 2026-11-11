@@ -54,6 +54,34 @@ down to 2 colours (the most frequent values, and k-means) with their index-map a
 rebuilds the winning palette from the source. Photos do not pass the detection and skip all of this. Details:
 [PALETTE.md](PALETTE.md).
 
+### Staged analysis (`--topdown`, `--prune-41`; `an_stage.h`, `k_an_list.cuh`, `k_an_x.cu`)
+
+Two options trade a little compression for analysis speed. Both are on in the presets `base` and `turbo`
+(`--topdown 1 --prune-41 10`, so with the defaults) and off in the others; they change decisions (not just speed), and
+lossless frames ignore them. Measured on an L4 against v0.12.0: `turbo` +5.6 % MP/s for +0.02 % BD-rate, `base` +38 %
+for +0.06 % (large photos) to +0.13 % (photos below 1 MP). With either, the shapes are analysed in groups, and
+between groups a DP stage (the partition DP below, over the shapes analysed so far) decides on the GPU which
+blocks of the next group are worth analysing. A list kernel (`k_an_list`) collects those blocks per shape, and
+the analysis kernels' list-driven instances take only them. Nothing is read back to the host. These kernels
+(and the DP stages) are a module of their own, `k_an_x.cu`, whose tables are uploaded only for an encoder with a
+switch on: an encoder without them (the other presets, lossless) never loads that code (lazy module loading, outside
+batch mode). With
+`--small-kernel 0` the shapes of up to 64 pixels are analysed in full, as without the options.
+
+- `--topdown 1`: the shapes whose smaller side is 16 or more first; the shapes with a side of 8 only in the 16×16
+  cells whose leaf in that DP has a side of 16 (or next to such a cell), then the shapes with a side of 4 likewise
+  in 8×8 cells. Cells that the frame edge cuts are always analysed in full.
+- `--prune-41 PCT`: a node's 4:1 shapes (16×4 … 64×16) only where its 2:1 partition costs at most PCT % more
+  than the best of its other partitions. Only `slow` and `base` have 4:1 shapes (with the defaults: the images
+  below `--small-mp`).
+
+A stage leaves a cell unrefined only under a leaf of finite cost (a block without an analysis record never counts
+as finite, whatever `--split-bias`), so neither option can leave a superblock without a finite partition where the
+full analysis would find one; the DP's safety net runs in the final DP only. Off, the default analysis kernels and the DP
+are the same code as without the options. On an L4 (development numbers): `--preset base` +30 % throughput with
+`--topdown`, +36 % with both, for +0.2 to +0.3 % BD-rate (PSNR-Y, quality 30 to 80); the default preset +5 % / +6 %
+for +0.14 %.
+
 ## Partition DP (`k_dp.cuh`)
 
 For each 64×64 superblock, a bottom-up dynamic program over the cost grids picks the partition tree.
@@ -72,6 +100,17 @@ superblock. Each thread block:
 - runs the exact integer inverse transforms of the AV1 spec to produce the reconstruction
 
 The reconstruction is bit-exact with what any conforming decoder produces, and the tests check that.
+
+Two switches, on in the presets `base` and `turbo` (`--uv-shortlist 3 --tx-shortlist 4`: about +4 % MP/s for +0.3 %
+BD-rate on an L4) and off in the others, take work out of the wavefront (`k_leafprep.cu`, between the partition DP and the
+first step, over every leaf of the batch at once): `--uv-shortlist N` screens the chroma modes on source edges and the
+closed loop then runs the exact rate-distortion test only on those N and CfL; `--tx-shortlist N` ranks the luma
+transform types open loop and the closed loop tries only the N best. They change decisions, not validity.
+`--uv-shortlist` replaces `--uvK` in every preset (`--uvK` has no effect while it is on), and chroma transforms above
+8x8 without a CfL candidate take at most 2 modes; turbo2 and turbo3 already use `--uvK 1`, so there only N = 1 saves
+time. `--tx-shortlist` has no effect where the closed loop has no separate tx-type search (turbo2 and turbo3, which
+turn it off, and slow, which uses `--tx-all`), on `--tx-size`'s split blocks, or with N of 7 or more; in base, fast and
+faster it applies where the closed loop keeps the analysis' first candidate.
 
 The wavefront has long serial chains. They are hidden by having many images in flight and by
 running several encoders (CUDA streams) at once. The wavefront kernels go on a high-priority stream,
@@ -130,6 +169,7 @@ On the L4's size-range photos (40 of the 100 below 1 MP), v0.6's default runs 14
 | `encoder/src/imageops.cpp`, `k_imageops.cu` | `--trim`, tone and gray: option parsing, the trim decision, kernels |
 | `encoder/src/gp.h` | shared host/device structures and tunables |
 | `encoder/src/k_pal.cu`, `pal_dev.cuh` | palette candidates of screen-content images (analysis and closed loop) |
+| `encoder/src/k_leafprep.cu` | open-loop chroma-mode and tx-type shortlists for the closed loop (`--uv-shortlist`, `--tx-shortlist`) |
 | `av1core/include/av1g/decisions.h` | the DecisionRecord: every coding decision of a frame |
 | `av1core/src/encoder.cpp` | CPU bitstream writer and reference reconstruction |
 | `av1core/include/av1g/dsp.h` | prediction, transforms, quantization shared by CPU and GPU |

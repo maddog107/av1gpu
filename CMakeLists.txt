@@ -197,7 +197,8 @@ endif()
 # encoder: analysis, partition DP, wavefront reconstruction, batching
 add_library(av1gpu_encoder STATIC
   encoder/src/k_misc.cu encoder/src/k_imageops.cu encoder/src/k_an_a.cu encoder/src/k_an_b.cu encoder/src/k_an_c.cu encoder/src/k_an_d.cu
-  encoder/src/k_an_uv.cu ${_av1gpu_recon_objects} encoder/src/k_recon_order.cu encoder/src/k_lossless.cu encoder/src/k_pal.cu encoder/src/pipeline.cpp
+  encoder/src/k_an_x.cu
+  encoder/src/k_an_uv.cu ${_av1gpu_recon_objects} encoder/src/k_recon_order.cu encoder/src/k_leafprep.cu encoder/src/k_lossless.cu encoder/src/k_pal.cu encoder/src/pipeline.cpp
   encoder/src/imageio.cpp encoder/src/imageops.cpp encoder/src/entropy_gpu.cpp encoder/src/entropy_dev.cu encoder/src/batch.cpp)
 target_include_directories(av1gpu_encoder PUBLIC encoder/src)
 target_compile_options(av1gpu_encoder PRIVATE
@@ -258,6 +259,16 @@ if(AV1GPU_TESTS)
     # (GP_DP_UNCHECKED); options without any partition refused, also for the small-image preset
     add_test(NAME maxpart_flat_pruning COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/maxpart_test.py
              --bin $<TARGET_FILE:av1gpu>)
+    # --uv-shortlist / --tx-shortlist (k_leafprep): decoder identity on the gate images, 4:2:0 8-bit and 4:4:4 10-bit;
+    # determinism, independence of the batch, --check / --check-entropy, --tx-shortlist 7 = no shortlist
+    add_test(NAME gate_shortlist COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/decoder_gate.py
+             --bin $<TARGET_FILE:av1gpu> --images ${PROJECT_SOURCE_DIR}/tests/gate_images --q 60,120
+             -- --uv-shortlist 3 --tx-shortlist 4 --small-preset none)
+    add_test(NAME gate_shortlist_444_10 COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/decoder_gate.py
+             --bin $<TARGET_FILE:av1gpu> --images ${PROJECT_SOURCE_DIR}/tests/gate_images --q 60,120 --expect-format 444
+             --expect-depth 10 -- --uv-shortlist 3 --tx-shortlist 4 --yuv 444 --depth 10 --small-preset none)
+    add_test(NAME shortlist COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/shortlist_test.py
+             --bin $<TARGET_FILE:av1gpu> --images ${PROJECT_SOURCE_DIR}/tests/gate_images)
     # unreadable inputs (a directory, a missing or empty file) are skipped, the rest is encoded
     add_test(NAME batch_skip_unreadable COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/batch_skip_test.py
              --bin $<TARGET_FILE:av1gpu> --image ${PROJECT_SOURCE_DIR}/tests/gate_images/cfl_edge_211x149.png)
@@ -298,6 +309,10 @@ if(AV1GPU_TESTS)
     # --help prints every option the parser takes
     add_test(NAME help_lists_options COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/help_test.py
              --bin $<TARGET_FILE:av1gpu> --source ${PROJECT_SOURCE_DIR}/encoder/apps/av1gpu.cpp)
+    # the staged-analysis switches (--topdown, --prune-41; on in base and turbo): the same bytes with one encoder and the list reversed, their
+    # off values = no switches, and decoder identity with both (default and base presets)
+    add_test(NAME staged_analysis COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/staged_analysis_test.py
+             --bin $<TARGET_FILE:av1gpu>)
     # #44: a gray JPEG's sampling factors (2x2, 2x1, 1x2) do not change its planes, on the nvJPEG and the CPU route
     add_test(NAME jpeg_gray_sampling COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/jpeg_gray_sampling_test.py
              --bin $<TARGET_FILE:av1gpu> --gen $<TARGET_FILE:jpeg_gray_gen>)
