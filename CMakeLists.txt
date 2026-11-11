@@ -244,7 +244,7 @@ if(AV1GPU_TESTS)
   # luma tx on the bottom frame edge (CfL MaxLumaW/H); AB-only partitions make --preset slow reach them
   find_package(Python3 COMPONENTS Interpreter)
   if(Python3_Interpreter_FOUND)
-    # options of the decoder-gate tests below
+    # options of the decoder-gate tests below (each runs once more with GP_POISON, after them)
     set(AV1G_GATE_cfl_edge --preset slow --small-preset none --partN 0xF0)
     set(AV1G_GATE_crop_resize --crop 171x120+19+13 --max-size 97x97 --small-preset none)
     set(AV1G_GATE_trim --trim --fuzz 5% --trim-margin 3 --small-preset none)
@@ -283,6 +283,14 @@ if(AV1GPU_TESTS)
     add_test(NAME gate_imageops COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/decoder_gate.py
              --bin $<TARGET_FILE:av1gpu> --images ${PROJECT_SOURCE_DIR}/tests/gate_images --q 60,120
              -- ${AV1G_GATE_imageops})
+    # the same decoder-gate tests with every device allocation filled with 120 (GP_POISON=120): a decision taken from
+    # unwritten device memory shows there (v0.12.0's record-less leaves passed the gate on zero-filled memory)
+    foreach(g cfl_edge crop_resize trim imageops)
+      add_test(NAME gate_${g}_poison COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/decoder_gate.py
+               --bin $<TARGET_FILE:av1gpu> --images ${PROJECT_SOURCE_DIR}/tests/gate_images --q 60,120
+               -- ${AV1G_GATE_${g}})
+      set_tests_properties(gate_${g}_poison PROPERTIES ENVIRONMENT GP_POISON=120)
+    endforeach()
     # the same operations on JPEGs (the batch path that starts from the ingest): EXIF-turned geometries, the box, blank
     # pages, --negate exact at 4:2:0, the size refusals and their --max-mp hint, one bad list line among good ones
     add_test(NAME imageops_jpeg COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/imageops_jpeg_test.py
