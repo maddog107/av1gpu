@@ -620,10 +620,10 @@ int GpEncoder::encode(const std::vector<GpFrameIn> &in, std::vector<GpFrameOut> 
     // (top-down: the shapes below 16x16 come from these lists, not from the live cells)
     GpAnRun run;
     memset(&run, 0, sizeof run);
-    const bool anRun = !ll && (cfg_.anTopdown || cfg_.anPrune41 >= 0.f);
+    const bool anRun = !ll && (cfg_.an.topdown || cfg_.an.prune41 >= 0.f);
     if (anRun) {
-        run.topdown = cfg_.anTopdown ? 1 : 0;
-        run.gateMul = cfg_.anPrune41 >= 0.f ? 1.f + cfg_.anPrune41 / 100.f : 0.f;
+        run.topdown = cfg_.an.topdown ? 1 : 0;
+        run.gateMul = cfg_.an.prune41 >= 0.f ? 1.f + cfg_.an.prune41 / 100.f : 0.f;
         if (run.topdown || run.gateMul > 0.f) {
             for (int s = 0; s < GP_NSHAPES; s++) {
                 const int w = 4 * AV1G_T(Num_4x4_Blocks_Wide)[s], h = 4 * AV1G_T(Num_4x4_Blocks_High)[s];

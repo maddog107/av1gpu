@@ -18,6 +18,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cmath>
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
@@ -213,12 +214,16 @@ static void usage(FILE *to = stderr) {
             "  --uv-in-dp              add an open-loop chroma term to the analysis (chroma-aware partitioning)\n"
             "  --k-large K             analysis top-K for shapes of 1024 pixels or more\n"
             "  --deltas-max-area A     angle-delta screening only for shapes up to A pixels (0: all)\n"
-            "  (the next options change decisions and output, are off by default and apply to every preset: speed for size)\n"
+            "  (the next two trade compression for analysis speed: they change decisions and output.  Off by default in every\n"
+            "  preset; given on the command line they apply to every preset, the small-image one included, wherever they\n"
+            "  stand among the options.  Lossless frames ignore both)\n"
             "  --topdown 0|1           top-down analysis: the shapes with a side of 8 only in the 16x16 cells where a partition\n"
             "                          DP over the larger shapes picks a block with a side of 16 (or next to such a cell), then\n"
-            "                          the shapes with a side of 4 likewise in 8x8 cells\n"
-            "  --prune-41 PCT          analyse a node's 4:1 shapes (16x4 .. 64x16) only where its 2:1 partition costs at most\n"
-            "                          PCT %% more than the best of its other partitions (e.g. 10)\n"
+            "                          the shapes with a side of 4 likewise in 8x8 cells (0: off, the default)\n"
+            "  --prune-41 off|PCT      analyse a node's 4:1 shapes (16x4 .. 64x16) only where its 2:1 partition costs at most\n"
+            "                          PCT %% more than the best of its other partitions; PCT 0..1000, e.g. 10 (off: the\n"
+            "                          default).  Only presets with 4:1 shapes have any to prune (slow, base: with the defaults,\n"
+            "                          the images below --small-mp); in fast .. turbo3 it changes nothing\n"
             "  --no-lossless-cfl       with --lossless: no CfL on 4x4 chroma blocks\n"
             "  --prof                  per-phase cycle accounting in k_recon\n"
             "  --check                 compare the reconstruction with av1core's CPU decode of the record\n"
@@ -244,7 +249,26 @@ struct Opts {
     float tileMinMp = 0;
     int tileColsLog2 = 0, tileRowsLog2 = 0;
     bool trimOpts = false;    // --fuzz / --trim-margin / --trim-limits / --trim-lightness / --skip-blank (need --trim)
+    // --topdown / --prune-41 given (applied after all options to every preset, the small-image one included)
+    bool topdownSet = false, prune41Set = false;
+    GpAnOpts an;
 };
+
+// --topdown: 0 or 1 exactly
+static bool parse_topdown(const char *v, int &out) {
+    if (!strcmp(v, "0") || !strcmp(v, "1")) { out = v[0] - '0'; return true; }
+    return false;
+}
+// --prune-41: "off" or a percentage 0..1000 (the whole value a finite number, no sign)
+static bool parse_prune41(const char *v, float &out) {
+    if (!strcmp(v, "off")) { out = -1.f; return true; }
+    if (!*v || *v == '-' || *v == '+') return false;
+    char *end = nullptr;
+    const double d = strtod(v, &end);
+    if (end == v || *end || !std::isfinite(d) || d < 0 || d > 1000) return false;
+    out = (float)d;
+    return true;
+}
 
 // alpha quality -> qindex as libavif codes alpha with libaom (tune=psnr: quantizer ((100 - Q) * 63 + 50) / 100, libaom's
 // quantizer_to_qindex); 100 -> 0 = lossless (av1gpu's lossless path: --quality 100 gives qindex 1, not lossless)
@@ -263,6 +287,7 @@ static bool apply_preset(GpConfig &cfg, const char *v) {
     cfg.P.deltas = d.P.deltas; cfg.P.uvDeltas = d.P.uvDeltas;
     cfg.P.filterIntra = d.P.filterIntra; cfg.P.txAllCL = d.P.txAllCL; cfg.P.txSizeSearch = d.P.txSizeSearch;
     cfg.tileMinMp = d.tileMinMp; cfg.tileColsLog2 = d.tileColsLog2; cfg.tileRowsLog2 = d.tileRowsLog2;
+    cfg.an = d.an;   // the staged-analysis switches: off in every preset (explicit options override, see parse)
     if (!strcmp(v, "base")) return true;
     if (!strcmp(v, "slow")) {
         // max quality (round 4): closed-loop tx-size search (largest vs one split), every tx type for
@@ -499,8 +524,16 @@ static bool parse(int argc, char **argv, GpConfig &cfg, Opts &o) {
             o.tilesSet = true; o.tileMinMp = mp; o.tileColsLog2 = c; o.tileRowsLog2 = r;
         }
         else if (a == "--deltas-max-area") cfg.P.deltasMaxArea = atoi(nxt());
-        else if (a == "--topdown") cfg.anTopdown = atoi(nxt());
-        else if (a == "--prune-41") cfg.anPrune41 = (float)atof(nxt());
+        else if (a == "--topdown") {
+            const char *v = nxt();
+            if (!parse_topdown(v, o.an.topdown)) { fprintf(stderr, "bad --topdown %s: 0 (off) or 1\n", v); return false; }
+            o.topdownSet = true;
+        }
+        else if (a == "--prune-41") {
+            const char *v = nxt();
+            if (!parse_prune41(v, o.an.prune41)) { fprintf(stderr, "bad --prune-41 %s: off, or a percentage 0..1000\n", v); return false; }
+            o.prune41Set = true;
+        }
         else if (a == "--prof") cfg.P.profile = 1;
         else if (a == "--uv-in-dp") { cfg.P.uvInDp = 1; cfg.P.uvOverheadBits = 0.f; }
         else if (a == "--vb-order") { const char *v = nxt(); cfg.vbOrder = !strcmp(v, "row") ? 1 : !strcmp(v, "nearest") ? 2 : 0; }
@@ -536,9 +569,13 @@ static bool parse(int argc, char **argv, GpConfig &cfg, Opts &o) {
         GpConfig cs = cfg;
         if (!apply_preset(cs, smallPreset.c_str())) { fprintf(stderr, "unknown small preset %s\n", smallPreset.c_str()); return false; }
         cfg.Psmall = cs.P;
+        cfg.anSmall = cs.an;
     } else {
         cfg.smallMp = 0;
     }
+    // --topdown / --prune-41 given: for every preset (the main one and the small-image one), wherever they stand
+    if (o.topdownSet) cfg.an.topdown = cfg.anSmall.topdown = o.an.topdown;
+    if (o.prune41Set) cfg.an.prune41 = cfg.anSmall.prune41 = o.an.prune41;
     if (cfg.ycgcoRe && !cfg.lossless) { fprintf(stderr, "--ycgco-re needs --lossless\n"); return false; }
     if (o.trimOpts && !cfg.trim.on) {
         fprintf(stderr, "--fuzz, --trim-margin, --trim-limits, --trim-lightness and --skip-blank need --trim\n");
@@ -752,6 +789,7 @@ static int run_single(const GpConfig &cfg0, const Opts &o) {
     if (cfg.smallMp > 0 && (double)fin.W * fin.H < cfg.smallMp * 1e6) {
         GpConfig cs = cfg;
         cs.P = cfg.Psmall;
+        cs.an = cfg.anSmall;
         if (encS.init(cs, err)) { fprintf(stderr, "init: %s\n", err.c_str()); return 1; }
         E = &encS;
     }

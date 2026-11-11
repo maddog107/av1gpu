@@ -1,11 +1,11 @@
-// Staged open-loop analysis (opt-in, GpConfig::anTopdown / anPrune41; off by default): the shapes are analysed group by
-// group, and a partition DP over the groups done so far decides on the device which blocks of the next group are analysed
-// at all.  Device-side lists and fixed worst-case launch sizes: no host synchronisation.
+// Staged open-loop analysis (opt-in: GpAnOpts in pipeline.h, --topdown / --prune-41; off by default): the shapes are
+// analysed group by group, and a partition DP over the groups done so far decides on the device which blocks of the next
+// group are analysed at all.  Device-side lists and fixed worst-case launch sizes: no host synchronisation.
 //
-//   top-down (anTopdown): group 1 = the shapes whose smaller side is 16 or more; DP; the shapes with a smaller side of 8
+//   top-down (--topdown): group 1 = the shapes whose smaller side is 16 or more; DP; the shapes with a smaller side of 8
 //     only in the 16x16 cells whose covering leaf of that DP has a smaller side of 16 (or a neighbouring cell's has);
 //     DP; the shapes with a smaller side of 4 likewise in 8x8 cells.  Cells that the frame cuts are always analysed.
-//   4:1 gating (anPrune41): a node's n x n/4 blocks are analysed only where its HORZ partition costs at most
+//   4:1 gating (--prune-41): a node's n x n/4 blocks are analysed only where its HORZ partition costs at most
 //     (1 + theta) times the best of NONE, VERT and SPLIT (into square-only children) in a DP over the shapes done so far
 //     (VERT likewise), after everything else or, with the top-down stages, right after their own group.
 //

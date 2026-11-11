@@ -32,12 +32,23 @@ struct GpXform {
     }
 };
 
+// Staged analysis (an_stage.h): decision-changing speed knobs of a preset, all off by default in every preset.  Not in
+// GpParams, which every kernel takes by value (the default analysis kernels and the closed loop stay as they are), but
+// carried the same way: GpConfig::an with P, anSmall with Psmall.  Lossless frames ignore them.
+struct GpAnOpts {
+    int topdown = 0;          // --topdown 1: shapes with a side of 8 / 4 only where a DP over the larger shapes asks
+    float prune41 = -1;       // --prune-41 PCT (0..1000; < 0 off): 4:1 shapes of a node only where its 2:1 partition costs
+                              // at most 1 + PCT / 100 times the best of the node's other partitions
+};
+
 struct GpConfig {
     int qindex = 100;
     GpParams P;
-    // size-adaptive effort: images with W*H < smallMp * 1e6 use Psmall (--small-preset); 0 = off
+    GpAnOpts an;              // (with P)
+    // size-adaptive effort: images with W*H < smallMp * 1e6 use Psmall and anSmall (--small-preset); 0 = off
     double smallMp = 0;
     GpParams Psmall;
+    GpAnOpts anSmall;
     // tool hooks (av1f / av1core)
     int qm = -1;              // -1 off, -2 libaom all-intra curve (av1g_qm_level_allintra), else level 0..15
     int qmUV = -1;            // chroma level (-1: same as luma)
@@ -90,11 +101,6 @@ struct GpConfig {
                               // Advanced profile allows) are written with seq_level_idx 31 (no level limits)
     double maxInputMp = 0;    // front ends: largest source decoded (--max-input-mp; 0 or less than the maxMp limit: that
                               // limit); above it only helps sources that a crop / max-size brings under maxMp
-    // Staged analysis (an_stage.h): decision-changing speed knobs, all off by default, for every preset (not in GpParams,
-    // so the default analysis and the closed loop are unchanged).  Lossless frames ignore them.
-    int anTopdown = 0;        // --topdown 1: shapes with a side of 8 / 4 only where a DP over the larger shapes asks
-    float anPrune41 = -1;     // --prune-41 PCT (>= 0): 4:1 shapes of a node only where its 2:1 partition costs at most
-                              // 1 + PCT / 100 times the best of the node's other partitions
     GpConfig();
 };
 

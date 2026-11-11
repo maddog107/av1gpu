@@ -54,6 +54,27 @@ down to 2 colours (the most frequent values, and k-means) with their index-map a
 rebuilds the winning palette from the source. Photos do not pass the detection and skip all of this. Details:
 [PALETTE.md](PALETTE.md).
 
+### Staged analysis (opt-in: `--topdown`, `--prune-41`; `an_stage.h`, `k_an_list.cuh`)
+
+Two expert options trade a little compression for analysis speed. Both are off in every preset and change
+decisions (not just speed); lossless frames ignore them. With either, the shapes are analysed in groups, and
+between groups a DP stage (the partition DP below, over the shapes analysed so far) decides on the GPU which
+blocks of the next group are worth analysing. A list kernel (`k_an_list`) collects those blocks per shape, and
+the analysis kernels' list-driven instances take only them. Nothing is read back to the host.
+
+- `--topdown 1`: the shapes whose smaller side is 16 or more first; the shapes with a side of 8 only in the 16×16
+  cells whose leaf in that DP has a side of 16 (or next to such a cell), then the shapes with a side of 4 likewise
+  in 8×8 cells. Cells that the frame edge cuts are always analysed in full.
+- `--prune-41 PCT`: a node's 4:1 shapes (16×4 … 64×16) only where its 2:1 partition costs at most PCT % more
+  than the best of its other partitions. Only `slow` and `base` have 4:1 shapes (with the defaults: the images
+  below `--small-mp`).
+
+A stage leaves a cell unrefined only under a leaf of finite cost, so neither option can leave a superblock
+without a finite partition where the full analysis would find one. Off, the default analysis kernels and the DP
+are the same code as without the options. On an L4 (development numbers): `--preset base` +30 % throughput with
+`--topdown`, +36 % with both, for +0.2 to +0.3 % BD-rate (PSNR-Y, quality 30 to 80); the default preset +5 % / +6 %
+for +0.14 %.
+
 ## Partition DP (`k_dp.cuh`)
 
 For each 64×64 superblock, a bottom-up dynamic program over the cost grids picks the partition tree.
