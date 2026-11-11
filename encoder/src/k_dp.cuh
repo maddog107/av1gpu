@@ -63,8 +63,11 @@ __global__ void k_dp(GpBatch B, GpParams P) {
                     if (!big) {
                         const int hz = sub_bsize(AV1G_PARTITION_HORZ, n), vt = sub_bsize(AV1G_PARTITION_VERT, n);
                         const int sp = sub_bsize(AV1G_PARTITION_SPLIT, n);
-                        if (pmask & (1 << AV1G_PARTITION_NONE))
-                            consider(AV1G_PARTITION_NONE, dp_blockJ(B, I, sq_bsize(n), x, y) * P.splitBias, pb[AV1G_PARTITION_NONE]);
+                        if (pmask & (1 << AV1G_PARTITION_NONE)) {
+                            // a block without a record stays GP_INF (a --split-bias below 1 would make it look finite)
+                            const float jn = dp_blockJ(B, I, sq_bsize(n), x, y);
+                            if (jn < GP_INF) consider(AV1G_PARTITION_NONE, jn * P.splitBias, pb[AV1G_PARTITION_NONE]);
+                        }
                         if (pmask & (1 << AV1G_PARTITION_HORZ))
                             consider(AV1G_PARTITION_HORZ, dp_blockJ(B, I, hz, x, y) + dp_blockJ(B, I, hz, x, y + half), pb[AV1G_PARTITION_HORZ]);
                         if (pmask & (1 << AV1G_PARTITION_VERT))

@@ -109,8 +109,105 @@ GpEncoder::~GpEncoder() {
     if (vbLuts10_) cudaFree(vbLuts10_);
 }
 
+// k_dp (k_dp.cuh) takes the cheapest partition of finite J at every node; at a node with none it keeps
+// PARTITION_SPLIT, down to 4x4 leaves.  Such leaves have no analysis record to code from: J = GP_INF and ncand 0
+// with cand / tx never written (blocks the flat or variance pruning skipped), or a shape the analysis does not
+// evaluate (I.shNbx 0: the record index lands in another shape's).  k_recon then codes them from whatever the device
+// memory holds (stale data of earlier batches): out-of-range modes and tx types, illegal addresses, streams that
+// differ from the reconstruction.  dp_complete runs k_dp's choice on finiteness alone, for a superblock at every
+// distance from the frame's right and bottom edges (the coded size is a multiple of 8), with every block that the
+// pruning may skip skipped (a flat frame prunes every complete 16x16 cell; any block may exceed the variance limit):
+// true if every superblock of every frame keeps a partition of finite J.
+static bool dp_complete(const GpParams &P, bool flat, bool var) {
+    for (int FH = 8; FH <= 64; FH += 8)
+        for (int FW = 8; FW <= 64; FW += 8) {
+            // the block's record has candidates (finite J): its shape analysed (I.shNbx), inside, not pruned
+            auto blk = [&](int bs, int x, int y) {
+                if (bs >= AV1G_BLOCK_INVALID || (bs >= 13 && bs <= 15) || !((P.shapeMask >> bs) & 1) || x >= FW || y >= FH)
+                    return false;
+                const int a = 16 * AV1G_T(Num_4x4_Blocks_Wide)[bs] * AV1G_T(Num_4x4_Blocks_High)[bs];
+                if (flat && a < 256 && ((x >> 4) + 1) * 16 <= FW && ((y >> 4) + 1) * 16 <= FH) return false;   // prune_flat
+                if (var && a >= P.pruneMinArea && !(P.smallKernel && a <= 64)) return false;   // k_analysis' pruneVar
+                return true;
+            };
+            bool fin[85];
+            const int lvBase[4] = {0, 1, 5, 21};
+            for (int L = 3; L >= 0; L--) {
+                const int n = 64 >> L, half = n >> 1, q4 = n >> 2, per = 1 << L;
+                const int sq = n == 8 ? AV1G_BLOCK_8X8 : n == 16 ? AV1G_BLOCK_16X16 : n == 32 ? AV1G_BLOCK_32X32 : AV1G_BLOCK_64X64;
+                auto sub = [&](int p) { return (int)AV1G_T(Partition_Subsize)[p][sq]; };
+                const int pmask = n == 8 ? P.partMask8 : P.partMaskN;
+                auto on = [&](int p) { return ((pmask >> p) & 1) != 0; };
+                for (int ny = 0; ny < per; ny++)
+                    for (int nx = 0; nx < per; nx++) {
+                        bool &f = fin[lvBase[L] + ny * per + nx];
+                        const int x = nx * n, y = ny * n;
+                        if (x >= FW || y >= FH) { f = true; continue; }   // outside: J 0, no leaves
+                        const bool hasRows = (y + half) < FH, hasCols = (x + half) < FW, big = n > P.maxPart;
+                        bool split = true;   // SPLIT, always a choice
+                        if (n == 8) {
+                            for (int k = 0; k < 4; k++) {
+                                const int xx = x + (k & 1) * 4, yy = y + (k >> 1) * 4;
+                                if (xx < FW && yy < FH) split = split && blk(AV1G_BLOCK_4X4, xx, yy);
+                            }
+                        } else {
+                            const int cb = lvBase[L + 1], cper = per * 2;
+                            for (int k = 0; k < 4; k++) split = split && fin[cb + (ny * 2 + (k >> 1)) * cper + nx * 2 + (k & 1)];
+                        }
+                        f = split;
+                        if (big) continue;
+                        const int hz = sub(AV1G_PARTITION_HORZ), vt = sub(AV1G_PARTITION_VERT);
+                        if (hasRows && hasCols) {
+                            const int sp = sub(AV1G_PARTITION_SPLIT);
+                            f = f || (on(AV1G_PARTITION_NONE) && blk(sq, x, y));
+                            f = f || (on(AV1G_PARTITION_HORZ) && blk(hz, x, y) && blk(hz, x, y + half));
+                            f = f || (on(AV1G_PARTITION_VERT) && blk(vt, x, y) && blk(vt, x + half, y));
+                            if (n > 8) {
+                                const bool s00 = blk(sp, x, y), s01 = blk(sp, x + half, y), s10 = blk(sp, x, y + half),
+                                           s11 = blk(sp, x + half, y + half);
+                                f = f || (on(AV1G_PARTITION_HORZ_A) && s00 && s01 && blk(hz, x, y + half));
+                                f = f || (on(AV1G_PARTITION_HORZ_B) && blk(hz, x, y) && s10 && s11);
+                                f = f || (on(AV1G_PARTITION_VERT_A) && s00 && s10 && blk(vt, x + half, y));
+                                f = f || (on(AV1G_PARTITION_VERT_B) && blk(vt, x, y) && s01 && s11);
+                                const int h4 = sub(AV1G_PARTITION_HORZ_4), v4 = sub(AV1G_PARTITION_VERT_4);
+                                bool fh = on(AV1G_PARTITION_HORZ_4), fv = on(AV1G_PARTITION_VERT_4);
+                                for (int i = 0; i < 4; i++) {
+                                    if (i < 3 || y + 3 * q4 < FH) fh = fh && blk(h4, x, y + i * q4);
+                                    if (i < 3 || x + 3 * q4 < FW) fv = fv && blk(v4, x + i * q4, y);
+                                }
+                                f = f || fh || fv;
+                            }
+                        } else if (hasCols) {   // split_or_horz (no partition mask, as k_dp)
+                            f = f || blk(hz, x, y);
+                        } else if (hasRows) {   // split_or_vert
+                            f = f || blk(vt, x, y);
+                        }
+                    }
+            }
+            if (!fin[0]) return false;
+        }
+    return true;
+}
+
 int GpEncoder::init(const GpConfig &cfg, std::string &err) {
     cfg_ = cfg;
+    // the analysis must leave k_dp a partition of finite J in every superblock (dp_complete).  The flat / variance
+    // pruning count on larger / smaller blocks to take over the ones they skip; where the partition options leave none
+    // (--maxpart below 16 with the flat pruning of turbo / faster, --partN / --shapes without them, ...) the analysis
+    // evaluates every block instead.  Options that leave no partition even then are refused.
+    if (!cfg_.lossless) {
+        GpParams &P = cfg_.P;
+        if (!dp_complete(P, false, false)) {
+            err = "--shapes / --part8 / --partN / --maxpart leave no partition the analysis evaluates for some blocks";
+            return -1;
+        }
+        const bool fl = P.pruneFlat > 0.f, vr = P.pruneVar > 0.f;
+        if ((fl || vr) && !dp_complete(P, fl, vr)) {
+            if (fl && dp_complete(P, false, vr)) P.pruneFlat = 0.f;
+            else if (vr && dp_complete(P, fl, false)) P.pruneVar = 0.f;
+            else P.pruneFlat = 0.f, P.pruneVar = 0.f;
+        }
+    }
     char buf[256] = {0};
     if (gp_init_tables(buf, sizeof buf)) { err = buf; return -1; }
     // the closed loop for the frames this configuration makes (colour frames, and monochrome ones without 4:4:4
