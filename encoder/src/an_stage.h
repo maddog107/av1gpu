@@ -24,6 +24,10 @@ struct GpAnX {
 };
 // the shape needs the MODE 1 analysis kernel (a zero GpAnX: none)
 inline bool an_x_on(const GpAnX *x) { return x && x->list; }
+// The shapes a staged analysis lists (an_stage_of >= 2 with some switch): smaller side 8 or 4, and the 4:1 shapes.  Only
+// they have MODE 1 kernels: every kernel in the binary is loaded at start-up in batch mode (eager module loading), and
+// MODE 1 instances of every shape cost 80 ms there on an L4 with the switches off.
+constexpr bool an_staged_shape(int w, int h) { return (w < h ? w : h) <= 8 || w == 4 * h || h == 4 * w; }
 
 // Options of a DP stage (k_dp<BD, true>, k_dp.cuh): which shapes the DP may use, and what it writes.
 struct GpDpStage {
