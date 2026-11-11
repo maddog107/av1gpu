@@ -500,11 +500,17 @@ void gp_launch_analysis_staged(const GpBatch &B, const GpParams &P, const uint32
         gp_launch_pal_analysis(B, P, sub, st, bd);
         done |= mask;
     };
-    // a DP stage over the shapes done, then the block lists of the next stage's shapes
+    // a DP stage over the shapes done, then the block lists of the next stage's shapes.  The map marks the cells under
+    // leaves whose smaller side is the smallest of the shapes done (16 for the 16x16 map, 8 for the 8x8 one in every
+    // preset; larger when --shapes leaves out a group, so that the next group still refines where the DP went finest)
     auto next = [&](uint32_t mask, uint8_t *core, int cell, uint8_t *gate) {
+        int side = 64;
+        for (int s = 0; s < GP_NSHAPES; s++)
+            if ((done >> s) & 1)
+                side = std::min(side, std::min(4 * (int)AV1G_T(Num_4x4_Blocks_Wide)[s], 4 * (int)AV1G_T(Num_4x4_Blocks_High)[s]));
         GpDpStage S;
         memset(&S, 0, sizeof S);
-        S.shapeMask = done; S.core = core; S.coreCell = cell; S.coreSide = cell; S.gate = gate; S.gateMul = R.gateMul;
+        S.shapeMask = done; S.core = core; S.coreCell = cell; S.coreSide = std::max(cell, side); S.gate = gate; S.gateMul = R.gateMul;
         gp_launch_dp_stage(B, P, S, st, bd);
         GpAnListStage Ls;
         memset(&Ls, 0, sizeof Ls);
