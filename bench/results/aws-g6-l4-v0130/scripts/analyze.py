@@ -198,8 +198,11 @@ def quality_block(A, N):
 
 
 def std_block(S):
-    """standard set (100 photos) against aws-g6-l4's stored libaom speed 6 / WebP rows"""
-    a6, wp = std0["quality"]["aom_s6"], std0["quality"]["webp"]
+    """standard set (100 photos) against aws-g6-l4's stored libaom speed 6 rows and its WebP rows re-scored with each
+    WebP's ICC profile (bench/results/webp-icc-standard), as the published standard-set WebP figure"""
+    fix = {(x["image"], x["q"]): x["ssimulacra2_icc"] for x in L("webp-icc-standard")["rows"]}
+    a6 = std0["quality"]["aom_s6"]
+    wp = [dict(x, ssimulacra2=fix.get((x["image"], x["q"]), x["ssimulacra2"])) for x in std0["quality"]["webp"]]
     o = {}
     for k, key in (("default", "av1gpu"), ("nosmall", "av1gpu_nosmall"), ("turbo3ns", "av1gpu_turbo3_nosmall")):
         if S.get(k):
@@ -516,6 +519,8 @@ def new_vs_old():
         n, ol = pick(cfg, "new"), pick(cfg, "old")
         if not ol and identical(cfg):
             ol = n
+        common_q = {r["q"] for r in ol}
+        n = [r for r in n if r["q"] in common_q]   # the same quality points (OLD's default is scored at the six only)
         if n and ol and cfg.startswith(("gamut_", "fmt_", "std_")):
             o["bd_rate_new_vs_old"] = bd(n, ol)[0]
             if cfg.startswith(("gamut_", "fmt_")):

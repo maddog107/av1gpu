@@ -62,7 +62,7 @@ CPU: AMD EPYC 7R13 Processor, 16 vCPUs
 
 By size, default vs libaom speed 6: < 1 MP +0.5 % (n 40), 1-5 MP +2.1 % (n 20), 5-10 MP +0.5 % (n 23), >= 10 MP −1.9 % (n 17)
 
-Standard set (100 photos) vs aws-g6-l4's libaom speed 6: av1gpu_vs_aom_s6 +1.0 %, av1gpu_nosmall_vs_aom_s6 +3.8 %, av1gpu_turbo3_nosmall_vs_aom_s6 +8.2 %, av1gpu_vs_webp −29.6 %
+Standard set (100 photos) vs aws-g6-l4's libaom speed 6: av1gpu_vs_aom_s6 +1.0 %, av1gpu_nosmall_vs_aom_s6 +3.8 %, av1gpu_turbo3_nosmall_vs_aom_s6 +8.2 %, av1gpu_vs_webp −29.4 %
 
 ## Derived
 
@@ -75,7 +75,7 @@ Standard set (100 photos) vs aws-g6-l4's libaom speed 6: av1gpu_vs_aom_s6 +1.0 %
 
 | config | identical | bytes | BD-rate | < 1 MP | 1-2 MP | ≥ 2 MP identical |
 |---|---:|---:|---:|---:|---:|---:|
-| gamut_default | 0/800 | +0.00 % | +0.20 % (+0.33 %) | 0/320 | 0/64 | 0/416 |
+| gamut_default | 0/800 | +0.00 % | +0.23 % (+0.35 %) | 0/320 | 0/64 | 0/416 |
 | gamut_nosmall | 0/600 | +0.02 % | +0.21 % (+0.31 %) | 0/240 | 0/48 | 0/312 |
 | gamut_turbo3ns | 600/600 | +0.00 % | +0.00 % (+0.00 %) | 240/240 | 48/48 | 312/312 |
 | gamut_turbo3 | 360/600 | -0.00 % | +0.00 % (+0.22 %) | 0/240 | 48/48 | 312/312 |
